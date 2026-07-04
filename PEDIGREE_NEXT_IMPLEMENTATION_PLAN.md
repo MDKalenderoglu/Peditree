@@ -5,16 +5,27 @@ Breaks `PEDIGREE_COMPLEXITY_REQUIREMENTS.md` into PR-sized phases. Each phase fo
 
 ## Ordering rationale
 
-v0.3 (visual encoding) is pure-render, zero risk to the graph/layout invariants CLAUDE.md protects, and delivers the most clinically visible gap (multi-condition marking) fastest. v0.4 (relationship/union editing) touches the builder and store but not the layout algorithm's core logic. v0.5 (adoption/twins/triplets) requires new layout primitives. v0.6 (complex layout stabilization) is explicitly gated on the layout-engine replacement question CLAUDE.md defers — it may end up being "harden the existing engine" rather than "replace it," decided after v0.3-v0.5 stress-test data (`PEDIGREE_LAYOUT_STRESS_TEST_PLAN.md`) comes in.
+v0.3 (visual encoding) is render/data-model work, zero risk to the graph/layout invariants CLAUDE.md protects, and delivers the most clinically visible gap (multi-condition marking) fastest — but per architecture review it is split into three sequential slices (v0.3a/b/c below) rather than shipped as one PR, since the original single-slice framing understated its actual surface area (data migration + editor rewrite + new integrity check + partitioned geometry + a guaranteed breaking visual change). v0.4 (relationship/union editing) touches the builder and store but not the layout algorithm's core logic. v0.5 (adoption/twins/triplets) requires new layout primitives. v0.6 (complex layout stabilization) is explicitly gated on the layout-engine replacement question CLAUDE.md defers — it may end up being "harden the existing engine" rather than "replace it," decided after v0.3-v0.5 stress-test data (`PEDIGREE_LAYOUT_STRESS_TEST_PLAN.md`) comes in.
 
 ---
 
 ## v0.3 — Multi-condition visual encoding
 
-**Goal:** `Individual.conditions[]`, full/half/quarter fill, legend, carrier moves to centered-dot. Corresponds to requirements R2.1-R2.5, R1.1-R1.4 (proband-affected default fits naturally in this slice since it's also a small render/store default change, not a layout change).
+**Revised per architecture review: v0.3 is split into three sequential, independently revertable slices (v0.3a, v0.3b, v0.3c) rather than one PR.** The original single-slice plan mixed a data migration, an editor rewrite, a new integrity check, partitioned-fill geometry, and a guaranteed breaking visual change into one change — that is not "pure render, zero risk" as originally framed. Each slice below must land, pass its own acceptance criteria, and show zero `auditPedigreeGraph`/`auditLayoutIntegrity` regressions before the next slice starts.
+
+Cross-slice rules:
+- **v0.3a must not change carrier rendering** and **must not implement partitioned fills** — solid fills and legend rows only.
+- **v0.3b must not change relationship/union/adoption/twin/layout logic** — fill geometry and export parity only, no builder/layout touch.
+- **v0.3c must be isolated** because carrier rendering is the one guaranteed breaking visual change across all of v0.3 and must be trivially revertable on its own.
+- Do not implement adoption, twins, triplets, union editing, or layout-engine changes in any v0.3 slice — those remain v0.4/v0.5/v0.6.
+- **R1.1 (auto-defaulting `affected: true` on proband assignment) is rejected** (see `PEDIGREE_COMPLEXITY_REQUIREMENTS.md` §1) and must not be implemented in any v0.3 slice. Proband and affected stay fully independent, with no automatic coupling.
+
+### v0.3a — Data model + editor + legend, solid fills only
+
+**Goal:** `Individual.conditions[]`, condition registry, legacy-string migration, editor UI, auto-legend. No partitioned fills, no carrier change. Corresponds to R2.1, R2.2, R2.4, R2.5.
 
 **Files likely to change:**
-- `src/components/PedigreeCanvas.jsx` — new fill-geometry logic (full/half/quarter), new pattern `<defs>` (diagonal hatch, cross-hatch, dot), carrier rendering switched from `url(#carrier-half)` to centered-dot, legend extended for conditions.
+- `src/components/PedigreeCanvas.jsx` — render 1 condition as full fill, ≥2 conditions as full fill + legend rows only (no partitioning); legend extended for conditions. Carrier rendering unchanged.
 - `src/components/IndividualEditor.jsx` — replace single `condition` text input with a repeatable conditions list UI (add/remove condition + status picker), keep legacy `condition` text field for the italic under-node label (per `PEDIGREE_VISUAL_ENCODING_SPEC.md` §4, it's retained, not replaced).
 - `src/state/usePedigreeStore.js` — `updateIndividual` needs to accept `conditions` array updates; `generateDerivedData`'s manual-edits merge (`mergedIndividuals`) needs a `conditions` passthrough line alongside the existing `condition`/`carrier`/etc. fields; migration logic for legacy `condition` string → `conditions[]` on session load (`bootstrapState`/`mergeWithDefaults`).
 - `src/utils/graphIntegrity.js` — new `CONDITION_ID_UNLABELED` warning check.
@@ -23,19 +34,49 @@ v0.3 (visual encoding) is pure-render, zero risk to the graph/layout invariants 
 **Tests to add:**
 - `src/__tests__/conditionRegistry.test.js` (new) — registry derivation is stable/order-preserving, dedups shared condition labels across individuals, handles empty/undefined `conditions`.
 - Extend `src/__tests__/pedigree.test.js` or a new `visualEncoding.test.js` — legacy `condition` string migrates correctly; `affected`+empty `conditions` still resolves to full-fill semantics (assert on the derived render input, not pixel output, since there's no visual-regression harness in this repo today).
-- Manual verification via `preview_*` tools: load app, assign 2, 3, 4 conditions to different individuals, confirm legend and fills visually match spec, confirm carrier dot renders and doesn't visually collide with fill.
 
 **Acceptance criteria:**
-- Zero `auditPedigreeGraph`/`auditLayoutIntegrity` regressions on the existing test matrix (this phase touches no builder/layout code, so this should be automatic — confirms the "one concern per slice" boundary actually held).
-- A pedigree with 4 individuals each carrying a different single condition renders 4 distinct patterns + a 4-row legend.
+- Zero `auditPedigreeGraph`/`auditLayoutIntegrity` regressions on the existing test matrix (this slice touches no builder/layout code).
 - An individual with `affected: true`, `conditions: []` (any pre-existing saved session) renders identically to before this change.
-- `carrier: true` individuals render the new centered-dot symbol; call out this visual change explicitly in the PR description since it changes the appearance of every existing carrier node.
+- Legend renders automatically whenever any individual has ≥1 condition, listing each registry entry once even if shared across individuals (Fixture 8).
+
+### v0.3b — Partitioned fill geometry + export parity
+
+**Goal:** half/quarter fill, corrected 3-condition geometry, pattern `<defs>`, overflow marker, and export-parity verification. Corresponds to R2.3 (corrected).
+
+**Files likely to change:**
+- `src/components/PedigreeCanvas.jsx` — full/half/quarter fill geometry; **3 conditions render as three equal sections, not a quarter layout with a blank 4th quadrant** (the blank-quadrant design is rejected per `PEDIGREE_VISUAL_ENCODING_SPEC.md` §2.3 — an empty region reads as a false "assessed unaffected" signal); new pattern `<defs>` (diagonal hatch, cross-hatch, dot); `{n}` overflow marker for 5+ conditions, disambiguated from the existing `[n]` notes marker.
+- Legend must be verified present inside SVG/PNG/PDF export output, not only the on-screen DOM — this is a mandatory acceptance gate per `PEDIGREE_VISUAL_ENCODING_SPEC.md` §2.5, not optional polish.
+
+**Tests to add:**
+- Extend `visualEncoding.test.js` — 3-condition individual renders three equal sections with no blank region; 4-condition individual renders exactly 4 quadrant fills; 6-condition individual renders 4 drawn + `{n}` overflow referencing the legend (Fixture 8, extended).
+- Export-parity test/manual check per `PEDIGREE_LAYOUT_STRESS_TEST_PLAN.md` Fixture 11 — SVG/PNG/PDF export contains the same fills, patterns, and legend as the live render.
+
+**Acceptance criteria:**
+- Zero `auditPedigreeGraph`/`auditLayoutIntegrity` regressions.
+- No individual with 3 conditions ever renders a blank/empty section.
+- A pedigree with 4 individuals each carrying a different single condition renders 4 distinct patterns + a 4-row legend, verified in both on-screen preview and exported SVG/PNG.
+- An exported file (SVG or PNG) with any partitioned/patterned node also contains the legend; absence of the legend in export fails acceptance outright.
+
+### v0.3c — Carrier centered-dot visual correction
+
+**Goal:** carrier rendering moves from vertical half-fill to a centered dot. Isolated on its own because it is the one guaranteed breaking visual change in v0.3. Corresponds to `PEDIGREE_VISUAL_ENCODING_SPEC.md` §1.
+
+**Files likely to change:**
+- `src/components/PedigreeCanvas.jsx` — carrier rendering switched from `url(#carrier-half)` to a centered filled dot (~20% of node radius), preserving z-order (shape outline → condition fill/pattern → carrier dot → deceased slash/stillbirth cross → proband arrow → selection highlight).
+
+**Tests to add:**
+- Assert carrier dot renders correctly both alone and layered on top of a partitioned condition fill (carrier-and-affected-by-a-different-condition case from `PEDIGREE_VISUAL_ENCODING_SPEC.md` §3).
+
+**Acceptance criteria:**
+- Zero `auditPedigreeGraph`/`auditLayoutIntegrity` regressions.
+- `carrier: true` individuals render the new centered-dot symbol; call out this visual change explicitly in the PR description and CHANGELOG since it changes the appearance of every existing carrier node.
 
 ---
 
 ## v0.4 — Relationship / union editing
 
-**Goal:** multi-partner support in the editing UI + store, extended `Union.status` enum, per-union child-add targeting. Corresponds to R3.1-R3.2, R4.1-R4.2, R4.4, R6.2 (as much of it as multi-partner layout needs), R7.1 (verification), R7.2-R7.3 (add-parent/add-sibling) if time permits — otherwise these two slip to a v0.4.1.
+**Goal:** multi-partner support in the editing UI + store, extended `Union.status` enum, per-union child-add targeting. Corresponds to R3.1-R3.2, R4.1-R4.2, R4.4, R6.2 (as much of it as multi-partner layout needs), R7.1 (verification), R7.2-R7.3 (add-parent/add-sibling) if time permits — otherwise these two slip to a v0.4.1. (R1.1-R1.4, the proband/affected independence requirements, are not a v0.4 concern — they are already satisfied by rejecting the auto-default in v0.3; no further work needed there.)
 
 **Files likely to change:**
 - `src/components/IndividualEditor.jsx` — remove the `!hasUnion` gate on "Es Ekle"; render an "add another partner" affordance even when `hasUnion` is true; add a union-status picker (dropdown: together/separated/divorced/ended_previous/unknown) per rendered union block, wired to a new store action.
@@ -95,7 +136,7 @@ v0.3 (visual encoding) is pure-render, zero risk to the graph/layout invariants 
 
 ## Cross-phase risk notes
 
-- **v0.3's carrier-symbol change is the one guaranteed visual break** across all phases — call it out prominently in that PR description; every other phase is additive.
+- **v0.3's carrier-symbol change is the one guaranteed visual break** across all phases — it is isolated to v0.3c specifically (not bundled with v0.3a/v0.3b) so it can be called out and reverted independently; call it out prominently in that PR description. Every other phase, and every other v0.3 slice, is additive.
 - **v0.4's layout post-pass edit is the highest-risk single change** before v0.6 — it's the first time this codebase composes two sequential "shift everything right" passes for the same individual, and the existing code has no precedent for that composing correctly. Recommend writing Fixture 3's test *before* the implementation, not after, so the failure mode is visible pre-fix.
 - **v0.5's twin/adoption layout work is genuinely new layout-engine surface**, not a post-pass bolt-on — this is where CLAUDE.md's "one concern per slice" rule matters most; resist the urge to also fix v0.4-discovered layout issues in the same PR.
 - Across all phases: run `auditPedigreeGraph()` after every graph-shape change and confirm zero errors before touching layout, per CLAUDE.md's workflow — this plan does not repeat that instruction per-phase above but it applies uniformly.

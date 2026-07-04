@@ -24,6 +24,8 @@ From `PedigreeCanvas.jsx`:
 
 **Design decision:** migrate carrier rendering from half-fill to a **centered dot** (small filled circle, ~20% of node radius, centered in an unfilled or partially-filled symbol). This frees up half/quarter-fill *exclusively* for multi-condition encoding and matches the standard more closely. This is a breaking visual change for `carrier: true` individuals and must be called out explicitly in the v0.3 PR description (see `PEDIGREE_NEXT_IMPLEMENTATION_PLAN.md`).
 
+**Confirmed (architecture review):** the centered-dot decision stands and must be isolated as its own slice, **v0.3c**, separate from the data-model/legend work (v0.3a) and the partitioned-fill geometry work (v0.3b). It is the one guaranteed visual break across all of v0.3 — every existing `carrier: true` node changes appearance — and must be trivially revertable on its own without reverting the condition-registry or legend work.
+
 ## 2. Multi-condition fill strategy
 
 ### 2.1 Condition registry
@@ -58,7 +60,7 @@ Applies inside the existing node shape (square/circle/diamond) — the *outline*
 | 0 | No fill (white/`NODE_FILL`) | unaffected, no conditions |
 | 1 | Full fill | single condition's pattern fills 100% of the shape |
 | 2 | Half fill (vertical split) | left half = condition A pattern, right half = condition B pattern |
-| 3 | Third fill OR forced quarter (see below) | PSTF-style: three conditions split as three unequal wedges is non-standard for square/rect shapes; simplest consistent rule for this app: treat 3 conditions as a quarter layout with the 4th quadrant left blank |
+| 3 | Three equal sections (see below) | **REJECTED design:** do not render three quadrants with a blank 4th quadrant. An empty region inside a partitioned symbol reads as "assessed and unaffected for a 4th condition," not "no 4th condition exists" — this is a clinically misleading positive statement of unaffected status, not a neutral absence. **Corrected rule:** for 3 conditions, use three equal sections (e.g. three vertical thirds, or three wedges for circular/diamond shapes) so every drawn region is condition-bearing. If true 3-section geometry is not safely implementable in the v0.3b slice, defer 3-condition partitioning until it is, rather than shipping the blank-quadrant fallback. |
 | 4 | Quarter fill (2x2 grid) | top-left/top-right/bottom-left/bottom-right, one condition per quadrant, assigned in the order they appear in `individual.conditions` |
 | 5+ | Cap at 4 drawn quadrants + numbered legend overflow marker | **[V2, stretch]** — draw the 4 most clinically relevant (first 4 in array) and append a small `+n` superscript-style tag referencing the legend for the rest, rather than inventing finer geometric subdivisions that become illegible at `NODE_SIZE = 40` |
 
@@ -85,6 +87,10 @@ A single subtle accent color per pattern (not per condition) may be layered *on 
 - Renders automatically whenever `conditions.length > 0` for any individual in the graph (parallel to the existing "Klinik Notlar" legend trigger condition in `PedigreeCanvas.jsx` — reuse the same bottom-left legend area rather than adding a second competing legend box).
 - One row per registry entry: pattern swatch (small filled square sample of the pattern) + condition label.
 - If overflow (§2.3, 5+ conditions) triggers the `+n` marker, the legend must also list the overflowed conditions by the same numbered scheme used for the existing notes-index brackets, disambiguated by a different bracket style (e.g. `{n}` for conditions vs `[n]` for notes) so the two independent numbering schemes never look interchangeable.
+
+**Mandatory (architecture review):** any partitioned or patterned multi-condition fill is **invalid without its legend**. A partitioned/patterned node rendered without a legend is clinically uninterpretable — the fill pattern alone carries no meaning to a reader. This is not a soft default; it is a hard acceptance criterion:
+- The legend must be part of the exported SVG/PNG/PDF artifact itself, not an HTML-only overlay that disappears on export. If the current legend implementation is DOM/CSS-based rather than an SVG element, it must be converted or duplicated into the exported SVG before v0.3b ships.
+- Any acceptance test or manual verification pass for partitioned/patterned fills must confirm the legend is present in the exported file, not only on-screen. A build that renders correct fills on-screen but omits the legend from export fails acceptance.
 
 ## 3. Interaction between proband arrow, deceased slash, carrier dot, and multi-condition fill
 

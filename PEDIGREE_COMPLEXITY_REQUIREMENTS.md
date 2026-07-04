@@ -13,11 +13,13 @@ Legend: **[V1]** = must-have, next 1-2 PRs. **[V2]** = later, after V1 lands and
 
 **Current state:** `Individual.proband` and `Individual.affected` are already independent booleans (confirmed in `pedigreeBuilderFromWizard.js` stage 10d and `PedigreeCanvas.jsx` — the proband arrow and the fill are drawn by two separate `if` blocks). There is no hard-coded `proband === affected` anywhere today. The gap is only in *default value on assignment*.
 
+**REJECTED — R1.1 (auto-default `affected: true` on `setProband`).** Architecture review rejected this requirement. It contradicted R1.2 in the same list and is a clinical-safety hazard: a proband can be unaffected (an unaffected consultand is a common index case in genetic counseling), and auto-writing an affection status as a *side effect* of marking someone proband silently asserts a clinical finding the clinician never entered.
+
 **Requirements:**
-- **[V1-R1.1]** When `setProband(id)` is called (`usePedigreeStore.js`) on an individual whose `affected` is not already explicitly set by the user, default `affected: true` unless the caller opts out. This is a UX default, not a validation rule — `affected` remains freely editable afterward and unchecking it must not be blocked.
-- **[V1-R1.2]** `affected` and `proband` must remain two independent fields in the data model and in every UI control. No code path may derive one from the other.
-- **[V1-R1.3]** Exactly-one-proband invariant (`graphIntegrity.js` CHECK 11: `PROBAND_MISSING`/`PROBAND_MULTIPLE`) must continue to pass unchanged. This requirement adds a default value; it does not touch the invariant enforcement in builder stage 10d.
-- **[V1-R1.4]** Reassigning proband to a different individual must not silently change that new individual's pre-existing `affected` value if the user had already set it explicitly (need an `affectedExplicitlySet` bit or equivalent, since `affected: false` and "never touched" are currently indistinguishable in `manualEdits`).
+- **[V1-R1.1]** `proband` and `affected` are independent clinical facts. No code path may derive `affected` from `proband`, or `proband` from `affected`, in the builder, the store, or the UI. Calling `setProband(id)` must never write, default, or otherwise change that individual's `affected` value. It is acceptable for `IndividualEditor.jsx` to offer a separate, visible, user-initiated action (e.g. an explicit "also mark affected" button/checkbox next to the proband control) — but it must require its own deliberate click, never fire automatically or silently.
+- **[V1-R1.2]** `affected` and `proband` must remain two independent fields in the data model and in every UI control. No code path may derive one from the other. (Restated from R1.1 for emphasis — this is the governing rule for this section.)
+- **[V1-R1.3]** Exactly-one-proband invariant (`graphIntegrity.js` CHECK 11: `PROBAND_MISSING`/`PROBAND_MULTIPLE`) must continue to pass unchanged. Nothing in this section touches the invariant enforcement in builder stage 10d.
+- **[V1-R1.4]** Reassigning proband to a different individual must never change that new individual's `affected` value, explicitly set or not. There is no default to protect against once R1.1 (auto-default) is rejected, so no `affectedExplicitlySet` bit is needed for this purpose.
 
 ## 2. Multiple diseases / phenotypes per individual
 
@@ -59,6 +61,8 @@ Legend: **[V1]** = must-have, next 1-2 PRs. **[V2]** = later, after V1 lands and
 - **[V2-R5.1]** Adoption: add `Individual.adoptedRelationship: 'biological'|'adopted_in'|'adopted_out'|null`. Standard PSTF notation draws adopted individuals with brackets and uses a dashed parent-child line for the adoptive (non-biological) link — this needs a new edge subtype in `pedigreeLayout.js`/`PedigreeCanvas.jsx`, and a data model decision about whether a union's children can be mixed biological/adopted (see `PEDIGREE_RELATIONSHIP_MODEL_SPEC.md`).
 - **[V2-R5.2]** Twins/triplets: new `multipleGestations` collection grouping 2-3 children of the same union with a shared birth event and a `zygosity: 'monozygotic'|'dizygotic'|'unknown'` field. Requires new layout logic (shared drop-line apex, MZ horizontal tie-bar) and new edge types.
 - **[V2-R5.3]** Termination of pregnancy (TOP): add as a third distinct type alongside `pregnancyLoss`/`stillbirth`, not folded into either. Needs its own symbol per PSTF (a small triangle bisected differently from spontaneous loss, per convention) and its own field, e.g. `Individual.terminationOfPregnancy: boolean`.
+- **[V2-R5.4]** Pregnancy-outcome mutual exclusion: `pregnancyLoss`, `stillbirth`, and `terminationOfPregnancy` must not all be true together. At most one pregnancy-outcome type may be active for a given individual/pregnancy event. Add a `validators.js` check enforcing this (new error, e.g. `PREGNANCY_OUTCOME_CONFLICT`) alongside the existing distinct-symbol requirement in CLAUDE.md rule #5.
+- **[V2-R5.5]** Gestational age annotation: miscarriage (`pregnancyLoss`), stillbirth, and TOP are clinically incomplete without a gestational age (e.g. "SAB 10wk", "TOP 18wk"). Add `Individual.gestationalAge: string|number|null`, rendered as part of the existing under-node annotation line for any individual with an active pregnancy-outcome flag.
 - Both twin/triplet grouping and adoption are **not required for V1** — they touch layout (`pedigreeLayout.js` sibship-rail logic) which CLAUDE.md explicitly says not to touch until generation-derivation work is validated, and they are lower clinical frequency than multi-condition marking and union-status. Deferred to v0.5 (see `PEDIGREE_NEXT_IMPLEMENTATION_PLAN.md`).
 
 ## 6. Complex layout problems
@@ -93,7 +97,7 @@ Already the direction of travel in this codebase (confirmed by commit history: `
 
 | # | Issue | V1 (must-have) | V2 (later) |
 |---|---|---|---|
-| 1 | Proband visualization | Default affected on assign (R1.1-1.4) | — |
+| 1 | Proband visualization | Keep proband/affected fully independent, no auto-default (R1.1-1.4) | — |
 | 2 | Multi-condition marking | Data model + full/half/quarter fill + legend (R2.1-2.5) | Arbitrary hatch patterns for 5+ |
 | 3 | Full editing everywhere | Multi-partner button, per-union child target (R3.1-3.2, 3.5) | Add-parent, per-individual consanguinity toggle (R3.3-3.4) |
 | 4 | Union status | Extended enum + creation-time picker (R4.1-4.2, 4.4) | New visual markers for ended/unknown (R4.3) |

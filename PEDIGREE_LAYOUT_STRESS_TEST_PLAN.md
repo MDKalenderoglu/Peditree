@@ -82,6 +82,36 @@ This directly exercises requirement R6.2 / R3.1 (multi-partner layout, not yet b
 
 ---
 
+## Fixture 9 — Half-siblings (shared partner, two unions)
+
+**Not currently listed above; added per architecture review.** **Wizard state / direct construction:** `father` (gen2) in `U_PARENTS(father, mother)` with children under that union, plus a second union `U_OTHER(father, spouse2)` with its own children — the same structural shape as Fixture 3 (multiple marriages) but the assertion focus here is the half-sibling relationship itself, not the multi-partner layout mechanics.
+
+**Assertions:**
+- Children of `U_PARENTS` and children of `U_OTHER` are correctly identified as half-siblings (share exactly one parent), not full siblings — whatever validator or UI logic classifies sibling relationships must distinguish this case, not assume all children of unions sharing a partner are full siblings.
+- `computeGenerations` places all children of both unions at the same generation (both are `father.generation + 1`), per the existing BFS downward rule — this should already hold structurally but is untested for the half-sibling case specifically.
+- No `graphIntegrity.js` error is raised solely from a shared partner across two unions (this is valid, not a structural error).
+
+## Fixture 10 — Pregnancy outcomes with gestational age, mutual exclusion
+
+**Not currently listed above; added per architecture review.** **Wizard state / direct construction:** three individuals — one with `pregnancyLoss: true, gestationalAge: '10hf'`, one with `stillbirth: true, gestationalAge: '32hf'`, one with `terminationOfPregnancy: true, gestationalAge: '18hf'` — plus one deliberately-invalid individual with both `pregnancyLoss: true` and `stillbirth: true` set simultaneously.
+
+**Assertions:**
+- Each of the three valid individuals renders its distinct symbol (per `PEDIGREE_VISUAL_ENCODING_SPEC.md`) with the gestational age annotated under the node.
+- `validators.js`'s new `PREGNANCY_OUTCOME_CONFLICT` check fires exactly once, on the deliberately-invalid individual, and does not false-positive on any of the three valid ones.
+- Existing sessions with no `gestationalAge` field load without error (`undefined` treated as not-specified, no annotation rendered).
+
+## Fixture 11 — Export parity for v0.3 visual changes
+
+**Not currently listed above; added per architecture review.** Purpose: confirm that partitioned fills, the carrier centered dot, the condition legend, and the `{n}` overflow marker are not screen-only regressions — a fill or legend that renders correctly on-screen but is missing or malformed in exported SVG/PNG/PDF is a clinically unsafe export, since exported pedigrees are the artifact actually placed in a patient chart.
+
+**Construction:** a pedigree fixture combining (a) one individual with 2 conditions (half fill), (b) one individual with 4 conditions (quarter fill), (c) one individual with 6 conditions (4 drawn + `{n}` overflow marker), (d) one carrier individual (centered dot).
+
+**Assertions:**
+- SVG export contains the same partitioned-fill geometry, pattern `<defs>`, carrier dot, and legend rows as the on-screen render — diff the exported SVG's relevant `<pattern>`/`<circle>`/`<path>`/`<text>` elements against the live DOM, not just a visual screenshot comparison.
+- PNG export (rasterized from the SVG per `exportUtils.js`) visually contains the legend and all partitioned fills — this is the export path most likely to silently drop a DOM-only overlay legend.
+- PDF export (if implemented via the same SVG pipeline) is checked identically; if PDF export uses a separate code path from SVG/PNG, that path must be verified independently, not assumed to inherit the SVG fix.
+- The legend specifically must be present in every export format — an exported partitioned/patterned node with no legend fails this fixture outright, per the mandatory-legend rule in `PEDIGREE_VISUAL_ENCODING_SPEC.md` §2.5.
+
 ## Cross-cutting assertions to add regardless of fixture
 
 These extend `layoutIntegrity.js` and are candidates for `[V1]` regardless of which specific feature phase triggers them first (Fixture 2's sibship-overlap need surfaces this earliest):

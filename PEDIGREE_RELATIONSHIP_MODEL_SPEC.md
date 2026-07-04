@@ -74,6 +74,8 @@ Key design question this spec resolves: **can a union have a mix of biological a
 
 Layout/render impact: `pedigreeLayout.js`'s `childStem` edge type gets a per-child lookup (`nodeById[cid].adoptedRelationship === 'adopted_in'`) to select solid vs. dashed stroke in `PedigreeCanvas.jsx` — no new edge *type* needed, just a conditional dash-array on the existing `childStem` type.
 
+**Explicit limitation (architecture review):** simple adopted-child representation (one parent union, `adoptedRelationship` flag driving dashed-vs-solid line style) is in scope for v0.5 under decision (a) above. However, **an adopted child with both a biological parent union and an adoptive parent union drawn in the same pedigree is out of scope** until the current one-parent-union invariant is deliberately redesigned and audited. `childToUnionMap` (CLAUDE.md non-negotiable #2, enforced in the builder and CHECK 7 of `graphIntegrity.js`) permits a child in **at most one** parent union — decision (a) does not, and cannot, relax that. Nothing in this spec should be read as implying that a single `ParentChildRelationship` structure can safely represent both biological and adoptive parentage for the same child; that is a distinct, larger data-model change and is explicitly not planned here.
+
 ## 6. Twins, triplets (multiple gestation)
 
 **[V2]** New top-level collection, parallel to `parentChildRelationships`:
@@ -105,6 +107,11 @@ Individual.terminationOfPregnancy: boolean
 ```
 
 Kept as a third independent boolean rather than extending `pregnancyLoss`/`stillbirth` into an enum, to satisfy CLAUDE.md non-negotiable rule #5 literally ("distinct clinical types with distinct symbols... do not conflate them") and to avoid a breaking rename of two fields already checked in multiple places (`pedigreeLayout.js` `symbolHalfFor`, `PedigreeCanvas.jsx` shape/cross logic, `validators.js`).
+
+**Pregnancy-event safety notes (architecture review, [V2]):**
+
+- **Mutual exclusion:** `pregnancyLoss`, `stillbirth`, and `terminationOfPregnancy` must not all be true together. At most one pregnancy-outcome type may be active for a given individual/pregnancy event — these are alternative outcomes of one event, not independently stackable flags. Add a `validators.js` check (e.g. `PREGNANCY_OUTCOME_CONFLICT`) that fails if more than one of the three is true on the same individual.
+- **Gestational age:** miscarriage, stillbirth, and TOP are clinically incomplete without a gestational age. Add `Individual.gestationalAge: string | number | null`, rendered alongside the existing under-node annotation for any individual with an active pregnancy-outcome flag (e.g. "SAB 10hf", "TOP 18hf" per Turkish-language convention). This is additive and does not require a schema migration for existing sessions (`undefined` treated as not-specified).
 
 ## 8. Arbitrary branch expansion — data model implications
 
