@@ -192,6 +192,67 @@ export default function IndividualEditor({ node, pedigreeData, onUpdate, onAddSp
           </div>
         )}
 
+        {/* Conditions list (v0.3a — structured conditions, additive to the
+            legacy free-text field above). No pattern/color pickers here —
+            that's v0.3b/v0.3c; this slice is data + legend only. */}
+        {!isLoss && (
+          <div className="form-group">
+            <label className="form-label">Durumlar / Tanılar (Conditions)</label>
+            {(node.conditions || []).map((cond, idx) => (
+              <div key={idx} style={{
+                display: 'flex', gap: '4px', alignItems: 'center', marginBottom: '4px',
+              }}>
+                <input
+                  type="text"
+                  value={cond.label || ''}
+                  onChange={e => {
+                    const next = (node.conditions || []).map((c, i) =>
+                      i === idx ? { ...c, label: e.target.value } : c
+                    );
+                    onUpdate(node.id, { conditions: next });
+                  }}
+                  className="form-input"
+                  placeholder="orn. Nörogelişimsel bozukluk"
+                  style={{ flex: 1, fontSize: '0.8rem' }}
+                />
+                <select
+                  value={cond.status || 'unknown'}
+                  onChange={e => {
+                    const next = (node.conditions || []).map((c, i) =>
+                      i === idx ? { ...c, status: e.target.value } : c
+                    );
+                    onUpdate(node.id, { conditions: next });
+                  }}
+                  className="form-input"
+                  style={{ fontSize: '0.75rem', width: 'auto' }}
+                >
+                  <option value="affected">Etkilenmiş</option>
+                  <option value="carrier">Taşıyıcı</option>
+                  <option value="unknown">Bilinmiyor</option>
+                </select>
+                <button
+                  onClick={() => {
+                    const next = (node.conditions || []).filter((_, i) => i !== idx);
+                    onUpdate(node.id, { conditions: next });
+                  }}
+                  style={{
+                    background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: '3px',
+                    fontSize: '0.7rem', padding: '3px 6px', cursor: 'pointer', color: '#dc2626',
+                  }}
+                >X</button>
+              </div>
+            ))}
+            <button
+              className="btn"
+              style={{ fontSize: '0.72rem', padding: '3px 8px', background: '#f1f5f9', border: '1px solid #cbd5e1' }}
+              onClick={() => {
+                const next = [...(node.conditions || []), { label: '', status: 'unknown' }];
+                onUpdate(node.id, { conditions: next });
+              }}
+            >+ Durum Ekle</button>
+          </div>
+        )}
+
         {/* Notes */}
         <div className="form-group">
           <label className="form-label">Not</label>

@@ -173,6 +173,11 @@ function generateDerivedData(wizardData, currentPedigreeData) {
         condition: source.condition || '',
         ageAtDeath: source.ageAtDeath || '',
         causeOfDeath: source.causeOfDeath || '',
+        // conditions[] is additive (v0.3a) — pass through whichever source
+        // has it; `[] || x` still yields `[]` since arrays are truthy, so an
+        // explicit "cleared to empty" state from `source` is preserved and
+        // not silently overwritten by a stale `newInd` value.
+        conditions: source.conditions || newInd.conditions || [],
       };
     }
     return newInd;

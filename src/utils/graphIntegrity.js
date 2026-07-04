@@ -294,5 +294,29 @@ export function auditPedigreeGraph(graph) {
     }
   }
 
+  // ──────────────────────────────────────
+  // 14. Condition entry with no usable label or conditionId (v0.3a).
+  //     A conditions[] entry that resolves to neither a label nor an ID
+  //     can't be shown in the legend or matched to a registry row — warn so
+  //     it doesn't silently vanish (e.g. the one individual referencing a
+  //     shared conditionId is deleted, or an entry is created with an empty
+  //     label and never filled in).
+  // ──────────────────────────────────────
+  for (const ind of individuals) {
+    const conds = Array.isArray(ind.conditions) ? ind.conditions : [];
+    conds.forEach((cond, idx) => {
+      const hasLabel = !!(cond && typeof cond.label === 'string' && cond.label.trim());
+      const hasId = !!(cond && typeof cond.conditionId === 'string' && cond.conditionId.trim());
+      if (!hasLabel && !hasId) {
+        issues.push({
+          severity: 'warning',
+          code: 'CONDITION_ID_UNLABELED',
+          message: `Individual '${ind.id}' has a condition entry (index ${idx}) with no label or conditionId.`,
+          ids: [ind.id],
+        });
+      }
+    });
+  }
+
   return issues;
 }

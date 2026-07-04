@@ -23,6 +23,7 @@
 
 import { useEffect, useRef, forwardRef } from 'react';
 import * as d3 from 'd3';
+import { buildConditionRegistry, hasAnyConditions, hasAffectedCondition } from '../utils/conditionRegistry';
 
 const EDGE_COLOR = '#64748b';
 const NODE_STROKE = '#1e293b';
@@ -216,8 +217,13 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       }
 
       // Fill
+      // v0.3a: conditions[] is additive and render-conservative — no
+      // partitioned/patterned fills yet (that's v0.3b), no carrier-dot
+      // correction yet (that's v0.3c). A structured condition with
+      // status: 'affected' renders the same solid fill as the legacy
+      // `affected` boolean; carrier rendering is untouched.
       let fill = NODE_FILL;
-      if (d.affected) fill = NODE_STROKE;
+      if (d.affected || hasAffectedCondition(d)) fill = NODE_STROKE;
       else if (d.carrier) fill = 'url(#carrier-half)';
       shape.attr('fill', fill).attr('stroke', NODE_STROKE).attr('stroke-width', 2);
 
@@ -326,6 +332,42 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           .attr('font-size', '10px').attr('fill', '#475569')
           .text(entry.length > 80 ? entry.substring(0, 79) + '...' : entry);
       });
+    }
+
+    // --- Condition Legend (top-left, inside the same <svg> so it is
+    //     captured by SVG/PNG export like the notes legend below — never an
+    //     HTML-only overlay). v0.3a: solid grayscale swatches only, no
+    //     per-condition patterns (those are v0.3b). Triggers strictly on the
+    //     structured `conditions[]` field so pre-existing sessions that only
+    //     use the legacy free-text `condition` field don't gain a second,
+    //     redundant legend. ---
+    if (hasAnyConditions(nodes)) {
+      const structuredNodes = nodes.filter(n => Array.isArray(n.conditions) && n.conditions.length > 0);
+      const conditionRegistry = buildConditionRegistry(structuredNodes);
+      if (conditionRegistry.length > 0) {
+        const condLegendG = svg.append('g').attr('class', 'condition-legend');
+        const legendX = minX + 10;
+        let legendY = minY + 24;
+
+        condLegendG.append('text')
+          .attr('x', legendX).attr('y', legendY)
+          .attr('font-size', '11px').attr('font-weight', '700')
+          .attr('fill', '#1e293b')
+          .text('Durum / Tanı Kayıtları');
+        legendY += 16;
+
+        conditionRegistry.forEach(entry => {
+          condLegendG.append('rect')
+            .attr('x', legendX).attr('y', legendY - 9)
+            .attr('width', 10).attr('height', 10)
+            .attr('fill', NODE_STROKE).attr('stroke', NODE_STROKE);
+          condLegendG.append('text')
+            .attr('x', legendX + 16).attr('y', legendY)
+            .attr('font-size', '10px').attr('fill', '#475569')
+            .text(entry.label.length > 40 ? entry.label.substring(0, 39) + '...' : entry.label);
+          legendY += 14;
+        });
+      }
     }
 
     // --- Zoom/Pan ---
