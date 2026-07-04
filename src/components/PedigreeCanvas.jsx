@@ -39,7 +39,7 @@ const LOSS_SIZE = 14; // smaller triangle for pregnancy loss
 // belt-and-suspenders fallback for exportUtils.js and for tests/tools
 // that query the DOM directly.
 const PedigreeCanvas = forwardRef(function PedigreeCanvas(
-  { nodes, edges, selectedNodeId, onNodeSelect },
+  { nodes, edges, selectedNodeId, selectedNodeId2, onNodeSelect },
   forwardedRef
 ) {
   const svgRef = useRef(null);
@@ -182,14 +182,17 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       .append('g')
       .attr('class', d => {
         let cls = 'node-group';
-        if (d.id === selectedNodeId) cls += ' node-selected';
+        if (d.id === selectedNodeId || d.id === selectedNodeId2) cls += ' node-selected';
         return cls;
       })
       .attr('transform', d => `translate(${d.x},${d.y})`)
       .style('cursor', 'pointer')
       .on('click', (event, d) => {
         event.stopPropagation();
-        onNodeSelect(d.id);
+        // Cmd-click (Mac) or Ctrl-click (Windows/Linux) toggles a second
+        // selection slot instead of replacing the whole selection — see
+        // usePedigreeStore.js's selectIndividual(id, { additive }).
+        onNodeSelect(d.id, { additive: event.metaKey || event.ctrlKey });
       });
 
     nodeGroups.each(function (d) {
@@ -227,9 +230,13 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       else if (d.carrier) fill = 'url(#carrier-half)';
       shape.attr('fill', fill).attr('stroke', NODE_STROKE).attr('stroke-width', 2);
 
-      // Selection highlight
+      // Selection highlight — primary (blue) vs. secondary Cmd/Ctrl-click
+      // selection (violet), so a two-person selection is visually
+      // distinguishable, not just "two blue nodes."
       if (d.id === selectedNodeId) {
         shape.attr('stroke', '#3b82f6').attr('stroke-width', 3);
+      } else if (d.id === selectedNodeId2) {
+        shape.attr('stroke', '#8b5cf6').attr('stroke-width', 3);
       }
 
       // Stillbirth cross (X)
@@ -380,7 +387,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // Store for external reset
     svg.node().__zoom_ref = zoom;
 
-  }, [nodes, edges, selectedNodeId, onNodeSelect]);
+  }, [nodes, edges, selectedNodeId, selectedNodeId2, onNodeSelect]);
 
   const resetZoom = () => {
     const svg = d3.select(svgRef.current);

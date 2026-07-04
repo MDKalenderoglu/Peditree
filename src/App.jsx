@@ -6,7 +6,7 @@ import { assessExportReadiness } from './utils/exportReadiness';
 import PedigreeCanvas from './components/PedigreeCanvas';
 import IndividualEditor from './components/IndividualEditor';
 import WizardPanel from './components/WizardPanel';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2 } from 'lucide-react';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2 } from 'lucide-react';
 import './styles/app.css';
 
 function App() {
@@ -14,13 +14,17 @@ function App() {
     pedigreeData, warnings, integrityIssues, wizardData,
     updateIndividual, addSpouseTo, addChildTo, addChildToUnion, removeGraphEdit,
     setProband, clearProband, resetPedigree,
+    selectedId, selectedId2, selectIndividual, clearSelection,
+    deleteIndividual, createUnionBetween, addCustomConsanguinity,
+    reorderChild, markUnionConsanguineous,
+    undo, _history,
   } = usePedigreeStore();
-  const [selectedNodeId, setSelectedNodeId] = React.useState(null);
   const [exportError, setExportError] = React.useState(null);
   const [exportNotice, setExportNotice] = React.useState(null);
   const svgRef = React.useRef(null);
 
-  const selectedNode = pedigreeData.individuals.find(i => i.id === selectedNodeId);
+  const selectedNode = pedigreeData.individuals.find(i => i.id === selectedId);
+  const selectedNode2 = pedigreeData.individuals.find(i => i.id === selectedId2);
 
   const errorIssues = (integrityIssues || []).filter(i => i.severity === 'error');
   const warningIssues = (integrityIssues || []).filter(i => i.severity === 'warning');
@@ -91,11 +95,21 @@ function App() {
 
   const handleNewPedigree = () => {
     if (window.confirm('Yeni pedigri başlatılsın mı? Kaydedilmiş mevcut pedigri silinecek.')) {
+      // resetPedigree() itself clears selection and the undo stack — see
+      // usePedigreeStore.js. Only export-banner state (local to App.jsx) is
+      // cleared here.
       resetPedigree();
-      setSelectedNodeId(null);
       setExportError(null);
       setExportNotice(null);
     }
+  };
+
+  const handleUndo = () => {
+    undo();
+  };
+
+  const handleNodeSelect = (id, opts) => {
+    selectIndividual(id, opts);
   };
 
   return (
@@ -106,6 +120,15 @@ function App() {
         <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 10, display: 'flex', gap: '8px' }}>
           <button className="btn" onClick={handleNewPedigree} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title="Kaydedilmiş pedigriyi sil ve yeniden başla">
             <FilePlus2 size={16} /> Yeni Pedigri
+          </button>
+          <button
+            className="btn"
+            onClick={handleUndo}
+            disabled={!_history || _history.length === 0}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: (!_history || _history.length === 0) ? 0.5 : 1 }}
+            title={_history && _history.length > 0 ? `Geri al (${_history.length} adım mevcut)` : 'Geri alınacak adım yok'}
+          >
+            <Undo2 size={16} /> Geri Al
           </button>
           <button className="btn btn-primary" onClick={handleExportSVG} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Download size={16} /> SVG
@@ -152,14 +175,16 @@ function App() {
           ref={svgRef}
           nodes={pedigreeData.nodes || []}
           edges={pedigreeData.edges || []}
-          selectedNodeId={selectedNodeId}
-          onNodeSelect={setSelectedNodeId}
+          selectedNodeId={selectedId}
+          selectedNodeId2={selectedId2}
+          onNodeSelect={handleNodeSelect}
         />
       </div>
 
       <div className="panel editor-panel">
         <IndividualEditor
           node={selectedNode}
+          node2={selectedNode2}
           pedigreeData={pedigreeData}
           onUpdate={updateIndividual}
           onAddSpouse={addSpouseTo}
@@ -174,6 +199,12 @@ function App() {
           onClearProband={clearProband}
           graphEdits={wizardData.graphEdits || []}
           onRemoveGraphEdit={removeGraphEdit}
+          onDeleteIndividual={deleteIndividual}
+          onCreateUnion={createUnionBetween}
+          onMakeSiblings={addCustomConsanguinity}
+          onClearSelection={clearSelection}
+          onReorderChild={reorderChild}
+          onMarkUnionConsanguineous={markUnionConsanguineous}
         />
 
         <div style={{ marginTop: '30px', padding: '10px', background: '#f8fafc', borderRadius: '6px', fontSize: '11px', color: '#64748b', wordWrap: 'break-word' }}>

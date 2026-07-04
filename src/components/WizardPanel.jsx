@@ -1,7 +1,103 @@
 import { useState } from 'react';
-import { usePedigreeStore } from '../state/usePedigreeStore';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { usePedigreeStore, computeDeletionPlan } from '../state/usePedigreeStore';
+import { ChevronDown, ChevronRight, Trash2, X } from 'lucide-react';
 import ChildOrderEditor from './ChildOrderEditor';
+
+/**
+ * Left-panel selected-person identity + quick-action card (v0.3a.1).
+ * The left panel used to stay generic/unrelated to canvas selection — this
+ * surfaces who is selected and offers the one destructive action (delete)
+ * right where the user is already looking, instead of requiring them to
+ * find it buried in the right-hand editor.
+ */
+function SelectedPersonCard({ wizardData, pedigreeData, selectedId, selectedId2, onDeleteIndividual, onClearSelection }) {
+  if (!selectedId && !selectedId2) return null;
+
+  const ind = pedigreeData.individuals.find(i => i.id === selectedId);
+  const ind2 = selectedId2 ? pedigreeData.individuals.find(i => i.id === selectedId2) : null;
+  if (!ind && !ind2) return null;
+
+  const renderIdentity = (person) => {
+    if (!person) return null;
+    const flags = [];
+    if (person.proband) flags.push('Proband');
+    if (person.affected) flags.push('Etkilenmiş');
+    if (person.carrier) flags.push('Taşıyıcı');
+    if (person.deceased) flags.push('Ölü');
+    if (person.pregnancyLoss) flags.push('Düşük/Kayıp');
+    if (person.stillbirth) flags.push('Ölü Doğum');
+    return (
+      <div style={{ fontSize: '0.78rem', color: '#1e293b', lineHeight: 1.5 }}>
+        <strong>{person.displayLabel || person.label || person.id}</strong>
+        {' '}({person.sex === 'male' ? 'Erkek' : person.sex === 'female' ? 'Kadin' : 'Bilinmiyor'}
+        {typeof person.generation === 'number' ? `, jen. ${person.generation}` : ''})
+        {flags.length > 0 && (
+          <div style={{ marginTop: '2px', color: '#64748b' }}>{flags.join(' · ')}</div>
+        )}
+      </div>
+    );
+  };
+
+  const plan = ind ? computeDeletionPlan(wizardData, pedigreeData, ind.id) : null;
+
+  return (
+    <div style={{
+      marginBottom: '14px', padding: '10px', background: '#eef2ff',
+      border: '1px solid #c7d2fe', borderRadius: '6px',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+        <span style={{ fontWeight: 700, fontSize: '0.8rem', color: '#3730a3' }}>Seçili Kişi</span>
+        <button
+          onClick={onClearSelection}
+          title="Seçimi temizle"
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6366f1', display: 'flex' }}
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      {renderIdentity(ind)}
+      {ind2 && (
+        <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed #c7d2fe' }}>
+          <div style={{ fontSize: '0.68rem', color: '#6366f1', marginBottom: '2px' }}>+ 2. seçim:</div>
+          {renderIdentity(ind2)}
+        </div>
+      )}
+
+      {ind && !ind2 && (
+        <div style={{ marginTop: '8px' }}>
+          <button
+            onClick={() => {
+              if (!plan.ok) {
+                window.alert(plan.reason);
+                return;
+              }
+              const cascadeNote = plan.cascadeIndividualIds.length > 1
+                ? `\n\nBu işlem ${plan.cascadeIndividualIds.length} bireyi (bağlı eş/çocuklar dahil) birlikte silecek.`
+                : '';
+              if (window.confirm(`"${ind.displayLabel || ind.label || ind.id}" silinsin mi?${cascadeNote}`)) {
+                onDeleteIndividual(ind.id);
+              }
+            }}
+            className="btn"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem',
+              padding: '4px 8px', background: plan.ok ? '#fee2e2' : '#f1f5f9',
+              border: plan.ok ? '1px solid #fca5a5' : '1px solid #cbd5e1',
+              color: plan.ok ? '#dc2626' : '#94a3b8',
+            }}
+            title={plan.ok ? 'Bu bireyi ve bağlı doğrudan eklemeleri sil' : plan.reason}
+          >
+            <Trash2 size={12} /> Seçili Bireyi Sil
+          </button>
+          {!plan.ok && (
+            <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: '3px' }}>{plan.reason}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /* ── Custom consanguinity person picker ── */
 function CustomConsanguinityAdder({ individuals, onAdd }) {
@@ -189,6 +285,7 @@ export default function WizardPanel() {
     addCustomConsanguinity, removeCustomConsanguinity,
     markUnionConsanguineous,
     pedigreeData,
+    selectedId, selectedId2, deleteIndividual, clearSelection,
   } = usePedigreeStore();
 
   /* ── Other-union mini-panel ── */
@@ -325,6 +422,15 @@ export default function WizardPanel() {
   return (
     <div className="panel wizard-panel">
       <h2 style={{ marginBottom: '12px', color: '#1e293b', fontSize: '1.1rem' }}>Klinik Pedigri</h2>
+
+      <SelectedPersonCard
+        wizardData={wd}
+        pedigreeData={pedigreeData}
+        selectedId={selectedId}
+        selectedId2={selectedId2}
+        onDeleteIndividual={deleteIndividual}
+        onClearSelection={clearSelection}
+      />
 
       {/* ── 1. PROBAND ── */}
       <Accordion title="1. Proband" defaultOpen>

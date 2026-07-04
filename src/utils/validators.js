@@ -104,9 +104,19 @@ export function validatePedigree(data) {
     // supported degrees left at an unresolved path, and arbitrary unions
     // flagged consanguineous via the "mark as consanguineous" mechanism.
     if (u.consanguinityStatus === 'reported_unresolved') {
+      // v0.3a.1 fix: the previous wording ("çift çizgi çizilmeyecek" — "a
+      // double line will not be drawn") read as a permanent rendering
+      // decision. The actual state is that the degree/common ancestor is
+      // unresolved in the graph *so far* — adding the shared ancestor (via
+      // the wizard's consanguinity template, the "make siblings" link, or a
+      // direct union between two individuals who already share an ancestor)
+      // promotes this to a real double line, per pedigreeBuilderFromWizard.js
+      // stage 10b. The warning must describe the unresolved state, not
+      // assert a fixed non-drawing outcome.
       warnings.push(
-        `Uyarı: Union ${u.id} akraba evliliği olarak bildirildi ancak ortak ata yapısı grafikte kurulmadı — ` +
-        `sadece bildirim (raporlanan/doğrulanmamış) olarak işaretlendi, çift çizgi çizilmeyecek.`
+        `Uyarı: Union ${u.id} akraba evliliği olarak bildirildi, ancak derece / ortak ata bilgisi ` +
+        `grafikte henüz çözümlenmedi — belirsizlik işareti (tek kesikli çizgi + "?") gösteriliyor. ` +
+        `Ortak ata grafikte kurulduğunda çift çizgiye dönüşür.`
       );
     }
   });

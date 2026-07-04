@@ -72,6 +72,38 @@ export function buildPedigreeFromWizard(state) {
     return id;
   };
 
+  /**
+   * Walk upward from `id` via childToUnionMap → union.partners, collecting
+   * every ancestor individual ID reachable in the graph as currently built.
+   * Used only to detect *real, already-modeled* shared ancestry (v0.3a.1
+   * consanguinity fix) — never to invent one. If two individuals' ancestor
+   * sets intersect, a shared-ancestor path genuinely exists in the graph
+   * already (per CLAUDE.md non-negotiable rule #4), regardless of which
+   * builder stage created it (template consanguinity, the "make siblings"
+   * custom-consanguinity mechanism, or a direct graph edit).
+   */
+  const collectAncestors = (id) => {
+    const ancestors = new Set();
+    const stack = [id];
+    const visited = new Set();
+    while (stack.length > 0) {
+      const current = stack.pop();
+      if (visited.has(current)) continue;
+      visited.add(current);
+      const unionId = childToUnionMap.get(current);
+      if (!unionId) continue;
+      const union = unions.find(u => u.id === unionId);
+      if (!union) continue;
+      for (const p of union.partners) {
+        if (!ancestors.has(p)) {
+          ancestors.add(p);
+          stack.push(p);
+        }
+      }
+    }
+    return ancestors;
+  };
+
   const addChild = (unionId, childId) => {
     // GUARD: prevent child from being attached to multiple unions
     const existingUnion = childToUnionMap.get(childId);
@@ -711,29 +743,6 @@ export function buildPedigreeFromWizard(state) {
   }
 
   // ========================================
-  // 10b. CUSTOM UNION CONSANGUINITY FLAGS
-  // ========================================
-  // Mark any union as consanguineous (double-line rendering) without
-  // requiring the template system. Runs after all unions are created
-  // (stages 8, 9, 9b, 9c, 10) so it can target any union in the graph.
-  if (state.consanguineousUnions) {
-    for (const [unionId, isConsang] of Object.entries(state.consanguineousUnions)) {
-      if (!isConsang) continue;
-      const union = unions.find(u => u.id === unionId);
-      if (union) {
-        union.consanguineous = true;
-        // This mechanism never builds a shared-ancestor path for arbitrary
-        // unions — it is always a bare declaration. Only promote to
-        // 'known_supported' if some other stage already resolved it
-        // (e.g. this happens to be U_PARENTS and stage 7 succeeded).
-        if (union.consanguinityStatus !== 'known_supported') {
-          union.consanguinityStatus = 'reported_unresolved';
-        }
-      }
-    }
-  }
-
-  // ========================================
   // 10c. DIRECT GRAPH EDITS (right-panel additions)
   // ========================================
   // Process user-added individuals/unions from the IndividualEditor.
@@ -773,8 +782,57 @@ export function buildPedigreeFromWizard(state) {
           label: edit.sex === 'male' ? 'Cocuk (E)' : edit.sex === 'female' ? 'Cocuk (K)' : 'Cocuk',
         });
         addChild(edit.unionId, edit.childId);
+      } else if (edit.type === 'linkPartners') {
+        // "Make partners" (v0.3a.1 multi-select action) — connects two
+        // ALREADY-EXISTING individuals via a new union. Unlike addSpouse,
+        // this never creates a new individual; both partners must already
+        // be present in the graph (wizard-derived or a prior direct edit).
+        // Store-side (usePedigreeStore.js's computeUnionCreationPlan)
+        // already validates self-union, duplicate-union, and unconsented
+        // sibling pairing before dispatching this edit — this is a
+        // defensive re-check, not the primary gate.
+        if (idSet.has(edit.unionId)) return; // already created
+        const p1 = individuals.find(i => i.id === edit.person1);
+        const p2 = individuals.find(i => i.id === edit.person2);
+        if (!p1 || !p2 || edit.person1 === edit.person2) return;
+        addUnion(edit.unionId, edit.person1, edit.person2, {
+          status: edit.status || 'together',
+        });
       }
     });
+  }
+
+  // ========================================
+  // 10b (relocated). CUSTOM UNION CONSANGUINITY FLAGS
+  // ========================================
+  // Mark any union as consanguineous (double-line rendering) without
+  // requiring the template system. Runs LAST among stage-10 sub-stages —
+  // after 10a (custom "make siblings" links) and 10c (direct graph edits,
+  // including the "make partners" linkPartners case above) — so shared
+  // ancestors created by either mechanism are visible to the ancestor walk
+  // below, no matter which stage introduced them.
+  if (state.consanguineousUnions) {
+    for (const [unionId, isConsang] of Object.entries(state.consanguineousUnions)) {
+      if (!isConsang) continue;
+      const union = unions.find(u => u.id === unionId);
+      if (!union) continue;
+      union.consanguineous = true;
+      if (union.consanguinityStatus === 'known_supported') continue; // already resolved elsewhere
+
+      // v0.3a.1 fix: this mechanism used to be a bare declaration that
+      // ALWAYS fell back to 'reported_unresolved', even when the two
+      // partners already share a real ancestor node in the graph (e.g.
+      // linked via the "make siblings" mechanism and later partnered, or
+      // a cousin pairing built through direct edits). Detect genuine shared
+      // ancestry here instead of assuming there is none — this never
+      // fabricates anything: it only promotes to 'known_supported' when an
+      // intersection is found among ancestor nodes that already exist.
+      const [p1, p2] = union.partners;
+      const p1Ancestors = collectAncestors(p1);
+      const p2Ancestors = collectAncestors(p2);
+      const sharesRealAncestor = [...p1Ancestors].some(a => p2Ancestors.has(a));
+      union.consanguinityStatus = sharesRealAncestor ? 'known_supported' : 'reported_unresolved';
+    }
   }
 
   // ========================================

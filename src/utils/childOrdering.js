@@ -150,6 +150,36 @@ export function applyChildOrder(children, manualOrder, anchorId = null) {
 }
 
 // ────────────────────────────────────────────────────
+// Birth-order reorder (v0.3a.1)
+// ────────────────────────────────────────────────────
+
+/**
+ * Move one child left or right within an existing sibling-group ordering.
+ * Pure and bounds-safe: a move past either end of the array is a no-op
+ * (returns the input order, structurally unchanged) rather than wrapping or
+ * throwing. Moving a token not present in `order` is also a no-op.
+ *
+ * This only ever reorders *within* the given order array — it cannot move
+ * an individual into a different sibling group, matching the v0.3a.1
+ * requirement that reorder controls must not double as arbitrary layout.
+ *
+ * @param {string[]} order - current child ID ordering for one union
+ * @param {string} childId - the child to move
+ * @param {'left'|'right'} direction
+ * @returns {string[]} a new array (or the same array reference if no-op)
+ */
+export function moveChildInOrder(order, childId, direction) {
+  if (!Array.isArray(order)) return order;
+  const idx = order.indexOf(childId);
+  if (idx === -1) return order;
+  const swapWith = direction === 'left' ? idx - 1 : idx + 1;
+  if (swapWith < 0 || swapWith >= order.length) return order;
+  const next = [...order];
+  [next[idx], next[swapWith]] = [next[swapWith], next[idx]];
+  return next;
+}
+
+// ────────────────────────────────────────────────────
 // Ordering metadata store
 // ────────────────────────────────────────────────────
 
