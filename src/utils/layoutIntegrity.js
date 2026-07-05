@@ -189,5 +189,127 @@ export function auditLayoutIntegrity(layout, graph) {
     }
   }
 
+  // ──────────────────────────────────────
+  // 9. Sibship-bus overlap (v0.3a.4) — the "single global horizontal bus"
+  //    ambiguity. Each union with children draws a horizontal sibship rail
+  //    (see pedigreeLayout.js). When two DIFFERENT unions' rails land at the
+  //    same Y with overlapping X ranges, a viewer cannot tell which child
+  //    belongs to which parent couple — the exact defect seen in clinical
+  //    QA where unrelated parent-child connectors merge into one long line.
+  //
+  //    Deliberately a WARNING, not an error: a wizard-built pedigree with
+  //    many collateral branches can already exhibit this before any user
+  //    action, and flagging it as an error would break legitimate existing
+  //    pedigrees. The relationship-safety net (relationshipSafety.js)
+  //    instead rolls back any mutation that *increases* the overlap count,
+  //    so the user can never make readability worse — while the deeper fix
+  //    (a per-union local bus / real hierarchical layout) is tracked in
+  //    PEDIGREE_LAYOUT_ENGINE_REDESIGN_PLAN.md.
+  // ──────────────────────────────────────
+  {
+    const RAIL_Y_TOLERANCE = 6;   // rails within this many px count as "same Y"
+    const RAIL_X_MIN_OVERLAP = 20; // ignore incidental point/edge touches
+
+    // Recompute each union's sibship rail from actual node positions,
+    // mirroring pedigreeLayout.js's own dropY / min-max-X computation.
+    const rails = [];
+    for (const rel of parentChildRelationships) {
+      const childNodes = rel.children.map(id => nodeById.get(id)).filter(Boolean);
+      if (childNodes.length === 0) continue;
+      const union = unions.find(u => u.id === rel.unionId);
+      const partnerNodes = union
+        ? union.partners.map(pid => nodeById.get(pid)).filter(Boolean)
+        : [];
+      if (partnerNodes.length === 0) continue;
+
+      const unionY = partnerNodes[0].y;
+      const childYs = childNodes.map(n => n.y).filter(v => typeof v === 'number');
+      const childXs = childNodes.map(n => n.x).filter(v => typeof v === 'number');
+      if (childYs.length === 0 || childXs.length === 0) continue;
+
+      const railY = (unionY + Math.min(...childYs)) / 2;
+      rails.push({
+        unionId: rel.unionId,
+        railY,
+        minX: Math.min(...childXs),
+        maxX: Math.max(...childXs),
+      });
+    }
+
+    for (let a = 0; a < rails.length; a++) {
+      for (let b = a + 1; b < rails.length; b++) {
+        const ra = rails[a];
+        const rb = rails[b];
+        if (Math.abs(ra.railY - rb.railY) > RAIL_Y_TOLERANCE) continue;
+        // X-interval overlap length.
+        const overlap = Math.min(ra.maxX, rb.maxX) - Math.max(ra.minX, rb.minX);
+        if (overlap > RAIL_X_MIN_OVERLAP) {
+          issues.push({
+            severity: 'warning',
+            code: 'SIBSHIP_BUS_OVERLAP',
+            message: `Unions '${ra.unionId}' and '${rb.unionId}' draw overlapping child-connector rails at the same height — which child belongs to which couple is visually ambiguous.`,
+            ids: [ra.unionId, rb.unionId],
+          });
+        }
+      }
+    }
+  }
+
+  // ──────────────────────────────────────
+  // 10. Connector edge passing through an unrelated node (v0.3a.4).
+  //     A horizontal/vertical relationship connector that runs through a
+  //     node's symbol bounding box (when that node is not one of the edge's
+  //     own endpoints) is visually misleading — the line appears to touch a
+  //     person it has no relationship with. Warning severity, same rationale
+  //     as CHECK 9.
+  // ──────────────────────────────────────
+  {
+    const NODE_BOX_HALF = 20; // symbol half-extent
+    const EPS = 2;
+    // Only structural relationship connectors — not the tiny childless/loss markers.
+    const connectorTypes = new Set(['union', 'consanguineousUnion', 'consanguineousUnionUnresolved', 'sibship', 'parentChildDrop', 'childStem']);
+    for (const edge of edges) {
+      if (!connectorTypes.has(edge.type)) continue;
+      if (typeof edge.x1 !== 'number' || typeof edge.y1 !== 'number' ||
+          typeof edge.x2 !== 'number' || typeof edge.y2 !== 'number') continue;
+      const horizontal = Math.abs(edge.y1 - edge.y2) < EPS;
+      const vertical = Math.abs(edge.x1 - edge.x2) < EPS;
+      if (!horizontal && !vertical) continue;
+
+      for (const node of nodes) {
+        if (typeof node.x !== 'number' || typeof node.y !== 'number') continue;
+        // Skip the edge's own endpoints (a connector legitimately touches
+        // the nodes it connects).
+        const atEndpoint =
+          (Math.abs(node.x - edge.x1) < NODE_BOX_HALF && Math.abs(node.y - edge.y1) < NODE_BOX_HALF) ||
+          (Math.abs(node.x - edge.x2) < NODE_BOX_HALF && Math.abs(node.y - edge.y2) < NODE_BOX_HALF);
+        if (atEndpoint) continue;
+
+        let passesThrough;
+        if (horizontal) {
+          const loX = Math.min(edge.x1, edge.x2);
+          const hiX = Math.max(edge.x1, edge.x2);
+          passesThrough =
+            Math.abs(node.y - edge.y1) < NODE_BOX_HALF &&
+            node.x > loX + EPS && node.x < hiX - EPS;
+        } else {
+          const loY = Math.min(edge.y1, edge.y2);
+          const hiY = Math.max(edge.y1, edge.y2);
+          passesThrough =
+            Math.abs(node.x - edge.x1) < NODE_BOX_HALF &&
+            node.y > loY + EPS && node.y < hiY - EPS;
+        }
+        if (passesThrough) {
+          issues.push({
+            severity: 'warning',
+            code: 'EDGE_THROUGH_NODE',
+            message: `A ${edge.type} connector passes through individual '${node.id}', which it has no relationship with — visually misleading.`,
+            ids: [node.id],
+          });
+        }
+      }
+    }
+  }
+
   return issues;
 }

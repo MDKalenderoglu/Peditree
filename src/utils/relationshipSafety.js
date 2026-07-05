@@ -61,3 +61,52 @@ export function describeNewGraphErrors(beforeIssues, afterIssues) {
   }
   return 'Bu ilişki şu anda güvenli çizilemiyor: ' + newErrors.map(e => e.message).join(' ');
 }
+
+// v0.3a.4 — layout-ambiguity (readability) codes. These are WARNING severity
+// in the audit (a wizard-built pedigree can already exhibit them before any
+// user action, so they must not hard-fail existing pedigrees). But a
+// relationship mutation that *increases* their count makes the drawing
+// strictly less readable, which the user explicitly must not be allowed to
+// do — so these are gated by count, not by presence.
+const LAYOUT_AMBIGUITY_CODES = new Set(['SIBSHIP_BUS_OVERLAP', 'EDGE_THROUGH_NODE']);
+
+function countAmbiguity(issues) {
+  return (issues || []).filter(i => LAYOUT_AMBIGUITY_CODES.has(i.code)).length;
+}
+
+/**
+ * Whether the proposed change makes the layout strictly *more* ambiguous
+ * (more overlapping child buses / more connectors crossing unrelated
+ * symbols) than before. Used to roll back a mutation that would collapse
+ * the drawing's readability, even when the graph itself stays structurally
+ * valid — the deeper layout fix is tracked in
+ * PEDIGREE_LAYOUT_ENGINE_REDESIGN_PLAN.md.
+ *
+ * @param {Array<object>} beforeIssues
+ * @param {Array<object>} afterIssues
+ * @returns {boolean}
+ */
+export function introducesNewLayoutAmbiguity(beforeIssues, afterIssues) {
+  return countAmbiguity(afterIssues) > countAmbiguity(beforeIssues);
+}
+
+/**
+ * Whether a proposed change should be rolled back for ANY reason (a new
+ * structural error OR increased layout ambiguity), with a single combined
+ * check for convenience at mutation sites.
+ *
+ * @returns {{ blocked: boolean, reason: string }}
+ */
+export function assessRelationshipMutation(beforeIssues, afterIssues) {
+  if (introducesNewGraphErrors(beforeIssues, afterIssues)) {
+    return { blocked: true, reason: describeNewGraphErrors(beforeIssues, afterIssues) };
+  }
+  if (introducesNewLayoutAmbiguity(beforeIssues, afterIssues)) {
+    return {
+      blocked: true,
+      reason: 'Bu işlem soy ağacını okunamaz hale getirecekti (ilişki çizgileri birbirine karışıyor) — ' +
+        'işlem uygulanmadı. Daha az çakışan bir düzen için önce ilgili dalları sadeleştirin.',
+    };
+  }
+  return { blocked: false, reason: '' };
+}

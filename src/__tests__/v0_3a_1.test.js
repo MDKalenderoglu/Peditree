@@ -398,6 +398,24 @@ describe('v0.3a.1 — store: computeUnionCreationPlan / createUnionBetween', () 
     expect(typeof plan.ok).toBe('boolean');
   });
 
+  it('v0.3a.4: blocks a cross-generation partnering by default', () => {
+    const state = usePedigreeStore.getState();
+    // proband is gen 3, mother is gen 2 — a cross-generation pairing.
+    const plan = computeUnionCreationPlan(state.pedigreeData, 'proband', 'mother');
+    expect(plan.ok).toBe(false);
+    expect(plan.reason).toMatch(/farklı kuşaklarda/);
+  });
+
+  it('v0.3a.4: allows a same-generation pairing at the plan level (mat_gf + pat_gf, both gen 1)', () => {
+    // Build grandparents so mat_gf/pat_gf exist. They are the same
+    // generation (1), unrelated, and not siblings — the plan permits it
+    // (the layout-safety net separately decides whether the specific
+    // geometry is drawable; see relationshipSafety tests).
+    const state = usePedigreeStore.getState();
+    const plan = computeUnionCreationPlan(state.pedigreeData, 'mat_gf', 'pat_gf');
+    expect(plan.ok).toBe(true);
+  });
+
   it('createUnionBetween actually creates a working union in the graph', () => {
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     let state = usePedigreeStore.getState();

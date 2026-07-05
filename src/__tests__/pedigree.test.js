@@ -1057,6 +1057,37 @@ describe('Layout Integrity', () => {
     expect(graph.unions.find(u => u.id === 'U_MAT_UNCLE_0')).toBeUndefined();
   });
 
+  it('v0.3a.4: 5 maternal uncles (past the old cap of 4) all build as standalone individuals', () => {
+    const state = baseState();
+    state.maternalRelatives.uncles = Array.from({ length: 5 }, (_, i) => ({
+      id: `_mu${i}`, children: { male: 0, female: 0, unknown: 0 },
+    }));
+
+    const { graph, issues } = buildFull(state);
+    assertZeroErrors(issues);
+
+    for (let i = 0; i < 5; i++) {
+      expect(findInd(graph, `mat_uncle_${i}`)).toBeDefined();
+      expect(findInd(graph, `mat_uncle_${i}_sp`)).toBeUndefined(); // no auto-spouse
+      expect(graph.unions.find(u => u.id === `U_MAT_UNCLE_${i}`)).toBeUndefined();
+    }
+  });
+
+  it('v0.3a.4: 5 paternal aunts (past the old cap of 4) all build as standalone individuals', () => {
+    const state = baseState();
+    state.paternalRelatives.aunts = Array.from({ length: 5 }, (_, i) => ({
+      id: `_pa${i}`, children: { male: 0, female: 0, unknown: 0 },
+    }));
+
+    const { graph, issues } = buildFull(state);
+    assertZeroErrors(issues);
+
+    for (let i = 0; i < 5; i++) {
+      expect(findInd(graph, `pat_aunt_${i}`)).toBeDefined();
+      expect(findInd(graph, `pat_aunt_${i}_sp`)).toBeUndefined();
+    }
+  });
+
   it('an uncle with requested children still gets a real spouse + union + childless-marker-capable layout', () => {
     const state = baseState();
     state.maternalRelatives.uncles = [

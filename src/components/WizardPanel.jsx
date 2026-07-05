@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Trash2, X } from 'lucide-react';
 import ChildOrderEditor from './ChildOrderEditor';
 import { sanitizeAgeValue } from '../utils/ageValidation';
 import { RELATIONSHIP_BACKGROUND_OPTIONS } from '../utils/relationshipBackground';
+import { computePedigreeIds } from '../utils/pedigreeNumbering';
 
 /**
  * Left-panel selected-person identity + quick-action card (v0.3a.1).
@@ -19,6 +20,18 @@ function SelectedPersonCard({ wizardData, pedigreeData, selectedId, selectedId2,
   const ind2 = selectedId2 ? pedigreeData.individuals.find(i => i.id === selectedId2) : null;
   if (!ind && !ind2) return null;
 
+  // v0.3a.4: show clinician-facing pedigree IDs (II-3) and human labels,
+  // never internal graph IDs (mat_uncle_0, U_PARENTS) in this card or its
+  // delete confirmation.
+  const pedigreeIds = computePedigreeIds(pedigreeData.nodes || []);
+  const displayNameFor = (id) => {
+    const person = pedigreeData.individuals.find(i => i.id === id);
+    const pid = pedigreeIds.get(id)?.displayId;
+    const label = person?.displayLabel || person?.label;
+    if (pid && label) return `${pid} (${label})`;
+    return pid || label || 'birey';
+  };
+
   const renderIdentity = (person) => {
     if (!person) return null;
     const flags = [];
@@ -28,11 +41,12 @@ function SelectedPersonCard({ wizardData, pedigreeData, selectedId, selectedId2,
     if (person.deceased) flags.push('Ölü');
     if (person.pregnancyLoss) flags.push('Düşük/Kayıp');
     if (person.stillbirth) flags.push('Ölü Doğum');
+    const pid = pedigreeIds.get(person.id)?.displayId;
     return (
       <div style={{ fontSize: '0.78rem', color: '#1e293b', lineHeight: 1.5 }}>
-        <strong>{person.displayLabel || person.label || person.id}</strong>
-        {' '}({person.sex === 'male' ? 'Erkek' : person.sex === 'female' ? 'Kadin' : 'Bilinmiyor'}
-        {typeof person.generation === 'number' ? `, jen. ${person.generation}` : ''})
+        <strong>{pid || person.displayLabel || person.label}</strong>
+        {person.displayLabel || person.label ? <span style={{ color: '#64748b' }}> — {person.displayLabel || person.label}</span> : null}
+        {' '}({person.sex === 'male' ? 'Erkek' : person.sex === 'female' ? 'Kadin' : 'Bilinmiyor'})
         {flags.length > 0 && (
           <div style={{ marginTop: '2px', color: '#64748b' }}>{flags.join(' · ')}</div>
         )}
@@ -79,12 +93,15 @@ function SelectedPersonCard({ wizardData, pedigreeData, selectedId, selectedId2,
               // (removed entirely), and any children affected (they are
               // NOT deleted — they lose the link to the removed union and
               // become parent-less, same as any other orphaned individual).
-              const parts = [`"${ind.displayLabel || ind.label || ind.id}" silinsin mi?`];
+              const parts = [`"${displayNameFor(ind.id)}" silinsin mi?`];
+              // v0.3a.4: describe unions by count (union IDs are internal
+              // and meaningless to a clinician), and children by their
+              // pedigree IDs.
               if (plan.affectedUnionIds.length > 0) {
-                parts.push(`\n\nEtkilenen birlik(ler): ${plan.affectedUnionIds.join(', ')} (tamamen kaldırılacak).`);
+                parts.push(`\n\n${plan.affectedUnionIds.length} eş birliği tamamen kaldırılacak.`);
               }
               if (plan.affectedChildIds.length > 0) {
-                parts.push(`\nEtkilenen çocuk(lar): ${plan.affectedChildIds.join(', ')} (silinmeyecek, sadece bu ebeveyn bağlantısı kaldırılacak).`);
+                parts.push(`\nEtkilenen çocuk(lar): ${plan.affectedChildIds.map(displayNameFor).join(', ')} (silinmeyecek, sadece bu ebeveyn bağlantısı kaldırılacak).`);
               }
               if (window.confirm(parts.join(''))) {
                 onDeleteIndividual(ind.id);
@@ -399,7 +416,12 @@ export default function WizardPanel() {
 
     return (
       <Accordion id={side} title={title} summary={summary} open={openSectionId === side} onToggle={setOpenSection}>
-        <Stepper label={`${uncleLabel} Sayisi`} value={uncles.length} onChange={v => updateRelativeCount(side, uncleKey, v)} max={4} />
+        {/* v0.3a.4: the old max={4} was an arbitrary silent cap. Removed —
+            clinical sibships can exceed 4. The layout-safety net (rollback
+            on increased ambiguity) is what actually guards readability now,
+            not a hard-coded count. A generous soft ceiling remains only to
+            keep the stepper UI sane. */}
+        <Stepper label={`${uncleLabel} Sayisi`} value={uncles.length} onChange={v => updateRelativeCount(side, uncleKey, v)} max={12} />
         {uncles.map((rel, idx) => {
           const unionId = `${uncleUnionPrefix}_${idx}`;
           const cousinItems = buildCousinItems(sideKey, 'uncle', idx, rel.children);
@@ -428,7 +450,8 @@ export default function WizardPanel() {
         })}
 
         <div style={{ marginTop: '10px' }}>
-          <Stepper label={`${auntLabel} Sayisi`} value={aunts.length} onChange={v => updateRelativeCount(side, auntKey, v)} max={4} />
+          {/* v0.3a.4: 4-person cap removed (see uncle stepper above). */}
+          <Stepper label={`${auntLabel} Sayisi`} value={aunts.length} onChange={v => updateRelativeCount(side, auntKey, v)} max={12} />
           {aunts.map((rel, idx) => {
             const unionId = `${auntUnionPrefix}_${idx}`;
             const cousinItems = buildCousinItems(sideKey, 'aunt', idx, rel.children);

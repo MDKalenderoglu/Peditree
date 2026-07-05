@@ -1,12 +1,14 @@
-import { computeSiblingCreationPlan } from '../state/usePedigreeStore';
+import { computeSiblingCreationPlan, computeUnionCreationPlan } from '../state/usePedigreeStore';
 import { sanitizeAgeValue } from '../utils/ageValidation';
 import { RELATIONSHIP_BACKGROUND_OPTIONS } from '../utils/relationshipBackground';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 
 /** Two individuals selected via Cmd/Ctrl-click — pair-level quick actions. */
 function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSiblings, onClearSelection }) {
-  const unions = pedigreeData?.unions || [];
-  const alreadyPartnered = unions.some(u => u.partners.includes(node.id) && u.partners.includes(node2.id));
+  // Authoritative safety check for "make partners" — blocks self/duplicate,
+  // pregnancy-loss, unconsented-sibling, and (v0.3a.4) cross-generation
+  // pairings, with a clear reason. The store re-validates independently.
+  const unionPlan = computeUnionCreationPlan(pedigreeData, node.id, node2.id);
 
   // Authoritative safety check for "make siblings" — see
   // usePedigreeStore.js's computeSiblingCreationPlan docblock. In
@@ -15,7 +17,13 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
   // unions, which the builder cannot safely merge.
   const siblingPlan = computeSiblingCreationPlan(pedigreeData, node.id, node2.id);
 
-  const label = (p) => p.displayLabel || p.label || p.id;
+  // v0.3a.4: pedigree ID + optional label, never the internal graph id.
+  const pedigreeIds = computePedigreeIds(pedigreeData?.nodes || []);
+  const label = (p) => {
+    const pid = pedigreeIds.get(p.id)?.displayId;
+    const human = p.displayLabel || p.label;
+    return pid ? (human ? `${pid} — ${human}` : pid) : (human || 'birey');
+  };
 
   return (
     <>
@@ -32,16 +40,19 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <button
           className="btn"
-          disabled={alreadyPartnered}
+          disabled={!unionPlan.ok}
           onClick={() => onCreateUnion(node.id, node2.id)}
           style={{
-            fontSize: '0.78rem', padding: '6px 10px', background: alreadyPartnered ? '#f1f5f9' : '#dbeafe',
-            border: '1px solid ' + (alreadyPartnered ? '#cbd5e1' : '#93c5fd'), color: alreadyPartnered ? '#94a3b8' : '#1e40af',
+            fontSize: '0.78rem', padding: '6px 10px', background: unionPlan.ok ? '#dbeafe' : '#f1f5f9',
+            border: '1px solid ' + (unionPlan.ok ? '#93c5fd' : '#cbd5e1'), color: unionPlan.ok ? '#1e40af' : '#94a3b8',
           }}
-          title={alreadyPartnered ? 'Bu iki birey zaten bir birlikte' : 'Bu iki bireyi eş olarak birleştir'}
+          title={unionPlan.ok ? 'Bu iki bireyi eş olarak birleştir' : unionPlan.reason}
         >
           Eş Yap (Union Oluştur)
         </button>
+        {!unionPlan.ok && (
+          <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: '-4px' }}>{unionPlan.reason}</div>
+        )}
 
         {/* "Kardeş Yap" creates a genuine biological parent-child structure
             (attaches to an existing parent union, or fabricates a new
@@ -112,6 +123,14 @@ export default function IndividualEditor({
   // Pedigree-standard display ID (e.g. "II-3") — see pedigreeNumbering.js.
   const pedigreeIds = computePedigreeIds(pedigreeData?.nodes || []);
   const pedigreeId = pedigreeIds.get(node.id);
+  // v0.3a.4: clinician-facing name for any individual id — pedigree ID
+  // plus optional human label, never the internal graph id.
+  const displayNameFor = (id) => {
+    const person = pedigreeData?.individuals?.find(i => i.id === id);
+    const pid = pedigreeIds.get(id)?.displayId;
+    const label = person?.displayLabel || person?.label;
+    return pid ? (label ? `${pid} (${label})` : pid) : (label || 'birey');
+  };
 
   // Check if this individual already has a union
   const unions = pedigreeData?.unions || [];
@@ -235,7 +254,6 @@ export default function IndividualEditor({
           {/* Show existing unions and add child buttons */}
           {existingUnions.map(u => {
             const partnerId = u.partners.find(p => p !== node.id);
-            const partner = pedigreeData?.individuals?.find(i => i.id === partnerId);
             const children = pcrs.find(r => r.unionId === u.id)?.children || [];
             return (
               <div key={u.id} style={{
@@ -243,7 +261,7 @@ export default function IndividualEditor({
                 borderRadius: '4px', border: '1px solid #e0f2fe',
               }}>
                 <div style={{ fontSize: '0.68rem', color: '#475569', marginBottom: '4px' }}>
-                  Birlik: {node.displayLabel || node.label || node.id} + {partner?.displayLabel || partner?.label || partnerId}
+                  Birlik: {displayNameFor(node.id)} + {displayNameFor(partnerId)}
                   {children.length > 0 && <span> ({children.length} cocuk)</span>}
                 </div>
                 {onSetUnionRelationshipBackground && (
@@ -545,7 +563,7 @@ export default function IndividualEditor({
             {!node.proband ? (
               <button
                 onClick={() => {
-                  if (window.confirm(`"${node.displayLabel || node.label || node.id}" silinsin mi? Bağlı birlik(ler) kaldırılacak; çocuklar silinmez, sadece bu ebeveyn bağlantısı kaldırılır.`)) {
+                  if (window.confirm(`"${displayNameFor(node.id)}" silinsin mi? Bağlı birlik(ler) kaldırılacak; çocuklar silinmez, sadece bu ebeveyn bağlantısı kaldırılır.`)) {
                     onDeleteIndividual(node.id);
                   }
                 }}
@@ -572,16 +590,29 @@ export default function IndividualEditor({
           <div style={{ fontSize: '0.75rem', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
             Dogrudan Eklenenler ({graphEdits.length})
           </div>
-          {graphEdits.map((edit, idx) => (
+          {graphEdits.map((edit, idx) => {
+            // v0.3a.4: describe each direct edit in clinician-facing terms
+            // (pedigree IDs / labels), never internal graph IDs. Union IDs
+            // have no clinical identity, so add-child edits are described
+            // by the child's pedigree ID alone.
+            const nameFor = (id) => {
+              const person = pedigreeData?.individuals?.find(i => i.id === id);
+              const pid = pedigreeIds.get(id)?.displayId;
+              const label = person?.displayLabel || person?.label;
+              return pid ? (label ? `${pid} (${label})` : pid) : (label || 'birey');
+            };
+            const desc =
+              edit.type === 'addSpouse' ? `Eş eklendi: ${nameFor(edit.spouseId)}` :
+              edit.type === 'addChild' ? `Çocuk eklendi: ${nameFor(edit.childId)}` :
+              edit.type === 'linkPartners' ? `Eş yapıldı: ${nameFor(edit.person1)} + ${nameFor(edit.person2)}` :
+              edit.type === 'addParents' ? `Ebeveyn eklendi: ${nameFor(edit.parent1Id)}` :
+              edit.type;
+            return (
             <div key={idx} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               fontSize: '0.68rem', color: '#64748b', padding: '2px 0',
             }}>
-              <span>
-                {edit.type === 'addSpouse' ? `Es: ${edit.spouseId} → ${edit.targetId}` :
-                 edit.type === 'addChild' ? `Cocuk: ${edit.childId} → ${edit.unionId}` :
-                 JSON.stringify(edit)}
-              </span>
+              <span>{desc}</span>
               <button
                 onClick={() => onRemoveGraphEdit(idx)}
                 style={{
@@ -590,7 +621,8 @@ export default function IndividualEditor({
                 }}
               >X</button>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </>

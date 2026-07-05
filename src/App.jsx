@@ -249,12 +249,16 @@ function App() {
           onAddSibling={addSiblingTo}
         />
 
-        <div style={{ marginTop: '30px', padding: '10px', background: '#f8fafc', borderRadius: '6px', fontSize: '11px', color: '#64748b', wordWrap: 'break-word' }}>
-          <strong>Canlı Veri Özeti</strong>
+        {/* v0.3a.4: the raw graph dump exposes internal IDs (mother, father,
+            U_PARENTS, ...) which must NOT appear in normal clinical UI. It
+            is now a collapsed developer/debug affordance — hidden by
+            default, opened deliberately via the disclosure triangle. */}
+        <details style={{ marginTop: '30px', padding: '10px', background: '#f8fafc', borderRadius: '6px', fontSize: '11px', color: '#94a3b8', wordWrap: 'break-word' }}>
+          <summary style={{ cursor: 'pointer', color: '#94a3b8' }}>Geliştirici: ham grafik verisi (teknik ID’ler)</summary>
           <pre style={{ overflow: 'auto', maxHeight: '300px' }}>
             {JSON.stringify({ individuals: pedigreeData.individuals, unions: pedigreeData.unions }, null, 2)}
           </pre>
-        </div>
+        </details>
       </div>
     </>
   );

@@ -3,7 +3,12 @@
  * relationship-creation actions ("make partners" / "make siblings").
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { introducesNewGraphErrors, describeNewGraphErrors } from '../utils/relationshipSafety';
+import {
+  introducesNewGraphErrors,
+  describeNewGraphErrors,
+  introducesNewLayoutAmbiguity,
+  assessRelationshipMutation,
+} from '../utils/relationshipSafety';
 import { buildPedigreeFromWizard } from '../builder/pedigreeBuilderFromWizard';
 import { auditPedigreeGraph } from '../utils/graphIntegrity';
 import { computePedigreeLayout } from '../utils/pedigreeLayout';
@@ -59,6 +64,59 @@ describe('relationshipSafety — describeNewGraphErrors (pure)', () => {
 
   it('falls back to a generic clinical-language message if no new error is actually found', () => {
     expect(describeNewGraphErrors([], [])).toMatch(/güvenli çizilemiyor/);
+  });
+});
+
+describe('relationshipSafety — introducesNewLayoutAmbiguity / assessRelationshipMutation (v0.3a.4)', () => {
+  it('is false when the ambiguity count is unchanged', () => {
+    const before = [{ severity: 'warning', code: 'SIBSHIP_BUS_OVERLAP', ids: ['U1', 'U2'] }];
+    const after = [{ severity: 'warning', code: 'SIBSHIP_BUS_OVERLAP', ids: ['U1', 'U2'] }];
+    expect(introducesNewLayoutAmbiguity(before, after)).toBe(false);
+  });
+
+  it('is true when the ambiguity count increases', () => {
+    const before = [];
+    const after = [{ severity: 'warning', code: 'SIBSHIP_BUS_OVERLAP', ids: ['U1', 'U2'] }];
+    expect(introducesNewLayoutAmbiguity(before, after)).toBe(true);
+  });
+
+  it('counts EDGE_THROUGH_NODE toward ambiguity as well', () => {
+    const before = [];
+    const after = [{ severity: 'warning', code: 'EDGE_THROUGH_NODE', ids: ['x'] }];
+    expect(introducesNewLayoutAmbiguity(before, after)).toBe(true);
+  });
+
+  it('is false when a pre-existing overlap simply persists (does not block unrelated edits)', () => {
+    const before = [
+      { severity: 'warning', code: 'SIBSHIP_BUS_OVERLAP', ids: ['U1', 'U2'] },
+      { severity: 'warning', code: 'SIBSHIP_BUS_OVERLAP', ids: ['U3', 'U4'] },
+    ];
+    const after = [
+      { severity: 'warning', code: 'SIBSHIP_BUS_OVERLAP', ids: ['U1', 'U2'] },
+      { severity: 'warning', code: 'SIBSHIP_BUS_OVERLAP', ids: ['U3', 'U4'] },
+    ];
+    expect(introducesNewLayoutAmbiguity(before, after)).toBe(false);
+  });
+
+  it('assessRelationshipMutation blocks on a new graph error', () => {
+    const before = [];
+    const after = [{ severity: 'error', code: 'SIBLING_GENERATION_INCONSISTENT', ids: ['U1'], message: 'x' }];
+    const result = assessRelationshipMutation(before, after);
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toMatch(/güvenli çizilemiyor/);
+  });
+
+  it('assessRelationshipMutation blocks on increased ambiguity with a readability-focused message', () => {
+    const before = [];
+    const after = [{ severity: 'warning', code: 'SIBSHIP_BUS_OVERLAP', ids: ['U1', 'U2'] }];
+    const result = assessRelationshipMutation(before, after);
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toMatch(/okunamaz/);
+  });
+
+  it('assessRelationshipMutation does not block when nothing got worse', () => {
+    const issues = [{ severity: 'warning', code: 'SIBSHIP_BUS_OVERLAP', ids: ['U1', 'U2'] }];
+    expect(assessRelationshipMutation(issues, issues).blocked).toBe(false);
   });
 });
 
@@ -147,19 +205,25 @@ describe('v0.3a.2 — store: relationship-creation actions roll back on unsafe m
     expect(pcrs.some(rel => rel.children.includes(spouse1) && rel.children.includes(spouse2))).toBe(true);
   });
 
-  it('createUnionBetween commits safely (same generation) and produces zero new integrity errors', () => {
-    // A sibling of proband (generation 3, same as proband) with no union
-    // of its own — a generation-compatible, otherwise-unrelated partner.
+  it('createUnionBetween rolls back a same-generation union whose geometry would collapse readability (v0.3a.4)', () => {
+    // Making one already-married individual (newSpouse, wed to a brother) a
+    // SECOND partner of the proband is generation-valid but produces
+    // overlapping child-connector rails — the layout-safety net must roll
+    // it back rather than commit an unreadable pedigree. (A clean same-gen
+    // union — two genuinely unattached individuals — is allowed; see the
+    // computeUnionCreationPlan tests below for that contract. The graph
+    // model here makes such an unattached same-gen pair hard to construct
+    // without going through addSpouseTo, which is the intended clean path.)
     usePedigreeStore.getState().updateSiblingCount('male', 1);
     usePedigreeStore.getState().addSpouseTo('sib_m_0', 'female');
     let state = usePedigreeStore.getState();
     const newSpouseId = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    const before = usePedigreeStore.getState().wizardData;
 
     usePedigreeStore.getState().createUnionBetween('proband', newSpouseId);
     state = usePedigreeStore.getState();
-    const errors = (state.integrityIssues || []).filter(i => i.severity === 'error');
-    expect(errors).toHaveLength(0);
-    expect(state.pedigreeData.unions.some(u => u.partners.includes('proband') && u.partners.includes(newSpouseId))).toBe(true);
+    expect(state.wizardData).toBe(before); // rolled back — no mutation committed
+    expect(state.pedigreeData.unions.some(u => u.partners.includes('proband') && u.partners.includes(newSpouseId))).toBe(false);
   });
 
   it('createUnionBetween rolls back (does not commit) a cross-generation pairing', () => {

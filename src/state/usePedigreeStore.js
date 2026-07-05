@@ -7,7 +7,7 @@ import { auditLayoutIntegrity } from '../utils/layoutIntegrity';
 import { saveSession, loadSession, clearSession } from '../utils/persistence';
 import { moveChildInOrder } from '../utils/childOrdering';
 import { applyIndividualDeletions } from '../utils/graphDeletion';
-import { introducesNewGraphErrors, describeNewGraphErrors } from '../utils/relationshipSafety';
+import { assessRelationshipMutation } from '../utils/relationshipSafety';
 
 /**
  * Tag each issue with which auditor produced it, so callers (export gating,
@@ -109,6 +109,19 @@ export function computeUnionCreationPlan(pedigreeData, id1, id2) {
   }
   if ((ind1.pregnancyLoss || ind1.stillbirth) || (ind2.pregnancyLoss || ind2.stillbirth)) {
     return { ok: false, reason: 'Düşük/ölü doğum kaydı bir bireyle eş yapılamaz.' };
+  }
+  // v0.3a.4: block cross-generation partnering by default. Two individuals
+  // at different generations cannot be readably drawn as a couple (a union
+  // line is horizontal, connecting same-Y partners), and allowing it is the
+  // main source of the tangled, unreadable layouts seen in clinical QA. An
+  // exceptional cross-generation consanguineous notation may be added later
+  // behind an explicit expert override; for now this is a hard block.
+  if (typeof ind1.generation === 'number' && typeof ind2.generation === 'number' &&
+      ind1.generation !== ind2.generation) {
+    return {
+      ok: false,
+      reason: 'Bu iki birey farklı kuşaklarda olduğu için eş/partner ilişkisi güvenli çizilemez.',
+    };
   }
 
   const alreadyPartnered = unions.some(u => u.partners.includes(id1) && u.partners.includes(id2));
@@ -796,9 +809,9 @@ export const usePedigreeStore = create((zSet, get) => {
     // build the trial result before committing and roll back if it
     // introduces a new graph-integrity error.
     const derived = generateDerivedData(wd, state.pedigreeData);
-    if (introducesNewGraphErrors(state.integrityIssues, derived.integrityIssues)) {
-      const reason = describeNewGraphErrors(state.integrityIssues, derived.integrityIssues);
-      console.warn('[usePedigreeStore] addCustomConsanguinity rolled back — would introduce a graph error:', reason);
+    const assessment = assessRelationshipMutation(state.integrityIssues, derived.integrityIssues);
+    if (assessment.blocked) {
+      console.warn('[usePedigreeStore] addCustomConsanguinity rolled back:', assessment.reason);
       return {};
     }
     return { wizardData: wd, ...derived };
@@ -1267,9 +1280,9 @@ export const usePedigreeStore = create((zSet, get) => {
     // specific change introduces a NEW graph-integrity error that wasn't
     // already present, roll back instead of committing a broken graph.
     const derived = generateDerivedData(wd, state.pedigreeData);
-    if (introducesNewGraphErrors(state.integrityIssues, derived.integrityIssues)) {
-      const reason = describeNewGraphErrors(state.integrityIssues, derived.integrityIssues);
-      console.warn('[usePedigreeStore] createUnionBetween rolled back — would introduce a graph error:', reason);
+    const assessment = assessRelationshipMutation(state.integrityIssues, derived.integrityIssues);
+    if (assessment.blocked) {
+      console.warn('[usePedigreeStore] createUnionBetween rolled back:', assessment.reason);
       return {};
     }
     return { wizardData: wd, ...derived };
@@ -1319,9 +1332,9 @@ export const usePedigreeStore = create((zSet, get) => {
     // graph-integrity error (same audit-before-commit pattern as
     // createUnionBetween/addCustomConsanguinity).
     const derived = generateDerivedData(wd, state.pedigreeData);
-    if (introducesNewGraphErrors(state.integrityIssues, derived.integrityIssues)) {
-      const reason = describeNewGraphErrors(state.integrityIssues, derived.integrityIssues);
-      console.warn('[usePedigreeStore] addParentsTo rolled back — would introduce a graph error:', reason);
+    const assessment = assessRelationshipMutation(state.integrityIssues, derived.integrityIssues);
+    if (assessment.blocked) {
+      console.warn('[usePedigreeStore] addParentsTo rolled back:', assessment.reason);
       return {};
     }
     return { wizardData: wd, ...derived };
@@ -1345,9 +1358,9 @@ export const usePedigreeStore = create((zSet, get) => {
     wd.graphEdits.push({ type: 'addChild', unionId: plan.unionId, childId: `de_ch_${idx}`, sex });
 
     const derived = generateDerivedData(wd, state.pedigreeData);
-    if (introducesNewGraphErrors(state.integrityIssues, derived.integrityIssues)) {
-      const reason = describeNewGraphErrors(state.integrityIssues, derived.integrityIssues);
-      console.warn('[usePedigreeStore] addSiblingTo rolled back — would introduce a graph error:', reason);
+    const assessment = assessRelationshipMutation(state.integrityIssues, derived.integrityIssues);
+    if (assessment.blocked) {
+      console.warn('[usePedigreeStore] addSiblingTo rolled back:', assessment.reason);
       return {};
     }
     return { wizardData: wd, ...derived };
