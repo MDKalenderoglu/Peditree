@@ -3,10 +3,11 @@ import * as d3 from 'd3';
 import { usePedigreeStore } from './state/usePedigreeStore';
 import { exportSVG, exportPNG } from './utils/exportUtils';
 import { assessExportReadiness } from './utils/exportReadiness';
+import { withStableIdsExcludingDismissed } from './utils/warningIds';
 import PedigreeCanvas from './components/PedigreeCanvas';
 import IndividualEditor from './components/IndividualEditor';
 import WizardPanel from './components/WizardPanel';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2 } from 'lucide-react';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2 } from 'lucide-react';
 import './styles/app.css';
 
 function App() {
@@ -16,8 +17,9 @@ function App() {
     setProband, clearProband, resetPedigree,
     selectedId, selectedId2, selectIndividual, clearSelection,
     deleteIndividual, createUnionBetween, addCustomConsanguinity,
-    reorderChild, markUnionConsanguineous,
-    undo, _history,
+    reorderChild, setUnionRelationshipBackground,
+    undo, redo, _history, _future,
+    dismissedWarningIds, dismissWarning,
   } = usePedigreeStore();
   const [exportError, setExportError] = React.useState(null);
   const [exportNotice, setExportNotice] = React.useState(null);
@@ -28,6 +30,19 @@ function App() {
 
   const errorIssues = (integrityIssues || []).filter(i => i.severity === 'error');
   const warningIssues = (integrityIssues || []).filter(i => i.severity === 'warning');
+
+  // v0.3a.2 — dismissible warnings. Dismissal is display-only: it filters
+  // what's shown here, but never touches `integrityIssues` itself, so
+  // gateExport() (below) still sees the real, undismissed state and blocks
+  // export exactly as before — dismissing a warning cannot be used to
+  // silently bypass an export-blocking condition.
+  const visibleErrorIssues = withStableIdsExcludingDismissed(errorIssues, dismissedWarningIds);
+  const visibleWarningIssues = withStableIdsExcludingDismissed(warningIssues, dismissedWarningIds);
+  const visibleWarnings = withStableIdsExcludingDismissed(warnings, dismissedWarningIds);
+  const dismissBtnStyle = {
+    background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8',
+    fontSize: '1rem', lineHeight: 1, padding: '0 2px', flexShrink: 0,
+  };
 
   /**
    * Severity-tiered export gate, run before both SVG and PNG export:
@@ -108,6 +123,10 @@ function App() {
     undo();
   };
 
+  const handleRedo = () => {
+    redo();
+  };
+
   const handleNodeSelect = (id, opts) => {
     selectIndividual(id, opts);
   };
@@ -129,6 +148,15 @@ function App() {
             title={_history && _history.length > 0 ? `Geri al (${_history.length} adım mevcut)` : 'Geri alınacak adım yok'}
           >
             <Undo2 size={16} /> Geri Al
+          </button>
+          <button
+            className="btn"
+            onClick={handleRedo}
+            disabled={!_future || _future.length === 0}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: (!_future || _future.length === 0) ? 0.5 : 1 }}
+            title={_future && _future.length > 0 ? `Yinele (${_future.length} adım mevcut)` : 'Yinelenecek adım yok'}
+          >
+            <Redo2 size={16} /> Yinele
           </button>
           <button className="btn btn-primary" onClick={handleExportSVG} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Download size={16} /> SVG
@@ -156,17 +184,28 @@ function App() {
           </div>
         )}
 
-        {(warnings.length > 0 || errorIssues.length > 0 || warningIssues.length > 0) && (
+        {(visibleErrorIssues.length > 0 || visibleWarningIssues.length > 0 || visibleWarnings.length > 0) && (
           <div className="warning-panel">
             <h4 style={{ margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: '5px' }}><AlertTriangle size={16} /> Uyarılar</h4>
-            <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.9rem' }}>
-              {errorIssues.map((issue, i) => (
-                <li key={`err-${i}`} style={{ color: '#dc2626', fontWeight: 600 }}>{issue.message}</li>
+            <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.9rem', listStyle: 'none' }}>
+              {visibleErrorIssues.map(({ item, _warningId }) => (
+                <li key={_warningId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '4px' }}>
+                  <span style={{ color: '#dc2626', fontWeight: 600 }}>{item.message}</span>
+                  <button onClick={() => dismissWarning(_warningId)} title="Bu uyarıyı gizle" style={dismissBtnStyle}>×</button>
+                </li>
               ))}
-              {warningIssues.map((issue, i) => (
-                <li key={`warn-${i}`}>{issue.message}</li>
+              {visibleWarningIssues.map(({ item, _warningId }) => (
+                <li key={_warningId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '4px' }}>
+                  <span>{item.message}</span>
+                  <button onClick={() => dismissWarning(_warningId)} title="Bu uyarıyı gizle" style={dismissBtnStyle}>×</button>
+                </li>
               ))}
-              {warnings.map((w, i) => <li key={i}>{w}</li>)}
+              {visibleWarnings.map(({ item, _warningId }) => (
+                <li key={_warningId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '4px' }}>
+                  <span>{item}</span>
+                  <button onClick={() => dismissWarning(_warningId)} title="Bu uyarıyı gizle" style={dismissBtnStyle}>×</button>
+                </li>
+              ))}
             </ul>
           </div>
         )}
@@ -204,7 +243,7 @@ function App() {
           onMakeSiblings={addCustomConsanguinity}
           onClearSelection={clearSelection}
           onReorderChild={reorderChild}
-          onMarkUnionConsanguineous={markUnionConsanguineous}
+          onSetUnionRelationshipBackground={setUnionRelationshipBackground}
         />
 
         <div style={{ marginTop: '30px', padding: '10px', background: '#f8fafc', borderRadius: '6px', fontSize: '11px', color: '#64748b', wordWrap: 'break-word' }}>

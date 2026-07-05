@@ -255,10 +255,10 @@ describe('v0.3a.1 — store: reset', () => {
 describe('v0.3a.1 — store: computeDeletionPlan', () => {
   beforeEach(() => { usePedigreeStore.getState().resetPedigree(); });
 
-  it('blocks deletion of a wizard-derived individual', () => {
+  it('v0.3a.2: allows deletion of a wizard-derived individual (no longer blocked)', () => {
     const state = usePedigreeStore.getState();
     const plan = computeDeletionPlan(state.wizardData, state.pedigreeData, 'mother');
-    expect(plan.ok).toBe(false);
+    expect(plan.ok).toBe(true);
   });
 
   it('blocks deletion of the proband', () => {
@@ -267,16 +267,17 @@ describe('v0.3a.1 — store: computeDeletionPlan', () => {
     expect(plan.ok).toBe(false);
   });
 
-  it('allows deletion of a directly-added spouse with no children', () => {
+  it('allows deletion of a directly-added spouse with no children, previewing the affected union', () => {
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     const state = usePedigreeStore.getState();
-    const spouseId = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
-    const plan = computeDeletionPlan(state.wizardData, state.pedigreeData, spouseId);
+    const spouseEdit = state.wizardData.graphEdits.find(e => e.type === 'addSpouse');
+    const plan = computeDeletionPlan(state.wizardData, state.pedigreeData, spouseEdit.spouseId);
     expect(plan.ok).toBe(true);
-    expect(plan.cascadeIndividualIds).toEqual([spouseId]);
+    expect(plan.affectedUnionIds).toEqual([spouseEdit.unionId]);
+    expect(plan.affectedChildIds).toEqual([]);
   });
 
-  it('cascades to remove a spouse union and its children together', () => {
+  it('previews the affected union AND affected children when the spouse has a child', () => {
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     let state = usePedigreeStore.getState();
     const spouseEdit = state.wizardData.graphEdits.find(e => e.type === 'addSpouse');
@@ -287,7 +288,28 @@ describe('v0.3a.1 — store: computeDeletionPlan', () => {
     const plan = computeDeletionPlan(state.wizardData, state.pedigreeData, spouseEdit.spouseId);
 
     expect(plan.ok).toBe(true);
-    expect(plan.cascadeIndividualIds).toEqual(expect.arrayContaining([spouseEdit.spouseId, childEdit.childId]));
+    expect(plan.affectedUnionIds).toEqual([spouseEdit.unionId]);
+    expect(plan.affectedChildIds).toEqual([childEdit.childId]);
+  });
+
+  it('deleting a spouse orphans (does not delete) their child', () => {
+    usePedigreeStore.getState().addSpouseTo('proband', 'female');
+    let state = usePedigreeStore.getState();
+    const spouseEdit = state.wizardData.graphEdits.find(e => e.type === 'addSpouse');
+    usePedigreeStore.getState().addChildToUnion(spouseEdit.unionId, 'male');
+    state = usePedigreeStore.getState();
+    const childEdit = state.wizardData.graphEdits.find(e => e.type === 'addChild');
+
+    usePedigreeStore.getState().deleteIndividual(spouseEdit.spouseId);
+
+    state = usePedigreeStore.getState();
+    const ids = state.pedigreeData.individuals.map(i => i.id);
+    expect(ids).not.toContain(spouseEdit.spouseId); // the deleted spouse is gone
+    expect(ids).toContain(childEdit.childId); // the child is NOT deleted
+    const childHasParentUnion = state.pedigreeData.parentChildRelationships.some(
+      rel => rel.children.includes(childEdit.childId)
+    );
+    expect(childHasParentUnion).toBe(false); // but is now orphaned (no parent link)
   });
 
   it('deleteIndividual actually removes the individual and its cascade from the graph', () => {
@@ -314,10 +336,28 @@ describe('v0.3a.1 — store: computeDeletionPlan', () => {
     expect(usePedigreeStore.getState().selectedId).toBeNull();
   });
 
-  it('deleteIndividual is a no-op (does not mutate wizardData) when the plan is blocked', () => {
+  it('deleteIndividual is a no-op (does not mutate wizardData) when the plan is blocked (proband)', () => {
     const before = usePedigreeStore.getState().wizardData;
-    usePedigreeStore.getState().deleteIndividual('mother');
+    usePedigreeStore.getState().deleteIndividual('proband');
     expect(usePedigreeStore.getState().wizardData).toBe(before);
+  });
+
+  it('v0.3a.2: deleteIndividual actually removes a wizard-derived individual from the graph', () => {
+    usePedigreeStore.getState().deleteIndividual('mother');
+    const state = usePedigreeStore.getState();
+    const ids = state.pedigreeData.individuals.map(i => i.id);
+    expect(ids).not.toContain('mother');
+    const errors = (state.integrityIssues || []).filter(i => i.severity === 'error');
+    expect(errors).toHaveLength(0);
+  });
+
+  it('v0.3a.2: deleting mother removes U_PARENTS union but does not delete father or proband', () => {
+    usePedigreeStore.getState().deleteIndividual('mother');
+    const state = usePedigreeStore.getState();
+    const ids = state.pedigreeData.individuals.map(i => i.id);
+    expect(ids).toContain('father');
+    expect(ids).toContain('proband');
+    expect(state.pedigreeData.unions.some(u => u.id === 'U_PARENTS')).toBe(false);
   });
 });
 
@@ -363,10 +403,15 @@ describe('v0.3a.1 — store: computeUnionCreationPlan / createUnionBetween', () 
     usePedigreeStore.getState().deleteIndividual(spouseId); // clean up, unrelated to this test path once added
 
     // Create two independent spouses then link one of them to another
-    // pre-existing individual to exercise linkPartners end-to-end.
+    // pre-existing individual to exercise linkPartners end-to-end. Note:
+    // deletion (v0.3a.2) no longer removes the original graphEdits entry —
+    // it only filters the deleted individual out post-build (see
+    // graphDeletion.js) — so the FIRST (deleted) addSpouse edit is still
+    // present in graphEdits; the second addSpouseTo call appends a new
+    // entry, which is the one we want here.
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     state = usePedigreeStore.getState();
-    const newSpouseId = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    const newSpouseId = state.wizardData.graphEdits.filter(e => e.type === 'addSpouse')[1].spouseId;
 
     const errors = (state.integrityIssues || []).filter(i => i.severity === 'error');
     expect(errors).toHaveLength(0);

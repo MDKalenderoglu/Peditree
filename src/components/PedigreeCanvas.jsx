@@ -101,6 +101,21 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
             .attr('x1', edge.x1).attr('y1', edge.y1)
             .attr('x2', edge.x2).attr('y2', edge.y2)
             .attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5).attr('fill', 'none');
+          // v0.3a.2 — neutral relationship-background note (e.g. "Aynı köy /
+          // aynı bölge", "Akrabalık bildirilmedi", "Akrabalık durumu
+          // bilinmiyor"). Deliberately a plain single line with a small
+          // gray label, never a double line or amber styling — none of
+          // these backgrounds assert a blood relationship. See
+          // relationshipBackground.js for the full state model.
+          if (edge.noteText) {
+            g.append('text')
+              .attr('x', (edge.x1 + edge.x2) / 2)
+              .attr('y', edge.y1 - 6)
+              .attr('text-anchor', 'middle')
+              .attr('font-size', '9px')
+              .attr('fill', '#94a3b8')
+              .text(edge.noteText);
+          }
           break;
 
         case 'consanguineousUnion':
@@ -117,17 +132,19 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           break;
 
         case 'consanguineousUnionUnresolved':
-          // v0.3a.1 fix: consanguinity was reported by the clinician but no
-          // shared-ancestor path is modeled in the graph yet. This must
-          // still render as a visibly DOUBLE union line — per pedigree
-          // nomenclature (see the PDF reference table), "consanguineous
-          // union" is drawn as two parallel relationship lines regardless
-          // of whether the exact degree/common ancestor has been resolved.
-          // A single line reads as "not consanguineous" to a clinician
-          // scanning the chart, which is the opposite of what was declared.
-          // The internal known_supported vs. reported_unresolved distinction
-          // is preserved — but ONLY via color/dash/marker (amber, dashed,
-          // "?" label), never by dropping to a single line. No shared
+          // v0.3a.2 fix: this must still render as a visibly DOUBLE union
+          // line — per pedigree nomenclature, "consanguineous union" is
+          // drawn as two parallel relationship lines regardless of whether
+          // the exact degree/common ancestor has been resolved. A single
+          // line reads as "not consanguineous" to a clinician scanning the
+          // chart, which is the opposite of what was declared. The internal
+          // known_supported vs. reported_unresolved distinction is
+          // preserved — but ONLY via color/dash/label (amber, dashed),
+          // never by dropping to a single line. The label reads "Akrabalık
+          // bildirildi" (consanguinity reported), NOT a "?" — a question
+          // mark reads as doubt about the clinician's own report, which is
+          // not the intended meaning; the intended meaning is "reported,
+          // not yet structurally confirmed in this graph." No shared
           // ancestor or cousin degree is fabricated by this rendering
           // choice: the double line here asserts "declared consanguineous,"
           // not "confirmed shared ancestor" — that confirmation is what
@@ -149,7 +166,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
             .attr('font-size', '11px')
             .attr('font-weight', '700')
             .attr('fill', '#d97706')
-            .text('? akrabalık');
+            .text('Akrabalık bildirildi');
           break;
 
         case 'sibship':

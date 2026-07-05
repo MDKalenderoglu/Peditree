@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { usePedigreeStore, computeDeletionPlan } from '../state/usePedigreeStore';
 import { ChevronDown, ChevronRight, Trash2, X } from 'lucide-react';
 import ChildOrderEditor from './ChildOrderEditor';
+import { sanitizeAgeValue } from '../utils/ageValidation';
+import { RELATIONSHIP_BACKGROUND_OPTIONS } from '../utils/relationshipBackground';
 
 /**
  * Left-panel selected-person identity + quick-action card (v0.3a.1).
@@ -72,10 +74,19 @@ function SelectedPersonCard({ wizardData, pedigreeData, selectedId, selectedId2,
                 window.alert(plan.reason);
                 return;
               }
-              const cascadeNote = plan.cascadeIndividualIds.length > 1
-                ? `\n\nBu işlem ${plan.cascadeIndividualIds.length} bireyi (bağlı eş/çocuklar dahil) birlikte silecek.`
-                : '';
-              if (window.confirm(`"${ind.displayLabel || ind.label || ind.id}" silinsin mi?${cascadeNote}`)) {
+              // v0.3a.2 — preview exactly what this deletion affects before
+              // confirming: the person themselves, any partner union(s)
+              // (removed entirely), and any children affected (they are
+              // NOT deleted — they lose the link to the removed union and
+              // become parent-less, same as any other orphaned individual).
+              const parts = [`"${ind.displayLabel || ind.label || ind.id}" silinsin mi?`];
+              if (plan.affectedUnionIds.length > 0) {
+                parts.push(`\n\nEtkilenen birlik(ler): ${plan.affectedUnionIds.join(', ')} (tamamen kaldırılacak).`);
+              }
+              if (plan.affectedChildIds.length > 0) {
+                parts.push(`\nEtkilenen çocuk(lar): ${plan.affectedChildIds.join(', ')} (silinmeyecek, sadece bu ebeveyn bağlantısı kaldırılacak).`);
+              }
+              if (window.confirm(parts.join(''))) {
                 onDeleteIndividual(ind.id);
               }
             }}
@@ -86,7 +97,7 @@ function SelectedPersonCard({ wizardData, pedigreeData, selectedId, selectedId2,
               border: plan.ok ? '1px solid #fca5a5' : '1px solid #cbd5e1',
               color: plan.ok ? '#dc2626' : '#94a3b8',
             }}
-            title={plan.ok ? 'Bu bireyi ve bağlı doğrudan eklemeleri sil' : plan.reason}
+            title={plan.ok ? 'Bu bireyi sil' : plan.reason}
           >
             <Trash2 size={12} /> Seçili Bireyi Sil
           </button>
@@ -103,6 +114,18 @@ function SelectedPersonCard({ wizardData, pedigreeData, selectedId, selectedId2,
 function CustomConsanguinityAdder({ individuals, onAdd }) {
   const [p1, setP1] = useState('');
   const [p2, setP2] = useState('');
+
+  // v0.3a.2 reset-audit fix: this local selection used to survive a full
+  // pedigree reset (or a deletion of the selected individual) since this
+  // component never unmounts — the dropdown would silently show a blank
+  // value once the referenced individual disappeared, but the stale ID
+  // stayed in local state and could resurface confusingly if a
+  // newly-created individual happened to reuse it. Clear both slots
+  // whenever either no longer refers to a real individual in the current
+  // graph, so stale selection never survives a reset or a deletion.
+  const individualIds = individuals.map(i => i.id);
+  if (p1 && !individualIds.includes(p1)) setP1('');
+  if (p2 && !individualIds.includes(p2)) setP2('');
 
   const handleAdd = () => {
     if (p1 && p2 && p1 !== p2) {
@@ -159,6 +182,22 @@ const Stepper = ({ label, value, onChange, min = 0, max = 10 }) => (
       <div className="stepper-val">{value}</div>
       <button className="stepper-btn" onClick={() => onChange(Math.min(max, value + 1))}>+</button>
     </div>
+  </div>
+);
+
+/**
+ * v0.3a.2 — lightweight progressive-disclosure grouping. Purely a visual
+ * divider between existing Accordion sections (no restructuring of the
+ * underlying sections/state) so the left panel reads as a small number of
+ * clear layers instead of one flat list of ~10 equally-weighted sections.
+ */
+const LayerHeader = ({ label }) => (
+  <div style={{
+    marginTop: '16px', marginBottom: '6px', paddingBottom: '3px',
+    borderBottom: '2px solid #c7d2fe', fontSize: '0.68rem', fontWeight: 700,
+    color: '#4338ca', textTransform: 'uppercase', letterSpacing: '0.03em',
+  }}>
+    {label}
   </div>
 );
 
@@ -283,7 +322,7 @@ export default function WizardPanel() {
     getChildOrder, setChildOrder,
     toggleGreatGrandparents,
     addCustomConsanguinity, removeCustomConsanguinity,
-    markUnionConsanguineous,
+    setUnionRelationshipBackground,
     pedigreeData,
     selectedId, selectedId2, deleteIndividual, clearSelection,
   } = usePedigreeStore();
@@ -432,6 +471,7 @@ export default function WizardPanel() {
         onClearSelection={clearSelection}
       />
 
+      <LayerHeader label="Temel Bilgiler" />
       {/* ── 1. PROBAND ── */}
       <Accordion title="1. Proband" defaultOpen>
         <div className="form-group-row">
@@ -444,7 +484,7 @@ export default function WizardPanel() {
         </div>
         <div className="form-group-row">
           <span className="form-label">Yas</span>
-          <input type="number" value={wd.proband.age} onChange={e => updateWizardData('proband', 'age', e.target.value)} className="form-input" placeholder="..." style={{ width: '70px' }} />
+          <input type="number" min="0" value={wd.proband.age} onChange={e => updateWizardData('proband', 'age', sanitizeAgeValue(e.target.value))} className="form-input" placeholder="..." style={{ width: '70px' }} />
         </div>
       </Accordion>
 
@@ -454,7 +494,7 @@ export default function WizardPanel() {
         {wd.siblings.male.map((s, i) => (
           <div key={s.id} className="form-group-row" style={{ paddingLeft: 14 }}>
             <span className="form-label" style={{ fontSize: '0.72rem' }}>E.K. {i + 1} Yas:</span>
-            <input type="number" value={s.age} onChange={e => updateSiblingAge('male', i, e.target.value)} className="form-input" style={{ width: '55px', padding: '3px' }} placeholder="..." />
+            <input type="number" min="0" value={s.age} onChange={e => updateSiblingAge('male', i, sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '55px', padding: '3px' }} placeholder="..." />
           </div>
         ))}
 
@@ -462,7 +502,7 @@ export default function WizardPanel() {
         {wd.siblings.female.map((s, i) => (
           <div key={s.id} className="form-group-row" style={{ paddingLeft: 14 }}>
             <span className="form-label" style={{ fontSize: '0.72rem' }}>K.K. {i + 1} Yas:</span>
-            <input type="number" value={s.age} onChange={e => updateSiblingAge('female', i, e.target.value)} className="form-input" style={{ width: '55px', padding: '3px' }} placeholder="..." />
+            <input type="number" min="0" value={s.age} onChange={e => updateSiblingAge('female', i, sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '55px', padding: '3px' }} placeholder="..." />
           </div>
         ))}
 
@@ -470,7 +510,7 @@ export default function WizardPanel() {
         {wd.siblings.unknown.map((s, i) => (
           <div key={s.id} className="form-group-row" style={{ paddingLeft: 14 }}>
             <span className="form-label" style={{ fontSize: '0.72rem' }}>B. {i + 1} Yas:</span>
-            <input type="number" value={s.age} onChange={e => updateSiblingAge('unknown', i, e.target.value)} className="form-input" style={{ width: '55px', padding: '3px' }} placeholder="..." />
+            <input type="number" min="0" value={s.age} onChange={e => updateSiblingAge('unknown', i, sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '55px', padding: '3px' }} placeholder="..." />
           </div>
         ))}
 
@@ -488,12 +528,13 @@ export default function WizardPanel() {
         )}
       </Accordion>
 
+      <LayerHeader label="Ebeveynler ve Akrabalık" />
       {/* ── 3. ANNE-BABA ── */}
       <Accordion title="3. Anne - Baba">
         <label className="checkbox-label"><input type="checkbox" checked={wd.parents.motherExists} onChange={e => updateWizardData('parents', 'motherExists', e.target.checked)} /> Anne Var</label>
         {wd.parents.motherExists && (
           <div style={{ marginLeft: 16 }}>
-            <div className="form-group-row"><span className="form-label">Yas:</span><input type="number" value={wd.parents.motherAge} onChange={e => updateWizardData('parents', 'motherAge', e.target.value)} className="form-input" style={{ width: '70px' }} placeholder="..." /></div>
+            <div className="form-group-row"><span className="form-label">Yas:</span><input type="number" min="0" value={wd.parents.motherAge} onChange={e => updateWizardData('parents', 'motherAge', sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '70px' }} placeholder="..." /></div>
             {renderOtherUnions('mother')}
           </div>
         )}
@@ -501,7 +542,7 @@ export default function WizardPanel() {
         <label className="checkbox-label"><input type="checkbox" checked={wd.parents.fatherExists} onChange={e => updateWizardData('parents', 'fatherExists', e.target.checked)} /> Baba Var</label>
         {wd.parents.fatherExists && (
           <div style={{ marginLeft: 16 }}>
-            <div className="form-group-row"><span className="form-label">Yas:</span><input type="number" value={wd.parents.fatherAge} onChange={e => updateWizardData('parents', 'fatherAge', e.target.value)} className="form-input" style={{ width: '70px' }} placeholder="..." /></div>
+            <div className="form-group-row"><span className="form-label">Yas:</span><input type="number" min="0" value={wd.parents.fatherAge} onChange={e => updateWizardData('parents', 'fatherAge', sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '70px' }} placeholder="..." /></div>
             {renderOtherUnions('father')}
           </div>
         )}
@@ -587,27 +628,36 @@ export default function WizardPanel() {
           onAdd={(p1, p2) => addCustomConsanguinity(p1, p2)}
         />
 
-        {/* Mark any union as consanguineous */}
+        {/* Union relationship background (v0.3a.2) — replaces the old
+            single consanguinity checkbox with the full model: not asked /
+            no consanguinity reported / consanguinity reported / same
+            village-origin / unknown. See relationshipBackground.js. */}
         {pedigreeData?.unions?.length > 0 && (
           <div style={{ marginTop: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '8px' }}>
             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
-              Evlilikleri Akraba Olarak Isaretle
+              Birliklerin Akrabalık / İlişki Geçmişi
             </div>
             {pedigreeData.unions.map(u => (
-              <label key={u.id} className="checkbox-label" style={{ fontSize: '0.72rem', marginBottom: '2px' }}>
-                <input
-                  type="checkbox"
-                  checked={!!(wd.consanguineousUnions || {})[u.id] || u.consanguineous}
+              <div key={u.id} style={{ marginBottom: '6px' }}>
+                <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{u.id} ({u.partners.join(' + ')})</div>
+                <select
+                  value={u.relationshipBackground || 'not_asked'}
                   disabled={u.id === 'U_PARENTS' && wd.parents.consanguineous}
-                  onChange={e => markUnionConsanguineous(u.id, e.target.checked)}
-                />
-                {u.id} ({u.partners.join(' + ')})
-              </label>
+                  onChange={e => setUnionRelationshipBackground(u.id, e.target.value)}
+                  className="form-input"
+                  style={{ fontSize: '0.7rem', padding: '3px' }}
+                >
+                  {RELATIONSHIP_BACKGROUND_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
             ))}
           </div>
         )}
       </Accordion>
 
+      <LayerHeader label="Genişletilmiş Aile" />
       {/* ── 5-6. MATERNAL / PATERNAL ── */}
       {renderRelatives('maternalRelatives', '5. Anne Tarafi', 'Dayi', 'Teyze')}
       {renderRelatives('paternalRelatives', '6. Baba Tarafi', 'Amca', 'Hala')}
@@ -641,6 +691,7 @@ export default function WizardPanel() {
         ))}
       </Accordion>
 
+      <LayerHeader label="İleri Seçenekler" />
       {/* ── 10. GEN 4 / ILERI ── */}
       <Accordion title="10. Ileri Akrabalar (4. Jen.)" summary={`${wd.gen4.length} kayit`}>
         {wd.gen4.map((g, idx) => {

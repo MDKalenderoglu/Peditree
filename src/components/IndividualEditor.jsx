@@ -1,18 +1,6 @@
 import { computeSiblingCreationPlan } from '../state/usePedigreeStore';
-
-/**
- * Lightweight local mirror of the store's isDirectEdit check (see
- * usePedigreeStore.js's computeDeletionPlan) — used only to decide the
- * button's enabled/disabled label here in the right-hand editor. The store
- * action re-validates independently regardless, so this is UI messaging
- * only, never the actual safety gate.
- */
-function isDirectEditIndividual(graphEdits, id) {
-  return (graphEdits || []).some(e =>
-    (e.type === 'addSpouse' && e.spouseId === id) ||
-    (e.type === 'addChild' && e.childId === id)
-  );
-}
+import { sanitizeAgeValue } from '../utils/ageValidation';
+import { RELATIONSHIP_BACKGROUND_OPTIONS } from '../utils/relationshipBackground';
 
 /** Two individuals selected via Cmd/Ctrl-click — pair-level quick actions. */
 function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSiblings, onClearSelection }) {
@@ -89,7 +77,7 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
 export default function IndividualEditor({
   node, node2, pedigreeData, onUpdate, onAddSpouse, onAddChild, onSetProband, onClearProband,
   graphEdits, onRemoveGraphEdit, onDeleteIndividual, onCreateUnion, onMakeSiblings,
-  onClearSelection, onReorderChild, onMarkUnionConsanguineous,
+  onClearSelection, onReorderChild, onSetUnionRelationshipBackground,
 }) {
   // Two individuals selected (Cmd/Ctrl-click) — show the pair action panel
   // instead of the single-person editor, regardless of which one would
@@ -190,20 +178,27 @@ export default function IndividualEditor({
                   Birlik: {node.displayLabel || node.label || node.id} + {partner?.displayLabel || partner?.label || partnerId}
                   {children.length > 0 && <span> ({children.length} cocuk)</span>}
                 </div>
-                {onMarkUnionConsanguineous && (
-                  <label className="checkbox-label" style={{ fontSize: '0.68rem', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <input
-                      type="checkbox"
-                      checked={!!u.consanguineous}
-                      onChange={e => onMarkUnionConsanguineous(u.id, e.target.checked)}
-                    />
-                    Akraba evliliği olarak işaretle
-                    {u.consanguineous && (
-                      <span style={{ color: u.consanguinityStatus === 'known_supported' ? '#166534' : '#b45309' }}>
-                        {u.consanguinityStatus === 'known_supported' ? '(siyah çift çizgi)' : '(turuncu kesikli çift çizgi + "?" — ortak ata henüz çözümlenmedi)'}
-                      </span>
+                {onSetUnionRelationshipBackground && (
+                  <div style={{ marginBottom: '4px' }}>
+                    <div style={{ fontSize: '0.68rem', color: '#475569', marginBottom: '2px' }}>Akrabalık / İlişki Geçmişi</div>
+                    <select
+                      value={u.relationshipBackground || 'not_asked'}
+                      onChange={e => onSetUnionRelationshipBackground(u.id, e.target.value)}
+                      className="form-input"
+                      style={{ fontSize: '0.7rem', padding: '3px' }}
+                    >
+                      {RELATIONSHIP_BACKGROUND_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                    {(u.relationshipBackground === 'consanguinity_reported' || u.relationshipBackground === 'consanguinity_structurally_supported') && (
+                      <div style={{ fontSize: '0.65rem', marginTop: '2px', color: u.relationshipBackground === 'consanguinity_structurally_supported' ? '#166534' : '#b45309' }}>
+                        {u.relationshipBackground === 'consanguinity_structurally_supported'
+                          ? 'Ortak ata grafikte kuruldu — siyah çift çizgi.'
+                          : 'Ortak ata grafikte henüz kurulmadı — turuncu kesikli çift çizgi (bildirilen akrabalık kaybolmaz).'}
+                      </div>
                     )}
-                  </label>
+                  </div>
                 )}
                 <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                   <button
@@ -263,14 +258,15 @@ export default function IndividualEditor({
           />
         </div>
 
-        {/* Age */}
+        {/* Age — v0.3a.2: negative values are clamped to 0, never stored. */}
         {!isLoss && (
           <div className="form-group">
             <label className="form-label">Yas</label>
             <input
               type="number"
+              min="0"
               value={node.age || ''}
-              onChange={e => onUpdate(node.id, { age: e.target.value })}
+              onChange={e => onUpdate(node.id, { age: sanitizeAgeValue(e.target.value) })}
               className="form-input"
               placeholder="Opsiyonel"
               style={{ width: '80px' }}
@@ -292,14 +288,15 @@ export default function IndividualEditor({
           </div>
         )}
 
-        {/* Age at death — only shown when deceased */}
+        {/* Age at death — only shown when deceased. Negative values clamped to 0. */}
         {!!node.deceased && !isLoss && (
           <div className="form-group">
             <label className="form-label">Olum Yasi</label>
             <input
               type="number"
+              min="0"
               value={node.ageAtDeath || ''}
-              onChange={e => onUpdate(node.id, { ageAtDeath: e.target.value })}
+              onChange={e => onUpdate(node.id, { ageAtDeath: sanitizeAgeValue(e.target.value) })}
               className="form-input"
               placeholder="Opsiyonel"
               style={{ width: '80px' }}
@@ -460,22 +457,21 @@ export default function IndividualEditor({
           </div>
         )}
 
-        {/* Delete selected individual (v0.3a.1) — only ever safe for
-            individuals added via a direct graph edit (spouse/child added
-            through this same panel). Wizard-derived core individuals
-            (mother, father, siblings, collateral relatives, ...) cannot be
-            freely deleted without the wizard/graph dependency inversion
-            CLAUDE.md flags as future work — attempting it here would either
-            silently resurrect them on the next rebuild or require mutating
-            wizard counts as a side effect, which this hotfix does not
-            attempt. The store's deleteIndividual re-validates independently
-            regardless of what this button shows. */}
+        {/* Delete selected individual (v0.3a.1, generalized v0.3a.2) — any
+            individual can now be deleted, regardless of whether they came
+            from the wizard or a direct edit (a "delete anyone" overlay —
+            see graphDeletion.js — filters them out post-build rather than
+            mutating wizard counts). The only remaining restriction is the
+            proband: deleting them is blocked, asking the user to reassign
+            proband first, rather than silently leaving zero probands as a
+            side effect. The store's deleteIndividual re-validates
+            independently regardless of what this button shows. */}
         {onDeleteIndividual && (
           <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
-            {isDirectEditIndividual(graphEdits, node.id) && !node.proband ? (
+            {!node.proband ? (
               <button
                 onClick={() => {
-                  if (window.confirm(`"${node.displayLabel || node.label || node.id}" silinsin mi? Bağlı doğrudan eklemeler (eş/çocuklar) de birlikte silinecek.`)) {
+                  if (window.confirm(`"${node.displayLabel || node.label || node.id}" silinsin mi? Bağlı birlik(ler) kaldırılacak; çocuklar silinmez, sadece bu ebeveyn bağlantısı kaldırılır.`)) {
                     onDeleteIndividual(node.id);
                   }
                 }}
@@ -489,9 +485,7 @@ export default function IndividualEditor({
               </button>
             ) : (
               <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
-                {node.proband
-                  ? 'Proband silinemez — önce başka bir bireyi proband yapın.'
-                  : 'Bu birey sihirbaz verisinden türetildi, doğrudan silinemez.'}
+                Proband silinemez — önce başka bir bireyi proband yapın.
               </div>
             )}
           </div>

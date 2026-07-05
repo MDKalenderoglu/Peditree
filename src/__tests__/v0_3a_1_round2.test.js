@@ -73,11 +73,12 @@ describe('v0.3a.1 round 2 — reported_unresolved still renders a double line', 
     expect(countLinesInCase(canvasSource, 'consanguineousUnionUnresolved')).toBe(2);
   });
 
-  it('reported_unresolved still carries a distinguishing "?" marker (internal distinction preserved)', () => {
+  it('reported_unresolved still carries a distinguishing neutral label, not a "?" (v0.3a.2 fix)', () => {
     const caseStart = canvasSource.indexOf("case 'consanguineousUnionUnresolved'");
     const nextCaseStart = canvasSource.indexOf("case '", caseStart + 1);
     const block = canvasSource.slice(caseStart, nextCaseStart);
-    expect(block).toContain('akrabalık');
+    expect(block).toContain('Akrabalık bildirildi');
+    expect(block).not.toContain('? akrabalık');
     expect(block).toContain('#d97706'); // amber — visually distinct from known_supported's default edge color
   });
 });

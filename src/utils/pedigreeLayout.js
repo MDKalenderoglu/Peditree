@@ -16,6 +16,8 @@
  * These types are NEVER mixed. A sibship line is NEVER a union line.
  */
 
+import { relationshipBackgroundToEdgeInfo } from './relationshipBackground';
+
 export function computePedigreeLayout(data) {
 
 
@@ -559,21 +561,24 @@ export function computePedigreeLayout(data) {
     const unionY = yPos[leftId];
 
     // --- UNION LINE ---
-    // Rendering keys off consanguinityStatus, NOT the raw `consanguineous`
-    // flag. Both consanguinity states render a DOUBLE union line (a
-    // clinician-declared consanguineous union must always be visibly
-    // double-lined, per pedigree nomenclature) — they differ only in style:
-    // a union whose shared-ancestor path was actually built ('known_supported')
-    // gets the standard solid black double line; a union that was merely
-    // declared consanguineous with no backing structure ('reported_unresolved')
-    // gets an amber dashed double line + a "?" marker instead (see
-    // PedigreeCanvas.jsx). This still never asserts a shared ancestor that
-    // isn't in the graph (CLAUDE.md non-negotiable rule #4) — the amber/dashed
-    // styling communicates "declared, not confirmed," not "no relationship."
-    const edgeType =
-      u.consanguinityStatus === 'known_supported' ? 'consanguineousUnion' :
-      u.consanguinityStatus === 'reported_unresolved' ? 'consanguineousUnionUnresolved' :
-      'union';
+    // v0.3a.2: rendering keys off the explicit `relationshipBackground`
+    // field (see relationshipBackground.js), not consanguinityStatus
+    // directly — every union is guaranteed to have a relationshipBackground
+    // by the end of pedigreeBuilderFromWizard.js's stage 10b. Both
+    // consanguinity states render a DOUBLE union line (a clinician-declared
+    // consanguineous union must always be visibly double-lined, per
+    // pedigree nomenclature) — they differ only in style: a union whose
+    // shared-ancestor path was actually built gets the standard solid black
+    // double line; a union merely declared consanguineous with no backing
+    // structure gets an amber dashed double line instead (see
+    // PedigreeCanvas.jsx) — no "?" marker, since a question mark reads as
+    // doubt about the clinician's report rather than "not yet structurally
+    // confirmed." Non-consanguinity backgrounds (same village/origin, no
+    // consanguinity reported, unknown) render as a normal single union line
+    // with an optional neutral note — same_village_or_same_origin in
+    // particular must NEVER render as a double line, since it is explicitly
+    // not a claim of blood relationship.
+    const { edgeType, noteText } = relationshipBackgroundToEdgeInfo(u.relationshipBackground);
     edges.push({
       type: edgeType,
       x1: leftX + NODE_HALF,
@@ -581,6 +586,8 @@ export function computePedigreeLayout(data) {
       x2: rightX - NODE_HALF,
       y2: unionY,
       unionId: u.id,
+      relationshipBackground: u.relationshipBackground,
+      noteText,
     });
 
     // --- DIVORCE/SEPARATION SLASH ---

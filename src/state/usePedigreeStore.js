@@ -6,6 +6,8 @@ import { auditPedigreeGraph } from '../utils/graphIntegrity';
 import { auditLayoutIntegrity } from '../utils/layoutIntegrity';
 import { saveSession, loadSession, clearSession } from '../utils/persistence';
 import { moveChildInOrder } from '../utils/childOrdering';
+import { applyIndividualDeletions } from '../utils/graphDeletion';
+import { introducesNewGraphErrors, describeNewGraphErrors } from '../utils/relationshipSafety';
 
 /**
  * Tag each issue with which auditor produced it, so callers (export gating,
@@ -37,25 +39,25 @@ function tagIssues(issues, source) {
  * @returns {{ ok: boolean, reason?: string, cascadeIndividualIds?: string[], cascadeUnionIds?: string[], cascadeEditIndices?: number[] }}
  */
 export function computeDeletionPlan(wizardData, pedigreeData, targetId) {
-  const graphEdits = wizardData.graphEdits || [];
-  const targetInd = (pedigreeData.individuals || []).find(i => i.id === targetId);
+  const individuals = pedigreeData.individuals || [];
+  const unions = pedigreeData.unions || [];
+  const pcrs = pedigreeData.parentChildRelationships || [];
 
+  const targetInd = individuals.find(i => i.id === targetId);
   if (!targetInd) {
     return { ok: false, reason: 'Birey grafikte bulunamadı.' };
   }
 
-  const isDirectEdit = graphEdits.some(e =>
-    (e.type === 'addSpouse' && e.spouseId === targetId) ||
-    (e.type === 'addChild' && e.childId === targetId)
-  );
-  if (!isDirectEdit) {
-    return {
-      ok: false,
-      reason: 'Bu birey sihirbaz (wizard) verisinden türetildi — doğrudan silinemez. ' +
-        'Bunun yerine ilgili sihirbaz alanını (kardeş sayısı, akraba sayısı vb.) güncelleyin.',
-    };
-  }
-
+  // v0.3a.2: deletion is no longer restricted to direct-edit individuals —
+  // per spec, the user must be able to correct any mistake they made,
+  // including a wizard-derived individual, once they've explicitly selected
+  // and confirmed it. The one deliberate remaining restriction is the
+  // proband: rather than silently leaving the pedigree with zero probands
+  // as a side effect of an unrelated delete, this blocks and asks the user
+  // to reassign proband first — the safer of the two choices the spec
+  // explicitly allows, and consistent with how setProband/clearProband
+  // already treat "no proband" as an action the user takes deliberately,
+  // not a side effect.
   if (targetInd.proband) {
     return {
       ok: false,
@@ -63,56 +65,25 @@ export function computeDeletionPlan(wizardData, pedigreeData, targetId) {
     };
   }
 
-  // Transitive closure over graphEdits: collect every edit that structurally
-  // depends on targetId (or on any individual/union already collected).
-  const removedIndividualIds = new Set([targetId]);
-  const removedUnionIds = new Set();
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const edit of graphEdits) {
-      if (edit.type === 'addSpouse') {
-        if (removedIndividualIds.has(edit.targetId) || removedIndividualIds.has(edit.spouseId)) {
-          if (!removedIndividualIds.has(edit.spouseId)) { removedIndividualIds.add(edit.spouseId); changed = true; }
-          if (!removedUnionIds.has(edit.unionId)) { removedUnionIds.add(edit.unionId); changed = true; }
-        }
-      } else if (edit.type === 'addChild') {
-        if (removedUnionIds.has(edit.unionId) && !removedIndividualIds.has(edit.childId)) {
-          removedIndividualIds.add(edit.childId);
-          changed = true;
-        }
-      } else if (edit.type === 'linkPartners') {
-        if (removedIndividualIds.has(edit.person1) || removedIndividualIds.has(edit.person2)) {
-          if (!removedUnionIds.has(edit.unionId)) { removedUnionIds.add(edit.unionId); changed = true; }
-        }
-      }
-    }
-  }
-
-  const cascadeContainsProband = (pedigreeData.individuals || []).some(
-    i => i.proband && removedIndividualIds.has(i.id)
-  );
-  if (cascadeContainsProband) {
-    return {
-      ok: false,
-      reason: 'Bu silme işlemi proband bireyi de kapsayacaktı — önce proband atamasını değiştirin.',
-    };
-  }
-
-  const cascadeEditIndices = [];
-  graphEdits.forEach((edit, idx) => {
-    const touchesRemoved =
-      (edit.type === 'addSpouse' && (removedIndividualIds.has(edit.spouseId) || removedIndividualIds.has(edit.targetId))) ||
-      (edit.type === 'addChild' && (removedIndividualIds.has(edit.childId) || removedUnionIds.has(edit.unionId))) ||
-      (edit.type === 'linkPartners' && (removedIndividualIds.has(edit.person1) || removedIndividualIds.has(edit.person2) || removedUnionIds.has(edit.unionId)));
-    if (touchesRemoved) cascadeEditIndices.push(idx);
-  });
+  // Preview data for the confirmation dialog: which unions this person is a
+  // partner in (these unions are removed entirely — a union needs exactly
+  // two partners), and which children are affected (they are NOT deleted;
+  // they lose their link to the removed union and become parent-less,
+  // exactly like any other "orphan" individual this app already tolerates
+  // as a warning, not an error).
+  const affectedUnionIds = unions.filter(u => (u.partners || []).includes(targetId)).map(u => u.id);
+  const affectedChildIds = [...new Set(
+    pcrs
+      .filter(rel => affectedUnionIds.includes(rel.unionId))
+      .flatMap(rel => rel.children)
+      .filter(cid => cid !== targetId)
+  )];
 
   return {
     ok: true,
-    cascadeIndividualIds: [...removedIndividualIds],
-    cascadeUnionIds: [...removedUnionIds],
-    cascadeEditIndices,
+    targetId,
+    affectedUnionIds,
+    affectedChildIds,
   };
 }
 
@@ -367,7 +338,15 @@ function generateDerivedData(wizardData, currentPedigreeData) {
   // Run migration from legacy siblingOrder if needed
   wizardData.childOrders = migrateSiblingOrder(wizardData);
 
-  const newGraph = buildPedigreeFromWizard(wizardData);
+  let newGraph = buildPedigreeFromWizard(wizardData);
+
+  // v0.3a.2 generic "delete anyone" overlay — applied post-build, before
+  // any audit runs, so the audit reflects the pedigree the user actually
+  // sees (post-deletion), not a stale pre-deletion state. See
+  // graphDeletion.js for what this does and does not do.
+  if (wizardData.deletedIndividualIds && wizardData.deletedIndividualIds.length > 0) {
+    newGraph = applyIndividualDeletions(newGraph, wizardData.deletedIndividualIds);
+  }
 
   // ── Graph integrity audit (detect-only, never mutates) ──
   const graphIssues = tagIssues(auditPedigreeGraph(newGraph), 'graph');
@@ -469,9 +448,9 @@ function mergeWithDefaults(loaded) {
   const nestedObjectKeys = [
     'proband', 'siblings', 'parents', 'maternalRelatives', 'paternalRelatives',
     'maternalGPRelatives', 'paternalGPRelatives', 'greatGrandparents',
-    'childOrders', 'manualEdits', 'consanguineousUnions',
+    'childOrders', 'manualEdits', 'consanguineousUnions', 'unionRelationshipBackgrounds',
   ];
-  const arrayKeys = ['customConsanguinity', 'gen4', 'graphEdits'];
+  const arrayKeys = ['customConsanguinity', 'gen4', 'graphEdits', 'deletedIndividualIds'];
 
   const merged = { ...base, ...loaded };
   nestedObjectKeys.forEach(key => {
@@ -529,18 +508,21 @@ export const usePedigreeStore = create((zSet, get) => {
   /**
    * Tracked setter used by every wizardData-mutating action below. Records
    * the *previous* wizardData onto a bounded undo stack whenever an action
-   * actually changes it, so `undo()` can restore it later. Selection state
+   * actually changes it, so `undo()` can restore it later. Also clears the
+   * redo stack (`_future`) — any new mutation after an undo invalidates
+   * whatever was undone, per the v0.3a.2 spec ("any new graph mutation
+   * after undo must clear redo stack"). Selection state
    * (`selectedId`/`selectedId2`) lives in this same store for convenient
    * access from every panel, but its own setters (`selectIndividual`,
    * `clearSelection`) intentionally use the raw `zSet`, bypassing this
    * tracked wrapper — selection is pure UI state and is deliberately
-   * excluded from undo per the v0.3a.1 spec ("undo does not need to cover
-   * pure UI selection changes").
+   * excluded from undo/redo per spec ("selection changes do not pollute
+   * undo/redo").
    *
-   * `resetPedigree` and `undo` itself intentionally bypass this and call
-   * the raw `zSet` directly — reset clears the undo stack outright rather
-   * than pushing itself as an undoable step, and undo must not push its own
-   * restoration back onto the stack it is popping from.
+   * `resetPedigree`, `undo`, and `redo` all intentionally bypass this and
+   * call the raw `zSet` directly — reset clears both stacks outright rather
+   * than pushing itself as an undoable step, and undo/redo must not push
+   * their own restoration back onto the stack they are popping from.
    */
   const set = (updater) => {
     const prevWizardData = get().wizardData;
@@ -549,6 +531,7 @@ export const usePedigreeStore = create((zSet, get) => {
     if (nextWizardData !== prevWizardData) {
       zSet((state) => ({
         _history: [...(state._history || []), prevWizardData].slice(-MAX_UNDO_HISTORY),
+        _future: [],
       }));
     }
   };
@@ -556,10 +539,13 @@ export const usePedigreeStore = create((zSet, get) => {
   return {
   ...bootstrapState(),
   _history: [],
+  _future: [],
   // Selection (v0.3a.1) — which individual(s) are currently highlighted.
   // At most two at a time (primary + secondary via Cmd/Ctrl-click).
   selectedId: null,
   selectedId2: null,
+  // Dismissed warnings (v0.3a.2) — stable content-derived IDs, see warningIds.js.
+  dismissedWarningIds: [],
 
   // ────────────────────────────────────────────────────
   // Selection (not undoable — see `set` docblock above)
@@ -585,6 +571,22 @@ export const usePedigreeStore = create((zSet, get) => {
 
   /** Clear both selection slots. */
   clearSelection: () => zSet(() => ({ selectedId: null, selectedId2: null })),
+
+  // ────────────────────────────────────────────────────
+  // Dismissible warnings (v0.3a.2 — not undoable, see `set` docblock above)
+  // ────────────────────────────────────────────────────
+
+  /**
+   * Dismiss a warning/integrity issue by its stable content-derived ID
+   * (see warningIds.js). Dismissal is pure UI state, not a graph mutation —
+   * it uses the raw `zSet`, bypassing undo/redo tracking, exactly like
+   * selection. A dismissed warning stays hidden until the underlying
+   * condition changes (its content-derived ID changes) or the pedigree is
+   * reset.
+   */
+  dismissWarning: (warningId) => zSet((state) => ({
+    dismissedWarningIds: [...new Set([...(state.dismissedWarningIds || []), warningId])],
+  })),
 
   updateWizardData: (section, field, value) => set((state) => {
     const wd = JSON.parse(JSON.stringify(state.wizardData));
@@ -696,6 +698,18 @@ export const usePedigreeStore = create((zSet, get) => {
    * the user hit the silent no-op.
    */
   addCustomConsanguinity: (person1, person2) => set((state) => {
+    // Re-validate independently of whatever the calling UI already
+    // checked (same pattern as deleteIndividual/createUnionBetween) — this
+    // action is never unsafe to call directly, regardless of caller.
+    const plan = computeSiblingCreationPlan(state.pedigreeData, person1, person2);
+    if (!plan.ok) {
+      console.warn('[usePedigreeStore] addCustomConsanguinity blocked:', plan.reason);
+      return {};
+    }
+    if (plan.action === 'noop') {
+      return {}; // already siblings — nothing to do
+    }
+
     const wd = JSON.parse(JSON.stringify(state.wizardData));
     if (!wd.customConsanguinity) wd.customConsanguinity = [];
     wd.customConsanguinity.push({
@@ -704,7 +718,17 @@ export const usePedigreeStore = create((zSet, get) => {
       person1,
       person2,
     });
+
+    // v0.3a.2 safety net: "make siblings" is the other action most likely
+    // to silently produce a broken pedigree (see relationshipSafety.js) —
+    // build the trial result before committing and roll back if it
+    // introduces a new graph-integrity error.
     const derived = generateDerivedData(wd, state.pedigreeData);
+    if (introducesNewGraphErrors(state.integrityIssues, derived.integrityIssues)) {
+      const reason = describeNewGraphErrors(state.integrityIssues, derived.integrityIssues);
+      console.warn('[usePedigreeStore] addCustomConsanguinity rolled back — would introduce a graph error:', reason);
+      return {};
+    }
     return { wizardData: wd, ...derived };
   }),
 
@@ -716,10 +740,33 @@ export const usePedigreeStore = create((zSet, get) => {
     return { wizardData: wd, ...derived };
   }),
 
+  /**
+   * Legacy (pre-v0.3a.2) boolean consanguinity flag. Kept for backward
+   * compatibility with old saved sessions and existing callers — new UI
+   * should use `setUnionRelationshipBackground` instead, which expresses
+   * the full relationshipBackground model (see relationshipBackground.js).
+   */
   markUnionConsanguineous: (unionId, value) => set((state) => {
     const wd = JSON.parse(JSON.stringify(state.wizardData));
     if (!wd.consanguineousUnions) wd.consanguineousUnions = {};
     wd.consanguineousUnions[unionId] = value;
+    const derived = generateDerivedData(wd, state.pedigreeData);
+    return { wizardData: wd, ...derived };
+  }),
+
+  /**
+   * v0.3a.2 — set a union's full relationshipBackground (not_asked /
+   * no_consanguinity_reported / consanguinity_reported /
+   * same_village_or_same_origin / unknown). See relationshipBackground.js
+   * and pedigreeBuilderFromWizard.js stage 10b for how this is resolved
+   * into rendering. `consanguinity_structurally_supported` is never set
+   * directly here — it is derived by the builder from
+   * `consanguinity_reported` plus the graph's own shared-ancestor check.
+   */
+  setUnionRelationshipBackground: (unionId, value) => set((state) => {
+    const wd = JSON.parse(JSON.stringify(state.wizardData));
+    if (!wd.unionRelationshipBackgrounds) wd.unionRelationshipBackgrounds = {};
+    wd.unionRelationshipBackgrounds[unionId] = value;
     const derived = generateDerivedData(wd, state.pedigreeData);
     return { wizardData: wd, ...derived };
   }),
@@ -978,7 +1025,7 @@ export const usePedigreeStore = create((zSet, get) => {
    * state. Uses the raw `zSet`, not the tracked `set`, so reset is a hard
    * clean-slate action: it clears the undo stack outright (`_history: []`)
    * rather than becoming itself an undoable step. Also clears selection
-   * (both slots) so no stale selected-individual reference survives into
+   * (both slots) and dismissed warnings so no stale UI state survives into
    * the fresh pedigree.
    */
   resetPedigree: () => zSet(() => {
@@ -987,23 +1034,27 @@ export const usePedigreeStore = create((zSet, get) => {
     return {
       wizardData: clean,
       _history: [],
+      _future: [],
       selectedId: null,
       selectedId2: null,
+      dismissedWarningIds: [],
       ...generateDerivedData(clean, EMPTY_GRAPH),
     };
   }),
 
   // ────────────────────────────────────────────────────
-  // Undo
+  // Undo / Redo
   // ────────────────────────────────────────────────────
 
   /**
    * Revert exactly one graph-changing step by restoring the previous
-   * wizardData snapshot from the bounded undo stack (see `set` above).
-   * Never throws: if the restored snapshot somehow fails to rebuild (it
-   * shouldn't, since every snapshot on the stack once built successfully),
-   * the undo is aborted rather than leaving the store in a broken state —
-   * mirroring `bootstrapState()`'s own defensive rebuild handling.
+   * wizardData snapshot from the bounded undo stack (see `set` above),
+   * pushing the current (pre-undo) wizardData onto the redo stack
+   * (`_future`) so `redo()` can bring it back. Never throws: if the
+   * restored snapshot somehow fails to rebuild (it shouldn't, since every
+   * snapshot on the stack once built successfully), the undo is aborted
+   * rather than leaving the store in a broken state — mirroring
+   * `bootstrapState()`'s own defensive rebuild handling.
    */
   undo: () => zSet((state) => {
     const history = state._history || [];
@@ -1017,20 +1068,48 @@ export const usePedigreeStore = create((zSet, get) => {
       console.error('[usePedigreeStore] undo: restored wizardData failed to rebuild — aborting undo.', err);
       return {};
     }
-    return { wizardData: prev, _history: nextHistory, ...derived };
+    const future = [...(state._future || []), state.wizardData].slice(-MAX_UNDO_HISTORY);
+    return { wizardData: prev, _history: nextHistory, _future: future, ...derived };
+  }),
+
+  /**
+   * Reapply exactly one previously-undone graph-changing step by restoring
+   * the most recent snapshot from the redo stack (`_future`), pushing the
+   * current (pre-redo) wizardData back onto the undo stack so a further
+   * `undo()` can reverse the redo itself. No-op if the redo stack is empty
+   * (nothing to redo) or if the snapshot fails to rebuild.
+   */
+  redo: () => zSet((state) => {
+    const future = state._future || [];
+    if (future.length === 0) return {};
+    const next = future[future.length - 1];
+    const nextFuture = future.slice(0, -1);
+    let derived;
+    try {
+      derived = generateDerivedData(JSON.parse(JSON.stringify(next)), EMPTY_GRAPH);
+    } catch (err) {
+      console.error('[usePedigreeStore] redo: snapshot failed to rebuild — aborting redo.', err);
+      return {};
+    }
+    const history = [...(state._history || []), state.wizardData].slice(-MAX_UNDO_HISTORY);
+    return { wizardData: next, _history: history, _future: nextFuture, ...derived };
   }),
 
   // ────────────────────────────────────────────────────
-  // Selected-individual deletion (v0.3a.1)
+  // Selected-individual deletion (v0.3a.1, generalized v0.3a.2)
   // ────────────────────────────────────────────────────
 
   /**
-   * Delete a direct-graph-edit individual and its dependent cascade (see
-   * `computeDeletionPlan`). No-op (does not mutate state) if the plan is
-   * not `ok` — callers should check `computeDeletionPlan` first to decide
-   * whether to show a plain delete button or a blocked explanation, but
-   * this action re-checks internally regardless so it is never unsafe to
-   * call directly.
+   * Delete ANY individual (v0.3a.2 — no longer restricted to direct-edit
+   * individuals; see `computeDeletionPlan`'s docblock). Uses the
+   * `deletedIndividualIds` post-build overlay (graphDeletion.js) rather
+   * than mutating wizard counts, so it works uniformly regardless of
+   * whether the individual came from the wizard or a direct edit.
+   *
+   * No-op (does not mutate state) if the plan is not `ok` — callers should
+   * check `computeDeletionPlan` first to decide whether to show a plain
+   * delete button or a blocked explanation, but this action re-checks
+   * internally regardless so it is never unsafe to call directly.
    */
   deleteIndividual: (id) => set((state) => {
     const plan = computeDeletionPlan(state.wizardData, state.pedigreeData, id);
@@ -1040,34 +1119,35 @@ export const usePedigreeStore = create((zSet, get) => {
     }
 
     const wd = JSON.parse(JSON.stringify(state.wizardData));
-    const removeEditIdx = new Set(plan.cascadeEditIndices);
-    wd.graphEdits = (wd.graphEdits || []).filter((_, idx) => !removeEditIdx.has(idx));
+    if (!wd.deletedIndividualIds) wd.deletedIndividualIds = [];
+    if (!wd.deletedIndividualIds.includes(id)) wd.deletedIndividualIds.push(id);
 
     // Clean up per-individual/union overlays so no dangling references
     // survive the deletion (displayLabel/notes/conditions, child ordering,
-    // custom-sibling links, consanguinity flags for a now-gone union).
-    if (wd.manualEdits) {
-      plan.cascadeIndividualIds.forEach(rid => { delete wd.manualEdits[rid]; });
-    }
-    if (wd.childOrders) {
-      (plan.cascadeUnionIds || []).forEach(uid => { delete wd.childOrders[uid]; });
-    }
+    // custom-sibling links, consanguinity/relationship-background flags for
+    // a now-gone union). Only the target's own overlays and the unions it
+    // directly partnered in are cleaned — affected children are NOT
+    // touched here; they remain in the graph, simply without a parent link
+    // to the removed union (graphDeletion.js handles that structurally).
+    if (wd.manualEdits) delete wd.manualEdits[id];
     if (Array.isArray(wd.customConsanguinity)) {
       wd.customConsanguinity = wd.customConsanguinity.filter(
-        link => !plan.cascadeIndividualIds.includes(link.person1) && !plan.cascadeIndividualIds.includes(link.person2)
+        link => link.person1 !== id && link.person2 !== id
       );
     }
-    if (wd.consanguineousUnions) {
-      (plan.cascadeUnionIds || []).forEach(uid => { delete wd.consanguineousUnions[uid]; });
-    }
+    (plan.affectedUnionIds || []).forEach(uid => {
+      if (wd.childOrders) delete wd.childOrders[uid];
+      if (wd.consanguineousUnions) delete wd.consanguineousUnions[uid];
+      if (wd.unionRelationshipBackgrounds) delete wd.unionRelationshipBackgrounds[uid];
+    });
 
     const derived = generateDerivedData(wd, state.pedigreeData);
 
-    // Move selection to a safe fallback: clear any slot that pointed at a
+    // Move selection to a safe fallback: clear any slot that pointed at the
     // removed individual (no attempt to guess a "next" node — an explicit
     // clear is the safer default the v0.3a.1 spec allows).
-    const clearedSelectedId = plan.cascadeIndividualIds.includes(state.selectedId) ? null : state.selectedId;
-    const clearedSelectedId2 = plan.cascadeIndividualIds.includes(state.selectedId2) ? null : state.selectedId2;
+    const clearedSelectedId = state.selectedId === id ? null : state.selectedId;
+    const clearedSelectedId2 = state.selectedId2 === id ? null : state.selectedId2;
 
     return {
       wizardData: wd,
@@ -1108,7 +1188,17 @@ export const usePedigreeStore = create((zSet, get) => {
       wd.consanguineousUnions[unionId] = true;
     }
 
+    // v0.3a.2 safety net: build the trial result before committing. "Make
+    // partners" is one of the two actions most likely to silently produce
+    // an unreadable/broken pedigree (see relationshipSafety.js) — if this
+    // specific change introduces a NEW graph-integrity error that wasn't
+    // already present, roll back instead of committing a broken graph.
     const derived = generateDerivedData(wd, state.pedigreeData);
+    if (introducesNewGraphErrors(state.integrityIssues, derived.integrityIssues)) {
+      const reason = describeNewGraphErrors(state.integrityIssues, derived.integrityIssues);
+      console.warn('[usePedigreeStore] createUnionBetween rolled back — would introduce a graph error:', reason);
+      return {};
+    }
     return { wizardData: wd, ...derived };
   }),
 

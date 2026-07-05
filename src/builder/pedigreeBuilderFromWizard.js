@@ -68,6 +68,12 @@ export function buildPedigreeFromWizard(state) {
       //                           path engine, and CHECK 13)
       consanguinityStatus: opts.consanguinityStatus || 'none',
       status: opts.status || 'together',
+      // v0.3a.2 — explicit relationship-background field (see
+      // relationshipBackground.js). Left unset (null) here; a final pass
+      // near the end of the build (after all consanguinity mechanisms have
+      // run) fills in a coherent value for every union, whether or not it
+      // was explicitly declared via state.unionRelationshipBackgrounds.
+      relationshipBackground: opts.relationshipBackground || null,
     });
     return id;
   };
@@ -816,36 +822,85 @@ export function buildPedigreeFromWizard(state) {
   }
 
   // ========================================
-  // 10b (relocated). CUSTOM UNION CONSANGUINITY FLAGS
+  // 10b (relocated + extended v0.3a.2). RELATIONSHIP BACKGROUND / CONSANGUINITY
   // ========================================
-  // Mark any union as consanguineous (double-line rendering) without
-  // requiring the template system. Runs LAST among stage-10 sub-stages —
-  // after 10a (custom "make siblings" links) and 10c (direct graph edits,
-  // including the "make partners" linkPartners case above) — so shared
-  // ancestors created by either mechanism are visible to the ancestor walk
-  // below, no matter which stage introduced them.
+  // Runs LAST among stage-10 sub-stages — after 10a (custom "make siblings"
+  // links) and 10c (direct graph edits, including the "make partners"
+  // linkPartners case above) — so shared ancestors created by either
+  // mechanism are visible to the ancestor walk below, no matter which stage
+  // introduced them.
+  //
+  // v0.3a.2: replaces the old binary "akraba evliliği" checkbox with the
+  // full relationshipBackground model (see relationshipBackground.js) —
+  // not_asked / no_consanguinity_reported / consanguinity_reported /
+  // consanguinity_structurally_supported / same_village_or_same_origin /
+  // unknown. `state.consanguineousUnions` (legacy, pre-v0.3a.2) is still
+  // honored for backward compatibility with older saved sessions, but
+  // `state.unionRelationshipBackgrounds` takes priority when both exist for
+  // the same union.
+  const ancestorPromotion = (union) => {
+    if (union.consanguinityStatus === 'known_supported') return; // already resolved elsewhere
+    // Detect genuine shared ancestry instead of assuming there is none —
+    // this never fabricates anything: it only promotes to 'known_supported'
+    // when an intersection is found among ancestor nodes that already exist.
+    const [p1, p2] = union.partners;
+    const p1Ancestors = collectAncestors(p1);
+    const p2Ancestors = collectAncestors(p2);
+    const sharesRealAncestor = [...p1Ancestors].some(a => p2Ancestors.has(a));
+    union.consanguinityStatus = sharesRealAncestor ? 'known_supported' : 'reported_unresolved';
+  };
+
   if (state.consanguineousUnions) {
     for (const [unionId, isConsang] of Object.entries(state.consanguineousUnions)) {
       if (!isConsang) continue;
+      // New mechanism takes priority for this union — handled below instead.
+      if (state.unionRelationshipBackgrounds && state.unionRelationshipBackgrounds[unionId]) continue;
       const union = unions.find(u => u.id === unionId);
       if (!union) continue;
       union.consanguineous = true;
-      if (union.consanguinityStatus === 'known_supported') continue; // already resolved elsewhere
-
-      // v0.3a.1 fix: this mechanism used to be a bare declaration that
-      // ALWAYS fell back to 'reported_unresolved', even when the two
-      // partners already share a real ancestor node in the graph (e.g.
-      // linked via the "make siblings" mechanism and later partnered, or
-      // a cousin pairing built through direct edits). Detect genuine shared
-      // ancestry here instead of assuming there is none — this never
-      // fabricates anything: it only promotes to 'known_supported' when an
-      // intersection is found among ancestor nodes that already exist.
-      const [p1, p2] = union.partners;
-      const p1Ancestors = collectAncestors(p1);
-      const p2Ancestors = collectAncestors(p2);
-      const sharesRealAncestor = [...p1Ancestors].some(a => p2Ancestors.has(a));
-      union.consanguinityStatus = sharesRealAncestor ? 'known_supported' : 'reported_unresolved';
+      ancestorPromotion(union);
+      union.relationshipBackground = union.consanguinityStatus === 'known_supported'
+        ? 'consanguinity_structurally_supported'
+        : 'consanguinity_reported';
     }
+  }
+
+  if (state.unionRelationshipBackgrounds) {
+    for (const [unionId, declared] of Object.entries(state.unionRelationshipBackgrounds)) {
+      const union = unions.find(u => u.id === unionId);
+      if (!union) continue;
+      if (declared === 'consanguinity_reported') {
+        union.consanguineous = true;
+        ancestorPromotion(union);
+        // The clinician's *declaration* is "consanguinity_reported" either
+        // way — consanguinity_structurally_supported is what the RENDERED
+        // state becomes once a real shared ancestor is confirmed, per the
+        // same known_supported/reported_unresolved distinction this app
+        // has always drawn from consanguinityStatus.
+        union.relationshipBackground = union.consanguinityStatus === 'known_supported'
+          ? 'consanguinity_structurally_supported'
+          : 'consanguinity_reported';
+      } else {
+        // no_consanguinity_reported / same_village_or_same_origin / unknown
+        // / not_asked — none of these assert a blood relationship, so
+        // `consanguineous`/`consanguinityStatus` are left at their existing
+        // (default 'false'/'none') values. No ancestor structure is built
+        // or inferred for any of these.
+        union.relationshipBackground = declared;
+      }
+    }
+  }
+
+  // Final pass: every union gets a coherent relationshipBackground, even
+  // ones never touched by either mechanism above — e.g. the template
+  // first-cousin path (state.parents.consanguineous, stage 7) already sets
+  // consanguineous/consanguinityStatus directly without going through
+  // either map, and a plain non-consanguineous union has neither set at all.
+  for (const union of unions) {
+    if (union.relationshipBackground) continue; // already set above
+    union.relationshipBackground = union.consanguineous
+      ? (union.consanguinityStatus === 'known_supported' ? 'consanguinity_structurally_supported' : 'consanguinity_reported')
+      : 'not_asked';
   }
 
   // ========================================
