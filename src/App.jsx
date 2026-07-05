@@ -18,6 +18,7 @@ function App() {
     selectedId, selectedId2, selectIndividual, clearSelection,
     deleteIndividual, createUnionBetween, addCustomConsanguinity,
     reorderChild, setUnionRelationshipBackground,
+    addParentsTo, addSiblingTo,
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
   } = usePedigreeStore();
@@ -244,6 +245,8 @@ function App() {
           onClearSelection={clearSelection}
           onReorderChild={reorderChild}
           onSetUnionRelationshipBackground={setUnionRelationshipBackground}
+          onAddParents={addParentsTo}
+          onAddSibling={addSiblingTo}
         />
 
         <div style={{ marginTop: '30px', padding: '10px', background: '#f8fafc', borderRadius: '6px', fontSize: '11px', color: '#64748b', wordWrap: 'break-word' }}>

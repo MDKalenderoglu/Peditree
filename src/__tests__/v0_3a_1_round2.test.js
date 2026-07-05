@@ -44,42 +44,73 @@ function assertZeroErrors(issues) {
   expect(issues.filter(i => i.severity === 'error')).toHaveLength(0);
 }
 
-describe('v0.3a.1 round 2 — reported_unresolved still renders a double line', () => {
+describe('v0.3a.1 round 2 → v0.3a.3 — consanguinity renders as a plain solid black double line, no text, no color distinction', () => {
   const canvasSource = readFileSync(
     join(__dirname, '../components/PedigreeCanvas.jsx'),
     'utf-8'
   );
 
-  function countLinesInCase(source, caseLabel) {
-    const caseStart = source.indexOf(`case '${caseLabel}'`);
+  // v0.3a.3: consanguineousUnion and consanguineousUnionUnresolved are now
+  // a SINGLE shared case block (fall-through) — both edge types render
+  // identically. Locate that shared block by its two case labels.
+  function getSharedConsanguinityBlock(source) {
+    const caseStart = source.indexOf("case 'consanguineousUnion':");
     expect(caseStart).toBeGreaterThan(-1);
-    const nextCaseStart = source.indexOf("case '", caseStart + 1);
-    const defaultStart = source.indexOf('default:', caseStart + 1);
-    const blockEnd = nextCaseStart === -1
-      ? defaultStart
-      : (defaultStart === -1 ? nextCaseStart : Math.min(nextCaseStart, defaultStart));
-    const block = source.slice(caseStart, blockEnd === -1 ? undefined : blockEnd);
-    return (block.match(/g\.append\('line'\)/g) || []).length;
+    const secondLabelStart = source.indexOf("case 'consanguineousUnionUnresolved':", caseStart);
+    expect(secondLabelStart).toBeGreaterThan(caseStart);
+    // The two case labels must be adjacent (fall-through), with nothing but
+    // whitespace/the label itself between them.
+    const between = source.slice(caseStart + "case 'consanguineousUnion':".length, secondLabelStart);
+    expect(between.trim()).toBe('');
+    const nextCaseStart = source.indexOf("case '", secondLabelStart + 1);
+    return source.slice(secondLabelStart, nextCaseStart === -1 ? undefined : nextCaseStart);
   }
 
-  it('known_supported draws exactly two lines (the existing double-line case)', () => {
-    expect(countLinesInCase(canvasSource, 'consanguineousUnion')).toBe(2);
+  it('consanguineousUnion and consanguineousUnionUnresolved share the same rendering block (fall-through, no visual distinction)', () => {
+    // Asserted via getSharedConsanguinityBlock's own internal expectations.
+    expect(() => getSharedConsanguinityBlock(canvasSource)).not.toThrow();
   });
 
-  it('reported_unresolved ALSO draws exactly two lines, not one', () => {
-    // This is the core reviewer-flagged regression: this case previously
-    // drew a single amber dashed line. It must draw two, matching
-    // known_supported's line count, differing only in color/dash/marker.
-    expect(countLinesInCase(canvasSource, 'consanguineousUnionUnresolved')).toBe(2);
+  it('the shared consanguinity block draws exactly two solid lines', () => {
+    const block = getSharedConsanguinityBlock(canvasSource);
+    expect((block.match(/g\.append\('line'\)/g) || []).length).toBe(2);
   });
 
-  it('reported_unresolved still carries a distinguishing neutral label, not a "?" (v0.3a.2 fix)', () => {
-    const caseStart = canvasSource.indexOf("case 'consanguineousUnionUnresolved'");
+  it('the shared consanguinity block never uses stroke-dasharray (no dashed line)', () => {
+    const block = getSharedConsanguinityBlock(canvasSource);
+    expect(block).not.toMatch(/stroke-dasharray/);
+  });
+
+  it('the shared consanguinity block never uses the amber color or any non-standard edge color', () => {
+    const block = getSharedConsanguinityBlock(canvasSource);
+    expect(block).not.toContain('#d97706');
+  });
+
+  it('the shared consanguinity block never appends text (no canvas label of any kind)', () => {
+    const block = getSharedConsanguinityBlock(canvasSource);
+    expect(block).not.toMatch(/g\.append\('text'\)/);
+    expect(block).not.toContain('Akrabalık bildirildi');
+    expect(block).not.toContain('? akrabalık');
+  });
+
+  it('the plain "union" case (non-consanguinity backgrounds) never appends text either', () => {
+    const caseStart = canvasSource.indexOf("case 'union':");
     const nextCaseStart = canvasSource.indexOf("case '", caseStart + 1);
     const block = canvasSource.slice(caseStart, nextCaseStart);
-    expect(block).toContain('Akrabalık bildirildi');
-    expect(block).not.toContain('? akrabalık');
-    expect(block).toContain('#d97706'); // amber — visually distinct from known_supported's default edge color
+    expect(block).not.toMatch(/g\.append\('text'\)/);
+    expect(block).not.toContain('köy');
+    expect(block).not.toContain('bölge');
+  });
+
+  it('no relationship-line edge type (union/consanguineous/sibship/drop/stem/slash) ever appends text — generic scan of the whole edges.forEach switch', () => {
+    const switchStart = canvasSource.indexOf('edges.forEach(edge => {');
+    const switchEnd = canvasSource.indexOf('\n    });', switchStart);
+    const wholeSwitch = canvasSource.slice(switchStart, switchEnd);
+    // The only text this switch may ever produce is none at all — labels
+    // like individual names/ages/notes are drawn in a completely separate
+    // pass (nodeGroups.each(...), not edges.forEach), which this scan
+    // deliberately excludes.
+    expect(wholeSwitch).not.toMatch(/g\.append\('text'\)/);
   });
 });
 

@@ -104,22 +104,18 @@ export function validatePedigree(data) {
     // supported degrees left at an unresolved path, and arbitrary unions
     // flagged consanguineous via the "mark as consanguineous" mechanism.
     if (u.consanguinityStatus === 'reported_unresolved') {
-      // v0.3a.1 fix (round 2): the previous wording described this as a
-      // single-line/marker-only state. Per pedigree nomenclature, a
-      // clinician-declared consanguineous union must ALWAYS render as a
-      // visibly double relationship line — reported_unresolved is still
-      // drawn as a double line (amber, dashed, with a "?" marker), it is
-      // only visually distinguished from known_supported's solid black
-      // double line, never reduced to a single line. Adding the shared
-      // ancestor (via the wizard's consanguinity template, the "make
-      // siblings" link, or a direct union between two individuals who
-      // already share an ancestor) promotes it to the solid black double
-      // line, per pedigreeBuilderFromWizard.js stage 10b. The warning must
-      // describe the unresolved state, not assert a fixed non-drawing outcome.
+      // v0.3a.3 fix: a clinician-declared consanguineous union always
+      // renders as the SAME standard solid black double line on the
+      // canvas, whether or not the shared-ancestor path is also modeled in
+      // the graph — no color/dash/text distinction is drawn (pedigree
+      // consanguinity notation is a structural fact, not a UI design
+      // choice). This warning is purely informational side-panel metadata:
+      // the degree/common ancestor has not yet been structurally modeled,
+      // which does not change the drawn line at all.
       warnings.push(
-        `Uyarı: Union ${u.id} akraba evliliği olarak bildirildi, ancak derece / ortak ata bilgisi ` +
-        `grafikte henüz çözümlenmedi — turuncu kesikli ÇİFT çizgi + "?" işareti gösteriliyor ` +
-        `(çizgi kaybolmuyor, sadece rengi/stili farklı). Ortak ata grafikte kurulduğunda standart siyah çift çizgiye dönüşür.`
+        `Bilgi: Union ${u.id} akraba evliliği olarak bildirildi. Derece / ortak ata bilgisi ` +
+        `grafikte henüz modellenmedi — bu, çizimi etkilemez (standart siyah çift çizgi zaten gösteriliyor); ` +
+        `sadece bu bilgi kayıt amaçlı henüz eksik.`
       );
     }
   });

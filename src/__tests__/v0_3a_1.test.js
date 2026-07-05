@@ -97,10 +97,12 @@ describe('v0.3a.1 — validators.js warning text correction', () => {
     const { warnings } = buildFull(state);
     const consangWarning = warnings.find(w => w.includes('U_MAT_UNCLE_0'));
     expect(consangWarning).toBeDefined();
-    // Must not claim a fixed "won't draw" outcome.
+    // Must not claim a fixed "won't draw" outcome, and (v0.3a.3) must not
+    // claim the drawn line differs at all — it never does.
     expect(consangWarning).not.toMatch(/çift çizgi çizilmeyecek/);
-    // Must describe it as unresolved-so-far.
-    expect(consangWarning).toMatch(/çözümlenmedi/);
+    expect(consangWarning).not.toMatch(/turuncu|kesikli|"\?"/);
+    // Must describe it as unresolved-so-far, informational only.
+    expect(consangWarning).toMatch(/modellenmedi/);
   });
 });
 

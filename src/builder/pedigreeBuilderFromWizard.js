@@ -479,19 +479,25 @@ export function buildPedigreeFromWizard(state) {
       (kids.male || 0) + (kids.female || 0) + (kids.unknown || 0) +
       (kids.pregnancyLoss || 0) + (kids.stillbirth || 0);
 
-    // Always create spouse + union (even if childless — standard pedigree
-    // convention shows the union with an inverted-T childless marker).
-    const spouseId = `${relId}_sp`;
-    addInd({
-      id: spouseId,
-      sex: config.spouseSex,
-      generation: 2,
-      relation: config.spouseRelation,
-    });
-    const unionId = `${config.unionPrefix}_${index}`;
-    addUnion(unionId, relId, spouseId);
-
+    // v0.3a.3 fix: a maternal/paternal uncle/aunt (or great-uncle/aunt) is a
+    // STANDALONE sibling individual by default — a spouse/union is only
+    // created when the wizard was actually told this relative has children
+    // (which structurally requires two parents). Previously this always
+    // fabricated a spouse + union regardless of the requested child count,
+    // making every added aunt/uncle appear married even when the user only
+    // wanted to record a sibling. No union/spouse is shown unless the user
+    // explicitly adds one (via children here, or a spouse/partner action
+    // from the selected-person editor later).
     if (totalKids > 0) {
+      const spouseId = `${relId}_sp`;
+      addInd({
+        id: spouseId,
+        sex: config.spouseSex,
+        generation: 2,
+        relation: config.spouseRelation,
+      });
+      const unionId = `${config.unionPrefix}_${index}`;
+      addUnion(unionId, relId, spouseId);
       // Collect all children, then apply ordering
       const cousinChildren = [];
       for (let c = 0; c < (kids.male || 0); c++) {
@@ -754,6 +760,43 @@ export function buildPedigreeFromWizard(state) {
         addUnion(edit.unionId, edit.person1, edit.person2, {
           status: edit.status || 'together',
         });
+      } else if (edit.type === 'addParents') {
+        // v0.3a.3 selected-person "add mother/father/both parents" action.
+        // Creates a new parent union ABOVE an existing individual who
+        // currently has none. Unlike addSpouse (same generation) or
+        // addChild (+1 generation), this creates individuals at
+        // target.generation - 1 and attaches the target as their child.
+        //
+        // A union always needs exactly two partners (CLAUDE.md non-negotiable
+        // #3) — "add mother" or "add father" alone still creates a second,
+        // explicitly-unspecified placeholder individual (sex: 'unknown',
+        // labeled "Diğer Ebeveyn (belirtilmedi)") to complete the union,
+        // rather than fabricating a named/gendered co-parent. This is a
+        // structural requirement, not an unsupported clinical claim — the
+        // placeholder is visibly marked as unspecified, never presented as
+        // a confirmed second parent.
+        const target = individuals.find(i => i.id === edit.targetId);
+        if (!target) return;
+        if (idSet.has(edit.parent1Id) || idSet.has(edit.parent2Id)) return; // already created
+        if (childToUnionMap.has(edit.targetId)) return; // target already has a parent union — refuse to double-attach
+
+        const parentGen = target.generation - 1;
+        addInd({
+          id: edit.parent1Id,
+          sex: edit.parent1Sex,
+          generation: parentGen,
+          relation: 'added_parent',
+          label: edit.parent1Sex === 'male' ? 'Baba' : edit.parent1Sex === 'female' ? 'Anne' : 'Ebeveyn',
+        });
+        addInd({
+          id: edit.parent2Id,
+          sex: edit.parent2Sex,
+          generation: parentGen,
+          relation: 'added_parent',
+          label: edit.parent2IsPlaceholder ? 'Diğer Ebeveyn (belirtilmedi)' : (edit.parent2Sex === 'male' ? 'Baba' : 'Anne'),
+        });
+        addUnion(edit.unionId, edit.parent1Id, edit.parent2Id);
+        addChild(edit.unionId, edit.targetId);
       }
     });
   }

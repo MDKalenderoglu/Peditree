@@ -1,6 +1,7 @@
 import { computeSiblingCreationPlan } from '../state/usePedigreeStore';
 import { sanitizeAgeValue } from '../utils/ageValidation';
 import { RELATIONSHIP_BACKGROUND_OPTIONS } from '../utils/relationshipBackground';
+import { computePedigreeIds } from '../utils/pedigreeNumbering';
 
 /** Two individuals selected via Cmd/Ctrl-click — pair-level quick actions. */
 function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSiblings, onClearSelection }) {
@@ -78,6 +79,7 @@ export default function IndividualEditor({
   node, node2, pedigreeData, onUpdate, onAddSpouse, onAddChild, onSetProband, onClearProband,
   graphEdits, onRemoveGraphEdit, onDeleteIndividual, onCreateUnion, onMakeSiblings,
   onClearSelection, onReorderChild, onSetUnionRelationshipBackground,
+  onAddParents, onAddSibling,
 }) {
   // Two individuals selected (Cmd/Ctrl-click) — show the pair action panel
   // instead of the single-person editor, regardless of which one would
@@ -107,6 +109,10 @@ export default function IndividualEditor({
 
   const isLoss = node.pregnancyLoss || node.stillbirth;
 
+  // Pedigree-standard display ID (e.g. "II-3") — see pedigreeNumbering.js.
+  const pedigreeIds = computePedigreeIds(pedigreeData?.nodes || []);
+  const pedigreeId = pedigreeIds.get(node.id);
+
   // Check if this individual already has a union
   const unions = pedigreeData?.unions || [];
   const existingUnions = unions.filter(u => u.partners.includes(node.id));
@@ -124,15 +130,24 @@ export default function IndividualEditor({
     <>
       <h3 style={{ marginBottom: '15px', color: '#1e293b', fontSize: '1rem' }}>Birey Duzenle</h3>
 
-      {/* Identity header */}
+      {/* Identity header — v0.3a.3: the pedigree-standard ID (e.g. "II-3")
+          is the primary identifier shown to the clinician, matching what's
+          drawn on canvas. The internal graph ID (e.g. "mat_uncle_0") is
+          kept only as a small secondary technical detail, not the
+          headline identity — a full scrub of internal IDs from every
+          corner of the UI (delete-confirmation previews, direct-edit
+          lists) was not completed in this pass; see the final report. */}
       <div style={{
         marginBottom: '12px', padding: '10px', background: '#f8fafc',
         borderRadius: '6px', fontSize: '0.8rem', lineHeight: '1.5',
       }}>
-        <div><strong>ID:</strong> {node.id}</div>
+        <div style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b' }}>
+          {pedigreeId ? pedigreeId.displayId : '—'}
+        </div>
         <div><strong>Cinsiyet:</strong> {node.sex === 'male' ? 'Erkek' : node.sex === 'female' ? 'Kadin' : 'Bilinmiyor'}</div>
         <div><strong>Jenerasyon:</strong> {node.generation}</div>
         {node.relation && <div><strong>Iliski:</strong> {node.relation}</div>}
+        <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: '4px' }}>Teknik ID: {node.id}</div>
       </div>
 
       {/* ── Graph editing buttons ── */}
@@ -144,6 +159,59 @@ export default function IndividualEditor({
           <div style={{ fontSize: '0.78rem', fontWeight: '600', marginBottom: '8px', color: '#1e40af' }}>
             Pedigriye Ekle
           </div>
+
+          {/* v0.3a.3 — add parent(s) / add sibling for the selected
+              individual. "Add parents" only shown when the target has no
+              parent union yet (never overwrites/duplicates an existing
+              one); "add sibling" only shown when they DO have a parent
+              union (never fabricates parents just to attach a sibling). */}
+          {onAddParents && !ownParentRel && (
+            <div style={{ marginBottom: '6px' }}>
+              <div style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '3px' }}>Ebeveyn Ekle</div>
+              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                <button
+                  className="btn"
+                  style={{ fontSize: '0.7rem', padding: '3px 8px', background: '#fce7f3', border: '1px solid #f9a8d4' }}
+                  onClick={() => onAddParents(node.id, { onlyMother: true })}
+                  title="Anne ekle (diğer ebeveyn belirtilmedi olarak eklenir)"
+                >+ Anne</button>
+                <button
+                  className="btn"
+                  style={{ fontSize: '0.7rem', padding: '3px 8px', background: '#dbeafe', border: '1px solid #93c5fd' }}
+                  onClick={() => onAddParents(node.id, { onlyFather: true })}
+                  title="Baba ekle (diğer ebeveyn belirtilmedi olarak eklenir)"
+                >+ Baba</button>
+                <button
+                  className="btn"
+                  style={{ fontSize: '0.7rem', padding: '3px 8px', background: '#f1f5f9', border: '1px solid #cbd5e1' }}
+                  onClick={() => onAddParents(node.id, {})}
+                >+ Her İkisi (Anne + Baba)</button>
+              </div>
+            </div>
+          )}
+
+          {onAddSibling && ownParentRel && (
+            <div style={{ marginBottom: '6px' }}>
+              <div style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '3px' }}>Kardeş Ekle</div>
+              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                <button
+                  className="btn"
+                  style={{ fontSize: '0.68rem', padding: '2px 6px', background: '#dbeafe', border: '1px solid #93c5fd' }}
+                  onClick={() => onAddSibling(node.id, 'male')}
+                >+ Erkek Kardeş</button>
+                <button
+                  className="btn"
+                  style={{ fontSize: '0.68rem', padding: '2px 6px', background: '#fce7f3', border: '1px solid #f9a8d4' }}
+                  onClick={() => onAddSibling(node.id, 'female')}
+                >+ Kız Kardeş</button>
+                <button
+                  className="btn"
+                  style={{ fontSize: '0.68rem', padding: '2px 6px', background: '#f1f5f9', border: '1px solid #cbd5e1' }}
+                  onClick={() => onAddSibling(node.id, 'unknown')}
+                >+ Bil. Kardeş</button>
+              </div>
+            </div>
+          )}
 
           {/* Add spouse */}
           {!hasUnion && (
@@ -191,11 +259,17 @@ export default function IndividualEditor({
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}
                     </select>
+                    {/* v0.3a.3: consanguinity always renders as the same
+                        standard solid black double line on the canvas —
+                        this note is metadata for the clinician's own
+                        record-keeping only, never a description of a
+                        canvas-visible difference. */}
                     {(u.relationshipBackground === 'consanguinity_reported' || u.relationshipBackground === 'consanguinity_structurally_supported') && (
-                      <div style={{ fontSize: '0.65rem', marginTop: '2px', color: u.relationshipBackground === 'consanguinity_structurally_supported' ? '#166534' : '#b45309' }}>
+                      <div style={{ fontSize: '0.65rem', marginTop: '2px', color: '#475569' }}>
+                        Çizim: standart siyah çift çizgi.{' '}
                         {u.relationshipBackground === 'consanguinity_structurally_supported'
-                          ? 'Ortak ata grafikte kuruldu — siyah çift çizgi.'
-                          : 'Ortak ata grafikte henüz kurulmadı — turuncu kesikli çift çizgi (bildirilen akrabalık kaybolmaz).'}
+                          ? 'Ortak ata grafikte modellendi.'
+                          : 'Ortak ata grafikte henüz modellenmedi (bildirim yeterli, çizgi değişmez).'}
                       </div>
                     )}
                   </div>

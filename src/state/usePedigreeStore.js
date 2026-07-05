@@ -221,6 +221,62 @@ export function computeSiblingCreationPlan(pedigreeData, id1, id2) {
   return { ok: true, action: (p1Union || p2Union) ? 'attach' : 'fabricate' };
 }
 
+/**
+ * Pure, read-only check for whether "add mother"/"add father"/"add both
+ * parents" can safely apply to a given individual (v0.3a.3 selected-person
+ * relative actions). Exported for direct unit testing.
+ *
+ * @returns {{ ok: boolean, reason?: string }}
+ */
+export function computeAddParentsPlan(pedigreeData, targetId) {
+  const individuals = pedigreeData.individuals || [];
+  const pcrs = pedigreeData.parentChildRelationships || [];
+
+  const target = individuals.find(i => i.id === targetId);
+  if (!target) {
+    return { ok: false, reason: 'Birey grafikte bulunamadı.' };
+  }
+  if (target.pregnancyLoss || target.stillbirth) {
+    return { ok: false, reason: 'Düşük/ölü doğum kaydına ebeveyn eklenemez.' };
+  }
+  const alreadyHasParent = pcrs.some(rel => rel.children.includes(targetId));
+  if (alreadyHasParent) {
+    return { ok: false, reason: 'Bu bireyin zaten ebeveyni var — tekrar eklenemez (yinelenen ebeveyn oluşturulmaz).' };
+  }
+  return { ok: true };
+}
+
+/**
+ * Pure, read-only check for whether "add sibling" can safely apply to a
+ * given individual. A sibling can only be attached to an EXISTING parent
+ * union — this deliberately never fabricates parents for the purpose of
+ * adding a sibling (that would misrepresent the family structure); if the
+ * target has no parent union yet, the caller must add parents first.
+ * Exported for direct unit testing.
+ *
+ * @returns {{ ok: boolean, reason?: string, unionId?: string }}
+ */
+export function computeAddSiblingPlan(pedigreeData, targetId) {
+  const individuals = pedigreeData.individuals || [];
+  const pcrs = pedigreeData.parentChildRelationships || [];
+
+  const target = individuals.find(i => i.id === targetId);
+  if (!target) {
+    return { ok: false, reason: 'Birey grafikte bulunamadı.' };
+  }
+  if (target.pregnancyLoss || target.stillbirth) {
+    return { ok: false, reason: 'Düşük/ölü doğum kaydına kardeş eklenemez.' };
+  }
+  const parentRel = pcrs.find(rel => rel.children.includes(targetId));
+  if (!parentRel) {
+    return {
+      ok: false,
+      reason: 'Bu bireyin ebeveyni yok — önce ebeveyn ekleyin, ardından kardeş eklenebilir.',
+    };
+  }
+  return { ok: true, unionId: parentRel.unionId };
+}
+
 const initialState = {
   proband: { sex: 'male', age: '' },
   siblings: {
@@ -546,6 +602,11 @@ export const usePedigreeStore = create((zSet, get) => {
   selectedId2: null,
   // Dismissed warnings (v0.3a.2) — stable content-derived IDs, see warningIds.js.
   dismissedWarningIds: [],
+  // v0.3a.3 — which single left-panel accordion section is open (true
+  // single-open accordion: opening one closes all others). Lives in the
+  // store, not local component state, so it resets cleanly with the rest
+  // of the UI state on resetPedigree().
+  openSectionId: 'proband',
 
   // ────────────────────────────────────────────────────
   // Selection (not undoable — see `set` docblock above)
@@ -586,6 +647,17 @@ export const usePedigreeStore = create((zSet, get) => {
    */
   dismissWarning: (warningId) => zSet((state) => ({
     dismissedWarningIds: [...new Set([...(state.dismissedWarningIds || []), warningId])],
+  })),
+
+  /**
+   * v0.3a.3 — true single-open left-panel accordion. Setting a section
+   * open implicitly closes every other section (there is only ever one
+   * `openSectionId`). Passing the already-open id again closes it,
+   * matching common accordion UX (click to close). Pure UI state, not
+   * undoable — same category as selection/dismissed warnings.
+   */
+  setOpenSection: (sectionId) => zSet((state) => ({
+    openSectionId: state.openSectionId === sectionId ? null : sectionId,
   })),
 
   updateWizardData: (section, field, value) => set((state) => {
@@ -1025,8 +1097,8 @@ export const usePedigreeStore = create((zSet, get) => {
    * state. Uses the raw `zSet`, not the tracked `set`, so reset is a hard
    * clean-slate action: it clears the undo stack outright (`_history: []`)
    * rather than becoming itself an undoable step. Also clears selection
-   * (both slots) and dismissed warnings so no stale UI state survives into
-   * the fresh pedigree.
+   * (both slots), dismissed warnings, and the open accordion section so no
+   * stale UI state survives into the fresh pedigree.
    */
   resetPedigree: () => zSet(() => {
     clearSession();
@@ -1038,6 +1110,7 @@ export const usePedigreeStore = create((zSet, get) => {
       selectedId: null,
       selectedId2: null,
       dismissedWarningIds: [],
+      openSectionId: 'proband',
       ...generateDerivedData(clean, EMPTY_GRAPH),
     };
   }),
@@ -1197,6 +1270,84 @@ export const usePedigreeStore = create((zSet, get) => {
     if (introducesNewGraphErrors(state.integrityIssues, derived.integrityIssues)) {
       const reason = describeNewGraphErrors(state.integrityIssues, derived.integrityIssues);
       console.warn('[usePedigreeStore] createUnionBetween rolled back — would introduce a graph error:', reason);
+      return {};
+    }
+    return { wizardData: wd, ...derived };
+  }),
+
+  // ────────────────────────────────────────────────────
+  // Selected-person relative actions (v0.3a.3)
+  // ────────────────────────────────────────────────────
+
+  /**
+   * "Add mother" / "add father" / "add both parents" for the selected
+   * individual (see computeAddParentsPlan). Exactly one of `onlyMother`/
+   * `onlyFather` may be set; omitting both adds a real mother+father pair.
+   * "Add mother"/"add father" alone still creates a second, explicitly
+   * unspecified placeholder individual to satisfy the two-partner union
+   * invariant — see pedigreeBuilderFromWizard.js's 'addParents' case.
+   */
+  addParentsTo: (targetId, opts = {}) => set((state) => {
+    const plan = computeAddParentsPlan(state.pedigreeData, targetId);
+    if (!plan.ok) {
+      console.warn('[usePedigreeStore] addParentsTo blocked:', plan.reason);
+      return {};
+    }
+
+    const wd = JSON.parse(JSON.stringify(state.wizardData));
+    if (!wd.graphEdits) wd.graphEdits = [];
+    const idx = wd.graphEdits.length;
+    const parent1Id = `de_par_${idx}_1`;
+    const parent2Id = `de_par_${idx}_2`;
+    const unionId = `U_DE_PARENTS_${idx}`;
+
+    let parent1Sex, parent2Sex, parent2IsPlaceholder;
+    if (opts.onlyMother) {
+      parent1Sex = 'female'; parent2Sex = 'unknown'; parent2IsPlaceholder = true;
+    } else if (opts.onlyFather) {
+      parent1Sex = 'male'; parent2Sex = 'unknown'; parent2IsPlaceholder = true;
+    } else {
+      parent1Sex = 'female'; parent2Sex = 'male'; parent2IsPlaceholder = false;
+    }
+
+    wd.graphEdits.push({
+      type: 'addParents', targetId, parent1Id, parent2Id, unionId,
+      parent1Sex, parent2Sex, parent2IsPlaceholder,
+    });
+
+    // v0.3a.2/v0.3a.3 safety net: roll back if this introduces a new
+    // graph-integrity error (same audit-before-commit pattern as
+    // createUnionBetween/addCustomConsanguinity).
+    const derived = generateDerivedData(wd, state.pedigreeData);
+    if (introducesNewGraphErrors(state.integrityIssues, derived.integrityIssues)) {
+      const reason = describeNewGraphErrors(state.integrityIssues, derived.integrityIssues);
+      console.warn('[usePedigreeStore] addParentsTo rolled back — would introduce a graph error:', reason);
+      return {};
+    }
+    return { wizardData: wd, ...derived };
+  }),
+
+  /**
+   * "Add sibling" for the selected individual — attaches a new child to
+   * the target's EXISTING parent union (see computeAddSiblingPlan). Never
+   * fabricates parents; blocked if the target has none yet.
+   */
+  addSiblingTo: (targetId, sex = 'unknown') => set((state) => {
+    const plan = computeAddSiblingPlan(state.pedigreeData, targetId);
+    if (!plan.ok) {
+      console.warn('[usePedigreeStore] addSiblingTo blocked:', plan.reason);
+      return {};
+    }
+
+    const wd = JSON.parse(JSON.stringify(state.wizardData));
+    if (!wd.graphEdits) wd.graphEdits = [];
+    const idx = wd.graphEdits.length;
+    wd.graphEdits.push({ type: 'addChild', unionId: plan.unionId, childId: `de_ch_${idx}`, sex });
+
+    const derived = generateDerivedData(wd, state.pedigreeData);
+    if (introducesNewGraphErrors(state.integrityIssues, derived.integrityIssues)) {
+      const reason = describeNewGraphErrors(state.integrityIssues, derived.integrityIssues);
+      console.warn('[usePedigreeStore] addSiblingTo rolled back — would introduce a graph error:', reason);
       return {};
     }
     return { wizardData: wd, ...derived };

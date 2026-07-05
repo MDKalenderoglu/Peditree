@@ -103,25 +103,33 @@ export function resolveDeclaredRelationshipBackground(state, unionId) {
  * should draw: an edge type (reusing the existing 'union' /
  * 'consanguineousUnion' / 'consanguineousUnionUnresolved' types so
  * PedigreeCanvas.jsx's existing draw code needs no new case for the
- * non-consanguinity backgrounds) plus an optional neutral note string.
+ * non-consanguinity backgrounds).
+ *
+ * v0.3a.3: pedigree relationship lines never carry canvas text — a
+ * consanguineous union is a standard solid black double line regardless of
+ * whether it is structurally confirmed (`consanguinity_reported` and
+ * `consanguinity_structurally_supported` render identically; the edge
+ * *type* stays distinct internally for code/tests/side-panel metadata, but
+ * PedigreeCanvas.jsx no longer visually distinguishes them). No note text
+ * is produced for any background — same_village_or_same_origin,
+ * no_consanguinity_reported, and unknown are all a plain single line with
+ * no annotation on the canvas; that metadata is shown only in the
+ * selected-union side panel (IndividualEditor.jsx/WizardPanel.jsx).
  *
  * @param {string} relationshipBackground
- * @returns {{ edgeType: 'union'|'consanguineousUnion'|'consanguineousUnionUnresolved', noteText: string|null }}
+ * @returns {{ edgeType: 'union'|'consanguineousUnion'|'consanguineousUnionUnresolved' }}
  */
 export function relationshipBackgroundToEdgeInfo(relationshipBackground) {
   switch (relationshipBackground) {
     case RELATIONSHIP_BACKGROUND.CONSANGUINITY_STRUCTURALLY_SUPPORTED:
-      return { edgeType: 'consanguineousUnion', noteText: null };
+      return { edgeType: 'consanguineousUnion' };
     case RELATIONSHIP_BACKGROUND.CONSANGUINITY_REPORTED:
-      return { edgeType: 'consanguineousUnionUnresolved', noteText: null };
+      return { edgeType: 'consanguineousUnionUnresolved' };
     case RELATIONSHIP_BACKGROUND.SAME_VILLAGE_OR_SAME_ORIGIN:
-      return { edgeType: 'union', noteText: 'Aynı köy / aynı bölge' };
     case RELATIONSHIP_BACKGROUND.NO_CONSANGUINITY_REPORTED:
-      return { edgeType: 'union', noteText: 'Akrabalık bildirilmedi' };
     case RELATIONSHIP_BACKGROUND.UNKNOWN:
-      return { edgeType: 'union', noteText: 'Akrabalık durumu bilinmiyor' };
     case RELATIONSHIP_BACKGROUND.NOT_ASKED:
     default:
-      return { edgeType: 'union', noteText: null };
+      return { edgeType: 'union' };
   }
 }

@@ -1038,26 +1038,57 @@ describe('Layout Integrity', () => {
     expect(ggf.y).toBe(ggm.y);
   });
 
-  it('childless uncle produces union with childless marker edges', () => {
+  it('v0.3a.3: an uncle with zero requested children is a STANDALONE individual — no spouse/union fabricated', () => {
+    // Fixes the "aunt/uncle auto-shown as married" bug: buildCollateralBranch
+    // used to always create a spouse + union regardless of the requested
+    // child count. A maternal/paternal (or great-)uncle/aunt with no
+    // children specified must appear as a plain sibling, not implicitly
+    // partnered.
     const state = baseState();
     state.maternalRelatives.uncles = [
       { id: '_mu0', children: { male: 0, female: 0, unknown: 0 } },
     ];
 
-    const { graph, layout, issues } = buildFull(state);
+    const { graph, issues } = buildFull(state);
     assertZeroErrors(issues);
 
-    // Uncle and spouse exist
+    expect(findInd(graph, 'mat_uncle_0')).toBeDefined();
+    expect(findInd(graph, 'mat_uncle_0_sp')).toBeUndefined();
+    expect(graph.unions.find(u => u.id === 'U_MAT_UNCLE_0')).toBeUndefined();
+  });
+
+  it('an uncle with requested children still gets a real spouse + union + childless-marker-capable layout', () => {
+    const state = baseState();
+    state.maternalRelatives.uncles = [
+      { id: '_mu0', children: { male: 1, female: 0, unknown: 0 } },
+    ];
+
+    const { graph, issues } = buildFull(state);
+    assertZeroErrors(issues);
+
     expect(findInd(graph, 'mat_uncle_0')).toBeDefined();
     expect(findInd(graph, 'mat_uncle_0_sp')).toBeDefined();
-
-    // Union exists but has no children
     const union = graph.unions.find(u => u.id === 'U_MAT_UNCLE_0');
     expect(union).toBeDefined();
-    const children = childrenOf(graph, 'U_MAT_UNCLE_0');
-    expect(children).toEqual([]);
+    expect(childrenOf(graph, 'U_MAT_UNCLE_0')).toContain('mat_uncle_0_cm_0');
+  });
 
-    // Layout produces childless marker edges
+  it('a direct-edit spouse added to a standalone uncle produces a genuine childless union with childless marker edges', () => {
+    // Coverage for the childlessDrop/childlessBar edge types, moved off the
+    // now-fixed "always fabricate a spouse" fixture: a childless-but-married
+    // union must still render its inverted-T marker when the marriage is
+    // real (explicitly added), just not fabricated by default.
+    const state = baseState();
+    state.maternalRelatives.uncles = [
+      { id: '_mu0', children: { male: 0, female: 0, unknown: 0 } },
+    ];
+    state.graphEdits = [
+      { type: 'addSpouse', targetId: 'mat_uncle_0', spouseId: 'de_sp_0', unionId: 'U_DE_0', spouseSex: 'female' },
+    ];
+
+    const { layout, issues } = buildFull(state);
+    assertZeroErrors(issues);
+
     const childlessDrops = layout.edges.filter(e => e.type === 'childlessDrop');
     const childlessBars = layout.edges.filter(e => e.type === 'childlessBar');
     expect(childlessDrops.length).toBeGreaterThan(0);
@@ -1139,12 +1170,16 @@ describe('Layout Integrity', () => {
     expect(gpUncleSp).toBeDefined();
     expect(gpUncle.x).not.toBe(gpUncleSp.x);
 
-    // Pat GP uncles and their spouses must not overlap
+    // Pat GP uncles (_ba0, _ba1) both have zero requested children, so
+    // v0.3a.3's fix means NEITHER gets a fabricated spouse — but the two
+    // standalone uncles themselves must still not overlap each other.
     const patUncle0 = layout.nodes.find(n => n.id === 'gp_pat_uncle_0');
+    const patUncle1 = layout.nodes.find(n => n.id === 'gp_pat_uncle_1');
     const patUncle0Sp = layout.nodes.find(n => n.id === 'gp_pat_uncle_0_sp');
     expect(patUncle0).toBeDefined();
-    expect(patUncle0Sp).toBeDefined();
-    expect(patUncle0.x).not.toBe(patUncle0Sp.x);
+    expect(patUncle1).toBeDefined();
+    expect(patUncle0Sp).toBeUndefined(); // no children requested — no fabricated spouse
+    expect(patUncle0.x).not.toBe(patUncle1.x);
 
     // No false "spouse not connected" warnings for GP-level relatives
     const spouseWarnings = warnings.filter(w => w.includes('U_GP_'));
@@ -1764,12 +1799,16 @@ describe('childOrders — Non-proband unions', () => {
       const state = baseState();
       // mat_uncle and pat_aunt have no existing parent unions by default
       // (their parents are grandparents, but let's use two spouse stubs
-      //  that don't have parents assigned)
+      //  that don't have parents assigned). v0.3a.3: a spouse stub is only
+      // created when the relative has requested children (see the
+      // aunt/uncle auto-spouse fix) — request 1 child each so
+      // mat_uncle_0_sp/pat_aunt_0_sp still exist as the two "no parents"
+      // test subjects this test is actually about.
       state.maternalRelatives.uncles = [
-        { id: '_mu0', children: { male: 0, female: 0, unknown: 0, pregnancyLoss: 0, stillbirth: 0 } },
+        { id: '_mu0', children: { male: 1, female: 0, unknown: 0, pregnancyLoss: 0, stillbirth: 0 } },
       ];
       state.paternalRelatives.aunts = [
-        { id: '_pa0', children: { male: 0, female: 0, unknown: 0, pregnancyLoss: 0, stillbirth: 0 } },
+        { id: '_pa0', children: { male: 1, female: 0, unknown: 0, pregnancyLoss: 0, stillbirth: 0 } },
       ];
       // Declare the uncle's spouse and aunt's spouse as siblings
       state.customConsanguinity = [
@@ -1802,12 +1841,14 @@ describe('childOrders — Non-proband unions', () => {
     it('person1 already has parent union → person2 added to it', () => {
       const state = baseState();
       // mat_uncle_0 is a child of U_MAT_GP (maternal grandparents)
-      // pat_aunt_0_sp has no parent union
+      // pat_aunt_0_sp has no parent union. v0.3a.3: pat_aunt_0 needs 1
+      // requested child so pat_aunt_0_sp (the "no parents" test subject)
+      // still exists — see the aunt/uncle auto-spouse fix.
       state.maternalRelatives.uncles = [
         { id: '_mu0', children: { male: 0, female: 0, unknown: 0, pregnancyLoss: 0, stillbirth: 0 } },
       ];
       state.paternalRelatives.aunts = [
-        { id: '_pa0', children: { male: 0, female: 0, unknown: 0, pregnancyLoss: 0, stillbirth: 0 } },
+        { id: '_pa0', children: { male: 1, female: 0, unknown: 0, pregnancyLoss: 0, stillbirth: 0 } },
       ];
 
       // Declare mat_uncle_0 (has parent union U_MAT_GP) and pat_aunt_0_sp (no parents) as siblings
@@ -1830,8 +1871,11 @@ describe('childOrders — Non-proband unions', () => {
 
     it('person2 already has parent union → person1 added to it', () => {
       const state = baseState();
+      // v0.3a.3: mat_uncle_0 needs 1 requested child so mat_uncle_0_sp (the
+      // "no parents" test subject) still exists — see the aunt/uncle
+      // auto-spouse fix.
       state.maternalRelatives.uncles = [
-        { id: '_mu0', children: { male: 0, female: 0, unknown: 0, pregnancyLoss: 0, stillbirth: 0 } },
+        { id: '_mu0', children: { male: 1, female: 0, unknown: 0, pregnancyLoss: 0, stillbirth: 0 } },
       ];
       state.paternalRelatives.aunts = [
         { id: '_pa0', children: { male: 0, female: 0, unknown: 0, pregnancyLoss: 0, stillbirth: 0 } },
@@ -1923,8 +1967,12 @@ describe('childOrders — Non-proband unions', () => {
       state.parents.consanguineous = true;
       state.parents.consanguinityDegree = 'first_cousin';
       state.parents.consanguinityPath = 'mothers_paternal_is_fathers_paternal';
+      // v0.3a.3: the uncle needs 1 requested child so U_MAT_UNCLE_0 (their
+      // own marriage union) actually exists — see the aunt/uncle
+      // auto-spouse fix (a childless uncle is now a standalone individual
+      // with no union at all).
       state.maternalRelatives.uncles = [
-        { id: '_mu0', children: { male: 0, female: 0, unknown: 0, pregnancyLoss: 0, stillbirth: 0 } },
+        { id: '_mu0', children: { male: 1, female: 0, unknown: 0, pregnancyLoss: 0, stillbirth: 0 } },
       ];
       // Also mark uncle's union as consanguineous via custom flag
       state.consanguineousUnions = { 'U_MAT_UNCLE_0': true };
@@ -2089,12 +2137,14 @@ describe('childOrders — Non-proband unions', () => {
       state.parents.consanguinityDegree = 'first_cousin';
       state.parents.consanguinityPath = 'mothers_paternal_is_fathers_paternal';
 
-      // Add uncle on both sides with spouses
+      // Add uncle on both sides with spouses. v0.3a.3: each needs 1
+      // requested child so their spouse stubs (mat_uncle_0_sp/pat_aunt_0_sp)
+      // exist at all — see the aunt/uncle auto-spouse fix.
       state.maternalRelatives.uncles = [
-        { id: '_mu0', children: { male: 0, female: 0, unknown: 0, pregnancyLoss: 0, stillbirth: 0 } },
+        { id: '_mu0', children: { male: 1, female: 0, unknown: 0, pregnancyLoss: 0, stillbirth: 0 } },
       ];
       state.paternalRelatives.aunts = [
-        { id: '_pa0', children: { male: 0, female: 0, unknown: 0, pregnancyLoss: 0, stillbirth: 0 } },
+        { id: '_pa0', children: { male: 1, female: 0, unknown: 0, pregnancyLoss: 0, stillbirth: 0 } },
       ];
 
       // Custom: declare uncle's spouse and aunt's spouse as siblings

@@ -261,13 +261,17 @@ export function auditPedigreeGraph(graph) {
   //     Distinct from CHECK 13 below: this is an EXPECTED, non-broken state
   //     (the user declared consanguinity for a degree/path this app doesn't
   //     model ancestors for) — a warning, not evidence of a corrupt graph.
+  //     v0.3a.3: this does NOT change the drawn line — a consanguineous
+  //     union always renders as the standard solid black double line
+  //     regardless of this status (see relationshipBackground.js /
+  //     PedigreeCanvas.jsx). The message must not claim otherwise.
   // ──────────────────────────────────────
   for (const u of unions) {
     if (u.consanguinityStatus === 'reported_unresolved') {
       issues.push({
         severity: 'warning',
         code: 'CONSANGUINITY_UNRESOLVED',
-        message: `Union '${u.id}' akraba evliliği olarak işaretli, ancak ortak ata yapısı grafikte modellenmedi (reported_unresolved). Standart siyah çift çizgi yerine turuncu kesikli çift çizgi + belirsizlik işareti ("?") çizilecek — çizgi kaybolmuyor.`,
+        message: `Union '${u.id}' akraba evliliği olarak işaretli; ortak ata yapısı grafikte henüz modellenmedi (reported_unresolved). Bu, çizimi etkilemez — standart siyah çift çizgi zaten gösteriliyor; sadece derece/ortak ata bilgisi kayıt amaçlı eksik.`,
         ids: [u.id],
       });
     }

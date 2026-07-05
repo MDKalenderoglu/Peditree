@@ -62,41 +62,41 @@ describe('relationshipBackground — pure helpers', () => {
     });
   });
 
-  describe('relationshipBackgroundToEdgeInfo', () => {
-    it('consanguinity_structurally_supported → double line, no note', () => {
+  describe('relationshipBackgroundToEdgeInfo (v0.3a.3 — no canvas text, ever)', () => {
+    it('consanguinity_structurally_supported → double line', () => {
       expect(relationshipBackgroundToEdgeInfo('consanguinity_structurally_supported'))
-        .toEqual({ edgeType: 'consanguineousUnion', noteText: null });
+        .toEqual({ edgeType: 'consanguineousUnion' });
     });
 
-    it('consanguinity_reported → unresolved double line, no note (label lives in the renderer)', () => {
+    it('consanguinity_reported → double line (same edge TYPE distinction internally, no visual difference)', () => {
       expect(relationshipBackgroundToEdgeInfo('consanguinity_reported'))
-        .toEqual({ edgeType: 'consanguineousUnionUnresolved', noteText: null });
+        .toEqual({ edgeType: 'consanguineousUnionUnresolved' });
     });
 
-    it('same_village_or_same_origin → single line + neutral note, NEVER a double line', () => {
+    it('same_village_or_same_origin → single line, no note field at all, NEVER a double line', () => {
       const info = relationshipBackgroundToEdgeInfo('same_village_or_same_origin');
       expect(info.edgeType).toBe('union');
-      expect(info.noteText).toMatch(/köy|bölge/);
+      expect(info.noteText).toBeUndefined();
     });
 
-    it('no_consanguinity_reported → single line + note', () => {
+    it('no_consanguinity_reported → single line, no note', () => {
       const info = relationshipBackgroundToEdgeInfo('no_consanguinity_reported');
       expect(info.edgeType).toBe('union');
-      expect(info.noteText).toBeTruthy();
+      expect(info.noteText).toBeUndefined();
     });
 
-    it('unknown → single line + note', () => {
+    it('unknown → single line, no note', () => {
       const info = relationshipBackgroundToEdgeInfo('unknown');
       expect(info.edgeType).toBe('union');
-      expect(info.noteText).toBeTruthy();
+      expect(info.noteText).toBeUndefined();
     });
 
     it('not_asked → single line, no note (silent default)', () => {
-      expect(relationshipBackgroundToEdgeInfo('not_asked')).toEqual({ edgeType: 'union', noteText: null });
+      expect(relationshipBackgroundToEdgeInfo('not_asked')).toEqual({ edgeType: 'union' });
     });
 
     it('an unrecognized value falls back to the not_asked (silent default) rendering', () => {
-      expect(relationshipBackgroundToEdgeInfo('garbage')).toEqual({ edgeType: 'union', noteText: null });
+      expect(relationshipBackgroundToEdgeInfo('garbage')).toEqual({ edgeType: 'union' });
     });
   });
 });
@@ -169,12 +169,12 @@ describe('relationshipBackground — builder integration', () => {
 
     const layout = computePedigreeLayout(graph);
     const edge = layout.edges.find(e => e.unionId === 'U_PARENTS');
-    // Never a double line for same-village/origin.
+    // Never a double line for same-village/origin, and never any canvas text.
     expect(edge.type).toBe('union');
-    expect(edge.noteText).toMatch(/köy|bölge/);
+    expect(edge.noteText).toBeUndefined();
   });
 
-  it('no_consanguinity_reported renders as a plain union line with a note, no consanguinity flag', () => {
+  it('no_consanguinity_reported renders as a plain union line, no canvas text, no consanguinity flag', () => {
     const state = baseState();
     state.unionRelationshipBackgrounds = { U_PARENTS: 'no_consanguinity_reported' };
     const graph = buildPedigreeFromWizard(state);
@@ -184,7 +184,7 @@ describe('relationshipBackground — builder integration', () => {
     expect(union.consanguineous).toBe(false);
   });
 
-  it('unknown renders as a plain union line with a note, no consanguinity flag', () => {
+  it('unknown renders as a plain union line, no canvas text, no consanguinity flag', () => {
     const state = baseState();
     state.unionRelationshipBackgrounds = { U_PARENTS: 'unknown' };
     const graph = buildPedigreeFromWizard(state);

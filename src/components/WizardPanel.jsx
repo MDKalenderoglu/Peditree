@@ -201,12 +201,17 @@ const LayerHeader = ({ label }) => (
   </div>
 );
 
-/* ── Accordion section ── */
-const Accordion = ({ title, summary, defaultOpen = false, children }) => {
-  const [open, setOpen] = useState(defaultOpen);
+/**
+ * v0.3a.3 — true single-open accordion. `open` and `onToggle` are lifted
+ * to the store's `openSectionId`/`setOpenSection` (see usePedigreeStore.js)
+ * rather than local per-instance state, so opening any one section
+ * automatically closes every other one — there is only ever one
+ * `openSectionId` in the whole panel.
+ */
+const Accordion = ({ id, title, summary, open, onToggle, children }) => {
   return (
     <div className="wizard-section">
-      <div className="wizard-section-header" onClick={() => setOpen(!open)}>
+      <div className="wizard-section-header" onClick={() => onToggle(id)}>
         <div>
           <div>{title}</div>
           {summary && <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 'normal', marginTop: '2px' }}>{summary}</div>}
@@ -325,6 +330,7 @@ export default function WizardPanel() {
     setUnionRelationshipBackground,
     pedigreeData,
     selectedId, selectedId2, deleteIndividual, clearSelection,
+    openSectionId, setOpenSection,
   } = usePedigreeStore();
 
   /* ── Other-union mini-panel ── */
@@ -392,7 +398,7 @@ export default function WizardPanel() {
     const summary = `${uncles.length} ${uncleLabel}, ${aunts.length} ${auntLabel}`;
 
     return (
-      <Accordion title={title} summary={summary}>
+      <Accordion id={side} title={title} summary={summary} open={openSectionId === side} onToggle={setOpenSection}>
         <Stepper label={`${uncleLabel} Sayisi`} value={uncles.length} onChange={v => updateRelativeCount(side, uncleKey, v)} max={4} />
         {uncles.map((rel, idx) => {
           const unionId = `${uncleUnionPrefix}_${idx}`;
@@ -473,7 +479,7 @@ export default function WizardPanel() {
 
       <LayerHeader label="Temel Bilgiler" />
       {/* ── 1. PROBAND ── */}
-      <Accordion title="1. Proband" defaultOpen>
+      <Accordion id="proband" title="1. Proband" open={openSectionId === 'proband'} onToggle={setOpenSection}>
         <div className="form-group-row">
           <span className="form-label">Cinsiyet</span>
           <select value={wd.proband.sex} onChange={e => updateWizardData('proband', 'sex', e.target.value)} className="form-input">
@@ -489,7 +495,7 @@ export default function WizardPanel() {
       </Accordion>
 
       {/* ── 2. KARDESLER ── */}
-      <Accordion title="2. Kardesler" summary={`${wd.siblings.male.length}E ${wd.siblings.female.length}K ${wd.siblings.unknown.length}B`} defaultOpen>
+      <Accordion id="siblings" title="2. Kardesler" summary={`${wd.siblings.male.length}E ${wd.siblings.female.length}K ${wd.siblings.unknown.length}B`} open={openSectionId === 'siblings'} onToggle={setOpenSection}>
         <Stepper label="Erkek Kardes" value={wd.siblings.male.length} onChange={v => updateSiblingCount('male', v)} />
         {wd.siblings.male.map((s, i) => (
           <div key={s.id} className="form-group-row" style={{ paddingLeft: 14 }}>
@@ -530,7 +536,7 @@ export default function WizardPanel() {
 
       <LayerHeader label="Ebeveynler ve Akrabalık" />
       {/* ── 3. ANNE-BABA ── */}
-      <Accordion title="3. Anne - Baba">
+      <Accordion id="parents" title="3. Anne - Baba" open={openSectionId === 'parents'} onToggle={setOpenSection}>
         <label className="checkbox-label"><input type="checkbox" checked={wd.parents.motherExists} onChange={e => updateWizardData('parents', 'motherExists', e.target.checked)} /> Anne Var</label>
         {wd.parents.motherExists && (
           <div style={{ marginLeft: 16 }}>
@@ -559,7 +565,7 @@ export default function WizardPanel() {
       </Accordion>
 
       {/* ── 4. AKRABALIK ── */}
-      <Accordion title="4. Akrabalik" summary={wd.parents.consanguineous ? wd.parents.consanguinityDegree : 'Yok'}>
+      <Accordion id="consanguinity" title="4. Akrabalik" summary={wd.parents.consanguineous ? wd.parents.consanguinityDegree : 'Yok'} open={openSectionId === 'consanguinity'} onToggle={setOpenSection}>
         <label className="checkbox-label"><input type="checkbox" checked={wd.parents.consanguineous} onChange={e => updateWizardData('parents', 'consanguineous', e.target.checked)} /> Akraba Evliligi Var</label>
 
         {wd.parents.consanguineous && (
@@ -602,8 +608,9 @@ export default function WizardPanel() {
       </Accordion>
 
       {/* ── 4b. CUSTOM CONSANGUINITY ── */}
-      <Accordion title="4b. Ozel Akrabalik Baglari"
-        summary={`${(wd.customConsanguinity || []).length} baglanti`}>
+      <Accordion id="customConsanguinity" title="4b. Ozel Akrabalik Baglari"
+        summary={`${(wd.customConsanguinity || []).length} baglanti`}
+        open={openSectionId === 'customConsanguinity'} onToggle={setOpenSection}>
         <div style={{ fontSize: '0.75rem', color: '#475569', marginBottom: '8px' }}>
           Sablonda olmayan akrabalik baglarini tanimlayin. Iki birey secip "kardes" olarak isaretleyin — ortak ebeveyn otomatik olusturulur.
         </div>
@@ -667,10 +674,11 @@ export default function WizardPanel() {
       {renderRelatives('paternalGPRelatives', '8. Dede/Nine Kardesler (Baba)', 'B.Amca', 'B.Hala')}
 
       {/* ── 9. GREAT-GRANDPARENTS ── */}
-      <Accordion title="9. Ust Jenerasyon (B.Dede/B.Anne)"
+      <Accordion id="greatGrandparents" title="9. Ust Jenerasyon (B.Dede/B.Anne)"
         summary={Object.values(wd.greatGrandparents || {}).filter(Boolean).length > 0
           ? `${Object.values(wd.greatGrandparents || {}).filter(Boolean).length} gosteriliyor`
-          : 'Yok'}>
+          : 'Yok'}
+        open={openSectionId === 'greatGrandparents'} onToggle={setOpenSection}>
         <div style={{ fontSize: '0.8rem', color: '#475569', marginBottom: '8px' }}>
           Her dedenin/ninenin ebeveynlerini gostermek icin isaretleyin:
         </div>
@@ -693,7 +701,7 @@ export default function WizardPanel() {
 
       <LayerHeader label="İleri Seçenekler" />
       {/* ── 10. GEN 4 / ILERI ── */}
-      <Accordion title="10. Ileri Akrabalar (4. Jen.)" summary={`${wd.gen4.length} kayit`}>
+      <Accordion id="gen4" title="10. Ileri Akrabalar (4. Jen.)" summary={`${wd.gen4.length} kayit`} open={openSectionId === 'gen4'} onToggle={setOpenSection}>
         {wd.gen4.map((g, idx) => {
           const unionId = `U_GEN4_${idx}`;
           const totalKids = (g.male || 0) + (g.female || 0) + (g.unknown || 0);

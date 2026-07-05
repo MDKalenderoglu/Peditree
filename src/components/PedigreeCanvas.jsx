@@ -24,6 +24,7 @@
 import { useEffect, useRef, forwardRef } from 'react';
 import * as d3 from 'd3';
 import { buildConditionRegistry, hasAnyConditions, hasAffectedCondition } from '../utils/conditionRegistry';
+import { computePedigreeIds } from '../utils/pedigreeNumbering';
 
 const EDGE_COLOR = '#64748b';
 const NODE_STROKE = '#1e293b';
@@ -97,76 +98,42 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     edges.forEach(edge => {
       switch (edge.type) {
         case 'union':
+          // v0.3a.3 fix: pedigree relationship lines never carry canvas
+          // text. Non-consanguinity relationship backgrounds (same
+          // village/origin, no consanguinity reported, unknown) are purely
+          // a normal single line here — any metadata about them belongs in
+          // the side panel (IndividualEditor.jsx/WizardPanel.jsx), never
+          // drawn on the connector itself. See relationshipBackground.js.
           g.append('line')
             .attr('x1', edge.x1).attr('y1', edge.y1)
             .attr('x2', edge.x2).attr('y2', edge.y2)
             .attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5).attr('fill', 'none');
-          // v0.3a.2 — neutral relationship-background note (e.g. "Aynı köy /
-          // aynı bölge", "Akrabalık bildirilmedi", "Akrabalık durumu
-          // bilinmiyor"). Deliberately a plain single line with a small
-          // gray label, never a double line or amber styling — none of
-          // these backgrounds assert a blood relationship. See
-          // relationshipBackground.js for the full state model.
-          if (edge.noteText) {
-            g.append('text')
-              .attr('x', (edge.x1 + edge.x2) / 2)
-              .attr('y', edge.y1 - 6)
-              .attr('text-anchor', 'middle')
-              .attr('font-size', '9px')
-              .attr('fill', '#94a3b8')
-              .text(edge.noteText);
-          }
           break;
 
         case 'consanguineousUnion':
-          // Double line — ONLY drawn when the shared-ancestor path was
-          // actually built in the graph (consanguinityStatus === 'known_supported').
-          g.append('line')
-            .attr('x1', edge.x1).attr('y1', edge.y1 - 2)
-            .attr('x2', edge.x2).attr('y2', edge.y2 - 2)
-            .attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5).attr('fill', 'none');
-          g.append('line')
-            .attr('x1', edge.x1).attr('y1', edge.y1 + 2)
-            .attr('x2', edge.x2).attr('y2', edge.y2 + 2)
-            .attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5).attr('fill', 'none');
-          break;
-
         case 'consanguineousUnionUnresolved':
-          // v0.3a.2 fix: this must still render as a visibly DOUBLE union
-          // line — per pedigree nomenclature, "consanguineous union" is
-          // drawn as two parallel relationship lines regardless of whether
-          // the exact degree/common ancestor has been resolved. A single
-          // line reads as "not consanguineous" to a clinician scanning the
-          // chart, which is the opposite of what was declared. The internal
-          // known_supported vs. reported_unresolved distinction is
-          // preserved — but ONLY via color/dash/label (amber, dashed),
-          // never by dropping to a single line. The label reads "Akrabalık
-          // bildirildi" (consanguinity reported), NOT a "?" — a question
-          // mark reads as doubt about the clinician's own report, which is
-          // not the intended meaning; the intended meaning is "reported,
-          // not yet structurally confirmed in this graph." No shared
-          // ancestor or cousin degree is fabricated by this rendering
-          // choice: the double line here asserts "declared consanguineous,"
-          // not "confirmed shared ancestor" — that confirmation is what
-          // the solid-black consanguineousUnion case above communicates.
+          // v0.3a.3 fix: consanguinity is a pedigree-standard structural
+          // fact, not a UI design choice — a union the clinician reports as
+          // consanguineous is ALWAYS drawn as a standard solid black double
+          // line, whether or not the shared-ancestor path is also modeled
+          // in the graph (consanguineousUnion vs. consanguineousUnionUnresolved
+          // are kept as distinct edge *types* internally — see
+          // pedigreeLayout.js / relationshipBackground.js — purely so the
+          // known_supported/reported_unresolved distinction stays
+          // queryable in code/tests/side-panel metadata; they are NO
+          // LONGER visually distinguished on the canvas). No color, no
+          // dash, no text, no "?" — a clinician's report is sufficient to
+          // draw the line; this does not fabricate a shared ancestor or
+          // cousin degree, it only draws the relationship the clinician
+          // actually declared.
           g.append('line')
             .attr('x1', edge.x1).attr('y1', edge.y1 - 2)
             .attr('x2', edge.x2).attr('y2', edge.y2 - 2)
-            .attr('stroke', '#d97706').attr('stroke-width', 1.5)
-            .attr('stroke-dasharray', '5,3').attr('fill', 'none');
+            .attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5).attr('fill', 'none');
           g.append('line')
             .attr('x1', edge.x1).attr('y1', edge.y1 + 2)
             .attr('x2', edge.x2).attr('y2', edge.y2 + 2)
-            .attr('stroke', '#d97706').attr('stroke-width', 1.5)
-            .attr('stroke-dasharray', '5,3').attr('fill', 'none');
-          g.append('text')
-            .attr('x', (edge.x1 + edge.x2) / 2)
-            .attr('y', edge.y1 - 8)
-            .attr('text-anchor', 'middle')
-            .attr('font-size', '11px')
-            .attr('font-weight', '700')
-            .attr('fill', '#d97706')
-            .text('Akrabalık bildirildi');
+            .attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5).attr('fill', 'none');
           break;
 
         case 'sibship':
@@ -209,6 +176,12 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // =====================
     // DRAW NODES
     // =====================
+    // v0.3a.3 — pedigree-standard visible IDs (I-1, II-3, ...). Purely
+    // derived from the already-computed generation + x-position of every
+    // node; recomputes automatically on every render, so a birth-order
+    // reorder (which changes x) renumbers correctly with no extra wiring.
+    const pedigreeIds = computePedigreeIds(nodes);
+
     const nodeGroups = g.selectAll('.node-group')
       .data(nodes)
       .enter()
@@ -232,6 +205,18 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       const el = d3.select(this);
       const isSmall = d.pregnancyLoss || d.stillbirth;
       const sz = isSmall ? LOSS_SIZE : HALF;
+
+      // Pedigree-standard ID (e.g. "II-3"), shown just above the symbol —
+      // this is the identifier a clinician should read, never the internal
+      // graph ID (d.id, e.g. "mat_uncle_0"), which is not rendered anywhere
+      // on canvas.
+      const pedigreeId = pedigreeIds.get(d.id);
+      if (pedigreeId) {
+        el.append('text')
+          .attr('y', -(sz + 8)).attr('text-anchor', 'middle')
+          .attr('font-size', '10px').attr('fill', '#64748b')
+          .text(pedigreeId.displayId);
+      }
 
       let shape;
 
