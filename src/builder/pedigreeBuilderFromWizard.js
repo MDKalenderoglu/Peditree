@@ -693,56 +693,6 @@ export function buildPedigreeFromWizard(state) {
   }
 
   // ========================================
-  // 10a. CUSTOM CONSANGUINITY LINKS
-  // ========================================
-  // User-defined "these two individuals are siblings" — creates a shared
-  // parent union for any two existing individuals in the graph.
-  // This enables arbitrary consanguinity paths beyond the template system.
-  // Runs after all individuals are created (stages 1–10) so it can reference
-  // any individual including spouse stubs from collateral branches.
-  if (state.customConsanguinity && state.customConsanguinity.length > 0) {
-    state.customConsanguinity.forEach((link, idx) => {
-      if (link.type !== 'siblings') return;
-      const p1 = individuals.find(i => i.id === link.person1);
-      const p2 = individuals.find(i => i.id === link.person2);
-      if (!p1 || !p2) return;
-
-      // Check if they already share a parent union (from template consanguinity)
-      const p1ParentUnion = parentChildRelationships.find(r => r.children.includes(link.person1));
-      const p2ParentUnion = parentChildRelationships.find(r => r.children.includes(link.person2));
-      if (p1ParentUnion && p2ParentUnion && p1ParentUnion.unionId === p2ParentUnion.unionId) {
-        return; // Already siblings in the graph
-      }
-
-      // If person1 already has a parent union, add person2 to it (if not already in another)
-      if (p1ParentUnion && !p2ParentUnion) {
-        addChild(p1ParentUnion.unionId, link.person2);
-        return;
-      }
-      if (p2ParentUnion && !p1ParentUnion) {
-        addChild(p2ParentUnion.unionId, link.person1);
-        return;
-      }
-
-      // Neither has parents, or both have different parents — create shared parents
-      if (!p1ParentUnion && !p2ParentUnion) {
-        const parentGen = Math.min(p1.generation, p2.generation) - 1;
-        const ggfId = `cc_${idx}_f`;
-        const ggmId = `cc_${idx}_m`;
-        const unionId = `U_CC_${idx}`;
-        addInd({ id: ggfId, sex: 'male', generation: parentGen, relation: 'cc_parent', label: `Ortak Baba ${idx + 1}` });
-        addInd({ id: ggmId, sex: 'female', generation: parentGen, relation: 'cc_parent', label: `Ortak Anne ${idx + 1}` });
-        addUnion(unionId, ggfId, ggmId);
-        addChild(unionId, link.person1);
-        addChild(unionId, link.person2);
-      }
-      // Both have different parent unions — this is the complex case.
-      // We cannot merge existing parent unions (would break the graph).
-      // Instead, log it and mark as consanguineous-by-declaration only.
-    });
-  }
-
-  // ========================================
   // 10c. DIRECT GRAPH EDITS (right-panel additions)
   // ========================================
   // Process user-added individuals/unions from the IndividualEditor.
@@ -799,6 +749,69 @@ export function buildPedigreeFromWizard(state) {
           status: edit.status || 'together',
         });
       }
+    });
+  }
+
+  // ========================================
+  // 10a (relocated). CUSTOM CONSANGUINITY LINKS ("make siblings")
+  // ========================================
+  // User-defined "these two individuals are siblings" — creates a shared
+  // parent union for any two existing individuals in the graph. This
+  // enables arbitrary consanguinity paths beyond the template system, and
+  // (v0.3a.1) is also how the multi-select "Kardeş Yap" action works.
+  //
+  // v0.3a.1 fix: this stage used to run BEFORE 10c (direct graph edits),
+  // which meant a "make siblings" link between two individuals who only
+  // exist because of a direct graph edit (e.g. two spouse stubs added via
+  // addSpouseTo) would silently do nothing — `individuals.find(...)` for
+  // either person would fail since neither existed yet at that point in the
+  // build, and the `if (!p1 || !p2) return;` guard bailed out with no
+  // error. Relocated to run AFTER 10c so it can see every individual the
+  // build has created so far, matching the same reasoning already applied
+  // to stage 10b's relocation below.
+  if (state.customConsanguinity && state.customConsanguinity.length > 0) {
+    state.customConsanguinity.forEach((link, idx) => {
+      if (link.type !== 'siblings') return;
+      const p1 = individuals.find(i => i.id === link.person1);
+      const p2 = individuals.find(i => i.id === link.person2);
+      if (!p1 || !p2) return;
+
+      // Check if they already share a parent union (from template consanguinity)
+      const p1ParentUnion = parentChildRelationships.find(r => r.children.includes(link.person1));
+      const p2ParentUnion = parentChildRelationships.find(r => r.children.includes(link.person2));
+      if (p1ParentUnion && p2ParentUnion && p1ParentUnion.unionId === p2ParentUnion.unionId) {
+        return; // Already siblings in the graph
+      }
+
+      // If person1 already has a parent union, add person2 to it (if not already in another)
+      if (p1ParentUnion && !p2ParentUnion) {
+        addChild(p1ParentUnion.unionId, link.person2);
+        return;
+      }
+      if (p2ParentUnion && !p1ParentUnion) {
+        addChild(p2ParentUnion.unionId, link.person1);
+        return;
+      }
+
+      // Neither has parents, or both have different parents — create shared parents
+      if (!p1ParentUnion && !p2ParentUnion) {
+        const parentGen = Math.min(p1.generation, p2.generation) - 1;
+        const ggfId = `cc_${idx}_f`;
+        const ggmId = `cc_${idx}_m`;
+        const unionId = `U_CC_${idx}`;
+        addInd({ id: ggfId, sex: 'male', generation: parentGen, relation: 'cc_parent', label: `Ortak Baba ${idx + 1}` });
+        addInd({ id: ggmId, sex: 'female', generation: parentGen, relation: 'cc_parent', label: `Ortak Anne ${idx + 1}` });
+        addUnion(unionId, ggfId, ggmId);
+        addChild(unionId, link.person1);
+        addChild(unionId, link.person2);
+      }
+      // Both have different parent unions — this is the complex case.
+      // We cannot merge existing parent unions (would break the
+      // single-parent-union invariant, childToUnionMap) — this branch is a
+      // deliberate no-op at the builder level. The v0.3a.1 UI-level "make
+      // siblings" action (usePedigreeStore.js's computeSiblingCreationPlan)
+      // detects this exact case ahead of time and blocks the action with an
+      // explanation, rather than letting the user hit this silent no-op.
     });
   }
 

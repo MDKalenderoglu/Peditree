@@ -160,6 +160,96 @@ export function computeUnionCreationPlan(pedigreeData, id1, id2) {
   return { ok: true };
 }
 
+/**
+ * Pure, read-only check for whether two individuals can safely become
+ * siblings via `addCustomConsanguinity` (v0.3a.1 "make siblings" action —
+ * this store action name predates this hotfix and is legacy naming, but
+ * the operation it performs is a genuine biological parent-child link, not
+ * a consanguinity-flag shortcut; see the docblock on `addCustomConsanguinity`
+ * below and `pedigreeBuilderFromWizard.js` stage 10a).
+ *
+ * Mirrors the exact cases `pedigreeBuilderFromWizard.js` stage 10a handles:
+ *   - already siblings (same parent union)      → ok, no-op
+ *   - exactly one has an existing parent union   → ok, attaches the other
+ *   - neither has a parent union                 → ok, fabricates one shared
+ *                                                    parent union (two new
+ *                                                    "Ortak Baba/Anne" nodes)
+ *   - BOTH already have DIFFERENT parent unions   → NOT SAFE. The builder
+ *     cannot merge two existing parent unions without breaking the
+ *     single-parent-union invariant (`childToUnionMap`), so stage 10a
+ *     silently does nothing in this case today. Silently doing nothing is
+ *     itself a hazard (the clinician clicks "Kardeş Yap," sees no error,
+ *     and may believe it worked) — this plan surfaces that case as
+ *     `ok: false` so the UI can disable/explain it instead of silently
+ *     no-op'ing.
+ *
+ * Exported for direct unit testing.
+ *
+ * @returns {{ ok: boolean, reason?: string }}
+ */
+export function computeSiblingCreationPlan(pedigreeData, id1, id2) {
+  const individuals = pedigreeData.individuals || [];
+  const unions = pedigreeData.unions || [];
+  const pcrs = pedigreeData.parentChildRelationships || [];
+
+  if (!id1 || !id2 || id1 === id2) {
+    return { ok: false, reason: 'Aynı birey kendisiyle kardeş yapılamaz.' };
+  }
+  const ind1 = individuals.find(i => i.id === id1);
+  const ind2 = individuals.find(i => i.id === id2);
+  if (!ind1 || !ind2) {
+    return { ok: false, reason: 'Bireylerden biri grafikte bulunamadı.' };
+  }
+  if (ind1.pregnancyLoss || ind1.stillbirth || ind2.pregnancyLoss || ind2.stillbirth) {
+    return { ok: false, reason: 'Düşük/ölü doğum kaydı bir bireyle kardeş bağı kurulamaz.' };
+  }
+  if (ind1.proband || ind2.proband) {
+    return { ok: false, reason: 'Proband için bu yoldan kardeş bağı kurulamaz.' };
+  }
+  if (typeof ind1.generation === 'number' && typeof ind2.generation === 'number' && ind1.generation !== ind2.generation) {
+    // Matches the same safeguard WizardPanel.jsx's CustomConsanguinityAdder
+    // already applies when picking a sibling pair from the wizard — two
+    // individuals at different generations cannot be full/half siblings,
+    // and attaching them under one shared parent union produces a
+    // SIBLING_GENERATION_INCONSISTENT / SIBLING_Y_MISMATCH graph-integrity
+    // error. Block before the builder ever gets there.
+    return {
+      ok: false,
+      reason: `Bu iki birey farklı jenerasyonlarda (${ind1.generation} ve ${ind2.generation}) — kardeş yapılamaz.`,
+    };
+  }
+
+  const alreadyPartnered = unions.some(u => u.partners.includes(id1) && u.partners.includes(id2));
+  if (alreadyPartnered) {
+    return { ok: false, reason: 'Bu iki birey zaten eş (union) — aynı anda kardeş yapılamaz.' };
+  }
+
+  const childToUnion = {};
+  pcrs.forEach(rel => rel.children.forEach(cid => { childToUnion[cid] = rel.unionId; }));
+  const p1Union = childToUnion[id1];
+  const p2Union = childToUnion[id2];
+
+  if (p1Union && p2Union && p1Union === p2Union) {
+    return { ok: true, action: 'noop', reason: 'Bu iki birey zaten kardeş.' };
+  }
+  if (p1Union && p2Union && p1Union !== p2Union) {
+    // The unsafe case: the builder cannot merge two distinct existing
+    // parent unions without violating childToUnionMap's single-parent
+    // invariant — it would silently no-op today. Block explicitly instead.
+    return {
+      ok: false,
+      reason: 'Her iki bireyin de farklı ebeveyn birlikleri zaten var — bu ikisi doğrudan kardeş ' +
+        'yapılamaz (mevcut iki ayrı ebeveyn birliği güvenli şekilde birleştirilemez). ' +
+        'Bu işlem devre dışı bırakıldı; graf modeli bu birleştirmeyi desteklemeden etkinleştirilmeyecek.',
+    };
+  }
+
+  // Exactly one has a parent union (attach the other), or neither has one
+  // (fabricate a shared parent union) — both are the safe, already-handled
+  // paths in pedigreeBuilderFromWizard.js stage 10a.
+  return { ok: true, action: (p1Union || p2Union) ? 'attach' : 'fabricate' };
+}
+
 const initialState = {
   proband: { sex: 'male', age: '' },
   siblings: {
@@ -582,6 +672,29 @@ export const usePedigreeStore = create((zSet, get) => {
     return { wizardData: wd, ...derived };
   }),
 
+  /**
+   * "Make siblings" — despite the legacy `customConsanguinity` naming (this
+   * predates the v0.3a.1 hotfix and originally existed to support arbitrary
+   * cousin-consanguinity paths beyond the wizard template), this does NOT
+   * set a consanguinity flag on a union. It creates a genuine biological
+   * parent-child structure: `pedigreeBuilderFromWizard.js` stage 10a either
+   * (a) attaches both individuals as children of one already-existing
+   * parent union, or (b) fabricates two new parent individuals ("Ortak
+   * Baba"/"Ortak Anne") and a new union, then attaches both as children of
+   * it — real `addChild`/`addUnion` calls, respecting `childToUnionMap`'s
+   * single-parent-per-child invariant exactly like every other sibling
+   * relationship in this app. It is not a shortcut or a "pseudo-relation."
+   *
+   * The one case this mechanism cannot safely handle — both individuals
+   * already have DIFFERENT existing parent unions — is deliberately a
+   * silent no-op at the builder level (merging two parent unions would
+   * violate the single-parent invariant). Callers MUST check
+   * `computeSiblingCreationPlan(pedigreeData, person1, person2)` first and
+   * only call this action when it returns `ok: true`; the UI
+   * (`IndividualEditor.jsx`'s `TwoPersonActions`) disables "Kardeş Yap"
+   * with an explanation whenever the plan is not ok, rather than letting
+   * the user hit the silent no-op.
+   */
   addCustomConsanguinity: (person1, person2) => set((state) => {
     const wd = JSON.parse(JSON.stringify(state.wizardData));
     if (!wd.customConsanguinity) wd.customConsanguinity = [];

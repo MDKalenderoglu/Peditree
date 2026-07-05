@@ -117,18 +117,34 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           break;
 
         case 'consanguineousUnionUnresolved':
-          // Consanguinity was reported by the user but no shared-ancestor
-          // path is modeled in the graph. Deliberately NOT a double line —
-          // that would visually claim a confirmed cousin marriage the data
-          // doesn't back up. Single amber dashed line + a small "?" marker.
+          // v0.3a.1 fix: consanguinity was reported by the clinician but no
+          // shared-ancestor path is modeled in the graph yet. This must
+          // still render as a visibly DOUBLE union line — per pedigree
+          // nomenclature (see the PDF reference table), "consanguineous
+          // union" is drawn as two parallel relationship lines regardless
+          // of whether the exact degree/common ancestor has been resolved.
+          // A single line reads as "not consanguineous" to a clinician
+          // scanning the chart, which is the opposite of what was declared.
+          // The internal known_supported vs. reported_unresolved distinction
+          // is preserved — but ONLY via color/dash/marker (amber, dashed,
+          // "?" label), never by dropping to a single line. No shared
+          // ancestor or cousin degree is fabricated by this rendering
+          // choice: the double line here asserts "declared consanguineous,"
+          // not "confirmed shared ancestor" — that confirmation is what
+          // the solid-black consanguineousUnion case above communicates.
           g.append('line')
-            .attr('x1', edge.x1).attr('y1', edge.y1)
-            .attr('x2', edge.x2).attr('y2', edge.y2)
-            .attr('stroke', '#d97706').attr('stroke-width', 2)
+            .attr('x1', edge.x1).attr('y1', edge.y1 - 2)
+            .attr('x2', edge.x2).attr('y2', edge.y2 - 2)
+            .attr('stroke', '#d97706').attr('stroke-width', 1.5)
+            .attr('stroke-dasharray', '5,3').attr('fill', 'none');
+          g.append('line')
+            .attr('x1', edge.x1).attr('y1', edge.y1 + 2)
+            .attr('x2', edge.x2).attr('y2', edge.y2 + 2)
+            .attr('stroke', '#d97706').attr('stroke-width', 1.5)
             .attr('stroke-dasharray', '5,3').attr('fill', 'none');
           g.append('text')
             .attr('x', (edge.x1 + edge.x2) / 2)
-            .attr('y', edge.y1 - 6)
+            .attr('y', edge.y1 - 8)
             .attr('text-anchor', 'middle')
             .attr('font-size', '11px')
             .attr('font-weight', '700')

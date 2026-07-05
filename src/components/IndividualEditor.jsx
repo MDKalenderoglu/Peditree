@@ -1,3 +1,5 @@
+import { computeSiblingCreationPlan } from '../state/usePedigreeStore';
+
 /**
  * Lightweight local mirror of the store's isDirectEdit check (see
  * usePedigreeStore.js's computeDeletionPlan) — used only to decide the
@@ -15,12 +17,14 @@ function isDirectEditIndividual(graphEdits, id) {
 /** Two individuals selected via Cmd/Ctrl-click — pair-level quick actions. */
 function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSiblings, onClearSelection }) {
   const unions = pedigreeData?.unions || [];
-  const pcrs = pedigreeData?.parentChildRelationships || [];
   const alreadyPartnered = unions.some(u => u.partners.includes(node.id) && u.partners.includes(node2.id));
 
-  const childToUnion = {};
-  pcrs.forEach(rel => rel.children.forEach(cid => { childToUnion[cid] = rel.unionId; }));
-  const alreadySiblings = childToUnion[node.id] && childToUnion[node.id] === childToUnion[node2.id];
+  // Authoritative safety check for "make siblings" — see
+  // usePedigreeStore.js's computeSiblingCreationPlan docblock. In
+  // particular this correctly blocks (rather than silently no-op'ing) the
+  // case where both individuals already have different existing parent
+  // unions, which the builder cannot safely merge.
+  const siblingPlan = computeSiblingCreationPlan(pedigreeData, node.id, node2.id);
 
   const label = (p) => p.displayLabel || p.label || p.id;
 
@@ -50,22 +54,25 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
           Eş Yap (Union Oluştur)
         </button>
 
-        {/* "Kardeş Yap" reuses the existing customConsanguinity mechanism
-            (WizardPanel.jsx's "4b. Özel Akrabalık Bağları"), which already
-            safely creates a shared parent union (or attaches to an existing
-            one) — see pedigreeBuilderFromWizard.js stage 10a. Disabled when
-            already siblings, or when either person is a pregnancy loss /
-            stillbirth / already the proband (same filter the wizard's own
-            picker applies), since those cases are not safely representable. */}
+        {/* "Kardeş Yap" creates a genuine biological parent-child structure
+            (attaches to an existing parent union, or fabricates a new
+            shared one) via pedigreeBuilderFromWizard.js stage 10a — it is
+            NOT a consanguinity-flag shortcut. Gated by
+            computeSiblingCreationPlan, which blocks (rather than silently
+            no-op'ing) the one case the builder cannot safely handle: both
+            individuals already have different existing parent unions. */}
         <button
           className="btn"
-          disabled={alreadySiblings || alreadyPartnered || node.pregnancyLoss || node.stillbirth || node2.pregnancyLoss || node2.stillbirth || node.proband || node2.proband}
+          disabled={!siblingPlan.ok || siblingPlan.action === 'noop'}
           onClick={() => onMakeSiblings(node.id, node2.id)}
           style={{ fontSize: '0.78rem', padding: '6px 10px', background: '#fce7f3', border: '1px solid #f9a8d4', color: '#9d174d' }}
-          title={alreadySiblings ? 'Zaten kardeşler' : alreadyPartnered ? 'Zaten eş — aynı anda kardeş olamaz' : 'Bu iki bireyi kardeş yap (ortak ebeveyn birliği oluşturulur/kullanılır)'}
+          title={!siblingPlan.ok ? siblingPlan.reason : siblingPlan.action === 'noop' ? siblingPlan.reason : 'Bu iki bireyi kardeş yap (ortak ebeveyn birliği oluşturulur/kullanılır)'}
         >
           Kardeş Yap
         </button>
+        {(!siblingPlan.ok || siblingPlan.action === 'noop') && (
+          <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: '-4px' }}>{siblingPlan.reason}</div>
+        )}
 
         <button
           className="btn"
@@ -193,7 +200,7 @@ export default function IndividualEditor({
                     Akraba evliliği olarak işaretle
                     {u.consanguineous && (
                       <span style={{ color: u.consanguinityStatus === 'known_supported' ? '#166534' : '#b45309' }}>
-                        {u.consanguinityStatus === 'known_supported' ? '(çift çizgi)' : '(ortak ata çözümlenmedi — belirsizlik işareti)'}
+                        {u.consanguinityStatus === 'known_supported' ? '(siyah çift çizgi)' : '(turuncu kesikli çift çizgi + "?" — ortak ata henüz çözümlenmedi)'}
                       </span>
                     )}
                   </label>

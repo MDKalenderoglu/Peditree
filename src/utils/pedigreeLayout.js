@@ -560,13 +560,16 @@ export function computePedigreeLayout(data) {
 
     // --- UNION LINE ---
     // Rendering keys off consanguinityStatus, NOT the raw `consanguineous`
-    // flag: only a union whose shared-ancestor path was actually built
-    // ('known_supported') gets the full double cousin-marriage line.
-    // A union that was merely declared consanguineous with no backing
-    // structure ('reported_unresolved') gets a visually distinct marker
-    // instead (see PedigreeCanvas.jsx) — rendering a standard double line
-    // for it would visually assert a shared ancestor that isn't in the
-    // graph (CLAUDE.md non-negotiable rule #4).
+    // flag. Both consanguinity states render a DOUBLE union line (a
+    // clinician-declared consanguineous union must always be visibly
+    // double-lined, per pedigree nomenclature) — they differ only in style:
+    // a union whose shared-ancestor path was actually built ('known_supported')
+    // gets the standard solid black double line; a union that was merely
+    // declared consanguineous with no backing structure ('reported_unresolved')
+    // gets an amber dashed double line + a "?" marker instead (see
+    // PedigreeCanvas.jsx). This still never asserts a shared ancestor that
+    // isn't in the graph (CLAUDE.md non-negotiable rule #4) — the amber/dashed
+    // styling communicates "declared, not confirmed," not "no relationship."
     const edgeType =
       u.consanguinityStatus === 'known_supported' ? 'consanguineousUnion' :
       u.consanguinityStatus === 'reported_unresolved' ? 'consanguineousUnionUnresolved' :

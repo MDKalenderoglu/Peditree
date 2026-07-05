@@ -104,19 +104,22 @@ export function validatePedigree(data) {
     // supported degrees left at an unresolved path, and arbitrary unions
     // flagged consanguineous via the "mark as consanguineous" mechanism.
     if (u.consanguinityStatus === 'reported_unresolved') {
-      // v0.3a.1 fix: the previous wording ("çift çizgi çizilmeyecek" — "a
-      // double line will not be drawn") read as a permanent rendering
-      // decision. The actual state is that the degree/common ancestor is
-      // unresolved in the graph *so far* — adding the shared ancestor (via
-      // the wizard's consanguinity template, the "make siblings" link, or a
-      // direct union between two individuals who already share an ancestor)
-      // promotes this to a real double line, per pedigreeBuilderFromWizard.js
-      // stage 10b. The warning must describe the unresolved state, not
-      // assert a fixed non-drawing outcome.
+      // v0.3a.1 fix (round 2): the previous wording described this as a
+      // single-line/marker-only state. Per pedigree nomenclature, a
+      // clinician-declared consanguineous union must ALWAYS render as a
+      // visibly double relationship line — reported_unresolved is still
+      // drawn as a double line (amber, dashed, with a "?" marker), it is
+      // only visually distinguished from known_supported's solid black
+      // double line, never reduced to a single line. Adding the shared
+      // ancestor (via the wizard's consanguinity template, the "make
+      // siblings" link, or a direct union between two individuals who
+      // already share an ancestor) promotes it to the solid black double
+      // line, per pedigreeBuilderFromWizard.js stage 10b. The warning must
+      // describe the unresolved state, not assert a fixed non-drawing outcome.
       warnings.push(
         `Uyarı: Union ${u.id} akraba evliliği olarak bildirildi, ancak derece / ortak ata bilgisi ` +
-        `grafikte henüz çözümlenmedi — belirsizlik işareti (tek kesikli çizgi + "?") gösteriliyor. ` +
-        `Ortak ata grafikte kurulduğunda çift çizgiye dönüşür.`
+        `grafikte henüz çözümlenmedi — turuncu kesikli ÇİFT çizgi + "?" işareti gösteriliyor ` +
+        `(çizgi kaybolmuyor, sadece rengi/stili farklı). Ortak ata grafikte kurulduğunda standart siyah çift çizgiye dönüşür.`
       );
     }
   });

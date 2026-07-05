@@ -267,7 +267,7 @@ export function auditPedigreeGraph(graph) {
       issues.push({
         severity: 'warning',
         code: 'CONSANGUINITY_UNRESOLVED',
-        message: `Union '${u.id}' akraba evliliği olarak işaretli, ancak ortak ata yapısı grafikte modellenmedi (reported_unresolved). Çift çizgi yerine belirsizlik işareti çizilecek.`,
+        message: `Union '${u.id}' akraba evliliği olarak işaretli, ancak ortak ata yapısı grafikte modellenmedi (reported_unresolved). Standart siyah çift çizgi yerine turuncu kesikli çift çizgi + belirsizlik işareti ("?") çizilecek — çizgi kaybolmuyor.`,
         ids: [u.id],
       });
     }
