@@ -1,0 +1,19 @@
+{
+  "caseSeed": 709087886,
+  "codes": [
+    "NODE_SYMBOL_OVERLAP",
+    "UNRELATED_FAMILY_BLOCK_OVERLAP"
+  ],
+  "opCount": 2,
+  "opSeq": [
+    {
+      "op": "addParents",
+      "target": "pat_gf"
+    },
+    {
+      "op": "addSpouse",
+      "target": "pat_gm",
+      "sex": "female"
+    }
+  ]
+}

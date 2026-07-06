@@ -1,0 +1,23 @@
+{
+  "caseSeed": 4288284983,
+  "codes": [
+    "UNRELATED_NODE_IN_CHILD_FOOTPRINT"
+  ],
+  "opCount": 2,
+  "opSeq": [
+    {
+      "op": "addRelativeBranch",
+      "side": "paternalRelatives",
+      "type": "uncles",
+      "male": 2,
+      "female": 2
+    },
+    {
+      "op": "addRelativeBranch",
+      "side": "maternalRelatives",
+      "type": "uncles",
+      "male": 0,
+      "female": 0
+    }
+  ]
+}

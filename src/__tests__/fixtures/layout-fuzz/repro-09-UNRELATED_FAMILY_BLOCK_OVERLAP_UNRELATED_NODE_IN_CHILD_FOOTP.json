@@ -1,0 +1,21 @@
+{
+  "caseSeed": 3851146147,
+  "codes": [
+    "UNRELATED_NODE_IN_CHILD_FOOTPRINT"
+  ],
+  "opCount": 2,
+  "opSeq": [
+    {
+      "op": "addSpouse",
+      "target": "mother",
+      "sex": "female"
+    },
+    {
+      "op": "addRelativeBranch",
+      "side": "paternalRelatives",
+      "type": "aunts",
+      "male": 0,
+      "female": 3
+    }
+  ]
+}

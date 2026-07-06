@@ -1,0 +1,20 @@
+{
+  "caseSeed": 3035574093,
+  "codes": [
+    "UNRELATED_FAMILY_BLOCK_OVERLAP"
+  ],
+  "opCount": 2,
+  "opSeq": [
+    {
+      "op": "addRelativeBranch",
+      "side": "maternalRelatives",
+      "type": "uncles",
+      "male": 1,
+      "female": 1
+    },
+    {
+      "op": "deleteIndividual",
+      "id": "mat_gm"
+    }
+  ]
+}

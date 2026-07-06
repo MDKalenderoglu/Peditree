@@ -1,0 +1,37 @@
+{
+  "caseSeed": 1900840515,
+  "codes": [
+    "CROSS_BRANCH_UNION_COLLAPSES_ANCESTOR_BLOCKS",
+    "EDGE_THROUGH_NON_OWNER_NODE",
+    "NODE_SYMBOL_OVERLAP",
+    "UNION_LINE_THROUGH_NODE",
+    "UNRELATED_FAMILY_BLOCK_OVERLAP"
+  ],
+  "opCount": 5,
+  "opSeq": [
+    {
+      "op": "addParents",
+      "target": "pat_gm"
+    },
+    {
+      "op": "addSpouse",
+      "target": "pat_gm",
+      "sex": "unknown"
+    },
+    {
+      "op": "addSibling",
+      "target": "pat_gm",
+      "sex": "unknown"
+    },
+    {
+      "op": "addSpouse",
+      "target": "mat_gf",
+      "sex": "male"
+    },
+    {
+      "op": "addSpouse",
+      "target": "de_sp_3",
+      "sex": "male"
+    }
+  ]
+}

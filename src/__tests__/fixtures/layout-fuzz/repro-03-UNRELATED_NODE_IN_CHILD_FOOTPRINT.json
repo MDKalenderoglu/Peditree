@@ -1,0 +1,22 @@
+{
+  "caseSeed": 1750673096,
+  "codes": [
+    "UNRELATED_NODE_IN_CHILD_FOOTPRINT"
+  ],
+  "opCount": 3,
+  "opSeq": [
+    {
+      "op": "addSpouse",
+      "target": "mother",
+      "sex": "female"
+    },
+    {
+      "op": "addSiblingCat",
+      "category": "pregnancyLoss"
+    },
+    {
+      "op": "addSiblingCat",
+      "category": "deceased"
+    }
+  ]
+}

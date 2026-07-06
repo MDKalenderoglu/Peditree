@@ -1,0 +1,19 @@
+{
+  "caseSeed": 499115965,
+  "codes": [
+    "NODE_SYMBOL_OVERLAP"
+  ],
+  "opCount": 2,
+  "opSeq": [
+    {
+      "op": "addSpouse",
+      "target": "father",
+      "sex": "female"
+    },
+    {
+      "op": "addSpouse",
+      "target": "de_sp_0",
+      "sex": "male"
+    }
+  ]
+}

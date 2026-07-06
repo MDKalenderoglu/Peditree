@@ -1,0 +1,16 @@
+{
+  "caseSeed": 4117796537,
+  "codes": [
+    "EDGE_THROUGH_NON_OWNER_NODE",
+    "UNION_LINE_THROUGH_NODE",
+    "UNRELATED_FAMILY_BLOCK_OVERLAP"
+  ],
+  "opCount": 1,
+  "opSeq": [
+    {
+      "op": "addSpouse",
+      "target": "mat_gm",
+      "sex": "female"
+    }
+  ]
+}

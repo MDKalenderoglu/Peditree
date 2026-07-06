@@ -1,0 +1,13 @@
+{
+  "caseSeed": 1498476092,
+  "codes": [
+    "NODE_SYMBOL_OVERLAP"
+  ],
+  "opCount": 1,
+  "opSeq": [
+    {
+      "op": "deleteIndividual",
+      "id": "father"
+    }
+  ]
+}

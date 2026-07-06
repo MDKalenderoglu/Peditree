@@ -1,0 +1,15 @@
+{
+  "caseSeed": 1793374714,
+  "codes": [
+    "EDGE_THROUGH_NON_OWNER_NODE",
+    "UNION_LINE_THROUGH_NODE"
+  ],
+  "opCount": 1,
+  "opSeq": [
+    {
+      "op": "addSpouse",
+      "target": "pat_gf",
+      "sex": "female"
+    }
+  ]
+}

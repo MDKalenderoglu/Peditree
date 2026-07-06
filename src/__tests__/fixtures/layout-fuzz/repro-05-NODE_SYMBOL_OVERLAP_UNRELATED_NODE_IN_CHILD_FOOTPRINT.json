@@ -1,0 +1,18 @@
+{
+  "caseSeed": 632224998,
+  "codes": [
+    "NODE_SYMBOL_OVERLAP"
+  ],
+  "opCount": 2,
+  "opSeq": [
+    {
+      "op": "addGreatGrandparents",
+      "gpKey": "mat_gf"
+    },
+    {
+      "op": "addChild",
+      "target": "gg_mat_gf_m",
+      "sex": "female"
+    }
+  ]
+}

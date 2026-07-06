@@ -1,0 +1,22 @@
+{
+  "caseSeed": 3779055492,
+  "codes": [
+    "EDGE_THROUGH_NON_OWNER_NODE",
+    "UNION_LINE_THROUGH_NODE"
+  ],
+  "opCount": 2,
+  "opSeq": [
+    {
+      "op": "addRelativeBranch",
+      "side": "maternalRelatives",
+      "type": "uncles",
+      "male": 3,
+      "female": 2
+    },
+    {
+      "op": "addSpouse",
+      "target": "mat_gf",
+      "sex": "unknown"
+    }
+  ]
+}

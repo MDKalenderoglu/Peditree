@@ -1,0 +1,18 @@
+{
+  "caseSeed": 3317131924,
+  "codes": [
+    "UNRELATED_FAMILY_BLOCK_OVERLAP"
+  ],
+  "opCount": 2,
+  "opSeq": [
+    {
+      "op": "addChild",
+      "target": "proband",
+      "sex": "male"
+    },
+    {
+      "op": "addParents",
+      "target": "de_sp_0"
+    }
+  ]
+}
