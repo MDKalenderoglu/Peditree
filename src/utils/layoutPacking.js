@@ -58,7 +58,7 @@ export function computeFamilyBlockLayout(graph) {
 // ─────────────────────────────────────────────────────────────
 
 function orderGenerations(model) {
-  const { generations, generationLayers, childToParentUnion, partnerUnions, childIdsOfUnion } = model;
+  const { generations, generationLayers } = model;
   const order = new Map();
 
   generations.forEach((gen, gi) => {
@@ -67,62 +67,147 @@ function orderGenerations(model) {
       order.set(gen, orderTopGeneration(idsThisGen, model));
       return;
     }
-
     const parentOrder = order.get(generations[gi - 1]) || [];
-    const parentRank = new Map(parentOrder.map((id, i) => [id, i]));
-
-    // Bloodline individuals at this gen, grouped by their parent union.
-    const bloodline = idsThisGen.filter(id => childToParentUnion.has(id));
-    const marriedIn = idsThisGen.filter(id => !childToParentUnion.has(id));
-
-    // Sibling blocks, ordered by the barycenter rank of their parent union's partners.
-    const unionsWithKidsHere = [...new Set(bloodline.map(id => childToParentUnion.get(id)))];
-    const blocks = unionsWithKidsHere.map(unionId => {
-      const union = model.unionById.get(unionId);
-      const partnerRanks = (union?.partners || [])
-        .map(pid => parentRank.get(pid))
-        .filter(r => r !== undefined);
-      const bary = partnerRanks.length ? partnerRanks.reduce((a, b) => a + b, 0) / partnerRanks.length : 1e9;
-      // children in this generation, in PCR (birth) order
-      const kids = (childIdsOfUnion.get(unionId) || []).filter(cid => idsThisGen.includes(cid));
-      return { unionId, bary, kids };
-    });
-    blocks.sort((a, b) => a.bary - b.bary);
-
-    let seq = [];
-    for (const block of blocks) seq.push(...block.kids);
-
-    // Insert married-in spouses adjacent to their partner. If a spouse has
-    // no placed partner in this generation, append at the end.
-    for (const spouseId of marriedIn) {
-      const spouseUnions = partnerUnions.get(spouseId) || [];
-      // find a partner already in seq
-      let insertIdx = -1;
-      let before = false;
-      for (const uId of spouseUnions) {
-        const union = model.unionById.get(uId);
-        if (!union) continue;
-        const partner = union.partners.find(p => p !== spouseId);
-        const pIdx = seq.indexOf(partner);
-        if (pIdx !== -1) {
-          insertIdx = pIdx;
-          // place spouse on the outer side: if partner is a bloodline child,
-          // the spouse goes to the partner's right by default.
-          before = false;
-          break;
-        }
-      }
-      if (insertIdx === -1) seq.push(spouseId);
-      else seq.splice(before ? insertIdx : insertIdx + 1, 0, spouseId);
-    }
-
-    // Any remaining ids not yet in seq (defensive) appended in stable order.
-    for (const id of idsThisGen) if (!seq.includes(id)) seq.push(id);
-
-    order.set(gen, seq);
+    order.set(gen, orderMiddleGeneration(idsThisGen, parentOrder, model));
   });
 
   return order;
+}
+
+/**
+ * Order one generation so that couples end up ADJACENT even when the two
+ * partners come from different sibling blocks (the convergent-marriage case
+ * that produces the "union line spans across unrelated siblings" defect).
+ *
+ * Approach: sibling blocks are seriated (chained so marriage-joined blocks
+ * are neighbours), the child who marries into the next/previous block is
+ * pulled to that block's touching edge, and married-in spouses are inlined
+ * beside their partner (alternating sides when a person has multiple unions).
+ */
+function orderMiddleGeneration(idsThisGen, parentOrder, model) {
+  const { childToParentUnion, partnerUnions, childIdsOfUnion, unionById } = model;
+  const parentRank = new Map(parentOrder.map((id, i) => [id, i]));
+  const idSet = new Set(idsThisGen);
+
+  const bloodline = idsThisGen.filter(id => childToParentUnion.has(id));
+  const marriedIn = idsThisGen.filter(id => !childToParentUnion.has(id));
+
+  // One block per parent union with children here.
+  const unionIds = [...new Set(bloodline.map(id => childToParentUnion.get(id)))];
+  const blockById = new Map();
+  for (const unionId of unionIds) {
+    const union = unionById.get(unionId);
+    const ranks = (union?.partners || []).map(p => parentRank.get(p)).filter(r => r !== undefined);
+    const bary = ranks.length ? ranks.reduce((a, b) => a + b, 0) / ranks.length : 1e9;
+    const kids = (childIdsOfUnion.get(unionId) || []).filter(c => idSet.has(c));
+    blockById.set(unionId, { unionId, bary, kids: [...kids] });
+  }
+
+  const parentUnionOf = (id) => childToParentUnion.get(id);
+
+  // Cross-block marriages: a union at this gen whose two partners are
+  // bloodline children of DIFFERENT blocks. Record which child touches which
+  // other block, so we can pull them to the shared edge.
+  const joins = []; // { blockA, blockB, childA, childB }
+  const seenUnions = new Set();
+  for (const id of bloodline) {
+    for (const uId of (partnerUnions.get(id) || [])) {
+      if (seenUnions.has(uId)) continue;
+      const union = unionById.get(uId);
+      if (!union) continue;
+      const [a, b] = union.partners;
+      if (!idSet.has(a) || !idSet.has(b)) continue;
+      const pa = parentUnionOf(a), pb = parentUnionOf(b);
+      if (pa && pb && pa !== pb && blockById.has(pa) && blockById.has(pb)) {
+        joins.push({ blockA: pa, blockB: pb, childA: a, childB: b });
+        seenUnions.add(uId);
+      }
+    }
+  }
+
+  // Seriate blocks: greedy chain — start from lowest-barycenter block, then
+  // repeatedly append a not-yet-placed block joined to the last placed one;
+  // otherwise the lowest-barycenter remaining block.
+  const remaining = [...blockById.keys()].sort((x, y) => blockById.get(x).bary - blockById.get(y).bary);
+  const joinNeighbours = new Map();
+  for (const j of joins) {
+    if (!joinNeighbours.has(j.blockA)) joinNeighbours.set(j.blockA, []);
+    if (!joinNeighbours.has(j.blockB)) joinNeighbours.set(j.blockB, []);
+    joinNeighbours.get(j.blockA).push(j.blockB);
+    joinNeighbours.get(j.blockB).push(j.blockA);
+  }
+  const blockSeq = [];
+  const placedBlocks = new Set();
+  while (remaining.length) {
+    let next;
+    const last = blockSeq[blockSeq.length - 1];
+    if (last && joinNeighbours.has(last)) {
+      next = (joinNeighbours.get(last) || []).find(nb => !placedBlocks.has(nb));
+    }
+    if (!next) next = remaining.find(b => !placedBlocks.has(b));
+    if (!next) break;
+    blockSeq.push(next);
+    placedBlocks.add(next);
+    remaining.splice(remaining.indexOf(next), 1);
+  }
+
+  // Within-block edge placement: a child married to the adjacent block goes
+  // to the touching edge (left edge toward the previous block, right edge
+  // toward the next block).
+  const orderKidsForBlock = (blockId, prevBlockId, nextBlockId) => {
+    const block = blockById.get(blockId);
+    const kids = [...block.kids];
+    const leftAnchors = [];   // marry to previous block → left edge
+    const rightAnchors = [];  // marry to next block → right edge
+    for (const j of joins) {
+      if (j.blockA === blockId && j.blockB === prevBlockId) leftAnchors.push(j.childA);
+      if (j.blockB === blockId && j.blockA === prevBlockId) leftAnchors.push(j.childB);
+      if (j.blockA === blockId && j.blockB === nextBlockId) rightAnchors.push(j.childA);
+      if (j.blockB === blockId && j.blockA === nextBlockId) rightAnchors.push(j.childB);
+    }
+    const middle = kids.filter(k => !leftAnchors.includes(k) && !rightAnchors.includes(k));
+    return [...leftAnchors, ...middle, ...rightAnchors];
+  };
+
+  let seq = [];
+  blockSeq.forEach((blockId, i) => {
+    const prev = blockSeq[i - 1];
+    const next = blockSeq[i + 1];
+    seq.push(...orderKidsForBlock(blockId, prev, next));
+  });
+
+  // Inline married-in spouses beside their partner, choosing the side that
+  // is NOT already occupied by another of that partner's spouses — so a
+  // person with two partners ends up between them (…spouseA, P, spouseB…),
+  // and neither union line crosses the other spouse.
+  const arePartners = (a, b) => (partnerUnions.get(a) || []).some(uId => {
+    const u = unionById.get(uId);
+    return u && u.partners.includes(b);
+  });
+  for (const spouseId of marriedIn) {
+    let placed = false;
+    for (const uId of (partnerUnions.get(spouseId) || [])) {
+      const union = unionById.get(uId);
+      if (!union) continue;
+      const partner = union.partners.find(p => p !== spouseId);
+      const pIdx = seq.indexOf(partner);
+      if (pIdx === -1) continue;
+      const rightNeighbor = seq[pIdx + 1];
+      const leftNeighbor = seq[pIdx - 1];
+      const rightTaken = rightNeighbor && arePartners(partner, rightNeighbor);
+      const leftTaken = leftNeighbor && arePartners(partner, leftNeighbor);
+      // default right; if right is already a partner and left is free, go left
+      const insertAt = (rightTaken && !leftTaken) ? pIdx : pIdx + 1;
+      seq.splice(insertAt, 0, spouseId);
+      placed = true;
+      break;
+    }
+    if (!placed) seq.push(spouseId);
+  }
+
+  // Defensive: any id not yet ordered, appended stably.
+  for (const id of idsThisGen) if (!seq.includes(id)) seq.push(id);
+  return seq;
 }
 
 function orderTopGeneration(ids, model) {
