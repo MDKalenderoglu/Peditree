@@ -236,45 +236,33 @@ function orderTopGeneration(ids, model) {
 // Step 2 — X assignment (bottom-up: parents center over children)
 // ─────────────────────────────────────────────────────────────
 
+// Minimum horizontal gap enforced between two adjacent RESERVED footprints
+// (or a footprint and a plain node) at the same generation. This is the fix
+// for the "unrelated sibling pulled into the wide sibship fan below their
+// neighbour" illusion: a union's descendant footprint is treated as a solid
+// reserved block that nothing else may intrude into.
+const BLOCK_GAP = 40;
+
 function assignX(order, model, generations) {
   const { childIdsOfUnion } = model;
   const xPos = {};
 
-  // Initialize the bottom generation by order at fixed spacing.
+  // Initialize the bottom generation by order at fixed spacing. It has no
+  // descendants below it, so plain sequential placement is correct.
   const bottomGen = generations[generations.length - 1];
   placeByOrderInitial(order.get(bottomGen) || [], xPos);
 
-  // Bottom-up: each higher generation is placed by first targeting each
-  // node toward the center of its children (if any placed below), then
-  // enforcing order + min separation left-to-right.
+  // Bottom-up: every higher generation is placed using RESERVED FOOTPRINTS —
+  // a node (or a couple sharing a union) that already has children placed
+  // below it reserves the full x-range those children occupy, and every
+  // other node in the row (regardless of how far away in the sequence) must
+  // stay outside that reserved range. This is what prevents a wide sibship
+  // fan from visually running underneath an unrelated aunt/uncle/sibling
+  // sitting just one slot away from the true parents.
   for (let gi = generations.length - 2; gi >= 0; gi--) {
     const gen = generations[gi];
     const seq = order.get(gen) || [];
-
-    // desired X per node
-    const desired = new Map();
-    for (const id of seq) {
-      const center = childrenCenterFor(id, model, xPos, childIdsOfUnion);
-      desired.set(id, center); // may be null
-    }
-    placeByOrderWithDesired(seq, desired, xPos);
-  }
-
-  // A couple of top-down tidy sweeps: pull childless/married-in nodes toward
-  // their partner's or parents' position, then re-separate.
-  for (let sweep = 0; sweep < 2; sweep++) {
-    for (let gi = 0; gi < generations.length; gi++) {
-      const gen = generations[gi];
-      const seq = order.get(gen) || [];
-      const desired = new Map();
-      for (const id of seq) {
-        const parentsCenter = parentsCenterFor(id, model, xPos);
-        const childrenCenter = childrenCenterFor(id, model, xPos, childIdsOfUnion);
-        // Prefer children center (keeps couples over kids); fall back to parents.
-        desired.set(id, childrenCenter != null ? childrenCenter : parentsCenter);
-      }
-      placeByOrderWithDesired(seq, desired, xPos);
-    }
+    placeGenerationWithFootprints(seq, model, xPos, childIdsOfUnion);
   }
 
   return xPos;
@@ -289,24 +277,102 @@ function placeByOrderInitial(seq, xPos) {
 }
 
 /**
- * Place a generation's nodes in `seq` order, each as close to its desired X
- * as possible, but strictly left-to-right with a minimum gap so order and
- * contiguity are preserved (no overlaps, no interleaving).
+ * Place one generation left to right. Any node that already has children
+ * positioned below it (via a union it partners in) is an ANCHOR: its final
+ * x is pinned to the center of that footprint, and the footprint's full
+ * [minX,maxX] range is reserved — nothing else in the row may be placed
+ * inside it. Two adjacent partners who share the SAME anchoring union are
+ * treated as one couple sharing that single footprint, spread apart by
+ * SPOUSE_GAP around its center. Nodes with no footprint of their own get a
+ * default NODE_SLOT-wide slot, sequentially, after whatever reserved
+ * footprint precedes them.
  */
-function placeByOrderWithDesired(seq, desired, xPos) {
-  let cursor = -Infinity;
-  for (let i = 0; i < seq.length; i++) {
+function placeGenerationWithFootprints(seq, model, xPos, childIdsOfUnion) {
+  const footprintOf = (id) => unionFootprintFor(id, model, childIdsOfUnion, xPos);
+
+  // zoneMinX(id) is recorded for every ANCHORED id (solo, or part of a
+  // couple sharing one footprint) — used by the backward pass below to stop
+  // a childless sibling that comes BEFORE an anchor in the sequence from
+  // being left sitting underneath that anchor's descendant fan (the mirror
+  // of the forward-pass guarantee, which already handles anchors that come
+  // AFTER a childless sibling).
+  const zoneMinX = new Map();
+
+  let cursor = -Infinity; // rightmost edge already reserved (footprint or default slot)
+  let i = 0;
+  while (i < seq.length) {
     const id = seq[i];
-    const want = desired.get(id);
-    const minX = cursor === -Infinity ? (want ?? 0) : cursor + NODE_SLOT;
-    const x = want != null ? Math.max(want, minX) : (cursor === -Infinity ? 0 : cursor + NODE_SLOT);
-    xPos[id] = x;
-    cursor = x;
+    const nextId = seq[i + 1];
+    const fp = footprintOf(id);
+
+    // Couple sharing one union's footprint (or no footprint at all, just a
+    // married pair standing together): consume both seq slots at once.
+    const sharedUnion = nextId && sharedUnionBetween(id, nextId, model);
+    if (sharedUnion) {
+      const combined = fp || footprintOf(nextId);
+      const center = combined ? (combined.minX + combined.maxX) / 2 : null;
+      const minCenter = cursor === -Infinity ? (center ?? 0) : cursor + BLOCK_GAP + SPOUSE_GAP / 2;
+      const placedCenter = center != null ? Math.max(center, minCenter) : minCenter;
+      xPos[id] = placedCenter - SPOUSE_GAP / 2;
+      xPos[nextId] = placedCenter + SPOUSE_GAP / 2;
+      const rightEdge = combined ? Math.max(combined.maxX, placedCenter + SPOUSE_GAP / 2) : placedCenter + SPOUSE_GAP / 2;
+      cursor = rightEdge;
+      if (combined) {
+        zoneMinX.set(id, combined.minX);
+        zoneMinX.set(nextId, combined.minX);
+      }
+      i += 2;
+      continue;
+    }
+
+    if (fp) {
+      // Solo anchor (e.g. an aunt/uncle who themselves has children).
+      const center = (fp.minX + fp.maxX) / 2;
+      const minCenter = cursor === -Infinity ? center : cursor + BLOCK_GAP + NODE_SLOT / 2;
+      const placedCenter = Math.max(center, minCenter);
+      xPos[id] = placedCenter;
+      cursor = Math.max(fp.maxX, placedCenter);
+      zoneMinX.set(id, fp.minX);
+    } else {
+      // No footprint: default slot, sequential.
+      const x = cursor === -Infinity ? 0 : cursor + BLOCK_GAP + NODE_SLOT / 2;
+      xPos[id] = x;
+      cursor = x + NODE_SLOT / 2;
+    }
+    i += 1;
+  }
+
+  // Backward correction: a childless sibling positioned BEFORE an anchor in
+  // the row must not sit inside that anchor's reserved footprint either —
+  // the forward pass above only guarantees this for nodes AFTER an anchor
+  // (since footprints aren't known until the anchor itself is processed).
+  let boundary = Infinity;
+  for (let j = seq.length - 1; j >= 0; j--) {
+    const id = seq[j];
+    if (zoneMinX.has(id)) {
+      boundary = zoneMinX.get(id);
+      continue;
+    }
+    const maxAllowed = boundary - BLOCK_GAP - NODE_SLOT / 2;
+    if (xPos[id] > maxAllowed) xPos[id] = maxAllowed;
+    boundary = xPos[id] - NODE_SLOT / 2;
   }
 }
 
-function childrenCenterFor(id, model, xPos, childIdsOfUnion) {
-  // Union(s) where `id` is a partner and which have children already placed.
+/** True if `a` and `b` are partners in a union whose children are the
+ * footprint source for both (so they should be placed as one couple). */
+function sharedUnionBetween(a, b, model) {
+  const unionsA = model.partnerUnions.get(a) || [];
+  for (const uId of unionsA) {
+    const union = model.unionById.get(uId);
+    if (union && union.partners.includes(b)) return uId;
+  }
+  return null;
+}
+
+/** Combined [minX,maxX] of every already-placed child across every union
+ * `id` partners in, or null if none of its unions have placed children yet. */
+function unionFootprintFor(id, model, childIdsOfUnion, xPos) {
   const unions = model.partnerUnions.get(id) || [];
   const childXs = [];
   for (const uId of unions) {
@@ -316,17 +382,7 @@ function childrenCenterFor(id, model, xPos, childIdsOfUnion) {
     }
   }
   if (childXs.length === 0) return null;
-  return (Math.min(...childXs) + Math.max(...childXs)) / 2;
+  return { minX: Math.min(...childXs), maxX: Math.max(...childXs) };
 }
 
-function parentsCenterFor(id, model, xPos) {
-  const pu = model.childToParentUnion.get(id);
-  if (!pu) return null;
-  const union = model.unionById.get(pu);
-  if (!union) return null;
-  const pxs = union.partners.map(p => xPos[p]).filter(v => typeof v === 'number');
-  if (pxs.length === 0) return null;
-  return (Math.min(...pxs) + Math.max(...pxs)) / 2;
-}
-
-export const _internals = { GEN_Y_SPACING, NODE_SLOT, SPOUSE_GAP, Y_TOP };
+export const _internals = { GEN_Y_SPACING, NODE_SLOT, SPOUSE_GAP, Y_TOP, BLOCK_GAP };

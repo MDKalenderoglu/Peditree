@@ -68,7 +68,7 @@ export function describeNewGraphErrors(beforeIssues, afterIssues) {
 // relationship mutation that *increases* their count makes the drawing
 // strictly less readable, which the user explicitly must not be allowed to
 // do — so these are gated by count, not by presence.
-const LAYOUT_AMBIGUITY_CODES = new Set(['SIBSHIP_BUS_OVERLAP', 'EDGE_THROUGH_NODE']);
+const LAYOUT_AMBIGUITY_CODES = new Set(['SIBSHIP_BUS_OVERLAP', 'EDGE_THROUGH_NODE', 'UNRELATED_NODE_IN_CHILD_FOOTPRINT']);
 
 function countAmbiguity(issues) {
   return (issues || []).filter(i => LAYOUT_AMBIGUITY_CODES.has(i.code)).length;

@@ -311,5 +311,54 @@ export function auditLayoutIntegrity(layout, graph) {
     }
   }
 
+  // ──────────────────────────────────────
+  // 11. Unrelated node sitting inside a union's child footprint (v0.4.1).
+  //     Even when a union's own sibship rail is perfectly local (CHECK 9
+  //     passes) and no line literally crosses another node (CHECK 10
+  //     passes), a wide sibship fan can still visually mislead if some
+  //     OTHER same-generation individual — a sibling/aunt/uncle who is NOT
+  //     a partner in that union and has no relationship to its children —
+  //     happens to sit horizontally between the fan's leftmost and
+  //     rightmost child. A viewer's eye reads "this person is roughly under
+  //     the same spread as those kids" as a relationship cue, even though
+  //     no line actually touches them. This is the exact illusion reported
+  //     from clinical QA: a wide 6-child fan appeared to run underneath a
+  //     childless aunt/uncle sitting one seat away from the true parents.
+  //     Warning severity — pre-existing pedigrees may already exhibit this;
+  //     the layout packer (layoutPacking.js) now reserves each union's full
+  //     child footprint so new mutations cannot introduce it, and this
+  //     check is the regression gate for that guarantee.
+  // ──────────────────────────────────────
+  {
+    const NODE_HALF_X = 20;
+    for (const rel of parentChildRelationships) {
+      const childNodes = rel.children.map(id => nodeById.get(id)).filter(Boolean);
+      if (childNodes.length === 0) continue;
+      const union = unions.find(u => u.id === rel.unionId);
+      if (!union) continue;
+      const childXs = childNodes.map(n => n.x).filter(v => typeof v === 'number');
+      if (childXs.length === 0) continue;
+      const minX = Math.min(...childXs) + NODE_HALF_X;
+      const maxX = Math.max(...childXs) - NODE_HALF_X;
+      if (maxX <= minX) continue; // single child or no real interior span
+
+      // Same generation as the parents (one above the children).
+      const parentGen = childNodes[0].generation - 1;
+      for (const node of nodes) {
+        if (node.generation !== parentGen) continue;
+        if (union.partners.includes(node.id)) continue;
+        if (typeof node.x !== 'number') continue;
+        if (node.x > minX && node.x < maxX) {
+          issues.push({
+            severity: 'warning',
+            code: 'UNRELATED_NODE_IN_CHILD_FOOTPRINT',
+            message: `Individual '${node.id}' sits horizontally inside union '${rel.unionId}''s child fan without being one of its partners — a viewer could mistake them for a parent.`,
+            ids: [node.id, rel.unionId],
+          });
+        }
+      }
+    }
+  }
+
   return issues;
 }

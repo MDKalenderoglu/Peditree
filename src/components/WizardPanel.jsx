@@ -5,6 +5,7 @@ import ChildOrderEditor from './ChildOrderEditor';
 import { sanitizeAgeValue } from '../utils/ageValidation';
 import { RELATIONSHIP_BACKGROUND_OPTIONS } from '../utils/relationshipBackground';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
+import { deriveSiblingCounts } from '../utils/siblingCounts';
 
 /**
  * Left-panel selected-person identity + quick-action card (v0.3a.1).
@@ -203,6 +204,27 @@ const Stepper = ({ label, value, onChange, min = 0, max = 10 }) => (
 );
 
 /**
+ * v0.4.1 — unlike the generic Stepper above, this one does NOT compute
+ * "new absolute count" from its own displayed value: the Kardesler counts
+ * are derived from the built graph (deriveSiblingCounts), which can be
+ * larger than any single underlying wizard array's length (a sibling added
+ * via the selected-person editor lives in `graphEdits`, not `siblings.*`).
+ * +/- must always add or remove exactly one, regardless of which mechanism
+ * produced the individual being removed — see removeLastSibling's docblock
+ * in usePedigreeStore.js.
+ */
+const SiblingStepper = ({ label, value, onIncrement, onDecrement, max = 12 }) => (
+  <div className="form-group-row">
+    <span className="form-label">{label}</span>
+    <div className="stepper">
+      <button className="stepper-btn" onClick={onDecrement} disabled={value <= 0}>−</button>
+      <div className="stepper-val">{value}</div>
+      <button className="stepper-btn" onClick={onIncrement} disabled={value >= max}>+</button>
+    </div>
+  </div>
+);
+
+/**
  * v0.3a.2 — lightweight progressive-disclosure grouping. Purely a visual
  * divider between existing Accordion sections (no restructuring of the
  * underlying sections/state) so the left panel reads as a small number of
@@ -337,7 +359,8 @@ export default function WizardPanel() {
   const {
     wizardData: wd,
     updateWizardData,
-    updateSiblingCount, updateSiblingAge,
+    updateSiblingAge,
+    addSiblingOfCategory, removeLastSibling,
     updateRelativeCount, updateRelativeChildren,
     addOtherUnion, updateOtherUnion, removeOtherUnion,
     addGen4, updateGen4, removeGen4,
@@ -517,45 +540,55 @@ export default function WizardPanel() {
         </div>
       </Accordion>
 
-      {/* ── 2. KARDESLER ── */}
-      <Accordion id="siblings" title="2. Kardesler" summary={`${wd.siblings.male.length}E ${wd.siblings.female.length}K ${wd.siblings.unknown.length}B`} open={openSectionId === 'siblings'} onToggle={setOpenSection}>
-        <Stepper label="Erkek Kardes" value={wd.siblings.male.length} onChange={v => updateSiblingCount('male', v)} />
-        {wd.siblings.male.map((s, i) => (
-          <div key={s.id} className="form-group-row" style={{ paddingLeft: 14 }}>
-            <span className="form-label" style={{ fontSize: '0.72rem' }}>E.K. {i + 1} Yas:</span>
-            <input type="number" min="0" value={s.age} onChange={e => updateSiblingAge('male', i, sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '55px', padding: '3px' }} placeholder="..." />
-          </div>
-        ))}
+      {/* ── 2. KARDESLER ──
+          v0.4.1: counts are derived from the built graph (pedigreeData), not
+          from wd.siblings.*.length alone — a sibling added from the selected-
+          person editor lives in wd.graphEdits, a separate mechanism the old
+          length-based counters couldn't see. See deriveSiblingCounts /
+          removeLastSibling for why. */}
+      {(() => {
+        const sc = deriveSiblingCounts(pedigreeData);
+        return (
+          <Accordion id="siblings" title="2. Kardesler" summary={`${sc.male}E ${sc.female}K ${sc.unknown}B`} open={openSectionId === 'siblings'} onToggle={setOpenSection}>
+            <SiblingStepper label="Erkek Kardes" value={sc.male} onIncrement={() => addSiblingOfCategory('male')} onDecrement={() => removeLastSibling('male')} />
+            {wd.siblings.male.map((s, i) => (
+              <div key={s.id} className="form-group-row" style={{ paddingLeft: 14 }}>
+                <span className="form-label" style={{ fontSize: '0.72rem' }}>E.K. {i + 1} Yas:</span>
+                <input type="number" min="0" value={s.age} onChange={e => updateSiblingAge('male', i, sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '55px', padding: '3px' }} placeholder="..." />
+              </div>
+            ))}
 
-        <Stepper label="Kiz Kardes" value={wd.siblings.female.length} onChange={v => updateSiblingCount('female', v)} />
-        {wd.siblings.female.map((s, i) => (
-          <div key={s.id} className="form-group-row" style={{ paddingLeft: 14 }}>
-            <span className="form-label" style={{ fontSize: '0.72rem' }}>K.K. {i + 1} Yas:</span>
-            <input type="number" min="0" value={s.age} onChange={e => updateSiblingAge('female', i, sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '55px', padding: '3px' }} placeholder="..." />
-          </div>
-        ))}
+            <SiblingStepper label="Kiz Kardes" value={sc.female} onIncrement={() => addSiblingOfCategory('female')} onDecrement={() => removeLastSibling('female')} />
+            {wd.siblings.female.map((s, i) => (
+              <div key={s.id} className="form-group-row" style={{ paddingLeft: 14 }}>
+                <span className="form-label" style={{ fontSize: '0.72rem' }}>K.K. {i + 1} Yas:</span>
+                <input type="number" min="0" value={s.age} onChange={e => updateSiblingAge('female', i, sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '55px', padding: '3px' }} placeholder="..." />
+              </div>
+            ))}
 
-        <Stepper label="Bilinmeyen" value={wd.siblings.unknown.length} onChange={v => updateSiblingCount('unknown', v)} />
-        {wd.siblings.unknown.map((s, i) => (
-          <div key={s.id} className="form-group-row" style={{ paddingLeft: 14 }}>
-            <span className="form-label" style={{ fontSize: '0.72rem' }}>B. {i + 1} Yas:</span>
-            <input type="number" min="0" value={s.age} onChange={e => updateSiblingAge('unknown', i, sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '55px', padding: '3px' }} placeholder="..." />
-          </div>
-        ))}
+            <SiblingStepper label="Bilinmeyen" value={sc.unknown} onIncrement={() => addSiblingOfCategory('unknown')} onDecrement={() => removeLastSibling('unknown')} />
+            {wd.siblings.unknown.map((s, i) => (
+              <div key={s.id} className="form-group-row" style={{ paddingLeft: 14 }}>
+                <span className="form-label" style={{ fontSize: '0.72rem' }}>B. {i + 1} Yas:</span>
+                <input type="number" min="0" value={s.age} onChange={e => updateSiblingAge('unknown', i, sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '55px', padding: '3px' }} placeholder="..." />
+              </div>
+            ))}
 
-        <Stepper label="Dusuk/Kayip" value={wd.siblings.pregnancyLoss} onChange={v => updateWizardData('siblings', 'pregnancyLoss', v)} />
-        <Stepper label="Olu Dogum" value={wd.siblings.deceased} onChange={v => updateWizardData('siblings', 'deceased', v)} />
+            <SiblingStepper label="Dusuk/Kayip" value={sc.pregnancyLoss} onIncrement={() => addSiblingOfCategory('pregnancyLoss')} onDecrement={() => removeLastSibling('pregnancyLoss')} />
+            <SiblingStepper label="Olu Dogum" value={sc.deceased} onIncrement={() => addSiblingOfCategory('deceased')} onDecrement={() => removeLastSibling('deceased')} />
 
-        {totalProbandSibs >= 2 && (
-          <ChildOrderEditor
-            unionId="U_PARENTS"
-            items={probandItems}
-            getOrder={() => getChildOrder('U_PARENTS')}
-            setOrder={(order) => setChildOrder('U_PARENTS', order)}
-            label="Kardes Sirasi"
-          />
-        )}
-      </Accordion>
+            {totalProbandSibs >= 2 && (
+              <ChildOrderEditor
+                unionId="U_PARENTS"
+                items={probandItems}
+                getOrder={() => getChildOrder('U_PARENTS')}
+                setOrder={(order) => setChildOrder('U_PARENTS', order)}
+                label="Kardes Sirasi"
+              />
+            )}
+          </Accordion>
+        );
+      })()}
 
       <LayerHeader label="Ebeveynler ve Akrabalık" />
       {/* ── 3. ANNE-BABA ── */}

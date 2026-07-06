@@ -13,6 +13,7 @@ import { auditLayoutIntegrity } from '../utils/layoutIntegrity';
 import { saveSession, loadSession, clearSession } from '../utils/persistence';
 import { moveChildInOrder } from '../utils/childOrdering';
 import { applyIndividualDeletions } from '../utils/graphDeletion';
+import { siblingsInCategory } from '../utils/siblingCounts';
 import { assessRelationshipMutation } from '../utils/relationshipSafety';
 
 /**
@@ -697,6 +698,34 @@ export const usePedigreeStore = create((zSet, get) => {
     return { wizardData: wd, ...derived };
   }),
 
+  /**
+   * v0.4.1 — the left panel's Kardesler counts are now DERIVED from the
+   * built graph (siblingCounts.js's deriveSiblingCounts), because a sibling
+   * added via the selected-person editor's "add sibling" action
+   * (addSiblingTo, below) writes to `wizardData.graphEdits`, a completely
+   * separate mechanism from the `wizardData.siblings.*` arrays the old
+   * length-based counters read — so those counters silently stayed at 0
+   * for graphEdits-created siblings.
+   *
+   * Since the displayed count no longer corresponds 1:1 to any single
+   * array's length, +/- must be exact single-unit operations rather than
+   * "set array length to N": addSiblingOfCategory always adds exactly one
+   * (append to the matching wizard array / bump the matching counter),
+   * and removeLastSibling (further below, after deleteIndividual is
+   * defined) always removes exactly one — from whichever mechanism
+   * produced the birth-order-last individual in that category.
+   */
+  addSiblingOfCategory: (category) => set((state) => {
+    const wd = JSON.parse(JSON.stringify(state.wizardData));
+    if (category === 'pregnancyLoss' || category === 'deceased') {
+      wd.siblings[category] = (wd.siblings[category] || 0) + 1;
+    } else {
+      wd.siblings[category].push({ id: `_${Math.random()}`, age: '' });
+    }
+    const derived = generateDerivedData(wd, state.pedigreeData);
+    return { wizardData: wd, ...derived };
+  }),
+
   updateSiblingAge: (type, idx, age) => set((state) => {
     const wd = JSON.parse(JSON.stringify(state.wizardData));
     wd.siblings[type][idx].age = age;
@@ -1248,6 +1277,46 @@ export const usePedigreeStore = create((zSet, get) => {
       selectedId2: clearedSelectedId2,
     };
   }),
+
+  /**
+   * v0.4.1 — the left panel's decrement half of the Kardesler counters (see
+   * addSiblingOfCategory above). Removes exactly the birth-order-LAST
+   * sibling in the given category, regardless of whether that individual
+   * was created via the wizard's `siblings.*` arrays or via the selected-
+   * person editor's addSiblingTo (`graphEdits`, type 'addChild'):
+   *   - wizard-origin (`sib_m_*` / `sib_f_*` / `sib_u_*` / `sib_loss_*` /
+   *     `sib_still_*`) → shrink the matching wizard array/counter directly,
+   *     the same simple mechanism updateSiblingCount already used.
+   *   - anything else (a graphEdits-origin sibling) → route through the
+   *     existing generic `deleteIndividual`, so it gets the same safety
+   *     checks (computeDeletionPlan) and soft-delete overlay every other
+   *     direct-edit deletion uses.
+   * No-op if the category is already empty.
+   */
+  removeLastSibling: (category) => {
+    const state = get();
+    const matches = siblingsInCategory(state.pedigreeData, category);
+    if (matches.length === 0) return;
+    const last = matches[matches.length - 1];
+
+    const wizardOriginPrefixes = { male: 'sib_m_', female: 'sib_f_', unknown: 'sib_u_', pregnancyLoss: 'sib_loss_', deceased: 'sib_still_' };
+    const prefix = wizardOriginPrefixes[category];
+    if (prefix && last.id.startsWith(prefix)) {
+      set((s) => {
+        const wd = JSON.parse(JSON.stringify(s.wizardData));
+        if (category === 'pregnancyLoss' || category === 'deceased') {
+          wd.siblings[category] = Math.max(0, (wd.siblings[category] || 0) - 1);
+        } else {
+          wd.siblings[category].length = Math.max(0, wd.siblings[category].length - 1);
+        }
+        const derived = generateDerivedData(wd, s.pedigreeData);
+        return { wizardData: wd, ...derived };
+      });
+      return;
+    }
+
+    get().deleteIndividual(last.id);
+  },
 
   // ────────────────────────────────────────────────────
   // Multi-select "make partners" (v0.3a.1)
