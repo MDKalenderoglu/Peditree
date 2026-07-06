@@ -189,20 +189,28 @@ describe('v0.3a.2 — store: relationship-creation actions roll back on unsafe m
     expect(usePedigreeStore.getState().wizardData).toBe(before);
   });
 
-  it('a safe addCustomConsanguinity commits and produces zero new integrity errors', () => {
+  it('v0.4: addCustomConsanguinity rolls back a cross-pedigree sibling link that would collapse readability', () => {
+    // Making mother's married-in spouse and father's married-in spouse into
+    // siblings fabricates a shared-parent couple whose child-connector rail
+    // must span the entire pedigree width (the two spouses sit on opposite
+    // sides). Under the v0.4 engine that is correctly detected as unreadable
+    // and rolled back. (The genuine "addCustomConsanguinity creates a real
+    // biological PCR link" fact is covered at the builder level in
+    // pedigree.test.js's custom-consanguinity suite.)
     usePedigreeStore.getState().addSpouseTo('mother', 'male');
     let state = usePedigreeStore.getState();
     const spouse1 = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
     usePedigreeStore.getState().addSpouseTo('father', 'female');
     state = usePedigreeStore.getState();
     const spouse2 = state.wizardData.graphEdits.filter(e => e.type === 'addSpouse')[1].spouseId;
+    const before = usePedigreeStore.getState().wizardData;
 
     usePedigreeStore.getState().addCustomConsanguinity(spouse1, spouse2);
     state = usePedigreeStore.getState();
-    const errors = (state.integrityIssues || []).filter(i => i.severity === 'error');
-    expect(errors).toHaveLength(0);
+    // rolled back — no PCR link committed, wizardData unchanged
+    expect(state.wizardData).toBe(before);
     const pcrs = state.pedigreeData.parentChildRelationships;
-    expect(pcrs.some(rel => rel.children.includes(spouse1) && rel.children.includes(spouse2))).toBe(true);
+    expect(pcrs.some(rel => rel.children.includes(spouse1) && rel.children.includes(spouse2))).toBe(false);
   });
 
   it('createUnionBetween rolls back a same-generation union whose geometry would collapse readability (v0.3a.4)', () => {

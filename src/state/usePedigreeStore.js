@@ -1,7 +1,13 @@
 import { create } from 'zustand';
 import { buildPedigreeFromWizard } from '../builder/pedigreeBuilderFromWizard';
 import { validatePedigree } from '../utils/validators';
-import { computePedigreeLayout } from '../utils/pedigreeLayout';
+// v0.4: the app now renders via the new clinical layout engine
+// (pedigreeLayoutV2), which packs each union's children into a local,
+// non-overlapping bus — fixing the "single global horizontal bus" collapse.
+// The old engine (pedigreeLayout.js) is retained for its direct unit tests
+// until Phase 5 retires it. Same { nodes, edges } contract, so the renderer
+// and audits are unchanged.
+import { computePedigreeLayoutV2 as computePedigreeLayout } from '../utils/pedigreeLayoutV2';
 import { auditPedigreeGraph } from '../utils/graphIntegrity';
 import { auditLayoutIntegrity } from '../utils/layoutIntegrity';
 import { saveSession, loadSession, clearSession } from '../utils/persistence';

@@ -269,35 +269,30 @@ describe('v0.3a.1 round 2 — computeSiblingCreationPlan ("Kardeş Yap" safety)'
     expect(plan.reason).toMatch(/jenerasyon/);
   });
 
-  it('addCustomConsanguinity itself remains a real biological link (integration sanity check)', () => {
-    // Two same-generation individuals with no existing parent unions and no
-    // relationship to each other — after addCustomConsanguinity, they must
-    // be real PCR siblings, not just flagged via a union consanguinity field.
-    usePedigreeStore.getState().addSpouseTo('mother', 'male'); // generation 2
-    let state = usePedigreeStore.getState();
-    const spouse1 = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
-    usePedigreeStore.getState().addSpouseTo('father', 'female'); // generation 2
-    state = usePedigreeStore.getState();
-    const spouse2 = state.wizardData.graphEdits.filter(e => e.type === 'addSpouse')[1].spouseId;
+  it('addCustomConsanguinity itself remains a real biological link (builder-level fact)', () => {
+    // The "make siblings" mechanism must create a real PCR link, not a
+    // union consanguinity flag. This is a BUILDER fact, verified against the
+    // builder directly — the store's v0.4 layout-safety net would roll back
+    // this particular cross-pedigree fixture (correctly, as unreadable), so
+    // it is not the right layer to assert the underlying data model.
+    const state = baseState();
+    state.graphEdits = [
+      { type: 'addSpouse', targetId: 'mother', spouseId: 'de_sp_0', unionId: 'U_DE_0', spouseSex: 'male' },
+      { type: 'addSpouse', targetId: 'father', spouseId: 'de_sp_1', unionId: 'U_DE_1', spouseSex: 'female' },
+    ];
+    state.customConsanguinity = [{ id: '_cc0', type: 'siblings', person1: 'de_sp_0', person2: 'de_sp_1' }];
 
-    const plan = computeSiblingCreationPlan(state.pedigreeData, spouse1, spouse2);
-    expect(plan.ok).toBe(true);
-
-    usePedigreeStore.getState().addCustomConsanguinity(spouse1, spouse2);
-    state = usePedigreeStore.getState();
-    const errors = (state.integrityIssues || []).filter(i => i.severity === 'error');
+    const graph = buildPedigreeFromWizard(state);
+    const errors = auditPedigreeGraph(graph).filter(i => i.severity === 'error');
     expect(errors).toHaveLength(0);
 
-    const pcrs = state.pedigreeData.parentChildRelationships;
-    const spouse1Union = pcrs.find(r => r.children.includes(spouse1))?.unionId;
-    const spouse2Union = pcrs.find(r => r.children.includes(spouse2))?.unionId;
+    const spouse1Union = graph.parentChildRelationships.find(r => r.children.includes('de_sp_0'))?.unionId;
+    const spouse2Union = graph.parentChildRelationships.find(r => r.children.includes('de_sp_1'))?.unionId;
     expect(spouse1Union).toBeDefined();
     expect(spouse1Union).toBe(spouse2Union);
 
-    // Not merely a consanguinity flag on a union — no union at all connects
-    // these two; the relationship lives in parentChildRelationships, the
-    // same collection every other sibling group uses.
-    const unions = state.pedigreeData.unions;
-    expect(unions.some(u => u.partners.includes(spouse1) && u.partners.includes(spouse2))).toBe(false);
+    // Not merely a consanguinity flag on a union — no union directly
+    // connects these two; the relationship lives in parentChildRelationships.
+    expect(graph.unions.some(u => u.partners.includes('de_sp_0') && u.partners.includes('de_sp_1'))).toBe(false);
   });
 });
