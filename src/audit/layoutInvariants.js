@@ -180,40 +180,57 @@ function checkUnrelatedNodeInFootprint({ nodes, unions, parentChildRelationships
 
 // ── 7. UNRELATED_FAMILY_BLOCK_OVERLAP ─────────────────────────
 // Two root-union subtrees that share NO marriage between them must occupy
-// disjoint x-bands. Overlap ⇒ two independent families collapsed together.
+// disjoint occupied space. Overlap ⇒ two independent families collapsed
+// together.
 //
 // v0.5 Step 3 fix: overlap is only checked PER GENERATION ROW (same Y), not
-// via one bbox flattening every descendant's X regardless of generation. A
-// single global bbox is a checker artifact — `descendantNodeIds` adds BOTH
-// partners of every union it walks through (including a convergent partner
-// whose OWN, independent lineage sits at a completely different X and Y),
-// which can inflate one root's "bbox" to numerically span across an
-// unrelated root positioned at a different generation entirely, even though
-// no two nodes ever sit in the same visual row. Two blocks can only create
-// a real reading-ambiguity if they actually occupy the same generation row
-// with overlapping X — that is what a viewer could ever perceive as one
-// merged/collapsed structure.
+// via one bbox flattening every descendant's X regardless of generation.
+//
+// v0.5 Step 3C fix: within a generation, a root's "occupied space" is no
+// longer a single convex min/max span across all its members either. That
+// was ALSO an artifact: `descendantNodeIds` includes a root's own two
+// founding partners, and one of them can end up far from the other (a
+// consequence of the recursive packer's multi-union placement — see
+// PEDIGREE_LAYOUT_ENGINE_REDESIGN_PLAN.md's tracked follow-up on married-in
+// multi-union anchors). Treating the raw span between two far-apart
+// partners as "solid family territory" flags anything genuinely unrelated
+// that merely sits in the EMPTY corridor between them, even though nothing
+// actually touches. The correct model: occupied space is the union of each
+// member's own symbol box (DISJOINT intervals — never bridging the gap
+// between two members that are not actually adjacent). Two blocks only
+// collide if two of their ACTUAL symbol-box intervals intersect.
+//
+// Route/edge intervals (union lines, sibship rails) are deliberately NOT
+// folded into this occupied-space model — that geometry is already the
+// direct subject of dedicated invariants (UNION_LINE_THROUGH_NODE,
+// SHARED_CHILD_BUS_BETWEEN_UNRELATED_UNIONS, WRONG_PARENT_BUS_ATTACHMENT),
+// so adding it here would duplicate, not extend, that coverage.
 function checkUnrelatedFamilyBlockOverlap(data) {
   const out = [];
   const model = buildLayoutModel(data.graph);
   const roots = model.rootUnions || [];
   const blocks = roots.map(uid => ({ uid, nodeIds: descendantNodeIds(uid, model) }))
-    .map(b => ({ ...b, perGen: perGenerationBBoxes(b.nodeIds, data.nodeById) }))
+    .map(b => ({ ...b, perGen: disjointOccupiedIntervals(b.nodeIds, data.nodeById) }))
     .filter(b => b.perGen.size > 0);
 
   for (let i = 0; i < blocks.length; i++) {
     for (let j = i + 1; j < blocks.length; j++) {
       const A = blocks[i], B = blocks[j];
       if (marriageConnects(A.nodeIds, B.nodeIds, data.unions)) continue; // related ⇒ allowed to touch
-      for (const [gen, a] of A.perGen) {
-        const b = B.perGen.get(gen);
-        if (!b) continue; // no shared row ⇒ cannot visually collide
-        const overlap = Math.min(a.maxX, b.maxX) - Math.max(a.minX, b.minX);
-        if (overlap > NODE_HALF) {
-          out.push({ code: 'UNRELATED_FAMILY_BLOCK_OVERLAP', severity: 'error',
-            message: `Unrelated family blocks (roots '${A.uid}' & '${B.uid}') overlap in x by ${overlap.toFixed(0)}px at generation ${gen}.`,
-            ids: [A.uid, B.uid], generation: gen });
-          break; // one report per pair is enough
+      outer:
+      for (const [gen, aIntervals] of A.perGen) {
+        const bIntervals = B.perGen.get(gen);
+        if (!bIntervals) continue; // no shared row ⇒ cannot visually collide
+        for (const a of aIntervals) {
+          for (const b of bIntervals) {
+            const overlap = Math.min(a.maxX, b.maxX) - Math.max(a.minX, b.minX);
+            if (overlap > EPS) {
+              out.push({ code: 'UNRELATED_FAMILY_BLOCK_OVERLAP', severity: 'error',
+                message: `Unrelated family blocks (roots '${A.uid}' & '${B.uid}') have overlapping occupied symbol space at generation ${gen} (${overlap.toFixed(0)}px).`,
+                ids: [A.uid, B.uid], generation: gen });
+              break outer; // one report per pair is enough
+            }
+          }
         }
       }
     }
@@ -221,16 +238,34 @@ function checkUnrelatedFamilyBlockOverlap(data) {
   return out;
 }
 
-function perGenerationBBoxes(nodeIds, nodeById) {
-  const map = new Map();
+/**
+ * Per generation, the DISJOINT set of x-intervals a root's descendants
+ * actually occupy — each member contributes only its own symbol box
+ * ([x - half, x + half]); adjacent/overlapping boxes merge into one
+ * interval, but two members separated by empty space stay as two separate
+ * intervals rather than one span bridging the gap between them.
+ */
+function disjointOccupiedIntervals(nodeIds, nodeById) {
+  const byGen = new Map();
   for (const id of nodeIds) {
     const n = nodeById.get(id);
     if (!n || !finite(n.x) || typeof n.generation !== 'number') continue;
-    const cur = map.get(n.generation);
-    if (!cur) map.set(n.generation, { minX: n.x, maxX: n.x });
-    else { cur.minX = Math.min(cur.minX, n.x); cur.maxX = Math.max(cur.maxX, n.x); }
+    const half = symbolHalf(n);
+    if (!byGen.has(n.generation)) byGen.set(n.generation, []);
+    byGen.get(n.generation).push({ minX: n.x - half, maxX: n.x + half });
   }
-  return map;
+  const merged = new Map();
+  for (const [gen, boxes] of byGen) {
+    boxes.sort((a, b) => a.minX - b.minX);
+    const intervals = [];
+    for (const box of boxes) {
+      const last = intervals[intervals.length - 1];
+      if (last && box.minX <= last.maxX) last.maxX = Math.max(last.maxX, box.maxX);
+      else intervals.push({ ...box });
+    }
+    merged.set(gen, intervals);
+  }
+  return merged;
 }
 
 function descendantNodeIds(rootUnionId, model) {
