@@ -181,27 +181,56 @@ function checkUnrelatedNodeInFootprint({ nodes, unions, parentChildRelationships
 // ── 7. UNRELATED_FAMILY_BLOCK_OVERLAP ─────────────────────────
 // Two root-union subtrees that share NO marriage between them must occupy
 // disjoint x-bands. Overlap ⇒ two independent families collapsed together.
+//
+// v0.5 Step 3 fix: overlap is only checked PER GENERATION ROW (same Y), not
+// via one bbox flattening every descendant's X regardless of generation. A
+// single global bbox is a checker artifact — `descendantNodeIds` adds BOTH
+// partners of every union it walks through (including a convergent partner
+// whose OWN, independent lineage sits at a completely different X and Y),
+// which can inflate one root's "bbox" to numerically span across an
+// unrelated root positioned at a different generation entirely, even though
+// no two nodes ever sit in the same visual row. Two blocks can only create
+// a real reading-ambiguity if they actually occupy the same generation row
+// with overlapping X — that is what a viewer could ever perceive as one
+// merged/collapsed structure.
 function checkUnrelatedFamilyBlockOverlap(data) {
   const out = [];
   const model = buildLayoutModel(data.graph);
   const roots = model.rootUnions || [];
-  const blocks = roots.map(uid => ({ uid, nodeIds: descendantNodeIds(uid, model), }))
-    .map(b => ({ ...b, bbox: xBBox(b.nodeIds, data.nodeById) }))
-    .filter(b => b.bbox);
+  const blocks = roots.map(uid => ({ uid, nodeIds: descendantNodeIds(uid, model) }))
+    .map(b => ({ ...b, perGen: perGenerationBBoxes(b.nodeIds, data.nodeById) }))
+    .filter(b => b.perGen.size > 0);
 
   for (let i = 0; i < blocks.length; i++) {
     for (let j = i + 1; j < blocks.length; j++) {
       const A = blocks[i], B = blocks[j];
       if (marriageConnects(A.nodeIds, B.nodeIds, data.unions)) continue; // related ⇒ allowed to touch
-      const overlap = Math.min(A.bbox.maxX, B.bbox.maxX) - Math.max(A.bbox.minX, B.bbox.minX);
-      if (overlap > NODE_HALF) {
-        out.push({ code: 'UNRELATED_FAMILY_BLOCK_OVERLAP', severity: 'error',
-          message: `Unrelated family blocks (roots '${A.uid}' & '${B.uid}') overlap in x by ${overlap.toFixed(0)}px.`,
-          ids: [A.uid, B.uid] });
+      for (const [gen, a] of A.perGen) {
+        const b = B.perGen.get(gen);
+        if (!b) continue; // no shared row ⇒ cannot visually collide
+        const overlap = Math.min(a.maxX, b.maxX) - Math.max(a.minX, b.minX);
+        if (overlap > NODE_HALF) {
+          out.push({ code: 'UNRELATED_FAMILY_BLOCK_OVERLAP', severity: 'error',
+            message: `Unrelated family blocks (roots '${A.uid}' & '${B.uid}') overlap in x by ${overlap.toFixed(0)}px at generation ${gen}.`,
+            ids: [A.uid, B.uid], generation: gen });
+          break; // one report per pair is enough
+        }
       }
     }
   }
   return out;
+}
+
+function perGenerationBBoxes(nodeIds, nodeById) {
+  const map = new Map();
+  for (const id of nodeIds) {
+    const n = nodeById.get(id);
+    if (!n || !finite(n.x) || typeof n.generation !== 'number') continue;
+    const cur = map.get(n.generation);
+    if (!cur) map.set(n.generation, { minX: n.x, maxX: n.x });
+    else { cur.minX = Math.min(cur.minX, n.x); cur.maxX = Math.max(cur.maxX, n.x); }
+  }
+  return map;
 }
 
 function descendantNodeIds(rootUnionId, model) {
@@ -218,16 +247,6 @@ function descendantNodeIds(rootUnionId, model) {
     (model.childUnionsOf.get(uid) || []).forEach(v => stack.push(v));
   }
   return ids;
-}
-
-function xBBox(nodeIds, nodeById) {
-  const xs = [];
-  for (const id of nodeIds) {
-    const n = nodeById.get(id);
-    if (n && finite(n.x)) xs.push(n.x);
-  }
-  if (xs.length === 0) return null;
-  return { minX: Math.min(...xs), maxX: Math.max(...xs) };
 }
 
 function marriageConnects(setA, setB, unions) {
