@@ -1,5 +1,5 @@
 /**
- * recursivePackerRuntimeEntryPoint.test.js — v0.5 Step 4B.
+ * recursivePackerRuntimeEntryPoint.test.js — v0.5 Step 4B/4C.
  *
  * Guard tests for the REAL runtime/store path, not the standalone
  * pedigreeLayout.js module the older test files import directly. That older
@@ -23,17 +23,23 @@
  * hard-coded coordinates, per the recursive packer's own design (it is free
  * to place nodes differently from the shipped engine as long as the
  * invariants hold).
+ *
+ * Step 4C cutover semantics (recursivePackerEnabled() in layoutPacking.js):
+ *   env unset / anything else  → recursive (now the default engine)
+ *   PEDITREE_PACKER=recursive  → recursive (explicit, same engine)
+ *   PEDITREE_PACKER=legacy     → legacy (old per-generation engine, fallback)
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { usePedigreeStore } from '../state/usePedigreeStore';
 import { checkAllInvariants } from '../audit/layoutInvariants';
 
 // ── env isolation: PEDITREE_PACKER must never leak between tests ──
 const ORIGINAL_PACKER = process.env.PEDITREE_PACKER;
 
-function setRecursivePacker(on) {
-  if (on) process.env.PEDITREE_PACKER = 'recursive';
-  else delete process.env.PEDITREE_PACKER;
+/** mode: undefined (unset, → default/recursive), 'recursive', or 'legacy'. */
+function setPackerEnv(mode) {
+  if (mode === undefined) delete process.env.PEDITREE_PACKER;
+  else process.env.PEDITREE_PACKER = mode;
 }
 
 afterEach(() => {
@@ -80,13 +86,12 @@ function assertNoExportClipping(pedigreeData) {
   expect(clipping).toHaveLength(0);
 }
 
-describe('Step 4B — runtime/store entry point smoke tests (default engine)', () => {
-  beforeEach(() => {
-    setRecursivePacker(false);
+describe('Step 4C — default store path (env unset) now uses the recursive packer', () => {
+  it('produces a finite, valid, invariant-clean layout for the initial nuclear-family pedigree with no env set at all', () => {
+    setPackerEnv(undefined);
+    expect(process.env.PEDITREE_PACKER).toBeUndefined();
     usePedigreeStore.getState().resetPedigree();
-  });
 
-  it('default store path produces a finite, valid layout for the initial nuclear-family pedigree', () => {
     const { pedigreeData } = usePedigreeStore.getState();
     assertStructurallySoundLayout(pedigreeData);
 
@@ -94,17 +99,20 @@ describe('Step 4B — runtime/store entry point smoke tests (default engine)', (
     expect(ids).toContain('proband');
     expect(ids).toContain('mother');
     expect(ids).toContain('father');
+
+    // Cutover contract: default (no env) must now be exactly as clean as
+    // explicit recursive — this is the same assertion as the recursive
+    // describe block below, run with the env untouched.
+    assertNoLayoutInvariantFailures(pedigreeData);
+    assertNoExportClipping(pedigreeData);
   });
 });
 
-describe('Step 4B — runtime/store entry point smoke tests (PEDITREE_PACKER=recursive)', () => {
-  beforeEach(() => {
-    setRecursivePacker(true);
-    usePedigreeStore.getState().resetPedigree();
-  });
-
+describe('Step 4C — runtime/store entry point smoke tests (PEDITREE_PACKER=recursive)', () => {
   it('recursive env path produces a finite, valid layout for the initial nuclear-family pedigree, through the real store', () => {
+    setPackerEnv('recursive');
     expect(process.env.PEDITREE_PACKER).toBe('recursive');
+    usePedigreeStore.getState().resetPedigree();
 
     const { pedigreeData } = usePedigreeStore.getState();
     assertStructurallySoundLayout(pedigreeData);
@@ -118,31 +126,46 @@ describe('Step 4B — runtime/store entry point smoke tests (PEDITREE_PACKER=rec
     assertNoExportClipping(pedigreeData);
   });
 
-  it('recursive env is actually read at call time — toggling it off mid-session still recomputes on the next store action (proves the store path is live, not cached from an old process.env read)', () => {
-    // recursive is on (from beforeEach) — trigger a rebuild and confirm it's healthy.
+  it('recursive env is actually read at call time — switching to legacy mid-session still recomputes on the next store action (proves the store path is live, not cached from an old process.env read)', () => {
+    setPackerEnv('recursive');
+    usePedigreeStore.getState().resetPedigree();
     usePedigreeStore.getState().addSiblingOfCategory('male');
     let { pedigreeData } = usePedigreeStore.getState();
     assertStructurallySoundLayout(pedigreeData);
     assertNoLayoutInvariantFailures(pedigreeData);
 
-    // Now flip the env off and force another rebuild through a real store
-    // action — the default engine takes over on the very next
-    // generateDerivedData() call, proving recursivePackerEnabled() is read
-    // per-call (not memoized at module load).
-    setRecursivePacker(false);
+    // Now flip to the explicit legacy fallback and force another rebuild
+    // through a real store action — the old engine takes over on the very
+    // next generateDerivedData() call, proving recursivePackerEnabled() is
+    // read per-call (not memoized at module load).
+    setPackerEnv('legacy');
     usePedigreeStore.getState().addSiblingOfCategory('female');
     ({ pedigreeData } = usePedigreeStore.getState());
     assertStructurallySoundLayout(pedigreeData);
   });
 });
 
-describe('Step 4B — multi-partner minimal repro via real store actions (PEDITREE_PACKER=recursive)', () => {
-  beforeEach(() => {
-    setRecursivePacker(true);
+describe('Step 4C — runtime/store entry point smoke test (PEDITREE_PACKER=legacy fallback)', () => {
+  it('legacy env path still produces a finite, valid layout for the initial nuclear-family pedigree — the old engine is a working fallback, not deleted', () => {
+    setPackerEnv('legacy');
+    expect(process.env.PEDITREE_PACKER).toBe('legacy');
     usePedigreeStore.getState().resetPedigree();
-  });
 
+    const { pedigreeData } = usePedigreeStore.getState();
+    assertStructurallySoundLayout(pedigreeData);
+
+    const ids = pedigreeData.individuals.map(i => i.id);
+    expect(ids).toContain('proband');
+    expect(ids).toContain('mother');
+    expect(ids).toContain('father');
+  });
+});
+
+describe('Step 4C — multi-partner minimal repro via real store actions (PEDITREE_PACKER=recursive)', () => {
   it('addSpouseTo(mat_gm) + addSpouseTo(pat_gm) — a known multi-partner false-positive shape — layouts cleanly under the recursive packer', () => {
+    setPackerEnv('recursive');
+    usePedigreeStore.getState().resetPedigree();
+
     // mat_gm/pat_gm exist by default: the baseline reset state has both
     // parents present, which pulls in both grandparent unions (see
     // pedigreeBuilderFromWizard.js's needMatGP/needPatGP).
@@ -159,13 +182,11 @@ describe('Step 4B — multi-partner minimal repro via real store actions (PEDITR
   });
 });
 
-describe('Step 4B — multi-union / distant-collateral-union runtime guard (PEDITREE_PACKER=recursive)', () => {
-  beforeEach(() => {
-    setRecursivePacker(true);
-    usePedigreeStore.getState().resetPedigree();
-  });
-
+describe('Step 4C — multi-union / distant-collateral-union runtime guard (PEDITREE_PACKER=recursive)', () => {
   it('a union between two distant same-generation collaterals (mat_uncle_0 x pat_uncle_0) layouts cleanly — the "distant-same-generation-union-collapse" named QA shape, built via real store actions', () => {
+    setPackerEnv('recursive');
+    usePedigreeStore.getState().resetPedigree();
+
     usePedigreeStore.getState().updateRelativeCount('maternalRelatives', 'uncles', 1);
     usePedigreeStore.getState().updateRelativeCount('paternalRelatives', 'uncles', 1);
 

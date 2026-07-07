@@ -24,13 +24,14 @@ import { relationshipBackgroundToEdgeInfo } from './relationshipBackground';
 
 const NODE_HALF = 20;
 const LOSS_HALF = 14;
-// v0.5 Step 2b (experimental, gated behind PEDITREE_PACKER=recursive so the
-// shipped default engine's edges are byte-for-byte unchanged): a union whose
-// two partners ended up far apart in the FINAL placement (a genuine
-// cross-branch/convergent-marriage case, or the known multi-union-anchor
-// hard case — see recursiveIntervalPacker.js) is routed through a clear
-// corridor lane instead of a straight line, so it never runs through an
-// intervening node — ownership-aware ROUTE REPAIR, not more node placement.
+// v0.5 Step 2b: a union whose two partners ended up far apart in the FINAL
+// placement (a genuine cross-branch/convergent-marriage case, or the known
+// multi-union-anchor hard case — see recursiveIntervalPacker.js) is routed
+// through a clear corridor lane instead of a straight line, so it never runs
+// through an intervening node — ownership-aware ROUTE REPAIR, not more node
+// placement. Gated by the same recursivePackerEnabled() as node placement
+// (Step 4C cutover: recursive is now default; PEDITREE_PACKER=legacy keeps
+// the old engine's placement AND routing both off, together).
 const ROUTE_LOCAL_THRESHOLD = 120; // partners closer than this: plain straight line (unchanged)
 const ROUTE_CORRIDOR_OFFSET = 40;  // corridor sits just above the generation row, clear of all symbol boxes
 

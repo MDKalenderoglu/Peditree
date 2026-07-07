@@ -5,12 +5,27 @@
  * (Edge-level audits like NO_PARENT_CHILD_EDGES / EDGE_THROUGH_NODE are a
  * Phase-3 concern — this phase produces positions only, so those are not
  * asserted here.)
+ *
+ * These assertions (in particular "couple centered over children") encode
+ * the OLD per-generation barycenter engine's specific placement heuristic,
+ * predating the recursive packer. Since Step 4C made recursive the default
+ * (see layoutPacking.js's recursivePackerEnabled), this file pins itself to
+ * PEDITREE_PACKER=legacy so it keeps validating the engine it was written
+ * for — recursivePackerRuntimeEntryPoint.test.js covers the now-default
+ * recursive engine through the real store path instead.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { computeFamilyBlockLayout } from '../utils/layoutPacking';
 import { auditLayoutIntegrity } from '../utils/layoutIntegrity';
 import { buildPedigreeFromWizard } from '../builder/pedigreeBuilderFromWizard';
 import { baseState } from './helpers';
+
+const ORIGINAL_PACKER = process.env.PEDITREE_PACKER;
+beforeEach(() => { process.env.PEDITREE_PACKER = 'legacy'; });
+afterEach(() => {
+  if (ORIGINAL_PACKER === undefined) delete process.env.PEDITREE_PACKER;
+  else process.env.PEDITREE_PACKER = ORIGINAL_PACKER;
+});
 
 function positionAudit(state) {
   const graph = buildPedigreeFromWizard(state);

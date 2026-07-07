@@ -2,7 +2,7 @@
  * relationshipSafety.test.js — v0.3a.2 audit-before-commit safety net for
  * relationship-creation actions ("make partners" / "make siblings").
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   introducesNewGraphErrors,
   describeNewGraphErrors,
@@ -180,7 +180,12 @@ describe('relationshipSafety — end-to-end detection against a real broken pedi
 });
 
 describe('v0.3a.2 — store: relationship-creation actions roll back on unsafe mutation', () => {
+  const ORIGINAL_PACKER = process.env.PEDITREE_PACKER;
   beforeEach(() => { usePedigreeStore.getState().resetPedigree(); });
+  afterEach(() => {
+    if (ORIGINAL_PACKER === undefined) delete process.env.PEDITREE_PACKER;
+    else process.env.PEDITREE_PACKER = ORIGINAL_PACKER;
+  });
 
   it('addCustomConsanguinity is blocked by computeSiblingCreationPlan before ever reaching the audit stage (different generations)', () => {
     const before = usePedigreeStore.getState().wizardData;
@@ -193,10 +198,19 @@ describe('v0.3a.2 — store: relationship-creation actions roll back on unsafe m
     // Making mother's married-in spouse and father's married-in spouse into
     // siblings fabricates a shared-parent couple whose child-connector rail
     // must span the entire pedigree width (the two spouses sit on opposite
-    // sides). Under the v0.4 engine that is correctly detected as unreadable
-    // and rolled back. (The genuine "addCustomConsanguinity creates a real
-    // biological PCR link" fact is covered at the builder level in
-    // pedigree.test.js's custom-consanguinity suite.)
+    // sides). Under the old per-generation engine that is correctly detected
+    // as unreadable and rolled back. (The genuine "addCustomConsanguinity
+    // creates a real biological PCR link" fact is covered at the builder
+    // level in pedigree.test.js's custom-consanguinity suite.)
+    //
+    // Step 4C note: the recursive packer (now default) genuinely renders
+    // this shape cleanly (0 graph/layout issues, verified) — the disjoint-
+    // interval construction that made it the default no longer trips this
+    // specific ambiguity. Pinned to legacy here because this test targets
+    // the ROLLBACK MECHANISM itself (assessRelationshipMutation), which
+    // still must fire for engines/scenarios that genuinely regress —
+    // recursivePackerRuntimeEntryPoint.test.js covers the recursive engine.
+    process.env.PEDITREE_PACKER = 'legacy';
     usePedigreeStore.getState().addSpouseTo('mother', 'male');
     let state = usePedigreeStore.getState();
     const spouse1 = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
@@ -216,12 +230,17 @@ describe('v0.3a.2 — store: relationship-creation actions roll back on unsafe m
   it('createUnionBetween rolls back a same-generation union whose geometry would collapse readability (v0.3a.4)', () => {
     // Making one already-married individual (newSpouse, wed to a brother) a
     // SECOND partner of the proband is generation-valid but produces
-    // overlapping child-connector rails — the layout-safety net must roll
-    // it back rather than commit an unreadable pedigree. (A clean same-gen
-    // union — two genuinely unattached individuals — is allowed; see the
-    // computeUnionCreationPlan tests below for that contract. The graph
-    // model here makes such an unattached same-gen pair hard to construct
-    // without going through addSpouseTo, which is the intended clean path.)
+    // overlapping child-connector rails under the old per-generation engine
+    // — the layout-safety net must roll it back rather than commit an
+    // unreadable pedigree. (A clean same-gen union — two genuinely
+    // unattached individuals — is allowed; see the computeUnionCreationPlan
+    // tests below for that contract. The graph model here makes such an
+    // unattached same-gen pair hard to construct without going through
+    // addSpouseTo, which is the intended clean path.)
+    //
+    // Step 4C note: pinned to legacy — see the addCustomConsanguinity test
+    // above for why (the recursive default now renders this shape cleanly).
+    process.env.PEDITREE_PACKER = 'legacy';
     usePedigreeStore.getState().updateSiblingCount('male', 1);
     usePedigreeStore.getState().addSpouseTo('sib_m_0', 'female');
     let state = usePedigreeStore.getState();

@@ -33,15 +33,16 @@ const SPOUSE_GAP = 70;     // gap between two partners of a union
 const Y_TOP = 80;
 
 /**
- * v0.5 (Step 1): the recursive disjoint-interval packer is being validated
- * in parallel against the fuzz baseline before cutover. While
- * `PEDITREE_PACKER=recursive` is set (fuzz runs / tests), the new packer is
- * used; otherwise the current engine runs unchanged. This lets the fuzzer
- * measure the new packer through the exact real store path without changing
- * shipped behaviour.
+ * v0.5 Step 4C (cutover): the recursive disjoint-interval packer is now the
+ * default engine — the fuzz baseline measured 0% invariant failures for it
+ * versus ~62-64% for the old per-generation barycenter engine (see
+ * reports/layout-fuzz-baseline.md). `PEDITREE_PACKER=legacy` is kept as an
+ * explicit escape hatch back to the old engine (retained, not deleted) for
+ * comparison/regression triage; any other value (including unset) selects
+ * recursive.
  */
 export function recursivePackerEnabled() {
-  return typeof process !== 'undefined' && process.env && process.env.PEDITREE_PACKER === 'recursive';
+  return !(typeof process !== 'undefined' && process.env && process.env.PEDITREE_PACKER === 'legacy');
 }
 
 /**
