@@ -40,7 +40,7 @@ const Y_TOP = 80;
  * measure the new packer through the exact real store path without changing
  * shipped behaviour.
  */
-function recursivePackerEnabled() {
+export function recursivePackerEnabled() {
   return typeof process !== 'undefined' && process.env && process.env.PEDITREE_PACKER === 'recursive';
 }
 

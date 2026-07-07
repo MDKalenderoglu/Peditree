@@ -19,11 +19,20 @@
  * old engine and validated against the layout audit before cutover (Phase 4).
  */
 
-import { computeFamilyBlockLayout } from './layoutPacking';
+import { computeFamilyBlockLayout, recursivePackerEnabled } from './layoutPacking';
 import { relationshipBackgroundToEdgeInfo } from './relationshipBackground';
 
 const NODE_HALF = 20;
 const LOSS_HALF = 14;
+// v0.5 Step 2b (experimental, gated behind PEDITREE_PACKER=recursive so the
+// shipped default engine's edges are byte-for-byte unchanged): a union whose
+// two partners ended up far apart in the FINAL placement (a genuine
+// cross-branch/convergent-marriage case, or the known multi-union-anchor
+// hard case — see recursiveIntervalPacker.js) is routed through a clear
+// corridor lane instead of a straight line, so it never runs through an
+// intervening node — ownership-aware ROUTE REPAIR, not more node placement.
+const ROUTE_LOCAL_THRESHOLD = 120; // partners closer than this: plain straight line (unchanged)
+const ROUTE_CORRIDOR_OFFSET = 40;  // corridor sits just above the generation row, clear of all symbol boxes
 
 export function computePedigreeLayoutV2(data) {
   const individuals = data.individuals || [];
@@ -57,13 +66,29 @@ export function computePedigreeLayoutV2(data) {
     // --- Union line (type carries the consanguinity distinction; the
     //     renderer draws the double line for the consanguineous types). ---
     const { edgeType } = relationshipBackgroundToEdgeInfo(u.relationshipBackground);
-    edges.push({
-      type: edgeType,
-      x1: leftX + NODE_HALF, y1: unionY,
-      x2: rightX - NODE_HALF, y2: unionY,
-      unionId: u.id,
-      relationshipBackground: u.relationshipBackground,
-    });
+    const span = rightX - leftX;
+    if (recursivePackerEnabled() && span > ROUTE_LOCAL_THRESHOLD) {
+      // Ownership-aware route repair (Step 2b): the two partners ended up
+      // far apart in the final placement — never draw a straight line
+      // through whatever sits between them. Route via a clear corridor
+      // lane instead: escape up from each partner, travel the corridor,
+      // enter down at the other side. The union's own midpoint (where
+      // children still hang from, unchanged below) gets a short stub into
+      // the same corridor so it stays visually connected to the route.
+      const corridorY = unionY - ROUTE_CORRIDOR_OFFSET;
+      edges.push({ type: edgeType, x1: leftX, y1: unionY - NODE_HALF, x2: leftX, y2: corridorY, unionId: u.id, relationshipBackground: u.relationshipBackground });
+      edges.push({ type: edgeType, x1: leftX, y1: corridorY, x2: rightX, y2: corridorY, unionId: u.id, relationshipBackground: u.relationshipBackground });
+      edges.push({ type: edgeType, x1: rightX, y1: corridorY, x2: rightX, y2: unionY - NODE_HALF, unionId: u.id, relationshipBackground: u.relationshipBackground });
+      edges.push({ type: edgeType, x1: unionCenterX, y1: unionY, x2: unionCenterX, y2: corridorY, unionId: u.id, relationshipBackground: u.relationshipBackground });
+    } else {
+      edges.push({
+        type: edgeType,
+        x1: leftX + NODE_HALF, y1: unionY,
+        x2: rightX - NODE_HALF, y2: unionY,
+        unionId: u.id,
+        relationshipBackground: u.relationshipBackground,
+      });
+    }
 
     // --- Divorce / separation slash ---
     if (u.status === 'divorced' || u.status === 'separated') {
