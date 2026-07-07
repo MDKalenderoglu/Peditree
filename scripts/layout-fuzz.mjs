@@ -28,7 +28,9 @@ const replay = args.includes('--replay');
 const cases = replay ? '1' : String(getFlag('cases', '1000'));
 const maxops = String(getFlag('maxops', '14'));
 
+const packer = getFlag('packer', ''); // '' = shipped engine, 'recursive' = new packer
 const env = { ...process.env, LAYOUT_FUZZ_SEED: String(seed), LAYOUT_FUZZ_CASES: cases, LAYOUT_FUZZ_MAXOPS: maxops };
+if (packer === 'recursive') env.PEDITREE_PACKER = 'recursive';
 
 if (replay) {
   // Replay mode re-runs the same seed with 1 case for a deterministic

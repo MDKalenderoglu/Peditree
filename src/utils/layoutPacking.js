@@ -25,6 +25,7 @@
  */
 
 import { buildLayoutModel } from './layoutModel';
+import { computeRecursiveLayout } from './recursiveIntervalPacker';
 
 const GEN_Y_SPACING = 150;
 const NODE_SLOT = 90;      // horizontal slot per individual (matches NODE_X_SPACING)
@@ -32,10 +33,27 @@ const SPOUSE_GAP = 70;     // gap between two partners of a union
 const Y_TOP = 80;
 
 /**
+ * v0.5 (Step 1): the recursive disjoint-interval packer is being validated
+ * in parallel against the fuzz baseline before cutover. While
+ * `PEDITREE_PACKER=recursive` is set (fuzz runs / tests), the new packer is
+ * used; otherwise the current engine runs unchanged. This lets the fuzzer
+ * measure the new packer through the exact real store path without changing
+ * shipped behaviour.
+ */
+function recursivePackerEnabled() {
+  return typeof process !== 'undefined' && process.env && process.env.PEDITREE_PACKER === 'recursive';
+}
+
+/**
  * @param {{ individuals: Array, unions: Array, parentChildRelationships: Array }} graph
  * @returns {{ xPos: Object<string,number>, yPos: Object<string,number>, order: Map<number,string[]> }}
  */
 export function computeFamilyBlockLayout(graph) {
+  if (recursivePackerEnabled()) {
+    const { xPos, yPos } = computeRecursiveLayout(graph);
+    return { xPos, yPos, order: new Map() };
+  }
+
   const model = buildLayoutModel(graph);
   const { generations } = model;
 
