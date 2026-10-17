@@ -148,4 +148,33 @@ describe('pedigreeLayoutV2 — edge contract compatibility', () => {
     expect(nodes.every(n => Number.isFinite(n.x) && Number.isFinite(n.y))).toBe(true);
     expect(nodes.length).toBe(graph.individuals.length);
   });
+
+  // v0.5 Step 5B — a union with no children yet must not be drawn as
+  // clinically infertile/childless (the graph model has no such explicit
+  // field); only the union/marriage line is drawn until real children
+  // exist.
+  it('Step 5B: a union with no children emits no childlessDrop/childlessBar markers — only the union line', () => {
+    const s = baseState();
+    s.graphEdits = [{ type: 'addSpouse', targetId: 'proband', spouseId: 'de_sp_0', unionId: 'U_DE_0', spouseSex: 'female' }];
+    const graph = buildPedigreeFromWizard(s);
+    const { edges } = computePedigreeLayoutV2(graph);
+    const deUnionEdges = edges.filter(e => e.unionId === 'U_DE_0');
+    expect(deUnionEdges.some(e => e.type === 'childlessDrop')).toBe(false);
+    expect(deUnionEdges.some(e => e.type === 'childlessBar')).toBe(false);
+    expect(deUnionEdges.some(e => e.type === 'union')).toBe(true);
+    // no childless markers anywhere in the whole edge set either
+    expect(edges.some(e => e.type === 'childlessDrop' || e.type === 'childlessBar')).toBe(false);
+  });
+
+  it('Step 5B: a union WITH children still emits the correct descendant/sibling connectors (unaffected by the childless-marker removal)', () => {
+    const s = baseState();
+    s.siblings.male = [{ id: 'm0', age: '20' }];
+    const graph = buildPedigreeFromWizard(s);
+    const { edges } = computePedigreeLayoutV2(graph);
+    const parentsEdges = edges.filter(e => e.unionId === 'U_PARENTS');
+    expect(parentsEdges.some(e => e.type === 'union')).toBe(true);
+    expect(edges.some(e => e.type === 'parentChildDrop')).toBe(true);
+    expect(edges.some(e => e.type === 'sibship')).toBe(true);
+    expect(edges.filter(e => e.type === 'childStem').length).toBeGreaterThanOrEqual(2); // proband + m0
+  });
 });

@@ -379,9 +379,14 @@ describe('v0.3a.1 — store: computeUnionCreationPlan / createUnionBetween', () 
   });
 
   it('flags (but does not silently allow) two full siblings without an explicit consanguineous flag', () => {
-    usePedigreeStore.getState().updateSiblingCount('male', 1);
+    // v0.5 Step 5A: uses an opposite-sex sibling (proband is male by
+    // default) so the sibling/consanguineous-flag check is isolated from
+    // the new same-sex block below — a same-sex sibling pair is blocked by
+    // the sex check first (see the Step 5A tests), which is correct but
+    // would otherwise mask the behavior this test targets.
+    usePedigreeStore.getState().updateSiblingCount('female', 1);
     const state = usePedigreeStore.getState();
-    const siblingId = state.wizardData.siblings.male[0] ? `sib_m_0` : null;
+    const siblingId = state.wizardData.siblings.female[0] ? `sib_f_0` : null;
     const plan = computeUnionCreationPlan(state.pedigreeData, 'proband', siblingId);
     expect(plan.ok).toBe(false);
     expect(plan.requiresConsanguineousFlag).toBe(true);
@@ -400,20 +405,89 @@ describe('v0.3a.1 — store: computeUnionCreationPlan / createUnionBetween', () 
 
   it('v0.3a.4: blocks a cross-generation partnering by default', () => {
     const state = usePedigreeStore.getState();
-    // proband is gen 3, mother is gen 2 — a cross-generation pairing.
-    const plan = computeUnionCreationPlan(state.pedigreeData, 'proband', 'mother');
+    // v0.5 Step 5A: proband (gen 3, male) + mat_gm (gen 1, female) —
+    // different generations, opposite sex, NOT direct parent-child
+    // (grandmother), so this isolates the generic cross-generation check
+    // from the new, more specific parent-child check (see the dedicated
+    // parent-child test below, which now covers the proband+mother case).
+    const plan = computeUnionCreationPlan(state.pedigreeData, 'proband', 'mat_gm');
     expect(plan.ok).toBe(false);
     expect(plan.reason).toMatch(/farklı kuşaklarda/);
   });
 
-  it('v0.3a.4: allows a same-generation pairing at the plan level (mat_gf + pat_gf, both gen 1)', () => {
-    // Build grandparents so mat_gf/pat_gf exist. They are the same
-    // generation (1), unrelated, and not siblings — the plan permits it
-    // (the layout-safety net separately decides whether the specific
-    // geometry is drawable; see relationshipSafety tests).
+  it('v0.3a.4: allows a same-generation, opposite-sex, cross-branch pairing at the plan level (mat_gf + pat_gm, both gen 1)', () => {
+    // mat_gf (male) and pat_gm (female) exist by default (both parents
+    // present). They are the same generation (1), unrelated (different
+    // branches), not siblings, and opposite-sex — the plan permits it (the
+    // layout-safety net separately decides whether the specific geometry is
+    // drawable; see relationshipSafety tests). v0.5 Step 5A: this was
+    // previously tested with mat_gf + pat_gf (both male) — updated to an
+    // opposite-sex pair now that same-sex unions are explicitly blocked
+    // below.
+    const state = usePedigreeStore.getState();
+    const plan = computeUnionCreationPlan(state.pedigreeData, 'mat_gf', 'pat_gm');
+    expect(plan.ok).toBe(true);
+  });
+
+  // ────────────────────────────────────────────────────
+  // v0.5 Step 5A — relationship constraint correctness
+  // ────────────────────────────────────────────────────
+
+  it('Step 5A: blocks a same-sex union (mat_gf + pat_gf, both male)', () => {
     const state = usePedigreeStore.getState();
     const plan = computeUnionCreationPlan(state.pedigreeData, 'mat_gf', 'pat_gf');
-    expect(plan.ok).toBe(true);
+    expect(plan.ok).toBe(false);
+    expect(plan.reason).toMatch(/aynı cinsiyette/);
+  });
+
+  it('Step 5A: blocks a same-sex union (mat_gm + pat_gm, both female)', () => {
+    const state = usePedigreeStore.getState();
+    const plan = computeUnionCreationPlan(state.pedigreeData, 'mat_gm', 'pat_gm');
+    expect(plan.ok).toBe(false);
+    expect(plan.reason).toMatch(/aynı cinsiyette/);
+  });
+
+  it('Step 5A: blocks a union where one individual has unknown sex, with an explicit reason (not a silent no-op)', () => {
+    usePedigreeStore.getState().addSpouseTo('proband', 'female');
+    let state = usePedigreeStore.getState();
+    const spouseId = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    usePedigreeStore.getState().addParentsTo(spouseId, { onlyMother: true }); // fabricates an unknown-sex placeholder second parent
+    state = usePedigreeStore.getState();
+    const rel = state.pedigreeData.parentChildRelationships.find(r => r.children.includes(spouseId));
+    const union = state.pedigreeData.unions.find(u => u.id === rel.unionId);
+    const unknownSexParentId = union.partners.find(pid => {
+      const ind = state.pedigreeData.individuals.find(i => i.id === pid);
+      return ind.sex === 'unknown';
+    });
+    expect(unknownSexParentId).toBeDefined();
+
+    const plan = computeUnionCreationPlan(state.pedigreeData, unknownSexParentId, 'mat_gf');
+    expect(plan.ok).toBe(false);
+    expect(plan.reason).toMatch(/bilinmiyor/);
+  });
+
+  it('Step 5A: explicitly blocks a direct parent-child union (mat_gf + mother)', () => {
+    const state = usePedigreeStore.getState();
+    const plan = computeUnionCreationPlan(state.pedigreeData, 'mat_gf', 'mother');
+    expect(plan.ok).toBe(false);
+    // Cross-generation would also block this, but Step 5A adds an explicit,
+    // dedicated parent-child reason ahead of the generic generation check.
+    expect(plan.reason).toMatch(/ebeveyn-çocuk/);
+  });
+
+  it('Step 5A: addSpouseTo does not create a same-sex spouse (male target + male spouseSex is a no-op)', () => {
+    const before = usePedigreeStore.getState().pedigreeData.unions.length;
+    usePedigreeStore.getState().addSpouseTo('proband', 'male'); // proband is male by default
+    const state = usePedigreeStore.getState();
+    expect(state.pedigreeData.unions.length).toBe(before);
+    expect(state.pedigreeData.individuals.some(i => i.sex === 'male' && i.id.startsWith('de_sp_'))).toBe(false);
+  });
+
+  it('Step 5A: addSpouseTo does not create an unknown-sex spouse', () => {
+    const before = usePedigreeStore.getState().pedigreeData.unions.length;
+    usePedigreeStore.getState().addSpouseTo('proband', 'unknown');
+    const state = usePedigreeStore.getState();
+    expect(state.pedigreeData.unions.length).toBe(before);
   });
 
   it('createUnionBetween actually creates a working union in the graph', () => {

@@ -117,6 +117,44 @@ export function computeUnionCreationPlan(pedigreeData, id1, id2) {
   if ((ind1.pregnancyLoss || ind1.stillbirth) || (ind2.pregnancyLoss || ind2.stillbirth)) {
     return { ok: false, reason: 'Düşük/ölü doğum kaydı bir bireyle eş yapılamaz.' };
   }
+
+  // v0.5 Step 5A: a union/eş ilişkisi yalnızca kadın+erkek (karşı cinsiyet)
+  // arasında kurulabilir. Cinsiyeti "bilinmiyor" olan bir birey union'a
+  // sessizce sokulmaz — açık bir red (explicit validation failure) döner,
+  // ta ki birey için cinsiyet netleştirilene kadar. Bu, aynı-cinsiyet
+  // ve belirsiz-cinsiyet union'ların manuel QA'da tespit edilen klinik
+  // olarak yanıltıcı çizimlerini (P0) önler.
+  if (ind1.sex === 'unknown' || ind2.sex === 'unknown') {
+    return {
+      ok: false,
+      reason: 'Cinsiyeti belirtilmemiş (bilinmiyor) bir birey doğrudan eş/union ilişkisine ' +
+        'sokulamaz — önce ilgili bireyin cinsiyeti netleştirilmeli.',
+    };
+  }
+  if (ind1.sex === ind2.sex) {
+    return {
+      ok: false,
+      reason: 'Bu iki birey aynı cinsiyette olduğu için eş/union oluşturulamaz — union yalnızca ' +
+        'kadın+erkek çiftler arasında kurulabilir.',
+    };
+  }
+
+  // v0.5 Step 5A: explicit parent-child union block. Doğrudan ebeveyn-çocuk
+  // ilişkisi olan iki birey (biri diğerinin ebeveyn birliğinde partner)
+  // hiçbir koşulda eş/union yapılamaz. Bu, cross-generation kontrolünün
+  // (aşağıda) örtük olarak yakaladığı durumu da açıkça ve kendi mesajıyla
+  // ifade eder.
+  const isParentOf = (parentId, childId) => pcrs.some(rel =>
+    rel.children.includes(childId) &&
+    unions.find(u => u.id === rel.unionId)?.partners.includes(parentId)
+  );
+  if (isParentOf(id1, id2) || isParentOf(id2, id1)) {
+    return {
+      ok: false,
+      reason: 'Doğrudan ebeveyn-çocuk ilişkisi olan bireyler eş/union yapılamaz.',
+    };
+  }
+
   // v0.3a.4: block cross-generation partnering by default. Two individuals
   // at different generations cannot be readably drawn as a couple (a union
   // line is horizontal, connecting same-Y partners), and allowing it is the
@@ -967,8 +1005,19 @@ export const usePedigreeStore = create((zSet, get) => {
   /**
    * Add a spouse to an existing individual.
    * Creates a new individual + union in the graph.
+   *
+   * v0.5 Step 5A: a union is only ever kadın+erkek (opposite-sex). This
+   * action must never fabricate a same-sex or unknown-sex union — blocked
+   * with a console warning (mirrors the other guarded relationship actions)
+   * rather than silently creating a clinically-invalid pairing.
    */
   addSpouseTo: (targetId, spouseSex = 'unknown') => set((state) => {
+    const target = (state.pedigreeData.individuals || []).find(i => i.id === targetId);
+    if (!target || target.sex === 'unknown' || spouseSex === 'unknown' || spouseSex === target.sex) {
+      console.warn('[usePedigreeStore] addSpouseTo blocked: union yalnızca kadın+erkek çiftler arasında kurulabilir.');
+      return {};
+    }
+
     const wd = JSON.parse(JSON.stringify(state.wizardData));
     if (!wd.graphEdits) wd.graphEdits = [];
     const idx = wd.graphEdits.length;

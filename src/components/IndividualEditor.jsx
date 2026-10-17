@@ -232,22 +232,38 @@ export default function IndividualEditor({
             </div>
           )}
 
-          {/* Add spouse */}
+          {/* Add spouse — v0.5 Step 5A: a union is only ever kadın+erkek
+              (opposite-sex). Only the button for the sex opposite the
+              target is offered, so the UI never offers an option that
+              onAddSpouse (usePedigreeStore.js's addSpouseTo) would itself
+              reject. If the target's own sex is unknown, no spouse can be
+              added until that is specified — a union cannot include an
+              unknown-sex partner. */}
           {!hasUnion && (
             <div style={{ marginBottom: '6px' }}>
               <div style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '3px' }}>Es Ekle</div>
-              <div style={{ display: 'flex', gap: '4px' }}>
-                <button
-                  className="btn"
-                  style={{ fontSize: '0.7rem', padding: '3px 8px', background: '#dbeafe', border: '1px solid #93c5fd' }}
-                  onClick={() => onAddSpouse(node.id, 'male')}
-                >♂ Erkek Es</button>
-                <button
-                  className="btn"
-                  style={{ fontSize: '0.7rem', padding: '3px 8px', background: '#fce7f3', border: '1px solid #f9a8d4' }}
-                  onClick={() => onAddSpouse(node.id, 'female')}
-                >♀ Kadin Es</button>
-              </div>
+              {node.sex === 'unknown' ? (
+                <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                  Eş eklemek için önce bu bireyin cinsiyeti belirtilmeli (union yalnızca kadın+erkek arasında kurulabilir).
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {node.sex === 'female' && (
+                    <button
+                      className="btn"
+                      style={{ fontSize: '0.7rem', padding: '3px 8px', background: '#dbeafe', border: '1px solid #93c5fd' }}
+                      onClick={() => onAddSpouse(node.id, 'male')}
+                    >♂ Erkek Es</button>
+                  )}
+                  {node.sex === 'male' && (
+                    <button
+                      className="btn"
+                      style={{ fontSize: '0.7rem', padding: '3px 8px', background: '#fce7f3', border: '1px solid #f9a8d4' }}
+                      onClick={() => onAddSpouse(node.id, 'female')}
+                    >♀ Kadin Es</button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

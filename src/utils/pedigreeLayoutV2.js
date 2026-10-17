@@ -10,10 +10,11 @@
  * its own contiguous children, which structurally cannot overlap another
  * union's bus (the fix for the "single global horizontal bus" collapse).
  *
- * Edge types emitted (unchanged contract):
+ * Edge types emitted:
  *   union / consanguineousUnion / consanguineousUnionUnresolved
- *   sibship, parentChildDrop, childStem
- *   childlessDrop, childlessBar, divorceSlash
+ *   sibship, parentChildDrop, childStem, divorceSlash
+ * (v0.5 Step 5B: childlessDrop/childlessBar removed — see the docblock at
+ * their former call site below.)
  *
  * Per PEDIGREE_LAYOUT_ENGINE_REDESIGN_PLAN.md this is developed alongside the
  * old engine and validated against the layout audit before cutover (Phase 4).
@@ -99,11 +100,15 @@ export function computePedigreeLayoutV2(data) {
     const children = childrenOf(u.id);
 
     if (children.length === 0) {
-      // Childless couple marker (inverted T).
-      const dropLen = 25;
-      const barHalf = 12;
-      edges.push({ type: 'childlessDrop', x1: unionCenterX, y1: unionY, x2: unionCenterX, y2: unionY + dropLen });
-      edges.push({ type: 'childlessBar', x1: unionCenterX - barHalf, y1: unionY + dropLen, x2: unionCenterX + barHalf, y2: unionY + dropLen });
+      // v0.5 Step 5B: a union with no children YET is not the same clinical
+      // fact as a union the clinician has explicitly marked infertile/
+      // childless — the graph model has no such explicit field (Individual/
+      // Union have no `infertile`/`noChildren` flag), so drawing the
+      // inverted-T "childless couple" marker here was fabricating a clinical
+      // claim (infertility/deliberate childlessness) from mere absence of
+      // data (children not entered yet). Per manual clinical QA (P0), draw
+      // only the union/marriage line until a real infertility/childless
+      // field exists in the model — see Adım 5's deferred backlog.
       continue;
     }
 

@@ -266,4 +266,16 @@ describe('v0.3a.2 — store: relationship-creation actions roll back on unsafe m
     expect(state.wizardData).toBe(before); // rolled back — no mutation committed
     expect(state.pedigreeData.unions.some(u => u.partners.includes('proband') && u.partners.includes(newSpouseId))).toBe(false);
   });
+
+  it('Step 5A: createUnionBetween does not commit a same-sex union (blocked at the plan check, before any audit)', () => {
+    // mat_gf and pat_gf: same generation (1), unrelated (different
+    // branches, not siblings) — isolates the sex check from the
+    // cross-generation check, both of which independently block same-sex
+    // unions here since they're also both male.
+    const before = usePedigreeStore.getState().wizardData;
+    usePedigreeStore.getState().createUnionBetween('mat_gf', 'pat_gf');
+    const state = usePedigreeStore.getState();
+    expect(state.wizardData).toBe(before); // blocked before any wizardData mutation
+    expect(state.pedigreeData.unions.some(u => u.partners.includes('mat_gf') && u.partners.includes('pat_gf'))).toBe(false);
+  });
 });
