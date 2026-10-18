@@ -149,12 +149,15 @@ karmaşık pedigri, düzenleme öncesi/sonrası yönelim).
    ailelerinin kardeşliğin içine konamaması. Sert ihlal ve okunabilirlik ihlali yok; sorun "çizim uzun ve dolambaçlı".
    Olası sonraki adımlar: alt ağaç blok hamleleri, küçük bileşenlerde tam (ILP) çapraz azaltma, büyük pedigri için
    daraltma/odak görünümü (Faz 5).
-2. **Yönelim çevrilmesi**: düzenlemelerin %7,1'inde ebeveynlerin sol/sağ sırası değişiyor (recursive %3,8). "Erkek
-   solda" eşitlik bozucu bunu %12,6'dan düşürdü; tam çözüm önceki sıralamayı başlangıç/eşitlik bozucu olarak
-   kullanmak (store'dan önceki yerleşimin aktarılması gerekir — Faz 4/5).
+2. **Yönelim çevrilmesi**: düzenlemelerin %7,1'inde ebeveynlerin sol/sağ sırası değişiyordu (taze yerleşim).
+   Aşama 1 (KI-2) sonrası store çiziminde gerekçesiz çevrilme 0 (1582 düzenlemede 14 çevrilme; tümü büyükanne-baba
+   birliktelik düzenlemesi veya okunabilirlik için taze yerleşime geçiş). Taze yerleşimin ("Yeniden Düzenle")
+   kendisi yönelimi hâlâ korumaz.
 3. ~~Rastgele işlemle üretilmiş aşırı yoğun grafiklerde ayak izi ihlali~~ — **düzeltildi** (KI-3): sürekli ihlal
    edilen çiftin çarpan adımı büyütüldü, üst sınır 400 tur; 263 / 387 / 474 kişi → 0 ihlal (474 kişide ~2,5 s).
-4. **Kararlılık terimi uygulamaya bağlı değil** (`opts.previous`); ölçülen etkisi küçük (%68 → %70,5), sıralama
-   değişimi baskın.
+4. ~~Kararlılık terimi uygulamaya bağlı değil~~ — **Aşama 1 (KI-2)**: store önceki çizimi veriyor; düzenleme-yerel
+   yeniden yerleşim `src/layout/pcl/incremental.js` (düzeyler yerel → geniş → taze; okunabilirlik koruması),
+   `computePclLayout(graph, { stability })` (kararlı sıralama, iğneler + IRLS, çapalama, şekil terimleri, satır
+   yüksekliği çapası). Ölçüm: `reports/layout-stability-{before,after}.md`; açık kalanlar `PEDITREE_KNOWN_ISSUES.md`.
 5. Renderer: pedigri numarası (ör. III-5) tam iniş çizgisinin sembole girdiği yerde; çizgi etiketin içinden geçiyor
    (Faz 4 sembol/etiket işi).

@@ -114,6 +114,11 @@ Depolama: v2 anahtarı `clinical_pedigree_app.session.v2`. Açılışta v2 varsa
 yazılır, v1 zarfı `…session.v1.backup` anahtarına taşınır (yeniden göç olmaz, veri kaybolmaz). "Yeni Pedigri" v2'yi ve
 yedeği siler (kullanıcının açık silme isteği).
 
+Çizim ipuçları (KI-2, Aşama 1): otomatik kayıt ve proje dosyası belgenin yanına isteğe bağlı
+`layoutHints: { version: 1, positions: { <kişi id>: [x, y] } }` yazar. Bu bir **görünüm** bilgisidir, grafiğin parçası
+değildir: açılışta store'daki belgeden çıkarılır ve yalnız çizimi birebir geri getirmek için kullanılır (grafik
+değişmemişse koordinatlar aynen). Olmayan veya eski sürümlü ipucu yok sayılır, taze yerleşim yapılır.
+
 ### 2.5 Geri al / yinele
 
 Belge değişmez (immutable) güncellenir; geri alma yığını belge anlık görüntüleridir (en çok 50). Başarısız/engellenen
