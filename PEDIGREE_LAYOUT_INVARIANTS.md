@@ -110,3 +110,27 @@ sibling slot = 90px, export viewBox padding = 100px.
 - **Why misleading:** the standard positional index no longer matches drawn position; references (“II-3”) point to the wrong person.
 - **Measurement:** within each generation, nodes sorted by x must have `indexInGeneration` = 1,2,3… in that order.
 - **Sample error:** `In generation 2, left-to-right order does not match pedigree index numbering.`
+
+---
+
+## Readability tier (connector ownership) — added 2026-10, Faz 1
+
+The 13 invariants above prove that no connector passes *through* a symbol and that no two families share one child
+bus. They do not catch the failure clinical QA actually reported: one family's line touching, running along or
+crossing another family's line, so a reader cannot tell who is married to whom or which couple a child belongs to.
+A layout can pass all 13 and still be ambiguous (measured: fuzz 0 % invariant failures vs 96.4 % readability failures
+on the recursive packer, see `docs/PEDITREE_AUDIT_REPORT.md`).
+
+Every structural connector now carries the id of its owning union (`unionId`). Implemented in
+`src/audit/connectorReadability.js`, reported as a separate tier by `npm run audit:layout-fuzz` and
+`npm run audit:layout-benchmark`:
+
+| # | Code | Clinical meaning | Measurement |
+|---|---|---|---|
+| R1 | FOREIGN_CONNECTOR_CROSSING | A line of one family crosses a line of another without a visible line jump | horizontal × vertical segments of different owners intersect at an interior point and neither carries a `bridges` marker at that point |
+| R2 | COLLINEAR_FOREIGN_CONNECTORS | Two families' lines run along each other and read as one line (e.g. a raised union line continuing a person's own descent stem) | parallel segments of different owners within 4 px and overlapping by > 2 px |
+| R3 | FOREIGN_T_JUNCTION | A line of one family ends on a line of another family, which reads as an attachment | an endpoint of one segment lies within 3 px of a segment owned by a different union |
+
+Soft metrics (`readabilityMetrics`): couples off-centre over their children (> ½ slot), side-hanging buses, union
+lines longer than 3 slots, crossing count, width per individual. These are reported, not gated, and are the
+comparison basis for layout engines (`docs/PEDITREE_LAYOUT_ARCHITECTURE.md` §4).

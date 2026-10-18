@@ -94,7 +94,7 @@ export function computePedigreeLayoutV2(data) {
 
     // --- Divorce / separation slash ---
     if (u.status === 'divorced' || u.status === 'separated') {
-      edges.push({ type: 'divorceSlash', x: unionCenterX, y: unionY, status: u.status });
+      edges.push({ type: 'divorceSlash', x: unionCenterX, y: unionY, status: u.status, unionId: u.id });
     }
 
     const children = childrenOf(u.id);
@@ -123,7 +123,7 @@ export function computePedigreeLayoutV2(data) {
     const dropY = (unionY + closestChildY) / 2;
 
     // Vertical drop from union center down to the sibship rail.
-    edges.push({ type: 'parentChildDrop', x1: unionCenterX, y1: unionY, x2: unionCenterX, y2: dropY });
+    edges.push({ type: 'parentChildDrop', x1: unionCenterX, y1: unionY, x2: unionCenterX, y2: dropY, unionId: u.id });
 
     // Sibship rail — spans exactly this union's children (plus the drop point
     // if the union center sits outside the child range, to keep the elbow
@@ -131,7 +131,7 @@ export function computePedigreeLayoutV2(data) {
     const railMinX = Math.min(minCX, unionCenterX);
     const railMaxX = Math.max(maxCX, unionCenterX);
     if (railMaxX > railMinX) {
-      edges.push({ type: 'sibship', x1: railMinX, y1: dropY, x2: railMaxX, y2: dropY });
+      edges.push({ type: 'sibship', x1: railMinX, y1: dropY, x2: railMaxX, y2: dropY, unionId: u.id });
     }
 
     // Vertical stem from the rail down to each child.
@@ -141,6 +141,7 @@ export function computePedigreeLayoutV2(data) {
         type: 'childStem',
         x1: xPos[cid], y1: dropY,
         x2: xPos[cid], y2: yPos[cid] - symbolHalfFor(indById.get(cid)),
+        unionId: u.id, childId: cid,
       });
     }
   }

@@ -11,6 +11,7 @@
 import { makeRng, seedToInt } from './prng.js';
 import { resetModel, chooseOp, applyOp, snapshot } from './fuzzModel.js';
 import { checkAllInvariants, INVARIANT_CODES } from './layoutInvariants.js';
+import { checkConnectorReadability, readabilityMetrics, READABILITY_CODES } from './connectorReadability.js';
 
 function uniqueCodes(violations) {
   return [...new Set(violations.map(v => v.code))].sort();
@@ -35,26 +36,42 @@ export function runCase(baseSeed, caseIndex, maxOps) {
   const rng = caseRng(baseSeed, caseIndex);
   resetModel();
   const opSeq = [];
+  // Readability tier (connectorReadability.js) is tracked alongside the
+  // invariant tier but reported separately, so the two baselines stay
+  // comparable with historical runs.
+  let read = null;
+  const result = (extra) => ({
+    caseIndex,
+    caseSeed: (seedToInt(baseSeed) ^ Math.imul(caseIndex + 1, 2654435761)) >>> 0,
+    opSeq,
+    readFailed: !!read,
+    readCodes: read ? read.codes : [],
+    readFailStep: read ? read.step : null,
+    readOpSeq: read ? read.opSeq : null,
+    metrics: readabilityMetrics(snapshot()),
+    ...extra,
+  });
   for (let step = 0; step < maxOps; step++) {
     let op = null;
     for (let retry = 0; retry < 6 && !op; retry++) op = chooseOp(rng);
     if (!op) continue;
     applyOp(op);
     opSeq.push(op);
+    if (!read) {
+      const rv = checkConnectorReadability(snapshot());
+      if (rv.length > 0) read = { codes: uniqueCodes(rv), step, opSeq: [...opSeq] };
+    }
     const violations = checkAllInvariants(snapshot());
     if (violations.length > 0) {
-      return {
+      return result({
         failed: true,
-        caseIndex,
-        caseSeed: (seedToInt(baseSeed) ^ Math.imul(caseIndex + 1, 2654435761)) >>> 0,
         failStep: step,
         codes: uniqueCodes(violations),
-        opSeq,
         snapshot: compactSnapshot(snapshot()),
-      };
+      });
     }
   }
-  return { failed: false, caseIndex, opSeq };
+  return result({ failed: false });
 }
 
 /** Replay an explicit op sequence from a clean reset; return tripped codes. */
@@ -62,7 +79,13 @@ export function replayOps(opSeq) {
   resetModel();
   for (const op of opSeq) applyOp(op);
   const violations = checkAllInvariants(snapshot());
-  return { codes: uniqueCodes(violations), violations, snapshot: compactSnapshot(snapshot()) };
+  const readViolations = checkConnectorReadability(snapshot());
+  return {
+    codes: uniqueCodes(violations), violations,
+    readCodes: uniqueCodes(readViolations), readViolations,
+    metrics: readabilityMetrics(snapshot()),
+    snapshot: compactSnapshot(snapshot()),
+  };
 }
 
 /**
@@ -101,9 +124,22 @@ export function runSuite({ seed, cases, maxOps = 14, shrinkTop = 10 }) {
   const failures = [];
   const codeCounts = {};
   let passed = 0;
+  const read = { failed: 0, codeCounts: {}, firstFailures: [] };
+  const metricTotals = { cases: 0, withOffCenter: 0, withSideHang: 0, withLongUnion: 0, withCrossing: 0, crossings: 0 };
 
   for (let i = 0; i < cases; i++) {
     const res = runCase(seed, i, maxOps);
+    metricTotals.cases++;
+    if (res.metrics.offCenter) metricTotals.withOffCenter++;
+    if (res.metrics.sideHang) metricTotals.withSideHang++;
+    if (res.metrics.longUnions) metricTotals.withLongUnion++;
+    if (res.metrics.crossings) metricTotals.withCrossing++;
+    metricTotals.crossings += res.metrics.crossings;
+    if (res.readFailed) {
+      read.failed++;
+      for (const code of res.readCodes) read.codeCounts[code] = (read.codeCounts[code] || 0) + 1;
+      if (read.firstFailures.length < 10) read.firstFailures.push({ caseSeed: res.caseSeed, failStep: res.readFailStep, codes: res.readCodes, opSeq: res.readOpSeq });
+    }
     if (!res.failed) { passed++; continue; }
     for (const code of res.codes) codeCounts[code] = (codeCounts[code] || 0) + 1;
     failures.push(res);
@@ -134,6 +170,14 @@ export function runSuite({ seed, cases, maxOps = 14, shrinkTop = 10 }) {
     failureRate: cases > 0 ? failures.length / cases : 0,
     codeCounts,
     implementedInvariants: INVARIANT_CODES,
+    readability: {
+      codes: READABILITY_CODES,
+      failed: read.failed,
+      failureRate: cases > 0 ? read.failed / cases : 0,
+      codeCounts: read.codeCounts,
+      firstFailures: read.firstFailures,
+      metrics: metricTotals,
+    },
     topFailingSeeds: failures.slice(0, 10).map(f => ({ caseSeed: f.caseSeed, failStep: f.failStep, codes: f.codes, opCount: f.opSeq.length })),
     minimalRepros,
     allFailures: failures,

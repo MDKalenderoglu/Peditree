@@ -59,8 +59,14 @@ if (existsSync(reportPath)) {
   const sorted = Object.entries(j.codeCounts).sort((a, b) => b[1] - a[1]);
   if (sorted.length === 0) console.log('  (none)');
   else sorted.forEach(([c, n]) => console.log(`  ${String(n).padStart(5)}  ${c}`));
-  console.log('named QA scenarios:');
-  j.namedScenarios.forEach(n => console.log(`  ${n.failed ? 'FAIL' : 'pass'}  ${n.name}  ${n.codes.join(',') || ''}`));
+  if (j.readability) {
+    const r = j.readability;
+    console.log(`readability tier: ${r.failed}/${j.cases} failed (rate ${(r.failureRate * 100).toFixed(1)}%)`);
+    Object.entries(r.codeCounts).sort((a, b) => b[1] - a[1]).forEach(([c, n]) => console.log(`  ${String(n).padStart(5)}  ${c}`));
+    console.log(`  end-state: off-centre ${r.metrics.withOffCenter}, side-hang ${r.metrics.withSideHang}, long-union ${r.metrics.withLongUnion}, crossings ${r.metrics.withCrossing} cases / ${r.metrics.crossings} total`);
+  }
+  console.log('named QA scenarios (invariant / readability):');
+  j.namedScenarios.forEach(n => console.log(`  ${n.failed ? 'FAIL' : 'pass'} / ${n.readFailed ? 'FAIL' : 'pass'}  ${n.name}  ${[...n.codes, ...(n.readCodes || [])].join(',') || ''}`));
   console.log('full report: reports/layout-fuzz-baseline.md');
   console.log('──────────────────────────────────────');
 }
