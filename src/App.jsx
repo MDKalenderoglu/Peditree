@@ -129,6 +129,8 @@ function App() {
     redo();
   };
 
+  const [warningsOpen, setWarningsOpen] = React.useState(true);
+
   const handleNodeSelect = (id, opts) => {
     selectIndividual(id, opts);
   };
@@ -138,7 +140,10 @@ function App() {
       <WizardPanel />
 
       <div className="canvas-container">
-        <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 10, display: 'flex', gap: '8px' }}>
+        {/* KI-5/KI-6: toolbar and notices sit in normal flow ABOVE the canvas —
+            they can no longer cover pedigree symbols, and the toolbar wraps on
+            narrow windows instead of overlapping the canvas controls. */}
+        <div className="canvas-toolbar">
           <button className="btn" onClick={handleNewPedigree} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title="Kaydedilmiş pedigriyi sil ve yeniden başla">
             <FilePlus2 size={16} /> Yeni Pedigri
           </button>
@@ -168,6 +173,7 @@ function App() {
           </button>
         </div>
 
+        <div className="canvas-notices">
         {actionNotice && (
           <div className="warning-panel" role="status" style={{ borderColor: '#2563eb', background: '#eff6ff' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
@@ -200,8 +206,17 @@ function App() {
 
         {(visibleErrorIssues.length > 0 || visibleWarningIssues.length > 0 || visibleWarnings.length > 0) && (
           <div className="warning-panel">
-            <h4 style={{ margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: '5px' }}><AlertTriangle size={16} /> Uyarılar</h4>
-            <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.9rem', listStyle: 'none' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+              <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <AlertTriangle size={16} /> Uyarılar ({visibleErrorIssues.length + visibleWarningIssues.length + visibleWarnings.length})
+                {visibleErrorIssues.length > 0 && <span style={{ color: '#dc2626' }}>· {visibleErrorIssues.length} hata</span>}
+              </h4>
+              <button className="btn" onClick={() => setWarningsOpen(o => !o)} aria-expanded={warningsOpen} style={{ padding: '2px 8px', fontSize: '0.8rem' }}>
+                {warningsOpen ? 'Gizle' : 'Göster'}
+              </button>
+            </div>
+            {warningsOpen && (
+            <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', fontSize: '0.9rem', listStyle: 'none' }}>
               {visibleErrorIssues.map(({ item, _warningId }) => (
                 <li key={_warningId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '4px' }}>
                   <span style={{ color: '#dc2626', fontWeight: 600 }}>{item.message}</span>
@@ -221,9 +236,12 @@ function App() {
                 </li>
               ))}
             </ul>
+            )}
           </div>
         )}
+        </div>
 
+        <div className="canvas-stage">
         <PedigreeCanvas
           ref={svgRef}
           nodes={pedigreeData.nodes || []}
@@ -232,6 +250,7 @@ function App() {
           selectedNodeId2={selectedId2}
           onNodeSelect={handleNodeSelect}
         />
+        </div>
       </div>
 
       <div className="panel editor-panel">
