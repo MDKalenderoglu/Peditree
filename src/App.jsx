@@ -7,7 +7,7 @@ import { withStableIdsExcludingDismissed } from './utils/warningIds';
 import PedigreeCanvas from './components/PedigreeCanvas';
 import IndividualEditor from './components/IndividualEditor';
 import WizardPanel from './components/WizardPanel';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen } from 'lucide-react';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid } from 'lucide-react';
 import './styles/app.css';
 
 function App() {
@@ -22,7 +22,7 @@ function App() {
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
     actionNotice, dismissActionNotice,
-    exportProjectFile, openProjectFile,
+    exportProjectFile, openProjectFile, relayout,
   } = usePedigreeStore();
   const [exportError, setExportError] = React.useState(null);
   const [exportNotice, setExportNotice] = React.useState(null);
@@ -186,6 +186,9 @@ function App() {
             title={_future && _future.length > 0 ? `Yinele (${_future.length} adım mevcut)` : 'Yinelenecek adım yok'}
           >
             <Redo2 size={16} /> Yinele
+          </button>
+          <button className="btn" onClick={relayout} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title="Çizimi baştan düzenle: düzenlemelerden sonra korunan yerleşim yerine tüm pedigriyi yeniden yerleştirir (geri alınabilir)">
+            <LayoutGrid size={16} /> Yeniden Düzenle
           </button>
           <button className="btn" onClick={handleSaveProject} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title="Pedigriyi proje dosyası olarak kaydet (.peditree.json)">
             <Save size={16} /> Kaydet
