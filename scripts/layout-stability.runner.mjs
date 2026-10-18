@@ -23,12 +23,12 @@ it('layout stability report', () => {
   mkdirSync(join(process.cwd(), 'reports'), { recursive: true });
   writeFileSync(join(process.cwd(), 'reports', `layout-stability-${label}.json`), JSON.stringify(report, null, 2));
   const L = [`# Layout stability (KI-2) — ${label}`, '', `Commit: \`${report.commit}\` · Node ${report.node} · ${report.generatedAt} · ${report.seconds} s`, '',
-    'Method: src/audit/stabilityHarness.js — store-level, raw coordinates of what the clinician sees; "moved" = |Δx| > 2 px; transitions = applied (not refused) edits.', '',
+    'Method: src/audit/stabilityHarness.js — store-level, raw coordinates of what the clinician sees; "moved" = |Δx| or |Δy| > 2 px; transitions = applied (not refused) edits.', '',
     '## Random edit populations', '',
-    '| population | transitions | parent flips / transitions with both parents | flip rate | moved fraction | edits with no movement | mean shift raw / aligned (px) | p90 max shift (px) |',
+    '| population | transitions | parent flips / transitions with both parents | flip rate | moved fraction (of which vertical) | edits with no movement | mean shift raw / x-aligned (px) | p90 max shift (px) |',
     '|---|---|---|---|---|---|---|---|'];
   for (const [name, p] of Object.entries(report.populations)) {
-    L.push(`| ${name} | ${p.transitions} | ${p.parentFlips} / ${p.parentFlipTransitions} | ${(p.parentFlipRate * 100).toFixed(1)} % | ${(p.movedFraction * 100).toFixed(1)} % | ${(p.editsWithNoMovement * 100).toFixed(1)} % | ${p.meanShiftRawPx} / ${p.meanShiftAlignedPx} | ${p.p90MaxShiftPx} |`);
+    L.push(`| ${name} | ${p.transitions} | ${p.parentFlips} / ${p.parentFlipTransitions} | ${(p.parentFlipRate * 100).toFixed(1)} % | ${(p.movedFraction * 100).toFixed(1)} % (${(p.movedVerticallyFraction * 100).toFixed(1)} %) | ${(p.editsWithNoMovement * 100).toFixed(1)} % | ${p.meanShiftRawPx} / ${p.meanShiftAlignedPx} | ${p.p90MaxShiftPx} |`);
   }
   L.push('', '## Targeted clinical edits', '', 'Affected block = edited person, their sibship (siblings must make room), their partners, new people.', '',
     '| scenario | edit | people | moved outside block / outside | parent flip | sibling-order changes | undo exact (max px) | redo exact | save→load max px |', '|---|---|---|---|---|---|---|---|---|');

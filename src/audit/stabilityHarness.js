@@ -14,7 +14,7 @@
  *
  * Metrics per edit transition (people present before and after):
  *   parentFlip     mother/father left-right order changed
- *   movedFraction  share of people whose x changed by more than 2 px
+ *   movedFraction  share of people whose position (x or y) changed by more than 2 px
  *   meanShiftPx    mean |Δx| (raw) and aligned on the proband
  * Targeted edits also report: people outside the affected block that moved
  * (> 2 px), sibling-order changes, and undo/redo and save/load fidelity.
@@ -25,22 +25,28 @@ import { resetModel, chooseOp, applyOp } from './fuzzModel.js';
 const MOVE_PX = 2;
 
 const xMapOf = (S) => new Map(S().pedigreeData.nodes.map((n) => [n.id, n.x]));
+// position = x and y: a row pushed down by a taller gap is movement too
+const posMapOf = (S) => new Map(S().pedigreeData.nodes.map((n) => [n.id, [n.x, n.y]]));
+const moveOf = (a, b) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]));
 
 function compare(before, after) {
   const common = [...before.keys()].filter((id) => after.has(id));
   const anchor = common.includes('proband') ? 'proband' : common[0];
-  const d = anchor ? after.get(anchor) - before.get(anchor) : 0;
-  let moved = 0, sumRaw = 0, sumAligned = 0, maxRaw = 0;
+  const dx = anchor ? after.get(anchor)[0] - before.get(anchor)[0] : 0;
+  let moved = 0, movedY = 0, sumRaw = 0, sumAligned = 0, maxRaw = 0;
   for (const id of common) {
-    const raw = Math.abs(after.get(id) - before.get(id));
+    const a = before.get(id), b = after.get(id);
+    const raw = moveOf(a, b);
     if (raw > MOVE_PX) moved++;
+    if (Math.abs(a[1] - b[1]) > MOVE_PX) movedY++;
     sumRaw += raw; maxRaw = Math.max(maxRaw, raw);
-    sumAligned += Math.abs(after.get(id) - before.get(id) - d);
+    sumAligned += Math.abs(b[0] - a[0] - dx);
   }
+  const X = (m, id) => m.get(id)[0];
   const flip = ['mother', 'father'].every((p) => before.has(p) && after.has(p))
-    && Math.sign(after.get('mother') - after.get('father')) !== Math.sign(before.get('mother') - before.get('father'));
+    && Math.sign(X(after, 'mother') - X(after, 'father')) !== Math.sign(X(before, 'mother') - X(before, 'father'));
   const hasParents = ['mother', 'father'].every((p) => before.has(p) && after.has(p));
-  return { n: common.length, moved, sumRaw, sumAligned, maxRaw, flip, hasParents };
+  return { n: common.length, moved, movedY, sumRaw, sumAligned, maxRaw, flip, hasParents };
 }
 
 function summarize(rows) {
@@ -54,6 +60,7 @@ function summarize(rows) {
     parentFlipTransitions: parentPairs,
     parentFlipRate: +(flips / (parentPairs || 1)).toFixed(4),
     movedFraction: +(rows.reduce((a, r) => a + r.moved, 0) / people).toFixed(4),
+    movedVerticallyFraction: +(rows.reduce((a, r) => a + r.movedY, 0) / people).toFixed(4),
     editsWithNoMovement: +(rows.filter((r) => r.moved === 0).length / t).toFixed(4),
     meanShiftRawPx: +(rows.reduce((a, r) => a + r.sumRaw, 0) / people).toFixed(1),
     meanShiftAlignedPx: +(rows.reduce((a, r) => a + r.sumAligned, 0) / people).toFixed(1),
@@ -67,7 +74,7 @@ export function runRandomPopulation(store, { prefix, sequences, ops }) {
   for (let c = 0; c < sequences; c++) {
     const rng = makeRng(seedToInt(`${prefix}${c}`));
     resetModel();
-    let prev = xMapOf(S);
+    let prev = posMapOf(S);
     for (let s = 0; s < ops; s++) {
       let op = null;
       for (let r = 0; r < 6 && !op; r++) op = chooseOp(rng);
@@ -75,7 +82,7 @@ export function runRandomPopulation(store, { prefix, sequences, ops }) {
       const docBefore = S().doc;
       applyOp(op);
       if (S().doc === docBefore) continue; // refused / no-op: nothing to measure
-      const next = xMapOf(S);
+      const next = posMapOf(S);
       rows.push(compare(prev, next));
       prev = next;
     }
@@ -153,7 +160,7 @@ export function runTargeted(store) {
   for (const [scenario, build] of Object.entries(SCENARIOS)) {
     for (const [edit, run] of EDITS) {
       build(S);
-      const before = xMapOf(S);
+      const before = posMapOf(S);
       const beforeIds = new Set(before.keys());
       const ordersBefore = siblingOrders(S);
       const docBefore = S().doc;
@@ -161,11 +168,11 @@ export function runTargeted(store) {
       const beforeNodes = JSON.stringify(S().pedigreeData.nodes.map((n) => [n.id, n.x, n.y]).sort());
       const target = run(S);
       if (!target || S().doc === docBefore) { results.push({ scenario, edit, skipped: true }); continue; }
-      const after = xMapOf(S);
+      const after = posMapOf(S);
       const newIds = [...after.keys()].filter((id) => !beforeIds.has(id));
       const block = affectedBlock(S, target, newIds);
       const outside = [...before.keys()].filter((id) => after.has(id) && !block.has(id));
-      const movedOutside = outside.filter((id) => Math.abs(after.get(id) - before.get(id)) > MOVE_PX);
+      const movedOutside = outside.filter((id) => moveOf(after.get(id), before.get(id)) > MOVE_PX);
       const ordersAfter = siblingOrders(S);
       let siblingOrderChanges = 0;
       for (const [uid, ord] of ordersBefore) {
@@ -178,17 +185,17 @@ export function runTargeted(store) {
       const afterNodes = snap();
       const steps = S()._history.length - historyBefore;
       for (let k = 0; k < steps; k++) S().undo();
-      const undone = xMapOf(S);
+      const undone = posMapOf(S);
       const undoExact = snap() === beforeNodes;
-      const undoMaxPx = Math.max(0, ...[...before.keys()].map((id) => Math.abs((undone.get(id) ?? Infinity) - before.get(id))));
+      const undoMaxPx = Math.max(0, ...[...before.keys()].map((id) => (undone.has(id) ? moveOf(undone.get(id), before.get(id)) : Infinity)));
       for (let k = 0; k < steps; k++) S().redo();
       const redoExact = snap() === afterNodes;
       // save / load fidelity
       const file = S().exportProjectFile();
       S().resetPedigree();
       S().openProjectFile(file);
-      const loaded = xMapOf(S);
-      const loadMaxPx = Math.max(0, ...[...after.keys()].map((id) => Math.abs((loaded.get(id) ?? Infinity) - after.get(id))));
+      const loaded = posMapOf(S);
+      const loadMaxPx = Math.max(0, ...[...after.keys()].map((id) => (loaded.has(id) ? moveOf(loaded.get(id), after.get(id)) : Infinity)));
       results.push({
         scenario, edit, target,
         people: c.n, outside: outside.length, movedOutside: movedOutside.length,

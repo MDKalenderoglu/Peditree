@@ -1,8 +1,8 @@
 {
   "label": "before",
-  "commit": "cd77b59 (+ uncommitted src changes)",
+  "commit": "9504971 (+ uncommitted src changes)",
   "node": "v24.18.0",
-  "generatedAt": "2026-10-18T11:11:26.936Z",
+  "generatedAt": "2026-10-18T11:13:40.132Z",
   "seconds": 2,
   "populations": {
     "random-200x12": {
@@ -10,9 +10,10 @@
       "parentFlips": 171,
       "parentFlipTransitions": 1495,
       "parentFlipRate": 0.1144,
-      "movedFraction": 0.5534,
-      "editsWithNoMovement": 0.1764,
-      "meanShiftRawPx": 68,
+      "movedFraction": 0.6054,
+      "movedVerticallyFraction": 0.0824,
+      "editsWithNoMovement": 0.1138,
+      "meanShiftRawPx": 77.9,
       "meanShiftAlignedPx": 60.6,
       "p90MaxShiftPx": 314
     },
@@ -21,9 +22,10 @@
       "parentFlips": 32,
       "parentFlipTransitions": 244,
       "parentFlipRate": 0.1311,
-      "movedFraction": 0.5688,
-      "editsWithNoMovement": 0.1794,
-      "meanShiftRawPx": 70.7,
+      "movedFraction": 0.6346,
+      "movedVerticallyFraction": 0.1004,
+      "editsWithNoMovement": 0.1145,
+      "meanShiftRawPx": 83.1,
       "meanShiftAlignedPx": 62.3,
       "p90MaxShiftPx": 300
     }

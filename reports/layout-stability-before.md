@@ -1,15 +1,15 @@
 # Layout stability (KI-2) — before
 
-Commit: `cd77b59 (+ uncommitted src changes)` · Node v24.18.0 · 2026-10-18T11:11:26.936Z · 2 s
+Commit: `9504971 (+ uncommitted src changes)` · Node v24.18.0 · 2026-10-18T11:13:40.132Z · 2 s
 
-Method: src/audit/stabilityHarness.js — store-level, raw coordinates of what the clinician sees; "moved" = |Δx| > 2 px; transitions = applied (not refused) edits.
+Method: src/audit/stabilityHarness.js — store-level, raw coordinates of what the clinician sees; "moved" = |Δx| or |Δy| > 2 px; transitions = applied (not refused) edits.
 
 ## Random edit populations
 
-| population | transitions | parent flips / transitions with both parents | flip rate | moved fraction | edits with no movement | mean shift raw / aligned (px) | p90 max shift (px) |
+| population | transitions | parent flips / transitions with both parents | flip rate | moved fraction (of which vertical) | edits with no movement | mean shift raw / x-aligned (px) | p90 max shift (px) |
 |---|---|---|---|---|---|---|---|
-| random-200x12 | 1582 | 171 / 1495 | 11.4 % | 55.3 % | 17.6 % | 68 / 60.6 | 314 |
-| ki2-40x10 | 262 | 32 / 244 | 13.1 % | 56.9 % | 17.9 % | 70.7 / 62.3 | 300 |
+| random-200x12 | 1582 | 171 / 1495 | 11.4 % | 60.5 % (8.2 %) | 11.4 % | 77.9 / 60.6 | 314 |
+| ki2-40x10 | 262 | 32 / 244 | 13.1 % | 63.5 % (10.0 %) | 11.5 % | 83.1 / 62.3 | 300 |
 
 ## Targeted clinical edits
 
