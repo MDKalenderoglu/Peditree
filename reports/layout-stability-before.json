@@ -1,20 +1,41 @@
 {
   "label": "before",
-  "commit": "9504971 (+ uncommitted src changes)",
+  "commit": "842958a (+ uncommitted src changes)",
   "node": "v24.18.0",
-  "generatedAt": "2026-10-18T11:13:40.132Z",
-  "seconds": 2,
+  "generatedAt": "2026-10-18T11:54:06.850Z",
+  "seconds": 3,
   "populations": {
     "random-200x12": {
       "transitions": 1582,
       "parentFlips": 171,
       "parentFlipTransitions": 1495,
       "parentFlipRate": 0.1144,
+      "parentFlipsGrandparentEdit": 6,
+      "parentFlipsNoGrandparentEdit": 165,
+      "parentFlipsForReadability": 0,
+      "parentFlipsUnexplained": 165,
       "movedFraction": 0.6054,
+      "neighbourGapChanged": 0.2067,
       "movedVerticallyFraction": 0.0824,
       "editsWithNoMovement": 0.1138,
       "meanShiftRawPx": 77.9,
       "meanShiftAlignedPx": 60.6,
+      "readability": {
+        "offCenterDrawn": 144,
+        "offCenterFresh": 144,
+        "crossingsDrawn": 120,
+        "crossingsFresh": 120,
+        "longUnionsDrawn": 46,
+        "longUnionsFresh": 46,
+        "sideHangDrawn": 1801,
+        "sideHangFresh": 1801,
+        "editsMoreOffCenterThanFresh": 0,
+        "editsMoreCrossingsThanFresh": 0,
+        "editsMoreLongUnionsThanFresh": 0
+      },
+      "layoutLevels": {
+        "n/a": 1582
+      },
       "p90MaxShiftPx": 314
     },
     "ki2-40x10": {
@@ -22,11 +43,32 @@
       "parentFlips": 32,
       "parentFlipTransitions": 244,
       "parentFlipRate": 0.1311,
+      "parentFlipsGrandparentEdit": 2,
+      "parentFlipsNoGrandparentEdit": 30,
+      "parentFlipsForReadability": 0,
+      "parentFlipsUnexplained": 30,
       "movedFraction": 0.6346,
+      "neighbourGapChanged": 0.2056,
       "movedVerticallyFraction": 0.1004,
       "editsWithNoMovement": 0.1145,
       "meanShiftRawPx": 83.1,
       "meanShiftAlignedPx": 62.3,
+      "readability": {
+        "offCenterDrawn": 18,
+        "offCenterFresh": 18,
+        "crossingsDrawn": 8,
+        "crossingsFresh": 8,
+        "longUnionsDrawn": 2,
+        "longUnionsFresh": 2,
+        "sideHangDrawn": 270,
+        "sideHangFresh": 270,
+        "editsMoreOffCenterThanFresh": 0,
+        "editsMoreCrossingsThanFresh": 0,
+        "editsMoreLongUnionsThanFresh": 0
+      },
+      "layoutLevels": {
+        "n/a": 262
+      },
       "p90MaxShiftPx": 300
     }
   },
@@ -44,6 +86,7 @@
       "outside": 6,
       "movedOutside": 0,
       "movedOutsideIds": [],
+      "familyShapeChanges": "0/3",
       "parentFlip": false,
       "siblingOrderChanges": 0,
       "undoExact": true,
@@ -56,9 +99,10 @@
       "edit": "sibling to the proband",
       "target": "proband",
       "people": 7,
-      "outside": 6,
+      "outside": 4,
       "movedOutside": 0,
       "movedOutsideIds": [],
+      "familyShapeChanges": "0/2",
       "parentFlip": false,
       "siblingOrderChanges": 0,
       "undoExact": true,
@@ -90,6 +134,7 @@
         "mat_uncle_0_cf_0",
         "mat_uncle_0_cf_1"
       ],
+      "familyShapeChanges": "2/9",
       "parentFlip": false,
       "siblingOrderChanges": 0,
       "undoExact": true,
@@ -105,6 +150,7 @@
       "outside": 14,
       "movedOutside": 0,
       "movedOutsideIds": [],
+      "familyShapeChanges": "0/9",
       "parentFlip": false,
       "siblingOrderChanges": 0,
       "undoExact": true,
@@ -117,11 +163,9 @@
       "edit": "sibling to the proband",
       "target": "proband",
       "people": 19,
-      "outside": 14,
-      "movedOutside": 10,
+      "outside": 12,
+      "movedOutside": 8,
       "movedOutsideIds": [
-        "mother",
-        "father",
         "mat_gf",
         "mat_gm",
         "pat_gf",
@@ -131,6 +175,7 @@
         "mat_uncle_0_cf_0",
         "mat_uncle_0_cf_1"
       ],
+      "familyShapeChanges": "0/6",
       "parentFlip": false,
       "siblingOrderChanges": 0,
       "undoExact": true,
@@ -157,6 +202,7 @@
         "mat_uncle_0_cf_0",
         "mat_uncle_0_cf_1"
       ],
+      "familyShapeChanges": "2/9",
       "parentFlip": false,
       "siblingOrderChanges": 0,
       "undoExact": true,
@@ -185,6 +231,7 @@
         "mat_aunt_0_cm_0",
         "mat_aunt_0_cm_1"
       ],
+      "familyShapeChanges": "3/10",
       "parentFlip": false,
       "siblingOrderChanges": 0,
       "undoExact": true,
@@ -213,6 +260,7 @@
         "mat_aunt_0_cm_0",
         "mat_aunt_0_cm_1"
       ],
+      "familyShapeChanges": "3/10",
       "parentFlip": false,
       "siblingOrderChanges": 0,
       "undoExact": true,
@@ -225,11 +273,9 @@
       "edit": "sibling to the proband",
       "target": "proband",
       "people": 18,
-      "outside": 15,
-      "movedOutside": 12,
+      "outside": 13,
+      "movedOutside": 10,
       "movedOutsideIds": [
-        "mother",
-        "father",
         "mat_gf",
         "mat_gm",
         "pat_gf",
@@ -241,6 +287,7 @@
         "mat_aunt_0_cm_0",
         "mat_aunt_0_cm_1"
       ],
+      "familyShapeChanges": "1/7",
       "parentFlip": false,
       "siblingOrderChanges": 0,
       "undoExact": true,
@@ -269,6 +316,7 @@
         "mat_aunt_0_cm_0",
         "mat_aunt_0_cm_1"
       ],
+      "familyShapeChanges": "3/10",
       "parentFlip": false,
       "siblingOrderChanges": 0,
       "undoExact": true,

@@ -13,14 +13,39 @@
  *                  child, sibling) with an explicit affected block
  *
  * Metrics per edit transition (people present before and after):
- *   parentFlip     mother/father left-right order changed
+ *   parentFlip     mother/father left-right order changed; classified as
+ *                  "grandparent union edit" when the edit created, removed or
+ *                  re-partnered a union with one of the parents' parents in
+ *                  it, or changed a parent's own parent union (e.g. a union
+ *                  between two grandparents can force the grandparent couples,
+ *                  and so the parents, to trade sides); otherwise "without" —
+ *                  a flip the edit gave no structural reason for. Adding a
+ *                  child (an uncle, an aunt) to the grandparents does NOT count.
+ *                  Flips "without" are further split by the store's layout
+ *                  report: "for readability" when every edit-local layout
+ *                  had more readability problems (line crossings, off-centre
+ *                  couples) than the fresh layout used instead
+ *                  (layoutInfo.level 'full'); otherwise "unexplained".
  *   movedFraction  share of people whose position (x or y) changed by more than 2 px
+ *   neighbourGapChanged  share of row neighbours (two people side by side on
+ *                  a row, both drawn before and after) whose distance changed
+ *                  by more than 2 px — local rearrangement; a block that
+ *                  slides as a whole changes only the gaps at its edges
  *   meanShiftPx    mean |Δx| (raw) and aligned on the proband
+ *   readability    after every edit, the drawing the store shows vs a fresh
+ *                  PCL layout of the same graph: off-centre couples, line
+ *                  crossings, long partner lines (> 3 slots) and side-hanging
+ *                  sibship lines (connectorReadability.readabilityMetrics) —
+ *                  the price, if any, that stability pays in readability
  * Targeted edits also report: people outside the affected block that moved
- * (> 2 px), sibling-order changes, and undo/redo and save/load fidelity.
+ * (> 2 px), family shape changes (couples and sibships entirely outside the
+ * block whose internal spacing changed by > 2 px — moved as a unit or not),
+ * sibling-order changes, and undo/redo and save/load fidelity.
  */
 import { makeRng, seedToInt } from './prng.js';
 import { resetModel, chooseOp, applyOp } from './fuzzModel.js';
+import { readabilityMetrics } from './connectorReadability.js';
+import { computePclLayout } from '../layout/pcl/index.js';
 
 const MOVE_PX = 2;
 
@@ -29,7 +54,14 @@ const xMapOf = (S) => new Map(S().pedigreeData.nodes.map((n) => [n.id, n.x]));
 const posMapOf = (S) => new Map(S().pedigreeData.nodes.map((n) => [n.id, [n.x, n.y]]));
 const moveOf = (a, b) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]));
 
-function compare(before, after) {
+// the partners of a person's parent union
+function parentsOf(graph, id) {
+  const r = graph.parentChildRelationships.find((pcr) => pcr.children.includes(id));
+  const u = r && graph.unions.find((x) => x.id === r.unionId);
+  return u ? u.partners : [];
+}
+
+function compare(before, after, graphBefore = null, graphAfter = null) {
   const common = [...before.keys()].filter((id) => after.has(id));
   const anchor = common.includes('proband') ? 'proband' : common[0];
   const dx = anchor ? after.get(anchor)[0] - before.get(anchor)[0] : 0;
@@ -46,7 +78,33 @@ function compare(before, after) {
   const flip = ['mother', 'father'].every((p) => before.has(p) && after.has(p))
     && Math.sign(X(after, 'mother') - X(after, 'father')) !== Math.sign(X(before, 'mother') - X(before, 'father'));
   const hasParents = ['mother', 'father'].every((p) => before.has(p) && after.has(p));
-  return { n: common.length, moved, movedY, sumRaw, sumAligned, maxRaw, flip, hasParents };
+  let grandparentEdit = false;
+  if (flip && graphBefore && graphAfter) {
+    const key = (u) => `${u.id}:${u.partners.join('|')}`;
+    const ub = new Set(graphBefore.unions.map(key)), ua = new Set(graphAfter.unions.map(key));
+    const changed = [...graphBefore.unions.filter((u) => !ua.has(key(u))), ...graphAfter.unions.filter((u) => !ub.has(key(u)))];
+    const gps = new Set(['mother', 'father'].flatMap((p) => [...parentsOf(graphBefore, p), ...parentsOf(graphAfter, p)]));
+    grandparentEdit = changed.some((u) => u.partners.some((id) => gps.has(id)))
+      || ['mother', 'father'].some((p) => parentsOf(graphBefore, p).join('|') !== parentsOf(graphAfter, p).join('|'));
+  }
+  // row neighbours (by previous position) whose distance changed
+  const byRow = new Map();
+  for (const id of common) {
+    const y = before.get(id)[1];
+    if (!byRow.has(y)) byRow.set(y, []);
+    byRow.get(y).push(id);
+  }
+  let pairs = 0, gapChanged = 0;
+  for (const ids of byRow.values()) {
+    ids.sort((p, q) => before.get(p)[0] - before.get(q)[0]);
+    for (let k = 1; k < ids.length; k++) {
+      const a = ids[k - 1], b = ids[k];
+      pairs++;
+      const sameRow = after.get(a)[1] === after.get(b)[1];
+      if (!sameRow || Math.abs((after.get(b)[0] - after.get(a)[0]) - (before.get(b)[0] - before.get(a)[0])) > MOVE_PX) gapChanged++;
+    }
+  }
+  return { n: common.length, moved, movedY, sumRaw, sumAligned, maxRaw, flip, hasParents, grandparentEdit, pairs, gapChanged };
 }
 
 function summarize(rows) {
@@ -59,11 +117,29 @@ function summarize(rows) {
     parentFlips: flips,
     parentFlipTransitions: parentPairs,
     parentFlipRate: +(flips / (parentPairs || 1)).toFixed(4),
+    parentFlipsGrandparentEdit: rows.filter((r) => r.flip && r.grandparentEdit).length,
+    parentFlipsNoGrandparentEdit: rows.filter((r) => r.flip && !r.grandparentEdit).length,
+    parentFlipsForReadability: rows.filter((r) => r.flip && !r.grandparentEdit && r.freshForReadability).length,
+    parentFlipsUnexplained: rows.filter((r) => r.flip && !r.grandparentEdit && !r.freshForReadability).length,
     movedFraction: +(rows.reduce((a, r) => a + r.moved, 0) / people).toFixed(4),
+    neighbourGapChanged: +(rows.reduce((a, r) => a + r.gapChanged, 0) / (rows.reduce((a, r) => a + r.pairs, 0) || 1)).toFixed(4),
     movedVerticallyFraction: +(rows.reduce((a, r) => a + r.movedY, 0) / people).toFixed(4),
     editsWithNoMovement: +(rows.filter((r) => r.moved === 0).length / t).toFixed(4),
     meanShiftRawPx: +(rows.reduce((a, r) => a + r.sumRaw, 0) / people).toFixed(1),
     meanShiftAlignedPx: +(rows.reduce((a, r) => a + r.sumAligned, 0) / people).toFixed(1),
+    readability: (() => {
+      const sum = (k, w) => rows.reduce((a, r) => a + ((r[w] && r[w][k]) || 0), 0);
+      const worse = (k) => rows.filter((r) => r.drawn && r.fresh && r.drawn[k] > r.fresh[k]).length;
+      return {
+        offCenterDrawn: sum('offCenter', 'drawn'), offCenterFresh: sum('offCenter', 'fresh'),
+        crossingsDrawn: sum('bridgedCrossings', 'drawn'), crossingsFresh: sum('bridgedCrossings', 'fresh'),
+        longUnionsDrawn: sum('longUnions', 'drawn'), longUnionsFresh: sum('longUnions', 'fresh'),
+        sideHangDrawn: sum('sideHang', 'drawn'), sideHangFresh: sum('sideHang', 'fresh'),
+        editsMoreOffCenterThanFresh: worse('offCenter'), editsMoreCrossingsThanFresh: worse('bridgedCrossings'),
+        editsMoreLongUnionsThanFresh: worse('longUnions'),
+      };
+    })(),
+    layoutLevels: rows.reduce((acc, r) => { if (r.level) acc[r.level] = (acc[r.level] || 0) + 1; return acc; }, {}),
     p90MaxShiftPx: (() => { const m = rows.map((r) => r.maxRaw).sort((a, b) => a - b); return Math.round(m[Math.floor(m.length * 0.9)] || 0); })(),
   };
 }
@@ -83,7 +159,10 @@ export function runRandomPopulation(store, { prefix, sequences, ops }) {
       applyOp(op);
       if (S().doc === docBefore) continue; // refused / no-op: nothing to measure
       const next = posMapOf(S);
-      rows.push(compare(prev, next));
+      const info = S().layoutInfo || {};
+      const drawn = readabilityMetrics(S().pedigreeData);
+      const fresh = readabilityMetrics({ ...S().doc.graph, ...computePclLayout(S().doc.graph) });
+      rows.push({ ...compare(prev, next, docBefore.graph, S().doc.graph), level: info.level || 'n/a', drawn, fresh, freshForReadability: info.level === 'full' && /fewer readability problems/.test(info.reason || '') });
       prev = next;
     }
   }
@@ -136,13 +215,35 @@ const EDITS = [
   }],
 ];
 
+/**
+ * Affected block of an edit = the edited person, the new people, the edited
+ * person's sibship (siblings may have to make room), the edited person's
+ * partners, and the parents of every new child (their sibship grew, so they
+ * must re-centre over it). Everyone else is "outside the block".
+ */
 function affectedBlock(S, targetId, newIds) {
   const g = S().doc.graph;
   const block = new Set([targetId, ...newIds]);
   const bio = g.parentChildRelationships.find((r) => r.children.includes(targetId));
-  if (bio) bio.children.forEach((c) => block.add(c)); // the target's sibship row
+  if (bio) bio.children.forEach((c) => block.add(c));
   for (const u of g.unions) if (u.partners.includes(targetId)) u.partners.forEach((p) => block.add(p));
+  const isNew = new Set(newIds);
+  for (const r of g.parentChildRelationships) {
+    if (!r.children.some((c) => isNew.has(c))) continue;
+    (g.unions.find((u) => u.id === r.unionId)?.partners || []).forEach((p) => block.add(p));
+  }
   return block;
+}
+
+// couples and sibships entirely outside the block whose internal spacing changed
+function familyShapeChanges(S, before, after, block) {
+  const g = S().doc.graph;
+  const groups = [
+    ...g.unions.map((u) => u.partners),
+    ...g.parentChildRelationships.map((r) => r.children).filter((c) => c.length > 1),
+  ].filter((ids) => ids.every((id) => before.has(id) && after.has(id) && !block.has(id)));
+  return groups.filter((ids) => ids.some((id) => Math.abs((after.get(id)[0] - after.get(ids[0])[0]) - (before.get(id)[0] - before.get(ids[0])[0])) > MOVE_PX)).length
+    + '/' + groups.length;
 }
 
 function siblingOrders(S) {
@@ -200,6 +301,7 @@ export function runTargeted(store) {
         scenario, edit, target,
         people: c.n, outside: outside.length, movedOutside: movedOutside.length,
         movedOutsideIds: movedOutside.slice(0, 12),
+        familyShapeChanges: familyShapeChanges(S, before, after, block),
         parentFlip: c.flip, siblingOrderChanges,
         undoExact, undoMaxPx: Math.round(undoMaxPx * 10) / 10, redoExact,
         saveLoadMaxPx: Math.round(loadMaxPx * 10) / 10,
