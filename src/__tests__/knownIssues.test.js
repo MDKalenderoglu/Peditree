@@ -171,8 +171,10 @@ describe('KI-5 / KI-6 (fixed) — notices and toolbar never cover the canvas', (
 // Measured 2026-10-18 on fresh layouts (PCL with man-left tie-breaker). Lower it when it improves.
 const KI2_FLIP_CEILING = 31;
 
-describe('KI-8 (open, P2) — a married-in second partner separates a couple from two families', () => {
-  it.fails('target: consanguineous parents stay adjacent when the mother also has a married-in partner', () => {
+// Fixed 2026-10-19 (spouse-side alternatives, src/layout/pcl/structure.js);
+// further scenarios in ki8PartnerSide.test.js.
+describe('KI-8 (fixed, P2) — a married-in second partner separates a couple from two families', () => {
+  it('consanguineous parents stay adjacent when the mother also has a married-in partner', () => {
     const S = () => usePedigreeStore.getState();
     S().resetPedigree();
     // parents are first cousins through their mothers (seen in the editor)
@@ -184,8 +186,8 @@ describe('KI-8 (open, P2) — a married-in second partner separates a couple fro
     S().addOtherUnion('mother');
     S().updateOtherUnion('mother', 0, 'male', 1);
     // explicit birth order: the father is the younger sibling (right of his sister),
-    // which puts the paternal side on the left; the mother's married-in partner is
-    // always placed on her left (man-left rule) — between her and the father
+    // which puts the paternal side on the left; the mother's married-in partner
+    // used to be placed on her left (man-left rule) — between her and the father
     const patGP = S().pedigreeData.parentChildRelationships.find(r => r.children.includes('father')).unionId;
     S().setChildOrder(patGP, ['pat_aunt_0', 'father']);
     const rows = new Map();

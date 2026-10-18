@@ -597,14 +597,34 @@ export function orderLayersStable(S, { prevX, freePersons }) {
     for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) if (atomKey.get(ids[i]) > atomKey.get(ids[j])) n++;
     return n;
   };
-  const local = (g) => model.rowLocal(g) + W_INVERSION * inversions(g);
+  // people of one atom drawn in a different left-right order than before
+  // (e.g. a spouse moved to the partner's other side)
+  const innerInversions = (g) => {
+    let n = 0;
+    for (const aid of order.get(g)) {
+      const xs = S.atoms[aid].persons.filter((p) => prevX.has(p)).map((p) => prevX.get(p));
+      for (let i = 0; i < xs.length; i++) for (let j = i + 1; j < xs.length; j++) if (xs[i] > xs[j]) n++;
+    }
+    return n;
+  };
+  const local = (g) => model.rowLocal(g) + W_INVERSION * (inversions(g) + innerInversions(g));
 
+  // A free atom may take any arrangement. An untouched atom may only change
+  // the side a married-in spouse stands on (KI-8), keeping its sibling order,
+  // and pays the inversion penalty for it: a removed crossing or relationship
+  // lane outweighs it, a mere preference does not.
   const flexByGen = new Map();
   for (const atom of S.atoms) {
-    if (!isFree(atom.id) || !atom.arrangements || atom.arrangements.length < 2) continue;
+    if (!atom.arrangements || atom.arrangements.length < 2) continue;
+    if (!isFree(atom.id) && new Set(atom.arrangementCore || []).size === atom.arrangements.length) continue;
     if (!flexByGen.has(atom.gen)) flexByGen.set(atom.gen, []);
     flexByGen.get(atom.gen).push(atom.id);
   }
+  const allowed = (atom, arr) => {
+    if (isFree(atom.id) || !atom.arrangementCore) return true;
+    const cur = atom.arrangements.indexOf(atom.persons);
+    return cur >= 0 && atom.arrangementCore[atom.arrangements.indexOf(arr)] === atom.arrangementCore[cur];
+  };
   const arrange = () => {
     let gain = 0;
     for (const [g, list] of flexByGen) {
@@ -614,7 +634,7 @@ export function orderLayersStable(S, { prevX, freePersons }) {
         const before = local(g);
         let bestArr = current, bestHere = before;
         for (const arr of atom.arrangements) {
-          if (arr === current) continue;
+          if (arr === current || !allowed(atom, arr)) continue;
           atom.persons = arr;
           model.layoutRow(g);
           const c = local(g);

@@ -38,13 +38,18 @@ const coords = () => JSON.stringify(S().pedigreeData.nodes.map(n => [n.id, n.x, 
 
 describe('KI-2 store level — random edit populations', () => {
   const CEILINGS = {
+    // re-measured after KI-8 (2026-10-19). Raised, as a recorded trade-off of
+    // KI-8 (docs/PEDITREE_KI8_REPORT.md): random editsWorseThanFresh.offCenter
+    // 6 → 9 (fresh layouts themselves improved 144 → 117 off-centre couples;
+    // drawn 92 → 88), sideHangDrawn 2318 → 2331 and 351 → 353 (+19 moderate
+    // 5–45 px offsets, −2 above 45 px). Everything else is lower than before.
     'random-200x12': {
-      prefix: 'stab', sequences: 200, ops: 12, parentFlips: 14, movedFraction: 0.3678, neighbourGapChanged: 0.1921, meanShiftRawPx: 23.7,
-      editsWorseThanFresh: { offCenter: 6, crossings: 6, longUnions: 4 }, sideHangDrawn: 2318,
+      prefix: 'stab', sequences: 200, ops: 12, parentFlips: 9, movedFraction: 0.3651, neighbourGapChanged: 0.1915, meanShiftRawPx: 21.2,
+      editsWorseThanFresh: { offCenter: 9, crossings: 3, longUnions: 2 }, sideHangDrawn: 2331,
     },
     'ki2-40x10': {
-      prefix: 'ki2-', sequences: 40, ops: 10, parentFlips: 2, movedFraction: 0.3685, neighbourGapChanged: 0.1956, meanShiftRawPx: 23.7,
-      editsWorseThanFresh: { offCenter: 0, crossings: 0, longUnions: 0 }, sideHangDrawn: 351,
+      prefix: 'ki2-', sequences: 40, ops: 10, parentFlips: 1, movedFraction: 0.3627, neighbourGapChanged: 0.192, meanShiftRawPx: 16.5,
+      editsWorseThanFresh: { offCenter: 0, crossings: 0, longUnions: 0 }, sideHangDrawn: 353,
     },
   };
   for (const [name, c] of Object.entries(CEILINGS)) {
@@ -66,6 +71,7 @@ describe('KI-2 store level — random edit populations', () => {
         expect(r.offCenterDrawn).toBeLessThanOrEqual(r.offCenterFresh);
         expect(r.crossingsDrawn).toBeLessThanOrEqual(r.crossingsFresh);
         expect(r.longUnionsDrawn).toBeLessThanOrEqual(r.longUnionsFresh);
+        expect(r.lineOverOwnPartnerDrawn).toBeLessThanOrEqual(r.lineOverOwnPartnerFresh); // KI-8
       });
       it('edits drawn worse than a fresh layout, and side-hanging sibship lines, do not increase (ratchet)', () => {
         const r = p.readability;

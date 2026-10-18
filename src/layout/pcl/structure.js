@@ -109,24 +109,46 @@ export function buildStructure(graph) {
     const atom = { id: atoms.length, kind: 'founder', unionId: null, core: [centre] };
     atoms.push(atom);
     personAtom.set(centre, atom.id);
-    for (const m of members) {
-      if (m === centre) continue;
-      personAtom.set(m, atom.id);
-      if (isPartners(centre, m)) {
-        if (!spousesOf.has(centre)) spousesOf.set(centre, []);
-        spousesOf.get(centre).push(m);
-      } else {
-        atom.core.push(m); // chains beyond one centre: keep in data order
+    // Chains beyond the centre (A–B–C …): each member stands beside a partner
+    // already placed (breadth-first from the centre, data order), so no
+    // partnership line has to run over the group.
+    const attached = new Set([centre]);
+    let frontier = [centre];
+    while (frontier.length) {
+      const next = [];
+      for (const a of frontier) {
+        for (const m of members) {
+          if (attached.has(m) || !isPartners(a, m)) continue;
+          attached.add(m);
+          personAtom.set(m, atom.id);
+          if (!spousesOf.has(a)) spousesOf.set(a, []);
+          spousesOf.get(a).push(m);
+          next.push(m);
+        }
       }
+      frontier = next;
+    }
+    for (const m of members) {
+      if (attached.has(m)) continue;
+      personAtom.set(m, atom.id);
+      atom.core.push(m); // not linked by partnership to the centre (should not happen)
     }
   }
 
   // ── person order inside each atom ────────────────────────────
-  // Married-in spouses go beside their partner; first spouse on the side the
-  // soft NSGC convention prefers (man left of woman), further spouses
-  // alternate sides and move outward.
+  // Married-in spouses go beside their partner; by default the first spouse
+  // on the side the soft NSGC convention prefers (man left of woman), further
+  // spouses alternate sides and move outward. The mirrored block (spouses on
+  // the other side) is offered to the ordering step as an alternative where
+  // the side can matter (KI-8, below); man-left stays the default and the
+  // tie-breaker (ordering.js W_SIDE).
   const sexOf = (id) => (indById.get(id) || {}).sex;
   const blockOf = new Map();
+  const mirroredBlockOf = new Map();
+  // A married-in spouse's own married-in partners (e.g. the second wife of a
+  // man who married into the sibship) stand on that spouse's outer side.
+  const expandLeft = (s) => [...(spousesOf.get(s) || []).slice().reverse().flatMap(expandLeft), s];
+  const expandRight = (s) => [s, ...(spousesOf.get(s) || []).flatMap(expandRight)];
   for (const atom of atoms) {
     for (const p of atom.core) {
       const sp = spousesOf.get(p) || [];
@@ -136,7 +158,8 @@ export function buildStructure(graph) {
         const goLeft = k % 2 === 0 ? prefLeft : !prefLeft;
         (goLeft ? left : right).push(s);
       });
-      blockOf.set(p, [...left.reverse(), p, ...right]);
+      blockOf.set(p, [...left.reverse().flatMap(expandLeft), p, ...right.flatMap(expandRight)]);
+      mirroredBlockOf.set(p, blockOf.get(p).slice().reverse()); // the same block seen in a mirror
     }
     atom.persons = atom.core.flatMap(p => blockOf.get(p));
     atom.gen = (indById.get(atom.core[0]) || {}).generation ?? 0;
@@ -190,33 +213,66 @@ export function buildStructure(graph) {
     linkMemo.set(p, r);
     return r;
   };
+  // ── which side a married-in spouse stands on (KI-8) ──────────
+  // The side matters when the person also has a partner in another drawn
+  // family (the married-in spouse must not stand between them) or has two or
+  // more married-in spouses (which one faces the other family / which
+  // children's line runs where). Elsewhere the ordering cost cannot tell the
+  // sides apart and the soft convention decides. Every combination of mirrored blocks for
+  // these people is an alternative arrangement (at most MAX_SIDE_FLEX people
+  // per sibship order); birth order is never touched.
+  const MAX_SIDE_FLEX = 4;
+  const MAX_ARRANGEMENTS = 64;
+  const sideVariants = (atom, core) => {
+    const flex = core.filter((p) => (spousesOf.get(p) || []).length > 0 && directLink(p)).slice(0, MAX_SIDE_FLEX);
+    const out = [];
+    for (let mask = 0; mask < (1 << flex.length); mask++) {
+      const mirrored = new Set(flex.filter((_, k) => mask & (1 << k)));
+      out.push(core.flatMap(p => (mirrored.has(p) ? mirroredBlockOf : blockOf).get(p)));
+    }
+    return out; // out[0] = no mirror (the default)
+  };
   for (const atom of atoms) {
-    atom.arrangements = [atom.persons];
-    if (atom.kind !== 'sib' || atom.core.length < 2 || explicitOrder.has(atom.unionId)) continue;
-    if (atom.core.every(p => ageOf(p) !== null || (indById.get(p) || {}).pregnancyLoss || (indById.get(p) || {}).stillbirth)) continue;
-    const direct = atom.core.filter(directLink);
-    const linking = [...direct, ...atom.core.filter(p => !direct.includes(p) && links(p))].slice(0, 2);
-    if (!linking.length) continue;
-    const without = (ids) => atom.core.filter(p => !ids.includes(p));
-    const cores = [];
-    for (const l of linking) {
-      cores.push([l, ...without([l])], [...without([l]), l]);
+    const cores = [atom.core];
+    const orderFlexible = atom.kind === 'sib' && atom.core.length >= 2 && !explicitOrder.has(atom.unionId)
+      && !atom.core.every(p => ageOf(p) !== null || (indById.get(p) || {}).pregnancyLoss || (indById.get(p) || {}).stillbirth);
+    if (orderFlexible) {
+      const direct = atom.core.filter(directLink);
+      const linking = [...direct, ...atom.core.filter(p => !direct.includes(p) && links(p))].slice(0, 2);
+      const without = (ids) => atom.core.filter(p => !ids.includes(p));
+      for (const l of linking) {
+        cores.push([l, ...without([l])], [...without([l]), l]);
+      }
+      if (linking.length === 2) {
+        const [a, b] = linking;
+        const rest = without([a, b]);
+        // one at each end, or both together at one end (e.g. the mother next
+        // to the father, and beside her the brother whose daughter married
+        // into the father's family)
+        cores.push([a, ...rest, b], [b, ...rest, a], [...rest, a, b], [...rest, b, a], [a, b, ...rest], [b, a, ...rest]);
+      }
     }
-    if (linking.length === 2) {
-      const [a, b] = linking;
-      const rest = without([a, b]);
-      // one at each end, or both together at one end (e.g. the mother next
-      // to the father, and beside her the brother whose daughter married
-      // into the father's family)
-      cores.push([a, ...rest, b], [b, ...rest, a], [...rest, a, b], [...rest, b, a], [a, b, ...rest], [b, a, ...rest]);
-    }
-    const seen = new Set([atom.core.join('|')]);
+    // birth-order alternatives first (as before), then spouse-side variants
+    const seen = new Set();
+    const byCore = [];
     for (const core of cores) {
       const key = core.join('|');
-      if (seen.has(key) || !agesConsistent(core)) continue;
+      if (seen.has(key) || !agesConsistent(core) && core !== atom.core) continue;
       seen.add(key);
-      atom.arrangements.push(core.flatMap(p => blockOf.get(p)));
+      byCore.push(sideVariants(atom, core));
     }
+    // arrangementCore[k] = index of the sibling order arrangement k uses
+    // (side-only alternatives share it; KI-2 stable ordering may switch an
+    // untouched atom between them, never between sibling orders)
+    atom.arrangements = byCore.map(v => v[0]);
+    atom.arrangementCore = byCore.map((_, k) => k);
+    byCore.forEach((variants, k) => {
+      for (const arr of variants.slice(1)) {
+        if (atom.arrangements.length >= MAX_ARRANGEMENTS) break;
+        atom.arrangements.push(arr);
+        atom.arrangementCore.push(k);
+      }
+    });
   }
 
   // ── connected components (unrelated families are laid out side by side) ──
