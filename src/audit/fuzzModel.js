@@ -143,8 +143,8 @@ export function applyOp(o) {
         const arr = wd[o.side][o.type];
         const newIdx = arr.length;
         s.updateRelativeCount(o.side, o.type, newIdx + 1);
-        if (o.male) usePedigreeStore.getState().updateRelativeChildren(o.side, o.type, newIdx, 'male', o.male);
-        if (o.female) usePedigreeStore.getState().updateRelativeChildren(o.side, o.type, newIdx, 'female', o.female);
+        if (o.male) store().updateRelativeChildren(o.side, o.type, newIdx, 'male', o.male);
+        if (o.female) store().updateRelativeChildren(o.side, o.type, newIdx, 'female', o.female);
         break;
       }
       case 'addGreatGrandparents': s.toggleGreatGrandparents(o.gpKey, true); break;
@@ -152,8 +152,8 @@ export function applyOp(o) {
         const wd = s.wizardData;
         const newIdx = wd.gen4.length;
         s.addGen4(o.targetPath);
-        if (o.male) usePedigreeStore.getState().updateGen4(newIdx, 'male', o.male);
-        if (o.female) usePedigreeStore.getState().updateGen4(newIdx, 'female', o.female);
+        if (o.male) store().updateGen4(newIdx, 'male', o.male);
+        if (o.female) store().updateGen4(newIdx, 'female', o.female);
         break;
       }
       case 'createUnion': s.createUnionBetween(o.a, o.b); break;

@@ -120,7 +120,11 @@ describe('KI-2 (open, P1) — edits re-arrange unrelated parts of the drawing', 
   });
 });
 
-describe('KI-3 (fixed, P0) — footprint violations on adversarial random-operation pedigrees', () => {
+// The ORIGINAL KI-3 graphs (263/387/474 people) are frozen JSON fixtures in
+// ki3Regression.test.js. The seed-based cases below are an additional random
+// robustness check only: with today's store they produce different families
+// (214/293/363 people), so they are NOT the original KI-3 graphs.
+describe('KI-3 (fixed, P0) — extra random robustness (not the original graphs; see ki3Regression.test.js)', () => {
   for (const [seed, ops] of [['p3', 220], ['p4', 320], ['p5', 400]]) {
     it(`${seed} (${ops} random operations): no layout invariant violation`, () => {
       const g = randomPedigree(seed, ops);
