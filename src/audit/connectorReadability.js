@@ -138,7 +138,8 @@ export function checkConnectorReadability(pd) {
 export function readabilityMetrics(pd) {
   const m = {
     individuals: 0, unionsWithChildren: 0, offCenter: 0, maxCentreOffset: 0, sideHang: 0,
-    longUnions: 0, maxUnionSpan: 0, crossings: 0, width: 0, widthPerIndividual: 0,
+    longUnions: 0, maxUnionSpan: 0, crossings: 0, bridgedCrossings: 0, stackedBuses: 0,
+    width: 0, widthPerIndividual: 0,
   };
   try {
     const nodes = (pd && pd.nodes) || [];
@@ -162,6 +163,21 @@ export function readabilityMetrics(pd) {
       if (mid < lo - 1 || mid > hi + 1) m.sideHang++;
     }
     m.crossings = checkConnectorReadability(pd).filter(v => v.code === 'FOREIGN_CONNECTOR_CROSSING').length;
+    // Crossings drawn with a line jump are unambiguous but still a cost the
+    // layout should minimise; report them separately so a router that marks
+    // every crossing cannot hide them.
+    const edges = pd.edges || [];
+    m.bridgedCrossings = edges.reduce((n, e) => n + (Array.isArray(e.bridges) ? e.bridges.length : 0), 0);
+    // Two families' sibship buses at different heights over the same x range:
+    // not a collision, but children of two couples interleave visually.
+    const buses = edges.filter(e => e.type === 'sibship' && [e.x1, e.x2, e.y1].every(finite));
+    for (let i = 0; i < buses.length; i++) {
+      for (let j = i + 1; j < buses.length; j++) {
+        const a = buses[i], b = buses[j];
+        if (a.unionId === b.unionId || Math.abs(a.y1 - b.y1) > 40) continue;
+        if (overlap(Math.min(a.x1, a.x2), Math.max(a.x1, a.x2), Math.min(b.x1, b.x2), Math.max(b.x1, b.x2)) > 0) m.stackedBuses++;
+      }
+    }
     const xs = nodes.map(n => n.x).filter(finite);
     m.width = xs.length ? Math.max(...xs) - Math.min(...xs) : 0;
     m.widthPerIndividual = m.individuals ? +(m.width / m.individuals).toFixed(1) : 0;

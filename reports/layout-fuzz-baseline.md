@@ -1,8 +1,8 @@
 # Layout Fuzz — Baseline Report
 
-Generated: 2026-10-18T00:18:53.848Z
+Generated: 2026-10-18T05:28:24.676Z
 
-Config: seed=`1`, cases=1000, maxOpsPerCase=14
+Config: seed=`12345`, cases=1000, maxOpsPerCase=14
 
 ## Result
 
@@ -45,21 +45,16 @@ _none_
 
 Reported separately from the 13-invariant tier above so historical baselines stay comparable.
 
-- cases failing readability: **988/1000** (98.8%)
-- end-state metrics: off-centre couple in 921 cases, side-hanging bus in 968, long union line (>3 slots) in 810, foreign crossings in 165 cases (376 total)
-
-| readability code | failing cases |
-|---|---|
-| COLLINEAR_FOREIGN_CONNECTORS | 988 |
-| FOREIGN_T_JUNCTION | 988 |
+- cases failing readability: **0/1000** (0.0%)
+- end-state metrics: off-centre couple in 105 cases (199/6860 couples with children = 2.9%), side-hanging bus in 668, long union line (>3 slots) in 69, foreign crossings in 0 cases (0 total)
 
 ## Named QA scenarios
 
 | scenario | invariant tier | readability tier | codes |
 |---|---|---|---|
-| upper-generation-child-add-overlap | ✅ pass | ❌ FAIL | COLLINEAR_FOREIGN_CONNECTORS, FOREIGN_T_JUNCTION |
-| parent-sibling-branch-collapse | ✅ pass | ❌ FAIL | COLLINEAR_FOREIGN_CONNECTORS, FOREIGN_T_JUNCTION |
-| large-sibship-near-aunt-uncle | ✅ pass | ❌ FAIL | COLLINEAR_FOREIGN_CONNECTORS, FOREIGN_T_JUNCTION |
-| distant-same-generation-union-collapse | ✅ pass | ❌ FAIL | COLLINEAR_FOREIGN_CONNECTORS, FOREIGN_T_JUNCTION |
-| right-panel-sibling-state-derived-case | ✅ pass | ❌ FAIL | COLLINEAR_FOREIGN_CONNECTORS, FOREIGN_T_JUNCTION |
-| export-negative-x-viewbox | ✅ pass | ❌ FAIL | COLLINEAR_FOREIGN_CONNECTORS, FOREIGN_T_JUNCTION |
+| upper-generation-child-add-overlap | ✅ pass | ✅ pass | — |
+| parent-sibling-branch-collapse | ✅ pass | ✅ pass | — |
+| large-sibship-near-aunt-uncle | ✅ pass | ✅ pass | — |
+| distant-same-generation-union-collapse | ✅ pass | ✅ pass | — |
+| right-panel-sibling-state-derived-case | ✅ pass | ✅ pass | — |
+| export-negative-x-viewbox | ✅ pass | ✅ pass | — |

@@ -28,12 +28,14 @@ const replay = args.includes('--replay');
 const cases = replay ? '1' : String(getFlag('cases', '1000'));
 const maxops = String(getFlag('maxops', '14'));
 
-// '' / 'recursive' = shipped default engine (recursive packer); 'legacy' =
-// explicit fallback to the old per-generation barycenter engine.
+// '' = shipped default engine (PCL since the v0.5 Faz 3 cutover);
+// 'pcl' / 'recursive' / 'legacy' select an engine explicitly (the latter two
+// are retained fallbacks).
 const packer = getFlag('packer', '');
 const env = { ...process.env, LAYOUT_FUZZ_SEED: String(seed), LAYOUT_FUZZ_CASES: cases, LAYOUT_FUZZ_MAXOPS: maxops };
 if (packer === 'recursive') env.PEDITREE_PACKER = 'recursive';
 if (packer === 'legacy') env.PEDITREE_PACKER = 'legacy';
+if (packer === 'pcl') env.PEDITREE_PACKER = 'pcl';
 
 if (replay) {
   // Replay mode re-runs the same seed with 1 case for a deterministic
@@ -63,7 +65,7 @@ if (existsSync(reportPath)) {
     const r = j.readability;
     console.log(`readability tier: ${r.failed}/${j.cases} failed (rate ${(r.failureRate * 100).toFixed(1)}%)`);
     Object.entries(r.codeCounts).sort((a, b) => b[1] - a[1]).forEach(([c, n]) => console.log(`  ${String(n).padStart(5)}  ${c}`));
-    console.log(`  end-state: off-centre ${r.metrics.withOffCenter}, side-hang ${r.metrics.withSideHang}, long-union ${r.metrics.withLongUnion}, crossings ${r.metrics.withCrossing} cases / ${r.metrics.crossings} total`);
+    console.log(`  end-state: off-centre ${r.metrics.withOffCenter} (couples ${r.metrics.offCenterUnions}/${r.metrics.unionsWithChildren}), side-hang ${r.metrics.withSideHang}, long-union ${r.metrics.withLongUnion}, crossings ${r.metrics.withCrossing} cases / ${r.metrics.crossings} total`);
   }
   console.log('named QA scenarios (invariant / readability):');
   j.namedScenarios.forEach(n => console.log(`  ${n.failed ? 'FAIL' : 'pass'} / ${n.readFailed ? 'FAIL' : 'pass'}  ${n.name}  ${[...n.codes, ...(n.readCodes || [])].join(',') || ''}`));

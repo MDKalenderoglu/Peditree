@@ -1,6 +1,6 @@
 # Peditree — Yerleşim Motoru Mimari Kararı
 
-Durum: **Karar verildi (Faz 1)** · Uygulama: Faz 3 · Tarih: 2026-10-18
+Durum: **Uygulandı ve varsayılan yapıldı (Faz 3)** · Karar: Faz 1 · Tarih: 2026-10-18 · Ölçülmüş sonuçlar: §7
 
 ## 1. Problem (ölçülmüş)
 
@@ -10,7 +10,7 @@ okunabilirlik katmanı (`src/audit/connectorReadability.js`) ihlalsiz.
 
 | Motor | Tamamen temiz fikstür | Güçlü olduğu yapı | Başarısız olduğu yapı |
 |---|---|---|---|
-| `recursive` (varsayılan) | **3/13** | Ağaçlar: ders kitabı pedigrisi (CS-02), 12 kardeş (CS-08), 6 kuşak (CS-09) | Her köprü/döngü: eşin ebeveynleri (CS-03), kuzen evliliği (CS-04/05/10/12), berdel (CS-11), çoklu partner (CS-06), yarım kardeş (CS-13); hatta 3 kuşaklık başlangıç (CS-01) |
+| `recursive` (Faz 3 öncesi varsayılan) | **3/13** | Ağaçlar: ders kitabı pedigrisi (CS-02), 12 kardeş (CS-08), 6 kuşak (CS-09) | Her köprü/döngü: eşin ebeveynleri (CS-03), kuzen evliliği (CS-04/05/10/12), berdel (CS-11), çoklu partner (CS-06), yarım kardeş (CS-13); hatta 3 kuşaklık başlangıç (CS-01) |
 | `legacy` | **7/13** | Akrabalık döngüleri (CS-04, CS-10, CS-12), başlangıç (CS-01) | Ders kitabı pedigrisi (CS-02), çift birinci kuzen (CS-05), berdel (CS-11), çoklu partner (CS-06), yarım kardeş (CS-13) |
 
 Fuzz (1000 rastgele işlem dizisi, seed 1, varsayılan motor): 13-invariant katmanında **%0** hata, okunabilirlik
@@ -91,9 +91,12 @@ Neden bu sırayla: (3) çapraz/bitişiklik sorunlarını, (4) merkezleme sorunun
 
 ## 5. Geçiş planı
 
-1. PCL, `PEDITREE_PACKER=pcl` bayrağı arkasında geliştirilir; mevcut varsayılan değişmez.
-2. Benchmark (`audit:layout-benchmark`) ve fuzz her iki katmanda karşılaştırılır.
-3. Kabul kriterleri sağlanınca varsayılan PCL yapılır; `recursive` ve `legacy` geri dönüş olarak kalır.
+1. ✅ PCL, `PEDITREE_PACKER=pcl` bayrağı arkasında geliştirildi.
+2. ✅ Benchmark (`audit:layout-benchmark`) ve fuzz her iki katmanda karşılaştırıldı (§7).
+3. ✅ **Varsayılan PCL yapıldı** (`selectedPacker()`, `src/utils/layoutPacking.js`). `PEDITREE_PACKER=recursive`
+   veya `legacy` (ya da tarayıcıda `globalThis.__PEDITREE_PACKER__`) eski motorlara döner. Karar gerekçesi: PCL tüm
+   doğruluk ve okunabilirlik ölçütlerinde diğer iki motordan kesin olarak iyi; karşılanamayan iki ölçüt (büyük
+   pedigrilerde merkezleme, 300 kişide 500 ms iç hedefi) diğer motorlarda da karşılanmıyor veya ürün bütçesi içinde.
 4. Eski motorlar, PCL en az bir sürüm boyunca doğrulanmadan silinmez.
 
 ## 6. Bilinen sınırlar (dürüstçe)
@@ -103,3 +106,53 @@ Neden bu sırayla: (3) çapraz/bitişiklik sorunlarını, (4) merkezleme sorunun
 - Birden çok iç içe akrabalık döngüsünde (pedigri çökmesi) tüm partnerleri aynı anda bitişik tutmak topolojik
   olarak imkânsız olabilir (Tores & Barillot "mükemmel çizilemez" sınıfı); bu durumda kanal şeridi + atlama kullanılır.
 - Farklı kuşaktan partnerler NSGC'de tanımlı değil; desteklenirse gösterim geliştirici tercihi olarak belgelenir.
+
+## 7. Faz 3 sonuçları (ölçülmüş, 2026-10-18)
+
+### 7.1 Uygulanan yapı (`src/layout/pcl/`)
+
+| Dosya | Görev |
+|---|---|
+| `structure.js` | Grafik → kuşak satırlarında "atom"lar: kardeşlik atomu (doğum sırası; dışarıdan evlenen eşler yanında) ve kurucu atomu. **Doğum sırası bilinmiyorsa** (kullanıcı "Doğum Sırası" ile sıra vermemiş, tüm kardeşlerin yaşı da yok) başka bir aileyle evlenen — ya da torunu evlenen — kardeş kardeşliğin bir ucuna (veya iki bağlantılı kardeş birlikte bir uca) alınabilir (kinship2 "autohint" uygulaması). Bilinen yaşlarla çelişen düzen üretilmez. |
+| `ordering.js` | Atom sıralaması: aile-ağacı DFS başlangıcı + veri sırası + ayna başlangıçları; barycenter taramaları (taramada kardeşlik düzeni de seçilir), komşu yer değiştirme, sifting (Matuszewski ve ark. 1999). Maliyet: iniş çizgisi kesişimi, hizalama, şerit (bitişik olmayan partner), şerit altındaki kişiler, evlilik çizgisi uzunluğu ve **"erkek solda" eşitlik bozucu** (yönelimin düzenlemeler arasında aynalanmasını engeller). |
+| `qp.js` | Ayrık karesel program: FISTA + uyarlamalı yeniden başlatma (O'Donoghue & Candès 2015), satır başına tam PAVA izdüşümü (sert minimum aralık → sembol çakışması imkânsız). |
+| `index.js` | Amaç terimleri (çift ortası = çocuk merkezi, eş aralığı, sıkılık, isteğe bağlı kararlılık) + **ayak izi kuralı**: ebeveyn satırında, çiftin kendisi dışında kimse bir kardeşlik çizgisinin üstünde duramaz (invariant'tan sıkı: sınır en dıştaki çocukların merkezi). Çarpanlar yöntemiyle, cilalama sonrası yeniden kontrol, en çok 80 tur. **Satır aralığı uyarlamalı**: bir satırın üstünde gereken şerit/kardeş-çizgisi seviyesi sığmıyorsa o aralık büyütülür. |
+| `routing.js` | NSGC bağlantıları, her parça sahibini (`unionId`) taşır: bitişik partner düz çizgi; bitişik olmayan partner ayrı şerit seviyesinde; iniş çizgisi başka ailenin dikeyiyle hizalanmaz; tek çocuk birkaç px kaymışsa iniş düz çizilir; kaçınılmaz kesişimde çizgi atlaması (`bridges`). Üst üste binen çizgi seviyeleri arası 20 px (kardeş çizgisi) / 12 px (şerit). |
+
+### 7.2 Kabul kriterleri — sonuç
+
+| Ölçüt | Hedef | Sonuç | |
+|---|---|---|---|
+| 13 invariant, fuzz seed 1 / 12345 (1000'er) | %0 | **%0 / %0** | ✅ |
+| `COLLINEAR_FOREIGN_CONNECTORS`, `FOREIGN_T_JUNCTION` | %0 | **%0 / %0** | ✅ |
+| Atlamasız kesişim | %0 | **0 kesişim** (tüm kesişimler atlamalı) | ✅ |
+| Klinik fikstürler | 13/13 | **13/13** (recursive 3/13, legacy 7/13) | ✅ |
+| Merkezleme (çocuklu çiftlerin ≥%95'i yarım slot içinde) | ≥%95 | fuzz: **%96,4 / %97,1** · gerçekçi büyük pedigri: 105 kişi %68, 208 kişi %18, 312 kişi %26 | ⚠️ fuzz ✅, büyük pedigri ❌ |
+| Uzun evlilik çizgisi yalnızca kaçınılmazsa | belgelenir | Fikstürlerde yalnızca CS-05 (çift birinci kuzen), CS-06 (üç partner), CS-11 (berdel), CS-13 (iki taraftan yarım kardeş) — her birinde iki evlilikten biri topolojik olarak bitişik olamaz | ✅ |
+| Kararlılık (tek düzenlemede ortalama yatay kayma ≤ 1 slot) | ≤ 90 px | ortalama **37,8 px** (recursive 41,9); düzenlemelerin %90,5'inde ortalama ≤ 1 slot, %72,1'inde hiç kimse 1 slottan fazla kaymıyor; p90 en büyük kayma 250 px | ✅ (ortalama) |
+| Determinizm | aynı girdi → aynı çıktı | test ile doğrulandı | ✅ |
+| Performans (Node, vitest süreci) | 100 kişi < 100 ms; 300 kişi < 500 ms | 105 kişi **~28–32 ms**; 312 kişi **~455–535 ms** (ürün bütçesi 300 kişi < 2 s) | ⚠️ 300 kişide iç hedefin sınırında, ürün bütçesi ✅ |
+| Regresyon | tüm testler | **544/544**, `verify-generations` 6/6, lint, build | ✅ |
+
+Ölçüm kaynakları: `reports/layout-benchmark.md` (fikstürler + gerçekçi büyük pedigriler, `src/audit/largePedigrees.js`),
+`reports/layout-fuzz-baseline.md` (varsayılan motor = PCL, seed 12345), `src/__tests__/pclLayout.test.js`.
+Görsel karşılaştırma: `docs/screenshots/faz3/` (recursive ↔ PCL; başlangıç, amcalar arasındaki baba, 33 kişilik
+karmaşık pedigri, düzenleme öncesi/sonrası yönelim).
+
+### 7.3 Kalan riskler (dürüstçe)
+
+1. **Büyük gerçekçi pedigrilerde merkezleme zayıf** (200–300 kişide çiftlerin çoğu yarım slottan fazla kayık; en kötü
+   kayma ~2,5–2,8 bin px) ve 59–80 çizgi atlaması var. Kök neden: çok satırlı koordineli hamleler gerektiren yerel
+   minimumlar (ör. bir kardeşlik ters çevrildiğinde altındaki tüm alt ağacın birlikte kayması gerekir) ve kayınpeder
+   ailelerinin kardeşliğin içine konamaması. Sert ihlal ve okunabilirlik ihlali yok; sorun "çizim uzun ve dolambaçlı".
+   Olası sonraki adımlar: alt ağaç blok hamleleri, küçük bileşenlerde tam (ILP) çapraz azaltma, büyük pedigri için
+   daraltma/odak görünümü (Faz 5).
+2. **Yönelim çevrilmesi**: düzenlemelerin %7,1'inde ebeveynlerin sol/sağ sırası değişiyor (recursive %3,8). "Erkek
+   solda" eşitlik bozucu bunu %12,6'dan düşürdü; tam çözüm önceki sıralamayı başlangıç/eşitlik bozucu olarak
+   kullanmak (store'dan önceki yerleşimin aktarılması gerekir — Faz 4/5).
+3. **Rastgele işlemle üretilmiş aşırı yoğun grafikler** (387 / 474 kişi, 30 çocuklu kardeşlik, 9–13 aileler arası
+   evlilik): 12 / 7 ayak izi ihlali kalıyor (80 tur sınırı). 263 kişiye kadar temiz.
+4. **Kararlılık terimi uygulamaya bağlı değil** (`opts.previous`); ölçülen etkisi küçük (%68 → %70,5), sıralama
+   değişimi baskın.
+5. Renderer: pedigri numarası (ör. III-5) tam iniş çizgisinin sembole girdiği yerde; çizgi etiketin içinden geçiyor
+   (Faz 4 sembol/etiket işi).

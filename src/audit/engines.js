@@ -5,6 +5,7 @@
  * read on every layout), and the previous value is always restored.
  */
 import { computePedigreeLayoutV2 } from '../utils/pedigreeLayoutV2';
+import { computePclLayout } from '../layout/pcl';
 
 function withPacker(value, fn) {
   const prev = process.env.PEDITREE_PACKER;
@@ -17,4 +18,5 @@ function withPacker(value, fn) {
 export const ENGINES = {
   recursive: (graph) => withPacker('recursive', () => computePedigreeLayoutV2(graph)),
   legacy: (graph) => withPacker('legacy', () => computePedigreeLayoutV2(graph)),
+  pcl: (graph) => computePclLayout(graph),
 };

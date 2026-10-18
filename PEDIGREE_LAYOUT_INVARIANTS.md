@@ -119,7 +119,8 @@ The 13 invariants above prove that no connector passes *through* a symbol and th
 bus. They do not catch the failure clinical QA actually reported: one family's line touching, running along or
 crossing another family's line, so a reader cannot tell who is married to whom or which couple a child belongs to.
 A layout can pass all 13 and still be ambiguous (measured: fuzz 0 % invariant failures vs 96.4 % readability failures
-on the recursive packer, see `docs/PEDITREE_AUDIT_REPORT.md`).
+on the recursive packer, see `docs/PEDITREE_AUDIT_REPORT.md`). Since the Faz 3 cutover the default engine is PCL
+(`src/layout/pcl`), measured at 0 % on both tiers (both fuzz seeds; `docs/PEDITREE_LAYOUT_ARCHITECTURE.md` §7).
 
 Every structural connector now carries the id of its owning union (`unionId`). Implemented in
 `src/audit/connectorReadability.js`, reported as a separate tier by `npm run audit:layout-fuzz` and

@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-10-18T00:18:54.300Z",
+  "generatedAt": "2026-10-18T05:26:18.140Z",
   "rows": [
     {
       "engine": "recursive",
       "fixture": "CS-01",
       "name": "Üç kuşak başlangıç",
-      "ms": 0.63,
+      "ms": 0.66,
       "invariantCodes": [],
       "readabilityCodes": [
         "COLLINEAR_FOREIGN_CONNECTORS",
@@ -21,6 +21,8 @@
         "longUnions": 0,
         "maxUnionSpan": 225,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
         "width": 295,
         "widthPerIndividual": 42.1
       }
@@ -29,7 +31,7 @@
       "engine": "recursive",
       "fixture": "CS-02",
       "name": "Ders kitabı OD pedigrisi (4 kuşak, 7 kardeş, gelin/damatlar)",
-      "ms": 0.3,
+      "ms": 0.31,
       "invariantCodes": [],
       "readabilityCodes": [],
       "readabilityViolations": 0,
@@ -42,6 +44,8 @@
         "longUnions": 0,
         "maxUnionSpan": 70,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
         "width": 2930,
         "widthPerIndividual": 63.7
       }
@@ -50,7 +54,7 @@
       "engine": "recursive",
       "fixture": "CS-03",
       "name": "Eşin ebeveynleri de çizili",
-      "ms": 0.12,
+      "ms": 0.11,
       "invariantCodes": [],
       "readabilityCodes": [
         "COLLINEAR_FOREIGN_CONNECTORS",
@@ -66,6 +70,8 @@
         "longUnions": 1,
         "maxUnionSpan": 272,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
         "width": 626,
         "widthPerIndividual": 48.2
       }
@@ -74,7 +80,7 @@
       "engine": "recursive",
       "fixture": "CS-04",
       "name": "Ebeveynler birinci kuzen",
-      "ms": 0.08,
+      "ms": 0.1,
       "invariantCodes": [],
       "readabilityCodes": [
         "COLLINEAR_FOREIGN_CONNECTORS",
@@ -91,6 +97,8 @@
         "longUnions": 1,
         "maxUnionSpan": 456,
         "crossings": 2,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
         "width": 684,
         "widthPerIndividual": 48.9
       }
@@ -99,7 +107,7 @@
       "engine": "recursive",
       "fixture": "CS-05",
       "name": "Çift birinci kuzen evliliği",
-      "ms": 0.17,
+      "ms": 0.11,
       "invariantCodes": [],
       "readabilityCodes": [
         "COLLINEAR_FOREIGN_CONNECTORS",
@@ -116,6 +124,8 @@
         "longUnions": 3,
         "maxUnionSpan": 484,
         "crossings": 3,
+        "bridgedCrossings": 0,
+        "stackedBuses": 1,
         "width": 753,
         "widthPerIndividual": 53.8
       }
@@ -140,6 +150,8 @@
         "longUnions": 0,
         "maxUnionSpan": 140,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 1,
         "width": 1116,
         "widthPerIndividual": 85.8
       }
@@ -148,7 +160,7 @@
       "engine": "recursive",
       "fixture": "CS-07",
       "name": "Harmanlanmış aile (iki tarafın önceki çocukları)",
-      "ms": 0.07,
+      "ms": 0.06,
       "invariantCodes": [],
       "readabilityCodes": [
         "COLLINEAR_FOREIGN_CONNECTORS",
@@ -164,6 +176,8 @@
         "longUnions": 1,
         "maxUnionSpan": 454,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
         "width": 798,
         "widthPerIndividual": 61.4
       }
@@ -172,7 +186,7 @@
       "engine": "recursive",
       "fixture": "CS-08",
       "name": "12 çocuklu kardeşlik, her biri evli ve çocuklu",
-      "ms": 0.15,
+      "ms": 0.16,
       "invariantCodes": [],
       "readabilityCodes": [],
       "readabilityViolations": 0,
@@ -185,6 +199,8 @@
         "longUnions": 0,
         "maxUnionSpan": 70,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
         "width": 2635,
         "widthPerIndividual": 52.7
       }
@@ -193,7 +209,7 @@
       "engine": "recursive",
       "fixture": "CS-09",
       "name": "Altı kuşak + her kuşakta yan dal",
-      "ms": 0.11,
+      "ms": 0.1,
       "invariantCodes": [],
       "readabilityCodes": [],
       "readabilityViolations": 0,
@@ -206,6 +222,8 @@
         "longUnions": 0,
         "maxUnionSpan": 70,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
         "width": 990,
         "widthPerIndividual": 35.4
       }
@@ -214,7 +232,7 @@
       "engine": "recursive",
       "fixture": "CS-10",
       "name": "Tekrarlayan akraba evliliği (2. ve 4. kuşak)",
-      "ms": 0.08,
+      "ms": 0.07,
       "invariantCodes": [],
       "readabilityCodes": [
         "COLLINEAR_FOREIGN_CONNECTORS",
@@ -231,6 +249,8 @@
         "longUnions": 2,
         "maxUnionSpan": 627,
         "crossings": 3,
+        "bridgedCrossings": 0,
+        "stackedBuses": 1,
         "width": 912,
         "widthPerIndividual": 48
       }
@@ -239,7 +259,7 @@
       "engine": "recursive",
       "fixture": "CS-11",
       "name": "Berdel (karşılıklı evlilik)",
-      "ms": 0.07,
+      "ms": 0.05,
       "invariantCodes": [],
       "readabilityCodes": [
         "COLLINEAR_FOREIGN_CONNECTORS",
@@ -256,6 +276,8 @@
         "longUnions": 1,
         "maxUnionSpan": 569,
         "crossings": 2,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
         "width": 626,
         "widthPerIndividual": 52.2
       }
@@ -264,7 +286,7 @@
       "engine": "recursive",
       "fixture": "CS-12",
       "name": "Pedigri çökmesi (iki akrabalık döngüsü)",
-      "ms": 0.06,
+      "ms": 0.08,
       "invariantCodes": [],
       "readabilityCodes": [
         "COLLINEAR_FOREIGN_CONNECTORS",
@@ -281,6 +303,8 @@
         "longUnions": 2,
         "maxUnionSpan": 394,
         "crossings": 2,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
         "width": 606,
         "widthPerIndividual": 40.4
       }
@@ -289,7 +313,7 @@
       "engine": "recursive",
       "fixture": "CS-13",
       "name": "İki ebeveyn tarafından yarım kardeşler",
-      "ms": 0.08,
+      "ms": 0.04,
       "invariantCodes": [],
       "readabilityCodes": [
         "COLLINEAR_FOREIGN_CONNECTORS",
@@ -305,6 +329,8 @@
         "longUnions": 1,
         "maxUnionSpan": 559,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 1,
         "width": 659,
         "widthPerIndividual": 82.4
       }
@@ -313,7 +339,7 @@
       "engine": "legacy",
       "fixture": "CS-01",
       "name": "Üç kuşak başlangıç",
-      "ms": 0.34,
+      "ms": 0.33,
       "invariantCodes": [],
       "readabilityCodes": [],
       "readabilityViolations": 0,
@@ -326,6 +352,8 @@
         "longUnions": 0,
         "maxUnionSpan": 70,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
         "width": 180,
         "widthPerIndividual": 25.7
       }
@@ -352,6 +380,8 @@
         "longUnions": 0,
         "maxUnionSpan": 70,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 4,
         "width": 2595,
         "widthPerIndividual": 56.4
       }
@@ -360,7 +390,7 @@
       "engine": "legacy",
       "fixture": "CS-03",
       "name": "Eşin ebeveynleri de çizili",
-      "ms": 0.07,
+      "ms": 0.1,
       "invariantCodes": [],
       "readabilityCodes": [],
       "readabilityViolations": 0,
@@ -373,6 +403,8 @@
         "longUnions": 0,
         "maxUnionSpan": 70,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
         "width": 235,
         "widthPerIndividual": 18.1
       }
@@ -381,7 +413,7 @@
       "engine": "legacy",
       "fixture": "CS-04",
       "name": "Ebeveynler birinci kuzen",
-      "ms": 0.06,
+      "ms": 0.07,
       "invariantCodes": [],
       "readabilityCodes": [],
       "readabilityViolations": 0,
@@ -394,6 +426,8 @@
         "longUnions": 0,
         "maxUnionSpan": 70,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
         "width": 435,
         "widthPerIndividual": 31.1
       }
@@ -422,6 +456,8 @@
         "longUnions": 1,
         "maxUnionSpan": 325,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 1,
         "width": 495,
         "widthPerIndividual": 35.4
       }
@@ -449,6 +485,8 @@
         "longUnions": 0,
         "maxUnionSpan": 250,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 1,
         "width": 535,
         "widthPerIndividual": 41.2
       }
@@ -472,6 +510,8 @@
         "longUnions": 0,
         "maxUnionSpan": 155,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
         "width": 360,
         "widthPerIndividual": 27.7
       }
@@ -480,7 +520,7 @@
       "engine": "legacy",
       "fixture": "CS-08",
       "name": "12 çocuklu kardeşlik, her biri evli ve çocuklu",
-      "ms": 0.23,
+      "ms": 0.12,
       "invariantCodes": [],
       "readabilityCodes": [],
       "readabilityViolations": 0,
@@ -493,6 +533,8 @@
         "longUnions": 0,
         "maxUnionSpan": 70,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
         "width": 2070,
         "widthPerIndividual": 41.4
       }
@@ -501,7 +543,7 @@
       "engine": "legacy",
       "fixture": "CS-09",
       "name": "Altı kuşak + her kuşakta yan dal",
-      "ms": 0.1,
+      "ms": 0.09,
       "invariantCodes": [],
       "readabilityCodes": [],
       "readabilityViolations": 0,
@@ -514,6 +556,8 @@
         "longUnions": 0,
         "maxUnionSpan": 70,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
         "width": 660,
         "widthPerIndividual": 23.6
       }
@@ -522,7 +566,7 @@
       "engine": "legacy",
       "fixture": "CS-10",
       "name": "Tekrarlayan akraba evliliği (2. ve 4. kuşak)",
-      "ms": 0.08,
+      "ms": 0.09,
       "invariantCodes": [],
       "readabilityCodes": [],
       "readabilityViolations": 0,
@@ -535,6 +579,8 @@
         "longUnions": 0,
         "maxUnionSpan": 70,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
         "width": 625,
         "widthPerIndividual": 32.9
       }
@@ -563,6 +609,8 @@
         "longUnions": 1,
         "maxUnionSpan": 310,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 1,
         "width": 440,
         "widthPerIndividual": 36.7
       }
@@ -584,6 +632,8 @@
         "longUnions": 0,
         "maxUnionSpan": 70,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
         "width": 227.5,
         "widthPerIndividual": 15.2
       }
@@ -611,8 +661,518 @@
         "longUnions": 0,
         "maxUnionSpan": 135,
         "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
         "width": 270,
         "widthPerIndividual": 33.8
+      }
+    },
+    {
+      "engine": "pcl",
+      "fixture": "CS-01",
+      "name": "Üç kuşak başlangıç",
+      "ms": 2.81,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 7,
+        "unionsWithChildren": 3,
+        "offCenter": 0,
+        "maxCentreOffset": 33,
+        "sideHang": 2,
+        "longUnions": 0,
+        "maxUnionSpan": 134,
+        "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
+        "width": 270,
+        "widthPerIndividual": 38.6
+      }
+    },
+    {
+      "engine": "pcl",
+      "fixture": "CS-02",
+      "name": "Ders kitabı OD pedigrisi (4 kuşak, 7 kardeş, gelin/damatlar)",
+      "ms": 3.93,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 46,
+        "unionsWithChildren": 10,
+        "offCenter": 0,
+        "maxCentreOffset": 10,
+        "sideHang": 1,
+        "longUnions": 0,
+        "maxUnionSpan": 84,
+        "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
+        "width": 2273,
+        "widthPerIndividual": 49.4
+      }
+    },
+    {
+      "engine": "pcl",
+      "fixture": "CS-03",
+      "name": "Eşin ebeveynleri de çizili",
+      "ms": 1.6,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 13,
+        "unionsWithChildren": 5,
+        "offCenter": 0,
+        "maxCentreOffset": 35,
+        "sideHang": 3,
+        "longUnions": 0,
+        "maxUnionSpan": 131,
+        "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
+        "width": 492.5,
+        "widthPerIndividual": 37.9
+      }
+    },
+    {
+      "engine": "pcl",
+      "fixture": "CS-04",
+      "name": "Ebeveynler birinci kuzen",
+      "ms": 2.1,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 14,
+        "unionsWithChildren": 4,
+        "offCenter": 0,
+        "maxCentreOffset": 0,
+        "sideHang": 0,
+        "longUnions": 0,
+        "maxUnionSpan": 70,
+        "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
+        "width": 355,
+        "widthPerIndividual": 25.4
+      }
+    },
+    {
+      "engine": "pcl",
+      "fixture": "CS-05",
+      "name": "Çift birinci kuzen evliliği",
+      "ms": 1.67,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 14,
+        "unionsWithChildren": 5,
+        "offCenter": 0,
+        "maxCentreOffset": 34,
+        "sideHang": 0,
+        "longUnions": 1,
+        "maxUnionSpan": 477,
+        "crossings": 0,
+        "bridgedCrossings": 2,
+        "stackedBuses": 0,
+        "width": 476.5,
+        "widthPerIndividual": 34
+      }
+    },
+    {
+      "engine": "pcl",
+      "fixture": "CS-06",
+      "name": "Üç partner, yarım kardeşler",
+      "ms": 0.53,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 13,
+        "unionsWithChildren": 4,
+        "offCenter": 2,
+        "maxCentreOffset": 58,
+        "sideHang": 1,
+        "longUnions": 1,
+        "maxUnionSpan": 586,
+        "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
+        "width": 811.5,
+        "widthPerIndividual": 62.4
+      }
+    },
+    {
+      "engine": "pcl",
+      "fixture": "CS-07",
+      "name": "Harmanlanmış aile (iki tarafın önceki çocukları)",
+      "ms": 0.59,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 13,
+        "unionsWithChildren": 5,
+        "offCenter": 1,
+        "maxCentreOffset": 59,
+        "sideHang": 4,
+        "longUnions": 0,
+        "maxUnionSpan": 186,
+        "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
+        "width": 471.5,
+        "widthPerIndividual": 36.3
+      }
+    },
+    {
+      "engine": "pcl",
+      "fixture": "CS-08",
+      "name": "12 çocuklu kardeşlik, her biri evli ve çocuklu",
+      "ms": 2.41,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 50,
+        "unionsWithChildren": 13,
+        "offCenter": 0,
+        "maxCentreOffset": 1,
+        "sideHang": 0,
+        "longUnions": 0,
+        "maxUnionSpan": 72,
+        "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
+        "width": 2630,
+        "widthPerIndividual": 52.6
+      }
+    },
+    {
+      "engine": "pcl",
+      "fixture": "CS-09",
+      "name": "Altı kuşak + her kuşakta yan dal",
+      "ms": 1.41,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 28,
+        "unionsWithChildren": 11,
+        "offCenter": 0,
+        "maxCentreOffset": 5,
+        "sideHang": 4,
+        "longUnions": 0,
+        "maxUnionSpan": 74,
+        "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
+        "width": 885,
+        "widthPerIndividual": 31.6
+      }
+    },
+    {
+      "engine": "pcl",
+      "fixture": "CS-10",
+      "name": "Tekrarlayan akraba evliliği (2. ve 4. kuşak)",
+      "ms": 2.14,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 19,
+        "unionsWithChildren": 6,
+        "offCenter": 0,
+        "maxCentreOffset": 3,
+        "sideHang": 0,
+        "longUnions": 0,
+        "maxUnionSpan": 75,
+        "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
+        "width": 471.5,
+        "widthPerIndividual": 24.8
+      }
+    },
+    {
+      "engine": "pcl",
+      "fixture": "CS-11",
+      "name": "Berdel (karşılıklı evlilik)",
+      "ms": 0.65,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 12,
+        "unionsWithChildren": 4,
+        "offCenter": 0,
+        "maxCentreOffset": 43,
+        "sideHang": 0,
+        "longUnions": 1,
+        "maxUnionSpan": 561,
+        "crossings": 0,
+        "bridgedCrossings": 2,
+        "stackedBuses": 0,
+        "width": 561,
+        "widthPerIndividual": 46.8
+      }
+    },
+    {
+      "engine": "pcl",
+      "fixture": "CS-12",
+      "name": "Pedigri çökmesi (iki akrabalık döngüsü)",
+      "ms": 1.03,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 15,
+        "unionsWithChildren": 6,
+        "offCenter": 0,
+        "maxCentreOffset": 5,
+        "sideHang": 2,
+        "longUnions": 0,
+        "maxUnionSpan": 77,
+        "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
+        "width": 296,
+        "widthPerIndividual": 19.7
+      }
+    },
+    {
+      "engine": "pcl",
+      "fixture": "CS-13",
+      "name": "İki ebeveyn tarafından yarım kardeşler",
+      "ms": 0.25,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 8,
+        "unionsWithChildren": 3,
+        "offCenter": 0,
+        "maxCentreOffset": 45,
+        "sideHang": 2,
+        "longUnions": 1,
+        "maxUnionSpan": 525,
+        "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
+        "width": 534.5,
+        "widthPerIndividual": 66.8
+      }
+    }
+  ],
+  "large": [
+    {
+      "engine": "recursive",
+      "case": "realistic-100",
+      "individuals": 105,
+      "loops": 2,
+      "ms": 0.3,
+      "invariantViolations": 0,
+      "readabilityViolations": 118,
+      "metrics": {
+        "individuals": 105,
+        "unionsWithChildren": 22,
+        "offCenter": 5,
+        "maxCentreOffset": 2704,
+        "sideHang": 7,
+        "longUnions": 5,
+        "maxUnionSpan": 5407,
+        "crossings": 46,
+        "bridgedCrossings": 0,
+        "stackedBuses": 7,
+        "width": 7804,
+        "widthPerIndividual": 74.3
+      }
+    },
+    {
+      "engine": "recursive",
+      "case": "realistic-200",
+      "individuals": 208,
+      "loops": 3,
+      "ms": 0.5,
+      "invariantViolations": 0,
+      "readabilityViolations": 553,
+      "metrics": {
+        "individuals": 208,
+        "unionsWithChildren": 45,
+        "offCenter": 11,
+        "maxCentreOffset": 4774,
+        "sideHang": 13,
+        "longUnions": 14,
+        "maxUnionSpan": 11722,
+        "crossings": 256,
+        "bridgedCrossings": 0,
+        "stackedBuses": 25,
+        "width": 15700,
+        "widthPerIndividual": 75.5
+      }
+    },
+    {
+      "engine": "recursive",
+      "case": "realistic-300",
+      "individuals": 312,
+      "loops": 4,
+      "ms": 0.6,
+      "invariantViolations": 0,
+      "readabilityViolations": 1007,
+      "metrics": {
+        "individuals": 312,
+        "unionsWithChildren": 68,
+        "offCenter": 18,
+        "maxCentreOffset": 8357,
+        "sideHang": 24,
+        "longUnions": 21,
+        "maxUnionSpan": 19018,
+        "crossings": 499,
+        "bridgedCrossings": 0,
+        "stackedBuses": 44,
+        "width": 22271,
+        "widthPerIndividual": 71.4
+      }
+    },
+    {
+      "engine": "legacy",
+      "case": "realistic-100",
+      "individuals": 105,
+      "loops": 2,
+      "ms": 0.2,
+      "invariantViolations": 73,
+      "readabilityViolations": 140,
+      "metrics": {
+        "individuals": 105,
+        "unionsWithChildren": 22,
+        "offCenter": 9,
+        "maxCentreOffset": 4820,
+        "sideHang": 6,
+        "longUnions": 0,
+        "maxUnionSpan": 170,
+        "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 28,
+        "width": 5460,
+        "widthPerIndividual": 52
+      }
+    },
+    {
+      "engine": "legacy",
+      "case": "realistic-200",
+      "individuals": 208,
+      "loops": 3,
+      "ms": 0.4,
+      "invariantViolations": 369,
+      "readabilityViolations": 998,
+      "metrics": {
+        "individuals": 208,
+        "unionsWithChildren": 45,
+        "offCenter": 34,
+        "maxCentreOffset": 7605,
+        "sideHang": 29,
+        "longUnions": 3,
+        "maxUnionSpan": 5010,
+        "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 188,
+        "width": 11130,
+        "widthPerIndividual": 53.5
+      }
+    },
+    {
+      "engine": "legacy",
+      "case": "realistic-300",
+      "individuals": 312,
+      "loops": 4,
+      "ms": 0.5,
+      "invariantViolations": 918,
+      "readabilityViolations": 2746,
+      "metrics": {
+        "individuals": 312,
+        "unionsWithChildren": 68,
+        "offCenter": 52,
+        "maxCentreOffset": 16360,
+        "sideHang": 45,
+        "longUnions": 4,
+        "maxUnionSpan": 10720,
+        "crossings": 0,
+        "bridgedCrossings": 0,
+        "stackedBuses": 509,
+        "width": 19000,
+        "widthPerIndividual": 60.9
+      }
+    },
+    {
+      "engine": "pcl",
+      "case": "realistic-100",
+      "individuals": 105,
+      "loops": 2,
+      "ms": 32.4,
+      "invariantViolations": 0,
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 105,
+        "unionsWithChildren": 22,
+        "offCenter": 7,
+        "maxCentreOffset": 918,
+        "sideHang": 8,
+        "longUnions": 0,
+        "maxUnionSpan": 270,
+        "crossings": 0,
+        "bridgedCrossings": 17,
+        "stackedBuses": 6,
+        "width": 5310,
+        "widthPerIndividual": 50.6
+      }
+    },
+    {
+      "engine": "pcl",
+      "case": "realistic-200",
+      "individuals": 208,
+      "loops": 3,
+      "ms": 166.6,
+      "invariantViolations": 0,
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 208,
+        "unionsWithChildren": 45,
+        "offCenter": 37,
+        "maxCentreOffset": 2800,
+        "sideHang": 36,
+        "longUnions": 11,
+        "maxUnionSpan": 3282,
+        "crossings": 0,
+        "bridgedCrossings": 77,
+        "stackedBuses": 36,
+        "width": 10322,
+        "widthPerIndividual": 49.6
+      }
+    },
+    {
+      "engine": "pcl",
+      "case": "realistic-300",
+      "individuals": 312,
+      "loops": 4,
+      "ms": 533.8,
+      "invariantViolations": 0,
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 312,
+        "unionsWithChildren": 68,
+        "offCenter": 50,
+        "maxCentreOffset": 2572,
+        "sideHang": 44,
+        "longUnions": 12,
+        "maxUnionSpan": 1327,
+        "crossings": 0,
+        "bridgedCrossings": 59,
+        "stackedBuses": 26,
+        "width": 14765.5,
+        "widthPerIndividual": 47.3
       }
     }
   ]

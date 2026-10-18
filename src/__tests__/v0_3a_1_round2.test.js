@@ -71,9 +71,16 @@ describe('v0.3a.1 round 2 → v0.3a.3 — consanguinity renders as a plain solid
     expect(() => getSharedConsanguinityBlock(canvasSource)).not.toThrow();
   });
 
-  it('the shared consanguinity block draws exactly two solid lines', () => {
+  it('the shared consanguinity block draws exactly two solid strokes (a double line)', () => {
+    // v0.5 Faz 3: strokes are drawn through drawStroke() (a path, so a
+    // crossing can carry a line-jump arc). The double line is two strokes
+    // offset perpendicular to the segment — one pair per orientation branch.
     const block = getSharedConsanguinityBlock(canvasSource);
-    expect((block.match(/g\.append\('line'\)/g) || []).length).toBe(2);
+    const branches = block.split(/\belse\b/);
+    expect(branches.length).toBe(2);
+    for (const branch of branches) {
+      expect((branch.match(/drawStroke\(g, edge/g) || []).length).toBe(2);
+    }
   });
 
   it('the shared consanguinity block never uses stroke-dasharray (no dashed line)', () => {

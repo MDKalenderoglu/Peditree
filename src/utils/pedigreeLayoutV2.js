@@ -20,7 +20,8 @@
  * old engine and validated against the layout audit before cutover (Phase 4).
  */
 
-import { computeFamilyBlockLayout, recursivePackerEnabled } from './layoutPacking';
+import { computeFamilyBlockLayout, recursivePackerEnabled, selectedPacker } from './layoutPacking';
+import { computePclLayout } from '../layout/pcl';
 import { relationshipBackgroundToEdgeInfo } from './relationshipBackground';
 
 const NODE_HALF = 20;
@@ -42,6 +43,11 @@ export function computePedigreeLayoutV2(data) {
   const parentChildRelationships = data.parentChildRelationships || [];
 
   if (individuals.length === 0) return { nodes: [], edges: [] };
+
+  if (selectedPacker() === 'pcl') {
+    const { nodes, edges } = computePclLayout(data);
+    return { nodes, edges };
+  }
 
   const { xPos, yPos } = computeFamilyBlockLayout(data);
 

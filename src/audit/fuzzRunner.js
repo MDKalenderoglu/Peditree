@@ -125,12 +125,14 @@ export function runSuite({ seed, cases, maxOps = 14, shrinkTop = 10 }) {
   const codeCounts = {};
   let passed = 0;
   const read = { failed: 0, codeCounts: {}, firstFailures: [] };
-  const metricTotals = { cases: 0, withOffCenter: 0, withSideHang: 0, withLongUnion: 0, withCrossing: 0, crossings: 0 };
+  const metricTotals = { cases: 0, withOffCenter: 0, withSideHang: 0, withLongUnion: 0, withCrossing: 0, crossings: 0, offCenterUnions: 0, unionsWithChildren: 0 };
 
   for (let i = 0; i < cases; i++) {
     const res = runCase(seed, i, maxOps);
     metricTotals.cases++;
     if (res.metrics.offCenter) metricTotals.withOffCenter++;
+    metricTotals.offCenterUnions += res.metrics.offCenter || 0;
+    metricTotals.unionsWithChildren += res.metrics.unionsWithChildren || 0;
     if (res.metrics.sideHang) metricTotals.withSideHang++;
     if (res.metrics.longUnions) metricTotals.withLongUnion++;
     if (res.metrics.crossings) metricTotals.withCrossing++;

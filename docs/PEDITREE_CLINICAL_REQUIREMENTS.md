@@ -61,13 +61,13 @@ birlikte tanımlar. **Standart** ile **geliştirici/klinik tercih** her satırda
 | İnfertilite | Kısa dikey + **çift** çubuk; neden altına | 08, 22 | ❌ | açık model alanı |
 | Kayıt edilmemiş çocuksuzluk | **İşaret gerekmez** | 22 Şekil 3 | ✅ (5B) | korunur |
 | İniş çizgisi / kardeş çizgisi | Birliktelik çizgisinden kardeş çizgisine dikey, her çocuğa dikey | 08, 22 | ✅ | korunur, ama Faz 3'te birliktelik ortasından |
-| Kardeş sırası | **Soldan sağa doğum sırası** (zorunlu) | 08, 22 | ✅ (model); yerleşim motoru korur | sert kısıt |
+| Kardeş sırası | **Soldan sağa doğum sırası** (zorunlu, *bilindiğinde*) | 08, 22 | ✅ Faz 3: kullanıcı "Doğum Sırası" ile sıra verdiyse (`PCR.birthOrderExplicit`, artık her kardeşlikte çalışıyor — DM-12) veya tüm kardeşlerin yaşı varsa **sert kısıt**. Bilinmiyorsa kayıtlı sıra yalnızca ekleme sırasıdır (ör. baba her zaman amcalardan önce kaydedilir); başka bir aileyle evlenen (ya da torunu evlenen) kardeş kardeşliğin eşine bakan ucuna alınabilir (kinship2 autohint). Bilinen yaşlarla çelişen düzen hiç üretilmez. | sert kısıt (bilinen sıra) |
 | Partneri gösterilmeyen çocuk | İniş çizgisi tek ebeveynden iner | 22/25 Şekil 3 örneği | Yer tutucu "belirtilmemiş ebeveyn" karosu çiziliyor | Faz 3: yer tutucu çizilmeden tek ebeveynden iniş |
 | Çoklu partner | Örnekle: kişi ortada, partnerler iki yanda | 22/25 Şekil 3 | sabit ofsetle tek yana | Faz 3 |
 | İkiz | Tek noktadan çapraz ayrılan çizgiler; MZ'de aradaki yatay çubuk; "?" = zigot bilinmiyor; işaretsiz = DZ (22) / "MZ değil" (25) | 08, 22, 25 | ❌ | Faz 2b + 3 |
 | Evlat edinme | Köşeli parantez; evlat edinen ebeveynden **kesikli**, biyolojik ebeveynden **düz** iniş; çocuk iki ebeveyn setine bağlanabilir | 08, 22, 25 | ❌ (bir çocuk = tek ebeveyn birliği kuralı engelliyor) | Faz 2b (tipli ebeveyn bağları) |
 | Yardımcı üreme | Donör "D", gestasyonel taşıyıcı "G" (25: "S" kaldırıldı) | 08, 22, 25 | ❌ | Faz 2b |
-| Erkek partner solda | **Yumuşak** öneri ("if possible"), 22/25 şekillerinde yok | 08 | uygulanmıyor | eşitlikte tercih (Faz 3) |
+| Erkek partner solda | **Yumuşak** öneri ("if possible"), 22/25 şekillerinde yok | 08 | ✅ Faz 3: sıralamada eşitlik bozucu maliyet (kesişim veya şerit maliyetinden küçük); ayrıca düzenlemeler arasında çizimin aynalanmasını azaltır (baba solda ⇒ baba tarafı solda) | eşitlikte tercih |
 | Kuşak / birey numarası | "I-1" biçimi; Romen rakamı kuşak + soldan sağa numara **gelenek** | 08 (örnek), 22 | Her sembolün üstünde | Romen rakamları sol kenarda + isteğe bağlı numaralar |
 
 ## 4. Standardın yanıt vermediği ya da yerel kararla çelişen noktalar

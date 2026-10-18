@@ -42,7 +42,29 @@ const Y_TOP = 80;
  * recursive.
  */
 export function recursivePackerEnabled() {
-  return !(typeof process !== 'undefined' && process.env && process.env.PEDITREE_PACKER === 'legacy');
+  return selectedPacker() !== 'legacy';
+}
+
+/**
+ * Which layout engine to use. Read on every layout call.
+ *
+ * v0.5 Faz 3 cutover: 'pcl' (Pedigree-Constrained Layered engine,
+ * src/layout/pcl, docs/PEDITREE_LAYOUT_ARCHITECTURE.md) is the default — on
+ * the clinical stress fixtures, both fuzz seeds and the realistic large
+ * pedigrees it has zero invariant and zero connector-readability violations,
+ * where 'recursive' fails readability in ~99% of fuzz cases
+ * (reports/layout-benchmark.md, reports/layout-fuzz-baseline.md).
+ * 'recursive' and 'legacy' stay selectable as explicit fallbacks for
+ * comparison and regression triage (retained, not deleted).
+ *
+ * `globalThis.__PEDITREE_PACKER__` (a developer switch for in-browser
+ * comparison) takes precedence over the PEDITREE_PACKER environment variable.
+ */
+export function selectedPacker() {
+  const override = typeof globalThis !== 'undefined' ? globalThis.__PEDITREE_PACKER__ : undefined;
+  const env = typeof process !== 'undefined' && process.env ? process.env.PEDITREE_PACKER : undefined;
+  const v = override || env;
+  return v === 'legacy' || v === 'recursive' ? v : 'pcl';
 }
 
 /**

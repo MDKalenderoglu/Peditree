@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-18T00:18:53.848Z",
-  "seed": "1",
+  "generatedAt": "2026-10-18T05:28:24.676Z",
+  "seed": "12345",
   "cases": 1000,
   "maxOps": 14,
   "passed": 1000,
@@ -30,223 +30,19 @@
       "COLLINEAR_FOREIGN_CONNECTORS",
       "FOREIGN_T_JUNCTION"
     ],
-    "failed": 988,
-    "failureRate": 0.988,
-    "codeCounts": {
-      "COLLINEAR_FOREIGN_CONNECTORS": 988,
-      "FOREIGN_T_JUNCTION": 988
-    },
-    "firstFailures": [
-      {
-        "caseSeed": 2856050349,
-        "failStep": 12,
-        "codes": [
-          "COLLINEAR_FOREIGN_CONNECTORS",
-          "FOREIGN_T_JUNCTION"
-        ],
-        "opSeq": [
-          {
-            "op": "deleteIndividual",
-            "id": "mother"
-          },
-          {
-            "op": "deleteIndividual",
-            "id": "mat_gf"
-          },
-          {
-            "op": "addSibling",
-            "target": "pat_gf",
-            "sex": "unknown"
-          },
-          {
-            "op": "addParents",
-            "target": "U_PARENTS__unspecified"
-          },
-          {
-            "op": "addChild",
-            "target": "father",
-            "sex": "unknown"
-          },
-          {
-            "op": "addSiblingCat",
-            "category": "male"
-          },
-          {
-            "op": "setSex",
-            "id": "de_ch_1",
-            "sex": "female"
-          },
-          {
-            "op": "addSibling",
-            "target": "proband",
-            "sex": "unknown"
-          },
-          {
-            "op": "deleteIndividual",
-            "id": "de_ch_1"
-          },
-          {
-            "op": "deleteIndividual",
-            "id": "de_ch_2"
-          },
-          {
-            "op": "addParents",
-            "target": "pat_gm"
-          },
-          {
-            "op": "addSiblingCat",
-            "category": "female"
-          },
-          {
-            "op": "createUnion",
-            "a": "mat_gm",
-            "b": "pat_gf"
-          }
-        ]
-      },
-      {
-        "caseSeed": 140661886,
-        "failStep": 0,
-        "codes": [
-          "COLLINEAR_FOREIGN_CONNECTORS",
-          "FOREIGN_T_JUNCTION"
-        ],
-        "opSeq": [
-          {
-            "op": "addChildToUnion",
-            "unionId": "U_PAT_GP",
-            "sex": "unknown"
-          }
-        ]
-      },
-      {
-        "caseSeed": 4004170255,
-        "failStep": 0,
-        "codes": [
-          "COLLINEAR_FOREIGN_CONNECTORS",
-          "FOREIGN_T_JUNCTION"
-        ],
-        "opSeq": [
-          {
-            "op": "addSiblingCat",
-            "category": "pregnancyLoss"
-          }
-        ]
-      },
-      {
-        "caseSeed": 588892009,
-        "failStep": 0,
-        "codes": [
-          "COLLINEAR_FOREIGN_CONNECTORS",
-          "FOREIGN_T_JUNCTION"
-        ],
-        "opSeq": [
-          {
-            "op": "addParents",
-            "target": "father"
-          }
-        ]
-      },
-      {
-        "caseSeed": 2168487226,
-        "failStep": 0,
-        "codes": [
-          "COLLINEAR_FOREIGN_CONNECTORS",
-          "FOREIGN_T_JUNCTION"
-        ],
-        "opSeq": [
-          {
-            "op": "addChildToUnion",
-            "unionId": "U_MAT_GP",
-            "sex": "male"
-          }
-        ]
-      },
-      {
-        "caseSeed": 1737028811,
-        "failStep": 0,
-        "codes": [
-          "COLLINEAR_FOREIGN_CONNECTORS",
-          "FOREIGN_T_JUNCTION"
-        ],
-        "opSeq": [
-          {
-            "op": "addChild",
-            "target": "mat_gm",
-            "sex": "male"
-          }
-        ]
-      },
-      {
-        "caseSeed": 3317131924,
-        "failStep": 0,
-        "codes": [
-          "COLLINEAR_FOREIGN_CONNECTORS",
-          "FOREIGN_T_JUNCTION"
-        ],
-        "opSeq": [
-          {
-            "op": "addChild",
-            "target": "proband",
-            "sex": "male"
-          }
-        ]
-      },
-      {
-        "caseSeed": 3154108453,
-        "failStep": 0,
-        "codes": [
-          "COLLINEAR_FOREIGN_CONNECTORS",
-          "FOREIGN_T_JUNCTION"
-        ],
-        "opSeq": [
-          {
-            "op": "addRelativeBranch",
-            "side": "maternalRelatives",
-            "type": "uncles",
-            "male": 1,
-            "female": 1
-          }
-        ]
-      },
-      {
-        "caseSeed": 438724598,
-        "failStep": 0,
-        "codes": [
-          "COLLINEAR_FOREIGN_CONNECTORS",
-          "FOREIGN_T_JUNCTION"
-        ],
-        "opSeq": [
-          {
-            "op": "setState",
-            "id": "pat_gf",
-            "field": "carrier"
-          }
-        ]
-      },
-      {
-        "caseSeed": 4167998855,
-        "failStep": 0,
-        "codes": [
-          "COLLINEAR_FOREIGN_CONNECTORS",
-          "FOREIGN_T_JUNCTION"
-        ],
-        "opSeq": [
-          {
-            "op": "addSpouse",
-            "target": "mat_gf",
-            "sex": "female"
-          }
-        ]
-      }
-    ],
+    "failed": 0,
+    "failureRate": 0,
+    "codeCounts": {},
+    "firstFailures": [],
     "metrics": {
       "cases": 1000,
-      "withOffCenter": 921,
-      "withSideHang": 968,
-      "withLongUnion": 810,
-      "withCrossing": 165,
-      "crossings": 376
+      "withOffCenter": 105,
+      "withSideHang": 668,
+      "withLongUnion": 69,
+      "withCrossing": 0,
+      "crossings": 0,
+      "offCenterUnions": 199,
+      "unionsWithChildren": 6860
     }
   },
   "namedScenarios": [
@@ -255,22 +51,21 @@
       "description": "Add a sibling to each parent (collateral uncles/aunts), then a wide proband sibship — the footprint-encroachment case.",
       "failed": false,
       "codes": [],
-      "readFailed": true,
-      "readCodes": [
-        "COLLINEAR_FOREIGN_CONNECTORS",
-        "FOREIGN_T_JUNCTION"
-      ],
+      "readFailed": false,
+      "readCodes": [],
       "metrics": {
         "individuals": 13,
         "unionsWithChildren": 3,
-        "offCenter": 1,
-        "maxCentreOffset": 199,
+        "offCenter": 0,
+        "maxCentreOffset": 1,
         "sideHang": 0,
-        "longUnions": 1,
-        "maxUnionSpan": 398,
+        "longUnions": 0,
+        "maxUnionSpan": 72,
         "crossings": 0,
-        "width": 867,
-        "widthPerIndividual": 66.7
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
+        "width": 412,
+        "widthPerIndividual": 31.7
       },
       "opSeq": [
         {
@@ -306,22 +101,21 @@
       "description": "Aunt/uncle branches WITH children on both sides plus a proband sibship — cousin branches must stay isolated.",
       "failed": false,
       "codes": [],
-      "readFailed": true,
-      "readCodes": [
-        "COLLINEAR_FOREIGN_CONNECTORS",
-        "FOREIGN_T_JUNCTION"
-      ],
+      "readFailed": false,
+      "readCodes": [],
       "metrics": {
         "individuals": 17,
         "unionsWithChildren": 5,
-        "offCenter": 1,
-        "maxCentreOffset": 142,
-        "sideHang": 1,
-        "longUnions": 1,
-        "maxUnionSpan": 284,
+        "offCenter": 0,
+        "maxCentreOffset": 3,
+        "sideHang": 0,
+        "longUnions": 0,
+        "maxUnionSpan": 73,
         "crossings": 0,
-        "width": 867,
-        "widthPerIndividual": 51
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
+        "width": 660,
+        "widthPerIndividual": 38.8
       },
       "opSeq": [
         {
@@ -353,22 +147,21 @@
       "description": "Childless aunt + uncle immediately beside a large 6-child proband sibship.",
       "failed": false,
       "codes": [],
-      "readFailed": true,
-      "readCodes": [
-        "COLLINEAR_FOREIGN_CONNECTORS",
-        "FOREIGN_T_JUNCTION"
-      ],
+      "readFailed": false,
+      "readCodes": [],
       "metrics": {
         "individuals": 15,
         "unionsWithChildren": 3,
-        "offCenter": 1,
-        "maxCentreOffset": 256,
+        "offCenter": 0,
+        "maxCentreOffset": 2,
         "sideHang": 0,
-        "longUnions": 1,
-        "maxUnionSpan": 512,
+        "longUnions": 0,
+        "maxUnionSpan": 75,
         "crossings": 0,
-        "width": 1095,
-        "widthPerIndividual": 73
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
+        "width": 612,
+        "widthPerIndividual": 40.8
       },
       "opSeq": [
         {
@@ -416,22 +209,21 @@
       "description": "A union between two far-apart same-generation collateral individuals (mat_uncle_0 × pat_uncle_0).",
       "failed": false,
       "codes": [],
-      "readFailed": true,
-      "readCodes": [
-        "COLLINEAR_FOREIGN_CONNECTORS",
-        "FOREIGN_T_JUNCTION"
-      ],
+      "readFailed": false,
+      "readCodes": [],
       "metrics": {
         "individuals": 9,
         "unionsWithChildren": 3,
-        "offCenter": 1,
-        "maxCentreOffset": 115,
-        "sideHang": 1,
+        "offCenter": 0,
+        "maxCentreOffset": 1,
+        "sideHang": 0,
         "longUnions": 0,
-        "maxUnionSpan": 230,
+        "maxUnionSpan": 72,
         "crossings": 0,
-        "width": 481,
-        "widthPerIndividual": 53.4
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
+        "width": 324,
+        "widthPerIndividual": 36
       },
       "opSeq": [
         {
@@ -460,22 +252,21 @@
       "description": "Siblings added via the selected-person editor path (graphEdits origin) rather than the wizard arrays.",
       "failed": false,
       "codes": [],
-      "readFailed": true,
-      "readCodes": [
-        "COLLINEAR_FOREIGN_CONNECTORS",
-        "FOREIGN_T_JUNCTION"
-      ],
+      "readFailed": false,
+      "readCodes": [],
       "metrics": {
         "individuals": 10,
         "unionsWithChildren": 3,
-        "offCenter": 1,
-        "maxCentreOffset": 176,
-        "sideHang": 3,
-        "longUnions": 1,
-        "maxUnionSpan": 351,
+        "offCenter": 0,
+        "maxCentreOffset": 33,
+        "sideHang": 2,
+        "longUnions": 0,
+        "maxUnionSpan": 135,
         "crossings": 0,
-        "width": 592,
-        "widthPerIndividual": 59.2
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
+        "width": 300.5,
+        "widthPerIndividual": 30.1
       },
       "opSeq": [
         {
@@ -500,22 +291,21 @@
       "description": "Left-heavy collateral expansion that pushes coordinates negative, plus a wide sibship — export must not clip.",
       "failed": false,
       "codes": [],
-      "readFailed": true,
-      "readCodes": [
-        "COLLINEAR_FOREIGN_CONNECTORS",
-        "FOREIGN_T_JUNCTION"
-      ],
+      "readFailed": false,
+      "readCodes": [],
       "metrics": {
         "individuals": 20,
         "unionsWithChildren": 6,
-        "offCenter": 1,
-        "maxCentreOffset": 227,
-        "sideHang": 4,
-        "longUnions": 1,
-        "maxUnionSpan": 453,
+        "offCenter": 0,
+        "maxCentreOffset": 4,
+        "sideHang": 2,
+        "longUnions": 0,
+        "maxUnionSpan": 72,
         "crossings": 0,
-        "width": 1248,
-        "widthPerIndividual": 62.4
+        "bridgedCrossings": 0,
+        "stackedBuses": 0,
+        "width": 901.5,
+        "widthPerIndividual": 45.1
       },
       "opSeq": [
         {

@@ -1,6 +1,7 @@
 # Peditree — Bağımsız Teknik Denetim Raporu (Faz 0 + Faz 1)
 
 Tarih: 2026-10-18 · Denetlenen commit: `f516a6d` (main) · Çalışma branch'i: `stabilization/clinical-layout`
+· Güncelleme: Faz 2a ve Faz 3 durumları §5'te; Faz 3'te bulunan yeni bulgular DM-12, RN-11, UX-9, UX-10.
 
 Bu rapor eski plan/rapor dokümanlarındaki iddiaları **gerçek durum kabul etmez**. Her bulgu ya çalışan
 koddan ölçülmüş (tanı testi / tarayıcı) ya da doğrudan kaynak koddan doğrulanmıştır. Tanı testleri geçici
@@ -105,6 +106,7 @@ pedigri oluşturmayı engelleyen işlevsel hata · **P2** performans/belirgin ku
 | DM-9 | P1 | Eksik ilişki/özel durum türleri: evlat edinme, ikiz/çoğul gebelik, yardımcı üreme (donör/taşıyıcı), gebelik (P), TOP, ektopik, gebelik haftası, "n/5 birey" sembolü, açık "çocuksuz/infertil" alanı, consultand. "Bir çocuk = tek ebeveyn birliği" kuralı genetik/sosyal ebeveynlik ayrımını ve akraba tarafından evlat edinmeyi temsil edemez. | kod + örnek/ tabloları |
 | DM-10 | P1 | Bütünlük denetimi boşlukları: atalık döngüsü (kişinin kendi atası olması), union cinsiyet tutarlılığı, ebeveyn-çocuk/kardeş union'ı `auditPedigreeGraph`'ta yok (yalnızca oluşturma planı veya uyarı metni). | `graphIntegrity.js` kod envanteri |
 | DM-11 | P1* | Farklı kuşaktan eş oluşturma kategorik olarak engelli. Biyolojik olarak mümkün avunküler (amca/dayı–yeğen) birliktelikler temsil edilemez. (*kural ürün kararına bağlı) | `computeUnionCreationPlan` |
+| DM-12 | P1 | *(Faz 3'te bulundu, düzeltildi)* "Doğum Sırası ◀/▶" düğmeleri sırayı her kardeşlik için `childOrders`'a kaydediyor, ama oluşturucu bunu yalnızca proband kardeşlerine, yarım kardeşlere, kuzenlere ve 4. kuşağa uyguluyordu: babayı amcalar arasında taşımak (büyükanne-büyükbaba kardeşliği) veya doğrudan eklenen çocukları sıralamak **sessizce etkisizdi**. Düzeltme: oluşturucu aşama 10e kayıtlı sırayı her kardeşliğe uygular ve `birthOrderExplicit` ile işaretler; kuşak anlık görüntüsü değişmedi. | `dataIntegrityRegressions.test.js` DM-12 (düzeltme olmadan 2 test kırmızı) |
 
 ### 2.2 Yerleşim motoru (LY)
 
@@ -133,6 +135,7 @@ pedigri oluşturmayı engelleyen işlevsel hata · **P2** performans/belirgin ku
 | RN-8 | P1 | Ayrılık tek eğik çizgi, boşanma çift eğik çizgi ile çiziliyor. Standart (08, 22 Şekil 3): *"A break in a relationship line indicates the relationship no longer exists"* — **tek gösterim "//"**; ayrılık/boşanma ayrımı standartta yok, yalnız kayıt bilgisi olmalı. |
 | RN-9 | P2 | Partneri bilinmeyen/silinen ebeveyn bir "belirtilmemiş" karo sembolüyle çiziliyor. Standart örnekte (22/25 Şekil 3) partner gösterilmediğinde iniş çizgisi doğrudan tek ebeveynden iner. |
 | RN-10 | P2 | Etkilenmemiş bir kişi proband yapılabiliyor; standart: proband her zaman etkilenmiştir, etkilenmemiş başvuran consultand'dır (consultand kavramı yok). |
+| RN-11 | P3 | *(Faz 3 görsel QA)* Pedigri numarası (ör. "III-5") sembolün tam üst ortasında; kardeş çizgisinden inen dikey çizgi etiketin içinden geçiyor. Standart örneklerde numara sembolün sol üstünde/altında. |
 
 ### 2.4 Dışa aktarma ve kalıcılık (EX)
 
@@ -155,6 +158,8 @@ pedigri oluşturmayı engelleyen işlevsel hata · **P2** performans/belirgin ku
 | UX-6 | P2 | Ebeveyni olmayan (kurucu) bireye kardeş eklenemiyor; önce ebeveyn eklemek gerekiyor. |
 | UX-7 | P2 | Doğum sırası yalnızca düğmelerle; model düzeyinde çalışıyor, sürükle-bırak yok; tek çocukta düğme görünmüyor. |
 | UX-8 | P2 | "Yalnız anne/baba ekle" görünmez bir "belirtilmemiş" partner üretiyor; varsayılan çift ekleme değil. |
+| UX-9 | P2 | *(Faz 3 görsel QA)* ~1100 px pencere genişliğinde araç çubuğunda "Sıfırla" düğmesi "Yeni Pedigri" düğmesinin üstüne biniyor. |
+| UX-10 | P2 | *(Faz 3 görsel QA)* Uyarılar kutusu çizimin üstünde sabit duruyor ve alt kuşaktaki sembolleri örtüyor (yeni eklenen çocuk görünmez kalabiliyor). UX-3'teki yanlış-pozitif "eş bir ebeveyn birliğine bağlı değil" uyarıları kutuyu büyüterek bunu ağırlaştırıyor. |
 
 ### 2.6 Performans ve işletim (PF)
 
@@ -232,10 +237,10 @@ Her faz kendi kabul kriteriyle kapanır; başarısızlıkta önceki faza dönül
 |---|---|---|---|---|
 | 1 | Denetim, ölçüm altyapısı (okunabilirlik dedektörleri, klinik fikstürler, motor benchmark'ı), araştırma, mimari karar | LY-3, TS-1 (ölçüm) | dürüst baseline belgelendi | ✅ |
 | 2a | Sessiz veri kaybı düzeltmeleri: monoton düzenleme kimliği, yaş/cinsiyet kalıcılığı, ebeveyn silmede diğer ebeveyn bağının korunması, konumsal kimlik yeniden kullanımında eski verinin budanması, cinsiyet düzenleme + çatışma koruması, aynı-cins bütünlük denetimi, engellenen işlemlerin Türkçe bildirimi, dışa aktarmada seçim vurgusu/zoom/boyut, konsola grafik dökümünün kaldırılması | DM-2…DM-8, EX-1, EX-2 (kısmen), PF-1, UX-5 (onay metni) | `dataIntegrityRegressions.test.js` + tüm testler yeşil | ✅ |
-| 3 | **PCL yerleşim motoru** (bayrak arkasında): sıralama, karesel merkezleme, kanal şeritli yönlendirme + çizgi atlama, doğrulama döngüsü; ardından varsayılan yapma | LY-1, LY-2, LY-4, LY-5, LY-6, LY-7, RN-7, RN-9 | Mimari dokümanındaki §4 tablosu | sıradaki |
+| 3 | **PCL yerleşim motoru**: sıralama (doğum sırası bilinmiyorsa bağlantılı kardeş uca), karesel merkezleme, ayak izi kuralı, uyarlamalı satır aralığı, şeritli yönlendirme + çizgi atlama; **varsayılan yapıldı** (recursive/legacy geri dönüş); DM-12 düzeltmesi | LY-1, LY-2, LY-3 (ölçüm), LY-6, LY-7, RN-7, DM-12; kısmen LY-4, LY-5 | Mimari dokümanı §4 → sonuç §7.2 | ✅ (kalan riskler: mimari §7.3) |
 | 2b | Grafiğin gerçek kaynak olması (kararlı kimlikler, sihirbaz = giriş adaptörü), şema v2 + v1 göçü, proje dosyası kaydet/aç, tipli ebeveyn bağları (evlat edinme, ART), ikiz grupları, gebelik sonuçları (P/SAB/TOP/ECT/SB + hafta), consultand, çocuksuzluk/infertilite alanı | DM-1, DM-6 (kalıcı), DM-9, DM-10, EX-4, UX-1 | anlamsal denklik testleri (farklı işlem sıralarıyla aynı aile), kaydet→aç denkliği | planlı |
-| 4 | Gösterim standardı: proband "P", consultand, taşıyıcı bölme + lejant, presemptomatik çizgi, ölü doğum, "//", derece etiketi, Romen rakamlı kuşaklar; PDF/baskı çıktısı; çoklu seçim/toplu silme; kurucuya kardeş ekleme; ilişki düzeltme akışları | RN-1…RN-6, RN-8, RN-10, EX-3, UX-5, UX-6, UX-8 | sembol kontrol listesi + E2E | planlı |
-| 5 | Arayüz sadeleştirme, akıllı vurgulama/renk katmanı (ek gereksinim), zoom korunması, klavye kısayolları, performans | UX-2, UX-3, UX-4, UX-7 | görev senaryoları + süre ölçümü | planlı |
+| 4 | Gösterim standardı: proband "P", consultand, taşıyıcı bölme + lejant, presemptomatik çizgi, ölü doğum, "//", derece etiketi, Romen rakamlı kuşaklar, yer tutucu partner yerine tek ebeveynden iniş, etiket konumu; PDF/baskı çıktısı; çoklu seçim/toplu silme; kurucuya kardeş ekleme; ilişki düzeltme akışları | RN-1…RN-6, RN-8…RN-11, EX-3, UX-5, UX-6, UX-8 | sembol kontrol listesi + E2E | planlı |
+| 5 | Arayüz sadeleştirme, akıllı vurgulama/renk katmanı (ek gereksinim), zoom korunması, klavye kısayolları, performans, büyük pedigri gezinme; yerleşim kararlılığı (önceki sıralamanın aktarılması) | UX-2, UX-3, UX-4, UX-7, UX-9, UX-10, LY-5 (kalan) | görev senaryoları + süre ölçümü | planlı |
 | 6 | Sürüm doğrulaması: E2E (Playwright — kurulum onayı alınacak), ekran görüntüsü regresyonu, büyük fuzz, dışa aktarma/geri yükleme | TS-3 | `PEDITREE_RELEASE_READINESS.md` | planlı |
 
 **Sıra gerekçesi:** Faz 2a veri kaybını hemen durdurur (küçük, düşük riskli, mimariden bağımsız). Yerleşim motoru

@@ -33,6 +33,34 @@ const NODE_SIZE = 40;
 const HALF = NODE_SIZE / 2;
 const LOSS_SIZE = 14; // smaller triangle for pregnancy loss
 
+const JUMP_R = 5;
+
+/**
+ * SVG path for one connector segment. A horizontal segment carrying
+ * `bridges` (x positions where a line of ANOTHER family crosses it — set by
+ * the PCL router) gets a small arc at each crossing: the standard
+ * "line jump" that shows the two lines are not connected.
+ */
+function connectorPath(x1, y1, x2, y2, bridges) {
+  if (y1 !== y2 || !Array.isArray(bridges) || bridges.length === 0) {
+    return `M${x1},${y1}L${x2},${y2}`;
+  }
+  const xa = Math.min(x1, x2), xb = Math.max(x1, x2);
+  let d = `M${xa},${y1}`;
+  for (const bx of bridges) {
+    if (bx - JUMP_R <= xa || bx + JUMP_R >= xb) continue;
+    d += `L${bx - JUMP_R},${y1}A${JUMP_R},${JUMP_R} 0 0 1 ${bx + JUMP_R},${y1}`;
+  }
+  return `${d}L${xb},${y1}`;
+}
+
+/** One stroke of a connector, optionally offset (dx, dy) — used for double lines. */
+function drawStroke(g, edge, dx = 0, dy = 0) {
+  return g.append('path')
+    .attr('d', connectorPath(edge.x1 + dx, edge.y1 + dy, edge.x2 + dx, edge.y2 + dy, edge.bridges))
+    .attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5).attr('fill', 'none');
+}
+
 // SVG export needs a stable handle to the actual rendered <svg> node.
 // We forward a ref out to the caller (App.jsx) instead of relying on
 // document.getElementById, which silently returns null if the id ever
@@ -106,10 +134,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           // a normal single line here — any metadata about them belongs in
           // the side panel (IndividualEditor.jsx/WizardPanel.jsx), never
           // drawn on the connector itself. See relationshipBackground.js.
-          g.append('line')
-            .attr('x1', edge.x1).attr('y1', edge.y1)
-            .attr('x2', edge.x2).attr('y2', edge.y2)
-            .attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5).attr('fill', 'none');
+          drawStroke(g, edge);
           break;
 
         case 'consanguineousUnion':
@@ -128,31 +153,19 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           // draw the line; this does not fabricate a shared ancestor or
           // cousin degree, it only draws the relationship the clinician
           // actually declared.
-          g.append('line')
-            .attr('x1', edge.x1).attr('y1', edge.y1 - 2)
-            .attr('x2', edge.x2).attr('y2', edge.y2 - 2)
-            .attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5).attr('fill', 'none');
-          g.append('line')
-            .attr('x1', edge.x1).attr('y1', edge.y1 + 2)
-            .attr('x2', edge.x2).attr('y2', edge.y2 + 2)
-            .attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5).attr('fill', 'none');
+          // The two strokes are offset perpendicular to the segment, so a
+          // vertical piece of a routed relationship line stays a visible
+          // double line too.
+          if (edge.x1 === edge.x2) { drawStroke(g, edge, -2, 0); drawStroke(g, edge, 2, 0); }
+          else { drawStroke(g, edge, 0, -2); drawStroke(g, edge, 0, 2); }
           break;
 
         case 'sibship':
-          g.append('line')
-            .attr('x1', edge.x1).attr('y1', edge.y1)
-            .attr('x2', edge.x2).attr('y2', edge.y2)
-            .attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5).attr('fill', 'none');
-          break;
-
         case 'parentChildDrop':
         case 'childStem':
         case 'childlessDrop':
         case 'childlessBar':
-          g.append('line')
-            .attr('x1', edge.x1).attr('y1', edge.y1)
-            .attr('x2', edge.x2).attr('y2', edge.y2)
-            .attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5).attr('fill', 'none');
+          drawStroke(g, edge);
           break;
 
         case 'divorceSlash': {
