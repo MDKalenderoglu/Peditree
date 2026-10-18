@@ -78,7 +78,7 @@ Known PCL limitations (tracked in `docs/PEDITREE_KNOWN_ISSUES.md`, never silentl
 
 ## Current Architectural Priority
 
-**Faz 2b — graph-first data model, permanent IDs, schema v2** (`docs/PEDITREE_DATA_MODEL_V2.md`).
+**Faz 2b — graph-first data model, permanent IDs, schema v2** (`docs/PEDITREE_DATA_MODEL_V2.md`). Steps 2b-1 … 2b-4 are done: the store holds only the v2 document; every mutation goes through `src/graph/ops.js` (editor) or `src/graph/wizardAdapter.js` (wizard), both built on the atomic `commit` (clone → mutate → finalize → validate; a new error refuses the whole operation). The v1 replay pipeline survives only in `src/graph/v1pipeline.js` for migration (and `src/__tests__/support/v1Store.js` for tests). Remaining: 2b-5 social parent links in layout/UI, then KI-2 edit-local layout.
 
 - The pedigree graph is the single source of truth for relationships. The wizard and the person editor are input adapters that apply graph operations to the same graph.
 - IDs never change when a person's position or role changes; never reused.
@@ -113,7 +113,9 @@ After Faz 2b: layout stability (edit-local relayout using the previous layout), 
 | `auditPedigreeGraph` returns zero errors | Run after every change |
 | Layout gates (see Layout Engine) | benchmark, fuzz, `pclLayout.test.js` |
 | No silent data loss / misattribution on edits | `dataIntegrityRegressions.test.js` |
-| Manual edits (displayLabel, affected, carrier, notes, age, sex) survive graph rebuild | `mergeManualEdits` in `usePedigreeStore.js` (v1); graph itself in v2 |
+| Clinical data (displayLabel, affected, carrier, notes, age, sex, conditions) lives on the person and survives every edit, reload and save/open | v2 graph document; `migrationV2.test.js`, `dataIntegrityRegressions.test.js` |
+| Saved v1 sessions migrate without loss; v1 data kept as backup | `migrateV1ToV2`, `persistenceV2.loadDocument`; `migrationV2.test.js` |
+| Lowering a wizard count never removes a person with clinical data or extra relations | `wizardAdapter.js` (`untouched`); DM-5/DM-6 tests |
 | Generation snapshot unchanged by builder changes | `node verify-generations.mjs` |
 | SVG and PNG export render all nodes and edges, without selection styling | `exportUtils.test.js`, `EXPORT_VIEWBOX_CLIPS_CONTENT` |
 

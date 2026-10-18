@@ -1,6 +1,6 @@
 # Peditree — Veri modeli değerlendirmesi ve graph-first şema v2 (Faz 2b)
 
-Durum: **tasarım onaylı (kullanıcı, 2026-10-18), uygulama adım adım** · İlgili bulgular: DM-1, DM-6, DM-9, DM-10, EX-4,
+Durum: **2b-1 … 2b-4 uygulandı (2026-10-18); 2b-5 (sosyal ebeveynlik — yerleşim ve arayüz) sırada** · İlgili bulgular: DM-1, DM-6, DM-9, DM-10, EX-4,
 UX-1 (`PEDITREE_AUDIT_REPORT.md`).
 
 ## 1. Mevcut model (v1) — gerçekte nasıl çalışıyor
@@ -123,10 +123,10 @@ işlem yığına girmez; seçim ve uyarı gizleme yığına girmez (v1 ile aynı
 
 | Adım | İçerik | Doğrulama |
 |---|---|---|
-| 2b-1 | `src/graph/`: belge şeması, kimlik ayırıcı, `validateDocument`, saf graf işlemleri | birim testleri |
-| 2b-2 | `migrateV1ToV2` + v2 kalıcılık zarfı + v1 yedeği | v1 fuzz durumları (binlerce) ve fikstürlerde `G1` ≡ v2 grafiği; kaydet→yükle→kaydet özdeşliği |
-| 2b-3 | Store geçişi: belge kaynak; tüm eylemler graf işlemi; sihirbaz görünümü grafikten türetilir; geri al/yinele belgeyle | tüm mevcut davranış testleri (v1 iç yapısını okuyan testler grafik düzeyindeki eşdeğer iddialara taşınır), veri bütünlüğü, PCL kapıları |
-| 2b-4 | Proje dosyası kaydet/aç (`.peditree.json`), v1 dosyası açılırsa göç | uçtan uca kaydet→aç→düzenle→kaydet testi |
+| ✅ 2b-1 | `src/graph/`: belge şeması, kimlik ayırıcı, `validateDocument`, saf graf işlemleri | birim testleri |
+| ✅ 2b-2 | `migrateV1ToV2` + v2 kalıcılık zarfı + v1 yedeği | v1 fuzz durumları (binlerce) ve fikstürlerde `G1` ≡ v2 grafiği; kaydet→yükle→kaydet özdeşliği |
+| ✅ 2b-3 | Store geçişi: belge kaynak; tüm eylemler graf işlemi; sihirbaz görünümü grafikten türetilir; geri al/yinele belgeyle | tüm mevcut davranış testleri (v1 iç yapısını okuyan testler grafik düzeyindeki eşdeğer iddialara taşınır), veri bütünlüğü, PCL kapıları |
+| ✅ 2b-4 | Proje dosyası kaydet/aç (`.peditree.json`), v1 dosyası açılırsa göç | uçtan uca kaydet→aç→düzenle→kaydet testi |
 | 2b-5 | Sosyal ebeveynlik bağları (model, doğrulama, yerleşim yapısı) | birim + yerleşim testleri |
 | sonra | KI-2 düzenleme-yerel yerleşim (önceki yerleşimin korunması) — kalıcı kimliklere dayanır | `knownIssues` hedef testi |
 
@@ -141,3 +141,35 @@ işlem yığına girmez; seçim ve uyarı gizleme yığına girmez (v1 ile aynı
   veya bozuk kayıt hiçbir veriye dokunmadan bildirilir.
 - Proje dosyası: kaydet → aç → düzenle → kaydet → aç döngüsünde ilişkiler, kimlikler ve kimlik sayaçları korunuyor;
   v1 dosyası açılırsa göç ediliyor; yabancı/bozuk dosya reddediliyor.
+
+## 4. Store geçişi (2b-3) ve proje dosyası (2b-4) — uygulandı
+
+- `usePedigreeStore` artık yalnız `doc`'u (v2 belge) tutar; `pedigreeData`, `warnings`, `integrityIssues` ve sihirbaz
+  görünümü (`wizardData`, salt okunur, `deriveWizardView`) her belge değişiminde türetilir. Geri al/yinele belge anlık
+  görüntüleriyle çalışır; değişiklik üretmeyen işlem geri alma yığınına girmez.
+- Sihirbaz bir girdi adaptörüdür (`src/graph/wizardAdapter.js`): sayılar grafikten türetilir; panelden eklenen bir kardeş
+  sihirbaz sayacında da görünür (DM-6/UX-1 kapandı).
+- İlişki kuran eylemlerin (eş yapma, kardeş yapma, ebeveyn/kardeş ekleme) v0.3a.2 güvenlik ağı korundu: çizimi yeni bir
+  belirsizliğe sokan değişiklik uygulanmaz.
+- Kalıcılık: otomatik kayıt v2 belgesi; ilk açılışta v1 oturumu taşınır (gerçek tarayıcıda doğrulandı: v2 anahtarı +
+  `…v1.backup`, v1 anahtarı kaldırıldı). Araç çubuğunda **Kaydet** (`.peditree.json` indirir) ve **Aç** (v2 veya eski v1
+  dosyası; açma geri alınabilir).
+
+### Klinisyenin fark edeceği davranış değişiklikleri
+
+| Durum | v1 | v2 |
+|---|---|---|
+| Sayıyı azaltmak (kardeş, dayı, kuzen …) ve o kişiye bilgi girilmişse | Kişi ve bilgisi sessizce silinirdi | İşlem uygulanmaz, Türkçe gerekçe gösterilir; kişi "Seçili Bireyi Sil" ile (önizlemeli) silinir |
+| Silinen bir kişinin yerine sayıyı artırmak | Aynı kimlik yeniden kullanılırdı | Yeni kişi, yeni kimlik (ör. `sib_m_2`); eski kimlik emekli |
+| "Anne Var" işaretini kaldırmak | Anne + anne-baba birliği kaldırılırdı (kardeşler ebeveynsiz kalırdı) | Anne silinir, yerine "belirtilmemiş ebeveyn" gelir; çocuklar babaya bağlı kalır; boşalan büyük ebeveyn çifti (bilgi girilmemişse) kaldırılır |
+| Sağ paneldeki "Doğrudan Eklenenler" listesi (X ile talimat silme) | Talimatı ve ona bağlı her şeyi sessizce kaldırırdı | Kaldırıldı — kişiler önizlemeli silme ile kaldırılır |
+| Yer tutucu ebeveyne girilen klinik bilgi | Yenilemede kaybolurdu (DM-13) | Kişinin üstünde kalıcı |
+| Yaşı girilen kardeşlerin sırası (açık sıra verilmemişse) | Yalnız sihirbazdan girilen yaş sıralamayı etkilerdi | Kişiye nereden girilirse girilsin yaşa göre sıralanır (en büyük solda) |
+
+### Bilinen sınırlar
+
+- "4. Jenerasyon" bölümünde çocuğu henüz olmayan kayıt yalnız arayüz durumudur (belgeye yazılmaz; yenilemede kaybolur).
+- "Özel akrabalık bağları" listesi yalnız "ortak ebeveyn oluşturulan" kardeş bağlarını gösterir; bir kişinin mevcut ebeveyn
+  birliğine eklenen kardeş bağı ayrıca listelenmez (geri al ile ya da kişiyi silerek kaldırılır).
+- Akrabalık yolu değiştirildiğinde şablonun oluşturduğu büyük ebeveynler yeni kimlik alır (ör. `ggf_2`); bilgi girilmiş
+  şablon kişileri varsa değişiklik reddedilir.

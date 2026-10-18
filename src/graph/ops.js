@@ -50,6 +50,13 @@ export function commit(doc, mutate) {
     throw e;
   }
   finalizeGraph(draft.graph, { anchorId: draft.wizardAnchorId });
+  // An operation that changed nothing returns the ORIGINAL document, so
+  // callers see a no-op (no undo step, no autosave, same object identity).
+  const sameAs = (x, y) => JSON.stringify(x) === JSON.stringify(y);
+  if (sameAs(draft.graph, cloneGraph(doc.graph)) && sameAs(draft.ids, { counters: { ...(doc.ids?.counters || {}) }, retired: [...(doc.ids?.retired || [])] })
+      && sameAs(draft.wizardMeta ?? null, doc.wizardMeta ?? null)) {
+    return { ok: true, doc, created: {}, ...extra };
+  }
   const introduced = errorsOf(validateDocument(draft)).filter((i) => !before.has(issueKey(i)));
   if (introduced.length) {
     return { ok: false, doc, reason: `İşlem grafiği tutarsız hâle getireceği için uygulanmadı: ${introduced[0].message}`, issues: introduced };
@@ -112,11 +119,19 @@ export function draftRemovePerson(draft, id) {
   const removedIds = [id];
   const removedUnions = new Set();
 
+  const orphanPlaceholders = [];
   for (const uid of idx.unionsOf.get(id) || []) {
     const u = idx.unionById.get(uid);
     const other = u.partners.find((p) => p !== id);
     const kids = idx.childrenOf(uid);
-    if (!other || kids.length === 0) { removedUnions.add(uid); continue; }
+    // with no real partner left (the other slot is already an "unspecified"
+    // placeholder) the union goes, as in v1 when both partners were deleted
+    const otherIsPlaceholder = !!idx.byId.get(other)?.placeholder;
+    if (!other || kids.length === 0 || otherIsPlaceholder) {
+      removedUnions.add(uid);
+      if (otherIsPlaceholder && (idx.unionsOf.get(other) || []).length === 1) orphanPlaceholders.push(other);
+      continue;
+    }
     const placeholderId = `${uid}__unspecified`;
     if (!idx.byId.has(placeholderId)) {
       g.individuals.push(makePerson({
@@ -128,13 +143,14 @@ export function draftRemovePerson(draft, id) {
     Object.assign(u, { consanguineous: false, consanguinityStatus: 'none', consanguinityDegree: null, relationshipBackground: 'not_asked' });
   }
 
-  g.individuals = g.individuals.filter((i) => i.id !== id);
+  removedIds.push(...orphanPlaceholders);
+  g.individuals = g.individuals.filter((i) => !removedIds.includes(i.id));
   g.unions = g.unions.filter((u) => !removedUnions.has(u.id));
   g.parentChildRelationships = g.parentChildRelationships
     .filter((r) => !removedUnions.has(r.unionId))
-    .map((r) => ({ ...r, children: r.children.filter((c) => c !== id) }))
+    .map((r) => ({ ...r, children: r.children.filter((c) => !removedIds.includes(c)) }))
     .filter((r) => r.children.length > 0);
-  g.socialParentLinks = (g.socialParentLinks || []).filter((l) => l.childId !== id && !removedUnions.has(l.unionId));
+  g.socialParentLinks = (g.socialParentLinks || []).filter((l) => !removedIds.includes(l.childId) && !removedUnions.has(l.unionId));
   draft.ids = retire(draft.ids, [...removedIds, ...removedUnions]);
   return { removedIds, removedUnionIds: [...removedUnions] };
 }

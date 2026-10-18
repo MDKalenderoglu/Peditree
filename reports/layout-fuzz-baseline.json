@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-18T06:54:21.514Z",
+  "generatedAt": "2026-10-18T07:32:18.644Z",
   "seed": "12345",
   "cases": 1000,
   "maxOps": 14,
@@ -36,13 +36,13 @@
     "firstFailures": [],
     "metrics": {
       "cases": 1000,
-      "withOffCenter": 105,
-      "withSideHang": 668,
-      "withLongUnion": 69,
+      "withOffCenter": 85,
+      "withSideHang": 625,
+      "withLongUnion": 70,
       "withCrossing": 0,
       "crossings": 0,
-      "offCenterUnions": 199,
-      "unionsWithChildren": 6860
+      "offCenterUnions": 186,
+      "unionsWithChildren": 6699
     }
   },
   "namedScenarios": [

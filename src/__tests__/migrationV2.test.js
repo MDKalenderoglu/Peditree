@@ -5,7 +5,7 @@
  * keeps every semantic relationship.
  */
 import { describe, it, expect, beforeEach, afterEach, beforeAll, vi } from 'vitest';
-import { usePedigreeStore } from '../state/usePedigreeStore';
+import { useV1Store } from './support/v1Store';
 import { migrateV1ToV2, semanticDiff } from '../graph/migrate';
 import * as ops from '../graph/ops';
 import {
@@ -14,13 +14,14 @@ import {
 } from '../graph/persistenceV2';
 import { STORAGE_KEY as V1_KEY } from '../utils/persistence';
 import { makeRng, seedToInt } from '../audit/prng.js';
-import { resetModel, chooseOp, applyOp } from '../audit/fuzzModel.js';
+import { resetModel, chooseOp, applyOp, setFuzzStore } from '../audit/fuzzModel.js';
 
 beforeAll(() => {
   ['log', 'table', 'warn', 'info'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {}));
 });
 
-const S = () => usePedigreeStore.getState();
+// v1 sessions come from the frozen schema-1 store (test support)
+const S = () => useV1Store.getState();
 const shownGraph = () => ({
   individuals: S().pedigreeData.individuals,
   unions: S().pedigreeData.unions,
@@ -98,6 +99,7 @@ describe('migrateV1ToV2', () => {
   it('random v1 editing sessions migrate with no normalization and no loss', () => {
     const prev = process.env.PEDITREE_PACKER;
     process.env.PEDITREE_PACKER = 'legacy'; // fast v1 rebuilds while generating states
+    setFuzzStore(useV1Store);
     try {
       let checked = 0;
       for (let c = 0; c < 120; c++) {
@@ -120,6 +122,7 @@ describe('migrateV1ToV2', () => {
       }
       expect(checked).toBe(120);
     } finally {
+      setFuzzStore(null);
       if (prev === undefined) delete process.env.PEDITREE_PACKER; else process.env.PEDITREE_PACKER = prev;
     }
   }, 120000);

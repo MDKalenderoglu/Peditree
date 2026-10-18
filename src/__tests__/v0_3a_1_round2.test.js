@@ -187,10 +187,10 @@ describe('v0.3a.1 round 2 — computeSiblingCreationPlan ("Kardeş Yap" safety)'
     // union of their own, and they are generation-compatible.
     usePedigreeStore.getState().addSpouseTo('mother', 'male');
     let state = usePedigreeStore.getState();
-    const spouse1 = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    const spouse1 = state.lastCreated.spouseId;
     usePedigreeStore.getState().addSpouseTo('father', 'female');
     state = usePedigreeStore.getState();
-    const spouse2 = state.wizardData.graphEdits.filter(e => e.type === 'addSpouse')[1].spouseId;
+    const spouse2 = state.lastCreated.spouseId;
 
     const plan = computeSiblingCreationPlan(state.pedigreeData, spouse1, spouse2);
     expect(plan.ok).toBe(true);
@@ -202,7 +202,7 @@ describe('v0.3a.1 round 2 — computeSiblingCreationPlan ("Kardeş Yap" safety)'
     // has no parent union of its own — safe to attach into U_MAT_GP.
     usePedigreeStore.getState().addSpouseTo('father', 'female');
     const state = usePedigreeStore.getState();
-    const newSpouseId = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    const newSpouseId = state.lastCreated.spouseId;
     const plan = computeSiblingCreationPlan(state.pedigreeData, 'mother', newSpouseId);
     expect(plan.ok).toBe(true);
     expect(plan.action).toBe('attach');
@@ -266,10 +266,10 @@ describe('v0.3a.1 round 2 — computeSiblingCreationPlan ("Kardeş Yap" safety)'
   it('blocks two individuals at different generations (would corrupt sibling-generation invariants)', () => {
     usePedigreeStore.getState().addSpouseTo('proband', 'female'); // generation 3
     let state = usePedigreeStore.getState();
-    const spouse1 = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    const spouse1 = state.lastCreated.spouseId;
     usePedigreeStore.getState().addSpouseTo('mat_gf', 'female'); // generation 1
     state = usePedigreeStore.getState();
-    const spouse2 = state.wizardData.graphEdits.filter(e => e.type === 'addSpouse')[1].spouseId;
+    const spouse2 = state.lastCreated.spouseId;
 
     const plan = computeSiblingCreationPlan(state.pedigreeData, spouse1, spouse2);
     expect(plan.ok).toBe(false);

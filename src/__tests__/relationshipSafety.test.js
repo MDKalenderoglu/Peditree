@@ -213,10 +213,10 @@ describe('v0.3a.2 — store: relationship-creation actions roll back on unsafe m
     process.env.PEDITREE_PACKER = 'legacy';
     usePedigreeStore.getState().addSpouseTo('mother', 'male');
     let state = usePedigreeStore.getState();
-    const spouse1 = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    const spouse1 = state.lastCreated.spouseId;
     usePedigreeStore.getState().addSpouseTo('father', 'female');
     state = usePedigreeStore.getState();
-    const spouse2 = state.wizardData.graphEdits.filter(e => e.type === 'addSpouse')[1].spouseId;
+    const spouse2 = state.lastCreated.spouseId;
     const before = usePedigreeStore.getState().wizardData;
 
     usePedigreeStore.getState().addCustomConsanguinity(spouse1, spouse2);
@@ -244,7 +244,7 @@ describe('v0.3a.2 — store: relationship-creation actions roll back on unsafe m
     usePedigreeStore.getState().updateSiblingCount('male', 1);
     usePedigreeStore.getState().addSpouseTo('sib_m_0', 'female');
     let state = usePedigreeStore.getState();
-    const newSpouseId = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    const newSpouseId = state.lastCreated.spouseId;
     const before = usePedigreeStore.getState().wizardData;
 
     usePedigreeStore.getState().createUnionBetween('proband', newSpouseId);
@@ -258,7 +258,7 @@ describe('v0.3a.2 — store: relationship-creation actions roll back on unsafe m
     // (generation 3) would introduce PARTNER_GENERATION_INCONSISTENT.
     usePedigreeStore.getState().addSpouseTo('mat_gf', 'female');
     let state = usePedigreeStore.getState();
-    const newSpouseId = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    const newSpouseId = state.lastCreated.spouseId;
     const before = usePedigreeStore.getState().wizardData;
 
     usePedigreeStore.getState().createUnionBetween('proband', newSpouseId);

@@ -17,7 +17,7 @@ describe('v0.3a.3 — computeAddParentsPlan', () => {
     // proband's own child-less spouse stub instead once created.
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     const s2 = usePedigreeStore.getState();
-    const spouseId = s2.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    const spouseId = s2.lastCreated.spouseId;
     const plan = computeAddParentsPlan(s2.pedigreeData, spouseId);
     expect(plan.ok).toBe(true);
   });
@@ -54,7 +54,7 @@ describe('v0.3a.3 — computeAddSiblingPlan', () => {
   it('blocks adding a sibling when the target has no parent union', () => {
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     const state = usePedigreeStore.getState();
-    const spouseId = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    const spouseId = state.lastCreated.spouseId;
     const plan = computeAddSiblingPlan(state.pedigreeData, spouseId);
     expect(plan.ok).toBe(false);
   });
@@ -72,7 +72,7 @@ describe('v0.3a.3 — store: addParentsTo', () => {
   it('adding both parents creates a real mother+father union and attaches the target as their child', () => {
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     let state = usePedigreeStore.getState();
-    const spouseId = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    const spouseId = state.lastCreated.spouseId;
 
     usePedigreeStore.getState().addParentsTo(spouseId);
     state = usePedigreeStore.getState();
@@ -90,7 +90,7 @@ describe('v0.3a.3 — store: addParentsTo', () => {
   it('"add mother only" creates a female parent plus an explicitly-unspecified placeholder partner', () => {
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     let state = usePedigreeStore.getState();
-    const spouseId = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    const spouseId = state.lastCreated.spouseId;
 
     usePedigreeStore.getState().addParentsTo(spouseId, { onlyMother: true });
     state = usePedigreeStore.getState();
@@ -117,7 +117,7 @@ describe('v0.3a.3 — store: addParentsTo', () => {
   it('does not create duplicate parents if called twice on the same individual', () => {
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     let state = usePedigreeStore.getState();
-    const spouseId = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    const spouseId = state.lastCreated.spouseId;
 
     usePedigreeStore.getState().addParentsTo(spouseId);
     const afterFirst = usePedigreeStore.getState().pedigreeData.individuals.length;
@@ -131,7 +131,7 @@ describe('v0.3a.3 — store: addParentsTo', () => {
   it('undo reverses adding parents cleanly', () => {
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     let state = usePedigreeStore.getState();
-    const spouseId = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    const spouseId = state.lastCreated.spouseId;
 
     usePedigreeStore.getState().addParentsTo(spouseId);
     const withParents = usePedigreeStore.getState().pedigreeData.individuals.length;
@@ -160,7 +160,7 @@ describe('v0.3a.3 — store: addSiblingTo', () => {
   it('is a no-op when the target has no parent union', () => {
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     let state = usePedigreeStore.getState();
-    const spouseId = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    const spouseId = state.lastCreated.spouseId;
     const before = usePedigreeStore.getState().wizardData;
 
     usePedigreeStore.getState().addSiblingTo(spouseId, 'male');

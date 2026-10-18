@@ -1,6 +1,6 @@
 # Layout Fuzz — Baseline Report
 
-Generated: 2026-10-18T06:54:21.514Z
+Generated: 2026-10-18T07:32:18.644Z
 
 Config: seed=`12345`, cases=1000, maxOpsPerCase=14
 
@@ -46,7 +46,7 @@ _none_
 Reported separately from the 13-invariant tier above so historical baselines stay comparable.
 
 - cases failing readability: **0/1000** (0.0%)
-- end-state metrics: off-centre couple in 105 cases (199/6860 couples with children = 2.9%), side-hanging bus in 668, long union line (>3 slots) in 69, foreign crossings in 0 cases (0 total)
+- end-state metrics: off-centre couple in 85 cases (186/6699 couples with children = 2.8%), side-hanging bus in 625, long union line (>3 slots) in 70, foreign crossings in 0 cases (0 total)
 
 ## Named QA scenarios
 

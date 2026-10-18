@@ -262,97 +262,29 @@ const Accordion = ({ id, title, summary, open, onToggle, children }) => {
   );
 };
 
-// ── Token builders ──
-// Map wizard-level child descriptions to builder-level tokens for ordering.
-
-function buildProbandSiblingItems(wd) {
-  // Build items with age metadata so we can sort to match defaultChildOrder():
-  // liveborn by age descending → pregnancy losses → stillbirths.
-  // This prevents the "proband jumps to first" bug: when no explicit order
-  // exists, the UI display order matches the builder's default order exactly.
-  const liveborn = [];
-  liveborn.push({ token: 'proband', label: `Proband (${wd.proband.age || '?'})`, age: parseInt(wd.proband.age) });
-  wd.siblings.male.forEach((s, i) => {
-    liveborn.push({ token: `sib_m_${i}`, label: `E. Kardes ${i + 1} (${s.age || '?'})`, age: parseInt(s.age) });
+// ── Child-order items ──
+// v2 (graph-first): items are the REAL child ids of a union, in the order
+// the graph draws them, labelled for the clinician. Ids are permanent, so a
+// label like "E 2" is only a position hint, never an identity.
+function childItems(pedigreeData, unionId, childIds, anchorId) {
+  const byId = new Map((pedigreeData.individuals || []).map(i => [i.id, i]));
+  const counters = {};
+  const tag = (p) => {
+    if (p.id === anchorId) return 'Proband';
+    if (p.pregnancyLoss) return 'Dusuk';
+    if (p.stillbirth) return 'Olu D.';
+    return p.sex === 'male' ? 'E' : p.sex === 'female' ? 'K' : 'Bil.';
+  };
+  return (childIds || []).map(id => byId.get(id)).filter(Boolean).map(p => {
+    const t = tag(p);
+    counters[t] = (counters[t] || 0) + 1;
+    const n = t === 'Proband' ? '' : ` ${counters[t]}`;
+    return { token: p.id, label: `${t}${n}${p.age ? ` (${p.age})` : ''}` };
   });
-  wd.siblings.female.forEach((s, i) => {
-    liveborn.push({ token: `sib_f_${i}`, label: `K. Kardes ${i + 1} (${s.age || '?'})`, age: parseInt(s.age) });
-  });
-  wd.siblings.unknown.forEach((s, i) => {
-    liveborn.push({ token: `sib_u_${i}`, label: `Bil. ${i + 1} (${s.age || '?'})`, age: parseInt(s.age) });
-  });
-
-  // Sort liveborn: age descending (aged first, then unaged in insertion order)
-  liveborn.sort((a, b) => {
-    const hasA = !isNaN(a.age);
-    const hasB = !isNaN(b.age);
-    if (hasA && hasB) return b.age - a.age;
-    if (hasA && !hasB) return -1;
-    if (!hasA && hasB) return 1;
-    return 0; // preserve insertion order for unaged
-  });
-
-  const items = liveborn.map(({ token, label }) => ({ token, label }));
-
-  // Pregnancy losses after liveborn
-  for (let i = 0; i < (wd.siblings.pregnancyLoss || 0); i++) {
-    items.push({ token: `sib_loss_${i}`, label: `Dusuk ${i + 1}` });
-  }
-  // Stillbirths last
-  for (let i = 0; i < (wd.siblings.deceased || 0); i++) {
-    items.push({ token: `sib_still_${i}`, label: `Olu Dogum ${i + 1}` });
-  }
-  return items;
 }
 
-function buildHalfSibItems(parentType, unionIndex, childCounts) {
-  const prefix = parentType === 'mother' ? 'hsib_mat' : 'hsib_pat';
-  const items = [];
-  for (let c = 0; c < (childCounts.male || 0); c++) {
-    items.push({ token: `${prefix}_m_${unionIndex}_${c}`, label: `E ${c + 1}` });
-  }
-  for (let c = 0; c < (childCounts.female || 0); c++) {
-    items.push({ token: `${prefix}_f_${unionIndex}_${c}`, label: `K ${c + 1}` });
-  }
-  for (let c = 0; c < (childCounts.unknown || 0); c++) {
-    items.push({ token: `${prefix}_u_${unionIndex}_${c}`, label: `Bil. ${c + 1}` });
-  }
-  return items;
-}
-
-function buildCousinItems(side, role, relIndex, childCounts) {
-  const relId = `${side}_${role}_${relIndex}`;
-  const items = [];
-  for (let c = 0; c < (childCounts.male || 0); c++) {
-    items.push({ token: `${relId}_cm_${c}`, label: `E ${c + 1}` });
-  }
-  for (let c = 0; c < (childCounts.female || 0); c++) {
-    items.push({ token: `${relId}_cf_${c}`, label: `K ${c + 1}` });
-  }
-  for (let c = 0; c < (childCounts.unknown || 0); c++) {
-    items.push({ token: `${relId}_cu_${c}`, label: `Bil. ${c + 1}` });
-  }
-  for (let c = 0; c < (childCounts.pregnancyLoss || 0); c++) {
-    items.push({ token: `${relId}_loss_${c}`, label: `Dusuk ${c + 1}` });
-  }
-  for (let c = 0; c < (childCounts.stillbirth || 0); c++) {
-    items.push({ token: `${relId}_still_${c}`, label: `Olu D. ${c + 1}` });
-  }
-  return items;
-}
-
-function buildGen4Items(gen4Index, childCounts) {
-  const items = [];
-  for (let c = 0; c < (childCounts.male || 0); c++) {
-    items.push({ token: `gen4_${gen4Index}_cm_${c}`, label: `E ${c + 1}` });
-  }
-  for (let c = 0; c < (childCounts.female || 0); c++) {
-    items.push({ token: `gen4_${gen4Index}_cf_${c}`, label: `K ${c + 1}` });
-  }
-  for (let c = 0; c < (childCounts.unknown || 0); c++) {
-    items.push({ token: `gen4_${gen4Index}_cu_${c}`, label: `Bil. ${c + 1}` });
-  }
-  return items;
+function childIdsOf(pedigreeData, unionId) {
+  return ((pedigreeData.parentChildRelationships || []).find(r => r.unionId === unionId) || {}).children || [];
 }
 
 export default function WizardPanel() {
@@ -373,6 +305,15 @@ export default function WizardPanel() {
     openSectionId, setOpenSection,
   } = usePedigreeStore();
 
+  // Clinician-facing name for a person (pedigree id + label), never the internal id.
+  const pedigreeIdsForNames = computePedigreeIds(pedigreeData.nodes || []);
+  const nameOf = (id) => {
+    const p = (pedigreeData.individuals || []).find(i => i.id === id);
+    const pid = pedigreeIdsForNames.get(id)?.displayId;
+    const label = p?.displayLabel || p?.label;
+    return pid ? (label ? `${pid} (${label})` : pid) : (label || 'birey');
+  };
+
   /* ── Other-union mini-panel ── */
   const renderOtherUnions = (parentType) => {
     const key = parentType === 'mother' ? 'motherOtherUnions' : 'fatherOtherUnions';
@@ -384,8 +325,8 @@ export default function WizardPanel() {
           <button className="btn btn-primary" onClick={() => addOtherUnion(parentType)} style={{ padding: '2px 8px', fontSize: '0.7rem' }}>+ Ekle</button>
         </div>
         {list.map((u, idx) => {
-          const unionId = parentType === 'mother' ? `U_MOTHER_OTHER_${idx}` : `U_FATHER_OTHER_${idx}`;
-          const hSibItems = buildHalfSibItems(parentType, idx, u.children);
+          const unionId = u.unionId;
+          const hSibItems = childItems(pedigreeData, unionId, u.childIds);
           const totalKids = (u.children.male || 0) + (u.children.female || 0) + (u.children.unknown || 0);
 
           return (
@@ -402,7 +343,7 @@ export default function WizardPanel() {
               <Stepper label="Erkek" value={u.children.male} onChange={v => updateOtherUnion(parentType, idx, 'male', v)} />
               <Stepper label="Kiz" value={u.children.female} onChange={v => updateOtherUnion(parentType, idx, 'female', v)} />
               <Stepper label="Bil." value={u.children.unknown} onChange={v => updateOtherUnion(parentType, idx, 'unknown', v)} />
-              {totalKids >= 2 && (
+              {totalKids >= 2 && unionId && (
                 <ChildOrderEditor
                   unionId={unionId}
                   items={hSibItems}
@@ -420,16 +361,7 @@ export default function WizardPanel() {
   };
 
   /* ── Relative section (maternal or paternal, parent or GP level) ── */
-  const SIDE_CONFIG = {
-    maternalRelatives:   { sideKey: 'mat',    unclePrefix: 'U_MAT_UNCLE',         auntPrefix: 'U_MAT_AUNT' },
-    paternalRelatives:   { sideKey: 'pat',    unclePrefix: 'U_PAT_UNCLE',         auntPrefix: 'U_PAT_AUNT' },
-    maternalGPRelatives: { sideKey: 'gp_mat', unclePrefix: 'U_GP_MAT_UNCLE',     auntPrefix: 'U_GP_MAT_AUNT' },
-    paternalGPRelatives: { sideKey: 'gp_pat', unclePrefix: 'U_GP_PAT_UNCLE',     auntPrefix: 'U_GP_PAT_AUNT' },
-  };
-
   const renderRelatives = (side, title, uncleLabel, auntLabel) => {
-    const config = SIDE_CONFIG[side] || { sideKey: 'mat', unclePrefix: 'U_MAT_UNCLE', auntPrefix: 'U_MAT_AUNT' };
-    const { sideKey, unclePrefix: uncleUnionPrefix, auntPrefix: auntUnionPrefix } = config;
     const uncleKey = 'uncles';
     const auntKey = 'aunts';
     const relatives = wd[side] || { uncles: [], aunts: [] };
@@ -446,8 +378,8 @@ export default function WizardPanel() {
             keep the stepper UI sane. */}
         <Stepper label={`${uncleLabel} Sayisi`} value={uncles.length} onChange={v => updateRelativeCount(side, uncleKey, v)} max={12} />
         {uncles.map((rel, idx) => {
-          const unionId = `${uncleUnionPrefix}_${idx}`;
-          const cousinItems = buildCousinItems(sideKey, 'uncle', idx, rel.children);
+          const unionId = rel.unionId;
+          const cousinItems = childItems(pedigreeData, unionId, rel.childIds);
           const totalKids = (rel.children.male || 0) + (rel.children.female || 0) +
             (rel.children.unknown || 0) + (rel.children.pregnancyLoss || 0) + (rel.children.stillbirth || 0);
 
@@ -459,7 +391,7 @@ export default function WizardPanel() {
               <Stepper label="B" value={rel.children.unknown} onChange={v => updateRelativeChildren(side, uncleKey, idx, 'unknown', v)} max={6} />
               <Stepper label="Dusuk" value={rel.children.pregnancyLoss || 0} onChange={v => updateRelativeChildren(side, uncleKey, idx, 'pregnancyLoss', v)} max={6} />
               <Stepper label="Olu Dogum" value={rel.children.stillbirth || 0} onChange={v => updateRelativeChildren(side, uncleKey, idx, 'stillbirth', v)} max={6} />
-              {totalKids >= 2 && (
+              {totalKids >= 2 && unionId && (
                 <ChildOrderEditor
                   unionId={unionId}
                   items={cousinItems}
@@ -476,8 +408,8 @@ export default function WizardPanel() {
           {/* v0.3a.4: 4-person cap removed (see uncle stepper above). */}
           <Stepper label={`${auntLabel} Sayisi`} value={aunts.length} onChange={v => updateRelativeCount(side, auntKey, v)} max={12} />
           {aunts.map((rel, idx) => {
-            const unionId = `${auntUnionPrefix}_${idx}`;
-            const cousinItems = buildCousinItems(sideKey, 'aunt', idx, rel.children);
+            const unionId = rel.unionId;
+            const cousinItems = childItems(pedigreeData, unionId, rel.childIds);
             const totalKids = (rel.children.male || 0) + (rel.children.female || 0) +
               (rel.children.unknown || 0) + (rel.children.pregnancyLoss || 0) + (rel.children.stillbirth || 0);
 
@@ -489,7 +421,7 @@ export default function WizardPanel() {
                 <Stepper label="B" value={rel.children.unknown} onChange={v => updateRelativeChildren(side, auntKey, idx, 'unknown', v)} max={6} />
                 <Stepper label="Dusuk" value={rel.children.pregnancyLoss || 0} onChange={v => updateRelativeChildren(side, auntKey, idx, 'pregnancyLoss', v)} max={6} />
                 <Stepper label="Olu Dogum" value={rel.children.stillbirth || 0} onChange={v => updateRelativeChildren(side, auntKey, idx, 'stillbirth', v)} max={6} />
-                {totalKids >= 2 && (
+                {totalKids >= 2 && unionId && (
                   <ChildOrderEditor
                     unionId={unionId}
                     items={cousinItems}
@@ -506,8 +438,9 @@ export default function WizardPanel() {
     );
   };
 
-  // Build proband sibling items for ChildOrderEditor
-  const probandItems = buildProbandSiblingItems(wd);
+  // Proband's sibship (real ids, drawing order) for ChildOrderEditor
+  const parentsUnionId = wd.parents.unionId;
+  const probandItems = parentsUnionId ? childItems(pedigreeData, parentsUnionId, childIdsOf(pedigreeData, parentsUnionId), wd.proband.id) : [];
   const totalProbandSibs = probandItems.length; // includes proband
 
   return (
@@ -577,12 +510,12 @@ export default function WizardPanel() {
             <SiblingStepper label="Dusuk/Kayip" value={sc.pregnancyLoss} onIncrement={() => addSiblingOfCategory('pregnancyLoss')} onDecrement={() => removeLastSibling('pregnancyLoss')} />
             <SiblingStepper label="Olu Dogum" value={sc.deceased} onIncrement={() => addSiblingOfCategory('deceased')} onDecrement={() => removeLastSibling('deceased')} />
 
-            {totalProbandSibs >= 2 && (
+            {totalProbandSibs >= 2 && parentsUnionId && (
               <ChildOrderEditor
-                unionId="U_PARENTS"
+                unionId={parentsUnionId}
                 items={probandItems}
-                getOrder={() => getChildOrder('U_PARENTS')}
-                setOrder={(order) => setChildOrder('U_PARENTS', order)}
+                getOrder={() => getChildOrder(parentsUnionId)}
+                setOrder={(order) => setChildOrder(parentsUnionId, order)}
                 label="Kardes Sirasi"
               />
             )}
@@ -677,7 +610,7 @@ export default function WizardPanel() {
             padding: '4px 6px', background: '#f8fafc', borderRadius: '4px',
             marginBottom: '4px', fontSize: '0.75rem',
           }}>
-            <span style={{ flex: 1 }}>{link.person1} ↔ {link.person2}</span>
+            <span style={{ flex: 1 }}>{nameOf(link.person1)} ↔ {nameOf(link.person2)}</span>
             <button onClick={() => removeCustomConsanguinity(idx)}
               style={{ padding: '1px 6px', fontSize: '0.65rem', background: '#fee2e2',
                 color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '3px', cursor: 'pointer' }}>
@@ -705,7 +638,7 @@ export default function WizardPanel() {
                 <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{u.id} ({u.partners.join(' + ')})</div>
                 <select
                   value={u.relationshipBackground || 'not_asked'}
-                  disabled={u.id === 'U_PARENTS' && wd.parents.consanguineous}
+                  disabled={u.id === wd.parents.unionId && wd.parents.consanguineous}
                   onChange={e => setUnionRelationshipBackground(u.id, e.target.value)}
                   className="form-input"
                   style={{ fontSize: '0.7rem', padding: '3px' }}
@@ -759,24 +692,25 @@ export default function WizardPanel() {
       {/* ── 10. GEN 4 / ILERI ── */}
       <Accordion id="gen4" title="10. Ileri Akrabalar (4. Jen.)" summary={`${wd.gen4.length} kayit`} open={openSectionId === 'gen4'} onToggle={setOpenSection}>
         {wd.gen4.map((g, idx) => {
-          const unionId = `U_GEN4_${idx}`;
+          const unionId = g.unionId;
           const totalKids = (g.male || 0) + (g.female || 0) + (g.unknown || 0);
-          const gen4Items = buildGen4Items(idx, g);
+          const gen4Items = childItems(pedigreeData, unionId, g.childIds);
 
           return (
             <div key={g.id} style={{ border: '1px solid #e2e8f0', padding: '8px', borderRadius: '4px', marginBottom: '6px', background: '#f8fafc' }}>
               <div className="form-group" style={{ marginBottom: 6 }}>
                 <label className="form-label" style={{ fontSize: '0.75rem' }}>Kimin cocugu?</label>
-                <select value={g.targetPath} onChange={e => updateGen4(idx, 'targetPath', e.target.value)} className="form-input" style={{ fontSize: '0.8rem' }}>
-                  <option value="proband">Proband</option>
-                  {wd.siblings.male.map((_, i) => <option key={`sm${i}`} value={`sib_m_${i}`}>E. Kardes {i + 1}</option>)}
-                  {wd.siblings.female.map((_, i) => <option key={`sf${i}`} value={`sib_f_${i}`}>K. Kardes {i + 1}</option>)}
+                <select value={g.targetPath} onChange={e => updateGen4(idx, 'targetPath', e.target.value)} disabled={totalKids > 0} className="form-input" style={{ fontSize: '0.8rem' }}>
+                  <option value={wd.proband.id}>Proband</option>
+                  {wd.siblings.male.map((sib, i) => <option key={sib.id} value={sib.id}>E. Kardes {i + 1}</option>)}
+                  {wd.siblings.female.map((sib, i) => <option key={sib.id} value={sib.id}>K. Kardes {i + 1}</option>)}
+                  {wd.siblings.unknown.map((sib, i) => <option key={sib.id} value={sib.id}>Kardes {i + 1}</option>)}
                 </select>
               </div>
               <Stepper label="Erkek" value={g.male} onChange={v => updateGen4(idx, 'male', v)} />
               <Stepper label="Kiz" value={g.female} onChange={v => updateGen4(idx, 'female', v)} />
               <Stepper label="Bil." value={g.unknown} onChange={v => updateGen4(idx, 'unknown', v)} />
-              {totalKids >= 2 && (
+              {totalKids >= 2 && unionId && (
                 <ChildOrderEditor
                   unionId={unionId}
                   items={gen4Items}
@@ -789,7 +723,7 @@ export default function WizardPanel() {
             </div>
           );
         })}
-        <button className="btn btn-primary" onClick={() => addGen4('proband')} style={{ fontSize: '0.8rem', padding: '6px 10px', width: '100%' }}>+ Jenerasyon 4 Ekle</button>
+        <button className="btn btn-primary" onClick={() => addGen4(wd.proband.id)} style={{ fontSize: '0.8rem', padding: '6px 10px', width: '100%' }}>+ Jenerasyon 4 Ekle</button>
       </Accordion>
     </div>
   );

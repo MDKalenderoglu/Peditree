@@ -7,13 +7,13 @@ import { withStableIdsExcludingDismissed } from './utils/warningIds';
 import PedigreeCanvas from './components/PedigreeCanvas';
 import IndividualEditor from './components/IndividualEditor';
 import WizardPanel from './components/WizardPanel';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2 } from 'lucide-react';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen } from 'lucide-react';
 import './styles/app.css';
 
 function App() {
   const {
-    pedigreeData, warnings, integrityIssues, wizardData,
-    updateIndividual, addSpouseTo, addChildTo, addChildToUnion, removeGraphEdit,
+    pedigreeData, warnings, integrityIssues,
+    updateIndividual, addSpouseTo, addChildTo, addChildToUnion,
     setProband, clearProband, resetPedigree,
     selectedId, selectedId2, selectIndividual, clearSelection,
     deleteIndividual, createUnionBetween, addCustomConsanguinity,
@@ -22,6 +22,7 @@ function App() {
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
     actionNotice, dismissActionNotice,
+    exportProjectFile, openProjectFile,
   } = usePedigreeStore();
   const [exportError, setExportError] = React.useState(null);
   const [exportNotice, setExportNotice] = React.useState(null);
@@ -130,6 +131,27 @@ function App() {
   };
 
   const [warningsOpen, setWarningsOpen] = React.useState(true);
+  const fileInputRef = React.useRef(null);
+
+  // Project file (schema v2 document, .peditree.json) — Faz 2b.
+  const handleSaveProject = () => {
+    const blob = new Blob([exportProjectFile()], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pedigri-${new Date().toISOString().slice(0, 10)}.peditree.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+  const handleOpenProject = (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    if (_history && _history.length > 0 && !window.confirm('Açık pedigrinin yerine dosyadaki pedigri yüklensin mi? (Geri Al ile dönebilirsiniz.)')) return;
+    file.text().then(text => openProjectFile(text));
+  };
 
   const handleNodeSelect = (id, opts) => {
     selectIndividual(id, opts);
@@ -165,6 +187,13 @@ function App() {
           >
             <Redo2 size={16} /> Yinele
           </button>
+          <button className="btn" onClick={handleSaveProject} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title="Pedigriyi proje dosyası olarak kaydet (.peditree.json)">
+            <Save size={16} /> Kaydet
+          </button>
+          <button className="btn" onClick={() => fileInputRef.current && fileInputRef.current.click()} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title="Proje dosyası aç (.peditree.json; eski biçim de açılır)">
+            <FolderOpen size={16} /> Aç
+          </button>
+          <input ref={fileInputRef} type="file" accept=".json,application/json" onChange={handleOpenProject} style={{ display: 'none' }} aria-label="Proje dosyası seç" />
           <button className="btn btn-primary" onClick={handleExportSVG} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Download size={16} /> SVG
           </button>
@@ -269,8 +298,6 @@ function App() {
           }}
           onSetProband={setProband}
           onClearProband={clearProband}
-          graphEdits={wizardData.graphEdits || []}
-          onRemoveGraphEdit={removeGraphEdit}
           onDeleteIndividual={deleteIndividual}
           onCreateUnion={createUnionBetween}
           onMakeSiblings={addCustomConsanguinity}

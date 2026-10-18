@@ -121,6 +121,11 @@ describe('graph operations', () => {
     expect(person(doc, 'U_PARENTS__unspecified').placeholder).toBe(true);
     expect(kidsOf(doc, 'U_PARENTS')).toContain('proband');
     expect(ops.removePerson(doc, 'proband').ok).toBe(false); // proband protected
+    // removing the remaining real parent removes the union (children keep no parents)
+    const both = ok(ops.removePerson(doc, 'mother')).doc;
+    expect(union(both, 'U_PARENTS')).toBeUndefined();
+    expect(person(both, 'U_PARENTS__unspecified')).toBeUndefined();
+    expect(person(both, 'proband')).toBeTruthy();
   });
 
   it('addParents with only a mother creates an unspecified co-parent', () => {

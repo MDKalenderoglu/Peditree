@@ -88,7 +88,7 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
 
 export default function IndividualEditor({
   node, node2, pedigreeData, onUpdate, onAddSpouse, onAddChild, onSetProband, onClearProband,
-  graphEdits, onRemoveGraphEdit, onDeleteIndividual, onCreateUnion, onMakeSiblings,
+  onDeleteIndividual, onCreateUnion, onMakeSiblings,
   onClearSelection, onReorderChild, onSetUnionRelationshipBackground,
   onAddParents, onAddSibling,
 }) {
@@ -624,47 +624,6 @@ export default function IndividualEditor({
         )}
       </div>
 
-      {/* Direct graph edits list */}
-      {graphEdits && graphEdits.length > 0 && (
-        <div style={{ marginTop: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
-            Dogrudan Eklenenler ({graphEdits.length})
-          </div>
-          {graphEdits.map((edit, idx) => {
-            // v0.3a.4: describe each direct edit in clinician-facing terms
-            // (pedigree IDs / labels), never internal graph IDs. Union IDs
-            // have no clinical identity, so add-child edits are described
-            // by the child's pedigree ID alone.
-            const nameFor = (id) => {
-              const person = pedigreeData?.individuals?.find(i => i.id === id);
-              const pid = pedigreeIds.get(id)?.displayId;
-              const label = person?.displayLabel || person?.label;
-              return pid ? (label ? `${pid} (${label})` : pid) : (label || 'birey');
-            };
-            const desc =
-              edit.type === 'addSpouse' ? `Eş eklendi: ${nameFor(edit.spouseId)}` :
-              edit.type === 'addChild' ? `Çocuk eklendi: ${nameFor(edit.childId)}` :
-              edit.type === 'linkPartners' ? `Eş yapıldı: ${nameFor(edit.person1)} + ${nameFor(edit.person2)}` :
-              edit.type === 'addParents' ? `Ebeveyn eklendi: ${nameFor(edit.parent1Id)}` :
-              edit.type;
-            return (
-            <div key={idx} style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              fontSize: '0.68rem', color: '#64748b', padding: '2px 0',
-            }}>
-              <span>{desc}</span>
-              <button
-                onClick={() => onRemoveGraphEdit(idx)}
-                style={{
-                  background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: '3px',
-                  fontSize: '0.6rem', padding: '1px 4px', cursor: 'pointer', color: '#dc2626',
-                }}
-              >X</button>
-            </div>
-            );
-          })}
-        </div>
-      )}
     </>
   );
 }

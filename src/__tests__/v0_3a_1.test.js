@@ -246,11 +246,14 @@ describe('v0.3a.1 — store: reset', () => {
     expect(usePedigreeStore.getState()._history).toHaveLength(0);
   });
 
-  it('clears manualEdits (conditions/notes added during the session)', () => {
+  it('clears clinical edits (conditions/notes added during the session)', () => {
+    // v2: clinical data lives on the person in the graph (no manualEdits overlay)
+    const mother = () => usePedigreeStore.getState().pedigreeData.individuals.find(i => i.id === 'mother');
     usePedigreeStore.getState().updateIndividual('mother', { notes: 'test note', conditions: [{ label: 'X', status: 'affected' }] });
-    expect(usePedigreeStore.getState().wizardData.manualEdits.mother).toBeDefined();
+    expect(mother().notes).toBe('test note');
     usePedigreeStore.getState().resetPedigree();
-    expect(usePedigreeStore.getState().wizardData.manualEdits).toEqual({});
+    expect(mother().notes || '').toBe('');
+    expect(mother().conditions || []).toEqual([]);
   });
 });
 
@@ -272,7 +275,7 @@ describe('v0.3a.1 — store: computeDeletionPlan', () => {
   it('allows deletion of a directly-added spouse with no children, previewing the affected union', () => {
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     const state = usePedigreeStore.getState();
-    const spouseEdit = state.wizardData.graphEdits.find(e => e.type === 'addSpouse');
+    const spouseEdit = { ...state.lastCreated };
     const plan = computeDeletionPlan(state.wizardData, state.pedigreeData, spouseEdit.spouseId);
     expect(plan.ok).toBe(true);
     expect(plan.affectedUnionIds).toEqual([spouseEdit.unionId]);
@@ -282,11 +285,11 @@ describe('v0.3a.1 — store: computeDeletionPlan', () => {
   it('previews the affected union AND affected children when the spouse has a child', () => {
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     let state = usePedigreeStore.getState();
-    const spouseEdit = state.wizardData.graphEdits.find(e => e.type === 'addSpouse');
+    const spouseEdit = { ...state.lastCreated };
     usePedigreeStore.getState().addChildToUnion(spouseEdit.unionId, 'male');
 
     state = usePedigreeStore.getState();
-    const childEdit = state.wizardData.graphEdits.find(e => e.type === 'addChild');
+    const childEdit = { ...state.lastCreated };
     const plan = computeDeletionPlan(state.wizardData, state.pedigreeData, spouseEdit.spouseId);
 
     expect(plan.ok).toBe(true);
@@ -297,10 +300,10 @@ describe('v0.3a.1 — store: computeDeletionPlan', () => {
   it('deleting a spouse keeps their child (child stays linked to the surviving parent)', () => {
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     let state = usePedigreeStore.getState();
-    const spouseEdit = state.wizardData.graphEdits.find(e => e.type === 'addSpouse');
+    const spouseEdit = { ...state.lastCreated };
     usePedigreeStore.getState().addChildToUnion(spouseEdit.unionId, 'male');
     state = usePedigreeStore.getState();
-    const childEdit = state.wizardData.graphEdits.find(e => e.type === 'addChild');
+    const childEdit = { ...state.lastCreated };
 
     usePedigreeStore.getState().deleteIndividual(spouseEdit.spouseId);
 
@@ -321,7 +324,7 @@ describe('v0.3a.1 — store: computeDeletionPlan', () => {
   it('deleteIndividual actually removes the individual and its cascade from the graph', () => {
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     let state = usePedigreeStore.getState();
-    const spouseEdit = state.wizardData.graphEdits.find(e => e.type === 'addSpouse');
+    const spouseEdit = { ...state.lastCreated };
     usePedigreeStore.getState().addChildToUnion(spouseEdit.unionId, 'male');
 
     usePedigreeStore.getState().deleteIndividual(spouseEdit.spouseId);
@@ -336,7 +339,7 @@ describe('v0.3a.1 — store: computeDeletionPlan', () => {
   it('deleteIndividual clears selection if the deleted individual was selected', () => {
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     let state = usePedigreeStore.getState();
-    const spouseEdit = state.wizardData.graphEdits.find(e => e.type === 'addSpouse');
+    const spouseEdit = { ...state.lastCreated };
     usePedigreeStore.getState().selectIndividual(spouseEdit.spouseId);
     usePedigreeStore.getState().deleteIndividual(spouseEdit.spouseId);
     expect(usePedigreeStore.getState().selectedId).toBeNull();
@@ -459,7 +462,7 @@ describe('v0.3a.1 — store: computeUnionCreationPlan / createUnionBetween', () 
   it('Step 5A: blocks a union where one individual has unknown sex, with an explicit reason (not a silent no-op)', () => {
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     let state = usePedigreeStore.getState();
-    const spouseId = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    const spouseId = state.lastCreated.spouseId;
     usePedigreeStore.getState().addParentsTo(spouseId, { onlyMother: true }); // fabricates an unknown-sex placeholder second parent
     state = usePedigreeStore.getState();
     const rel = state.pedigreeData.parentChildRelationships.find(r => r.children.includes(spouseId));
@@ -502,7 +505,7 @@ describe('v0.3a.1 — store: computeUnionCreationPlan / createUnionBetween', () 
   it('createUnionBetween actually creates a working union in the graph', () => {
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     let state = usePedigreeStore.getState();
-    const spouseId = state.wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    const spouseId = state.lastCreated.spouseId;
     usePedigreeStore.getState().deleteIndividual(spouseId); // clean up, unrelated to this test path once added
 
     // Create two independent spouses then link one of them to another
@@ -514,7 +517,7 @@ describe('v0.3a.1 — store: computeUnionCreationPlan / createUnionBetween', () 
     // entry, which is the one we want here.
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     state = usePedigreeStore.getState();
-    const newSpouseId = state.wizardData.graphEdits.filter(e => e.type === 'addSpouse')[1].spouseId;
+    const newSpouseId = state.lastCreated.spouseId;
 
     const errors = (state.integrityIssues || []).filter(i => i.severity === 'error');
     expect(errors).toHaveLength(0);

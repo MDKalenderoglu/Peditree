@@ -29,9 +29,9 @@ describe('v0.4.1 — sibling count panel sync', () => {
     usePedigreeStore.getState().addSiblingTo('proband', 'male');
     state = usePedigreeStore.getState();
 
-    // The old bug: wizardData.siblings.male.length stayed 0 here.
-    expect(state.wizardData.siblings.male.length).toBe(0);
-    // The fix: the derived (graph-based) count sees it.
+    // v1 bug: the wizard's own list stayed at 0 here. v2: the wizard view is
+    // derived from the same graph, so both panels agree.
+    expect(state.wizardData.siblings.male.length).toBe(1);
     expect(deriveSiblingCounts(state.pedigreeData).male).toBe(1);
   });
 

@@ -21,7 +21,12 @@ import { usePedigreeStore } from '../state/usePedigreeStore.js';
 const SEXES = ['male', 'female', 'unknown'];
 const STATE_FIELDS = ['affected', 'carrier', 'deceased'];
 
-const store = () => usePedigreeStore.getState();
+// The store the model drives: the app store by default. Tests can point it
+// at another store with the same action API (e.g. the frozen v1 store used
+// to produce v1 sessions for the migration tests).
+let storeHook = usePedigreeStore;
+export function setFuzzStore(hook) { storeHook = hook || usePedigreeStore; }
+const store = () => storeHook.getState();
 const graph = () => store().pedigreeData;
 
 function individuals() { return (graph().individuals || []); }

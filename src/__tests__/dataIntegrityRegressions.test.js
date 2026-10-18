@@ -18,18 +18,21 @@ beforeEach(() => {
   S().resetPedigree();
 });
 
-describe('DM-2 — direct-edit ids are never reused after an edit is removed', () => {
-  it('a spouse re-added after removing an earlier edit is actually created', () => {
+describe('DM-2 — ids are never reused (v2: permanent ids)', () => {
+  it('a spouse re-added after removing an earlier one is actually created, with a new id', () => {
     S().addSpouseTo('proband', 'female');
+    const first = S().lastCreated.spouseId;
     S().updateSiblingCount('male', 1);
     S().addSpouseTo('sib_m_0', 'female');
-    S().removeGraphEdit(0);
+    S().deleteIndividual(first);
     S().addSpouseTo('proband', 'female');
+    const second = S().lastCreated.spouseId;
     const pd = S().pedigreeData;
-    expect(pd.unions.some(u => u.partners.includes('proband'))).toBe(true);
+    expect(second).not.toBe(first);
+    expect(pd.unions.some(u => u.partners.includes('proband') && u.partners.includes(second))).toBe(true);
     expect(pd.unions.some(u => u.partners.includes('sib_m_0'))).toBe(true);
-    const spouseIds = S().wizardData.graphEdits.map(e => e.spouseId);
-    expect(new Set(spouseIds).size).toBe(spouseIds.length);
+    const ids = pd.individuals.map(i => i.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
 
@@ -79,28 +82,42 @@ describe('DM-4 — deleting one parent keeps the child linked to the other paren
 
   it('deleting a childless partner still removes the union', () => {
     S().addSpouseTo('proband', 'female');
-    const sp = S().wizardData.graphEdits.find(e => e.type === 'addSpouse').spouseId;
+    const sp = S().lastCreated.spouseId;
     S().deleteIndividual(sp);
     expect(S().pedigreeData.unions.some(u => u.partners.includes('proband'))).toBe(false);
   });
 });
 
 describe('DM-5/DM-6 — clinical data never re-attaches to a different (re-added) person', () => {
-  it('a re-added uncle at the same position starts clean', () => {
+  it('lowering a count never silently removes a person with clinical data', () => {
     S().updateRelativeCount('maternalRelatives', 'uncles', 3);
     S().updateIndividual('mat_uncle_2', { affected: true, displayLabel: 'Ahmet' });
     S().updateRelativeCount('maternalRelatives', 'uncles', 2);
-    S().updateRelativeCount('maternalRelatives', 'uncles', 3);
-    expect(ind('mat_uncle_2').affected).toBe(false);
-    expect(ind('mat_uncle_2').displayLabel || '').toBe('');
+    expect(S().actionNotice?.message).toMatch(/klinik bilgi/);
+    expect(ind('mat_uncle_2')).toMatchObject({ affected: true, displayLabel: 'Ahmet' });
+    expect(S().wizardData.maternalRelatives.uncles).toHaveLength(3);
   });
 
-  it('a deleted sibling slot that is later re-created by the count is visible again', () => {
+  it('a person removed explicitly and re-added by the count is a new, clean person with a new id', () => {
+    S().updateRelativeCount('maternalRelatives', 'uncles', 3);
+    S().updateIndividual('mat_uncle_2', { affected: true, displayLabel: 'Ahmet' });
+    S().deleteIndividual('mat_uncle_2');
+    S().updateRelativeCount('maternalRelatives', 'uncles', 3);
+    expect(ind('mat_uncle_2')).toBeUndefined();
+    const added = S().wizardData.maternalRelatives.uncles[2];
+    expect(added.id).not.toBe('mat_uncle_2');
+    expect(ind(added.id).affected).toBe(false);
+    expect(ind(added.id).displayLabel || '').toBe('');
+  });
+
+  it('a deleted sibling that is later re-created by the count is visible again (as a new person)', () => {
     S().updateSiblingCount('male', 2);
     S().deleteIndividual('sib_m_1');
-    S().updateSiblingCount('male', 1);
+    expect(S().wizardData.siblings.male).toHaveLength(1);
     S().updateSiblingCount('male', 2);
-    expect(ind('sib_m_1')).toBeTruthy();
+    expect(S().wizardData.siblings.male).toHaveLength(2);
+    expect(ind('sib_m_1')).toBeUndefined();
+    expect(S().wizardData.siblings.male.map(s => s.id)).toContain('sib_m_2');
   });
 });
 
