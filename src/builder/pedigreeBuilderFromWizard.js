@@ -12,7 +12,7 @@
  */
 
 import { computeGenerations } from '../utils/graphTraversal';
-import { applyChildOrder } from '../utils/childOrdering';
+import { applyChildOrder, reconcileOrder } from '../utils/childOrdering';
 
 export function buildPedigreeFromWizard(state) {
   const individuals = [];
@@ -948,6 +948,23 @@ export function buildPedigreeFromWizard(state) {
     union.relationshipBackground = union.consanguineous
       ? (union.consanguinityStatus === 'known_supported' ? 'consanguinity_structurally_supported' : 'consanguinity_reported')
       : 'not_asked';
+  }
+
+  // ========================================
+  // 10e. EXPLICIT BIRTH ORDER (every child group)
+  // ========================================
+  // The "Doğum Sırası" controls store an order for whichever sibship the
+  // selected child belongs to (state.childOrders, keyed by union id). The
+  // stages above apply it only to the groups they build themselves; the
+  // grandparents' children and children added by direct graph edits kept
+  // insertion order, so moving e.g. the father among his brothers silently
+  // did nothing. Apply it uniformly here, and mark the group so the layout
+  // treats its order as known (NSGC: siblings oldest→youngest, left→right).
+  for (const rel of parentChildRelationships) {
+    const manual = childOrders[rel.unionId];
+    if (!Array.isArray(manual) || manual.length === 0) continue;
+    rel.children = reconcileOrder(manual, rel.children);
+    rel.birthOrderExplicit = true;
   }
 
   // ========================================

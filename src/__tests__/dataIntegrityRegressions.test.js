@@ -142,3 +142,35 @@ describe('DM-7 — auditPedigreeGraph flags same-sex unions (defense in depth)',
     expect(codes(g('male', 'male', { placeholder: true }))).not.toContain('UNION_PARTNER_SEX_CONFLICT');
   });
 });
+
+describe('DM-12 — "Doğum Sırası" works for every sibship, not only the wizard-built ones', () => {
+  const gens = () => Object.fromEntries(S().pedigreeData.individuals.map(i => [i.id, i.generation]));
+
+  it('moving the father among his brothers reorders the grandparents\' children', () => {
+    S().updateRelativeCount('paternalRelatives', 'uncles', 2);
+    const before = gens();
+    expect(parentUnionOf('father').children.slice(0, 1)).toEqual(['father']);
+    S().reorderChild('U_PAT_GP', 'father', 'right');
+    const rel = parentUnionOf('father');
+    expect(rel.unionId).toBe('U_PAT_GP');
+    expect(rel.children.indexOf('father')).toBe(1);
+    expect(rel.birthOrderExplicit).toBe(true);
+    expect(gens()).toEqual(before);
+    expect(auditPedigreeGraph(S().pedigreeData).filter(i => i.severity === 'error')).toEqual([]);
+  });
+
+  it('a sibship without a stored order is not marked explicit', () => {
+    S().updateRelativeCount('paternalRelatives', 'uncles', 2);
+    expect(parentUnionOf('father').birthOrderExplicit).toBeUndefined();
+  });
+
+  it('children added by direct graph edits can be reordered too', () => {
+    S().addSpouseTo('proband', 'female');
+    const uid = S().pedigreeData.unions.find(u => u.partners.includes('proband')).id;
+    S().addChildToUnion(uid, 'male');
+    S().addChildToUnion(uid, 'female');
+    const [first, second] = parentUnionOf(S().pedigreeData.parentChildRelationships.find(r => r.unionId === uid).children[0]).children;
+    S().reorderChild(uid, second, 'left');
+    expect(S().pedigreeData.parentChildRelationships.find(r => r.unionId === uid).children).toEqual([second, first]);
+  });
+});
