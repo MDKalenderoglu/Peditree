@@ -24,6 +24,8 @@
 import { create } from 'zustand';
 import { validatePedigree } from '../utils/validators';
 import { computePedigreeLayoutV2 as computePedigreeLayout } from '../utils/pedigreeLayoutV2';
+import { selectedPacker } from '../utils/layoutPacking';
+import { computeStableLayout } from '../layout/pcl/incremental';
 import { auditLayoutIntegrity } from '../utils/layoutIntegrity';
 import { assessRelationshipMutation } from '../utils/relationshipSafety';
 import { validateDocument } from '../graph/validate';
@@ -58,9 +60,37 @@ export function starterDocument() {
   return migrateV1ToV2(cloneInitialState()).doc;
 }
 
-function deriveAll(doc, ui = {}) {
+/**
+ * Layout for a document. With a previous layout (`ctx.prevNodes`) and the
+ * PCL engine, the edit-local relayout keeps unaffected people in place
+ * (KI-2, src/layout/pcl/incremental.js); otherwise a fresh layout.
+ */
+function layoutFor(graph, ctx) {
+  if (ctx && ctx.prevNodes && ctx.prevNodes.length && selectedPacker() === 'pcl') {
+    const r = computeStableLayout(graph, ctx);
+    return { nodes: r.nodes, edges: r.edges, layoutInfo: r.meta.stability };
+  }
+  const l = computePedigreeLayout(graph);
+  return { nodes: l.nodes, edges: l.edges, layoutInfo: { level: 'full', reason: ctx && ctx.reason ? ctx.reason : 'fresh layout' } };
+}
+
+/** Position hints saved with a document: { version, positions: { id: [x, y] } }. */
+function hintsFromNodes(nodes) {
+  return { version: 1, positions: Object.fromEntries((nodes || []).map((n) => [n.id, [n.x, n.y]])) };
+}
+function nodesFromHints(hints) {
+  if (!hints || hints.version !== 1 || !hints.positions) return null;
+  return Object.entries(hints.positions).map(([id, [x, y]]) => ({ id, x, y }));
+}
+function withoutHints(doc) {
+  if (!doc || !doc.layoutHints) return doc;
+  const { layoutHints, ...rest } = doc; // eslint-disable-line no-unused-vars
+  return rest;
+}
+
+function deriveAll(doc, ui = {}, ctx = null) {
   const graph = doc.graph;
-  const layout = computePedigreeLayout(graph);
+  const { layoutInfo, ...layout } = layoutFor(graph, ctx);
   const combined = { ...graph, ...layout };
   const warnings = validatePedigree(combined);
   const graphIssues = tagIssues(validateDocument(doc), 'graph');
@@ -74,6 +104,7 @@ function deriveAll(doc, ui = {}) {
     pedigreeData: combined,
     warnings,
     integrityIssues,
+    layoutInfo,
     wizardData: deriveWizardView(doc, ui),
     lastGraphDebug: {
       individualCount: graph.individuals.length,
@@ -101,7 +132,9 @@ function bootstrap() {
   const actionNotice = notice ? { message: notice, at: Date.now() } : null;
   if (doc) {
     try {
-      return { doc, ...deriveAll(doc), actionNotice };
+      const prevNodes = nodesFromHints(doc.layoutHints);
+      const clean = withoutHints(doc);
+      return { doc: clean, ...deriveAll(clean, {}, prevNodes ? { prevNodes, frozen: true } : null), actionNotice };
     } catch (err) {
       console.error('[usePedigreeStore] Saved pedigree failed to load — starting clean (saved data not deleted).', err);
     }
@@ -130,11 +163,13 @@ export const usePedigreeStore = create((zSet, get) => {
     zSet({
       doc: result.doc,
       _history: [...(state._history || []), state.doc].slice(-MAX_UNDO_HISTORY),
+      _viewHistory: [...(state._viewHistory || []), viewOf(state)].slice(-MAX_UNDO_HISTORY),
       _future: [],
+      _viewFuture: [],
       actionNotice: null,
       lastCreated: result.created || {},
       ...extra,
-      ...(derived || deriveAll(result.doc, ui)),
+      ...(derived || deriveAll(result.doc, ui, editContext(state))),
     });
     return result;
   };
@@ -148,11 +183,20 @@ export const usePedigreeStore = create((zSet, get) => {
   const applyGuarded = (result) => {
     const state = get();
     if (!result || !result.ok || result.doc === state.doc) return apply(result);
-    const derived = deriveAll(result.doc, state.ui);
+    const derived = deriveAll(result.doc, state.ui, editContext(state));
     const assessment = assessRelationshipMutation(state.integrityIssues, derived.integrityIssues);
     if (assessment.blocked) return apply({ ok: false, doc: state.doc, reason: assessment.reason });
     return apply(result, {}, derived);
   };
+
+  /** What an edit's relayout starts from: the previous graph and what was drawn. */
+  const editContext = (state) => ({ prevGraph: state.doc.graph, prevNodes: state.pedigreeData.nodes, prevEdges: state.pedigreeData.edges });
+
+  /** Everything derived from a document, as drawn — restored verbatim by undo/redo. */
+  const viewOf = (state) => ({
+    pedigreeData: state.pedigreeData, warnings: state.warnings, integrityIssues: state.integrityIssues,
+    layoutInfo: state.layoutInfo, lastGraphDebug: state.lastGraphDebug,
+  });
 
   /** Run operations in sequence as ONE undoable step (all or nothing). */
   const chain = (doc, steps) => {
@@ -165,9 +209,10 @@ export const usePedigreeStore = create((zSet, get) => {
     return cur;
   };
 
+  // UI-only change (e.g. a pending gen-4 entry): the graph and the drawing stay
   const withUi = (ui) => {
     const state = get();
-    zSet({ ui, ...deriveAll(state.doc, ui) });
+    zSet({ ui, wizardData: deriveWizardView(state.doc, ui) });
   };
 
   return {
@@ -177,6 +222,10 @@ export const usePedigreeStore = create((zSet, get) => {
     lastCreated: {},
     _history: [],
     _future: [],
+    // derived views (drawing) aligned with _history/_future, so undo/redo
+    // brings back exactly the drawing the clinician saw
+    _viewHistory: [],
+    _viewFuture: [],
     selectedId: null,
     selectedId2: null,
     dismissedWarningIds: [],
@@ -300,7 +349,7 @@ export const usePedigreeStore = create((zSet, get) => {
       const ui = { gen4Pending: [] };
       return {
         doc: fresh, ui,
-        _history: [], _future: [],
+        _history: [], _future: [], _viewHistory: [], _viewFuture: [],
         selectedId: null, selectedId2: null,
         dismissedWarningIds: [], openSectionId: 'proband', actionNotice: null,
         ...deriveAll(fresh, ui),
@@ -308,13 +357,27 @@ export const usePedigreeStore = create((zSet, get) => {
     }),
 
     /** The current pedigree as a project file (`.peditree.json`). */
-    exportProjectFile: () => serializeDocument(get().doc),
+    exportProjectFile: () => serializeDocument({ ...get().doc, layoutHints: hintsFromNodes(get().pedigreeData.nodes) }),
+
+    /**
+     * "Yeniden Düzenle": a fresh layout of the whole pedigree, ignoring the
+     * previous drawing. Undoable (restores the previous drawing).
+     */
+    relayout: () => zSet((state) => ({
+      _history: [...(state._history || []), state.doc].slice(-MAX_UNDO_HISTORY),
+      _viewHistory: [...(state._viewHistory || []), viewOf(state)].slice(-MAX_UNDO_HISTORY),
+      _future: [], _viewFuture: [],
+      ...deriveAll(state.doc, state.ui, { reason: 'Yeniden Düzenle' }),
+    })),
 
     /** Open a project file (v2, or v1 which is migrated). Undoable. */
     openProjectFile: (text) => {
       const parsed = parseProjectFile(text);
       if (!parsed.ok) return apply({ ok: false, reason: parsed.reason });
-      const result = apply({ ok: true, doc: parsed.doc }, { selectedId: null, selectedId2: null });
+      const prevNodes = nodesFromHints(parsed.doc.layoutHints);
+      const doc = withoutHints(parsed.doc);
+      const derived = deriveAll(doc, get().ui, prevNodes ? { prevNodes, frozen: true } : null);
+      const result = apply({ ok: true, doc }, { selectedId: null, selectedId2: null }, derived);
       if (parsed.migrated) zSet({ actionNotice: { message: 'Eski biçimdeki dosya yeni veri biçimine taşınarak açıldı.', at: Date.now() } });
       return { ...result, migrated: parsed.migrated };
     },
@@ -324,22 +387,30 @@ export const usePedigreeStore = create((zSet, get) => {
       const history = state._history || [];
       if (history.length === 0) return {};
       const prev = history[history.length - 1];
+      const views = state._viewHistory || [];
+      const view = views.length === history.length ? views[views.length - 1] : null;
       return {
         doc: prev,
         _history: history.slice(0, -1),
+        _viewHistory: views.slice(0, -1),
         _future: [...(state._future || []), state.doc].slice(-MAX_UNDO_HISTORY),
-        ...deriveAll(prev, state.ui),
+        _viewFuture: [...(state._viewFuture || []), viewOf(state)].slice(-MAX_UNDO_HISTORY),
+        ...(view ? { ...view, wizardData: deriveWizardView(prev, state.ui) } : deriveAll(prev, state.ui)),
       };
     }),
     redo: () => zSet((state) => {
       const future = state._future || [];
       if (future.length === 0) return {};
       const next = future[future.length - 1];
+      const views = state._viewFuture || [];
+      const view = views.length === future.length ? views[views.length - 1] : null;
       return {
         doc: next,
         _future: future.slice(0, -1),
+        _viewFuture: views.slice(0, -1),
         _history: [...(state._history || []), state.doc].slice(-MAX_UNDO_HISTORY),
-        ...deriveAll(next, state.ui),
+        _viewHistory: [...(state._viewHistory || []), viewOf(state)].slice(-MAX_UNDO_HISTORY),
+        ...(view ? { ...view, wizardData: deriveWizardView(next, state.ui) } : deriveAll(next, state.ui)),
       };
     }),
   };
@@ -348,7 +419,11 @@ export const usePedigreeStore = create((zSet, get) => {
 // ── Autosave (debounced) ──
 let saveTimer = null;
 usePedigreeStore.subscribe((state, prevState) => {
-  if (state.doc === prevState.doc) return;
+  // the document or only the drawing ("Yeniden Düzenle") changed: save both
+  if (state.doc === prevState.doc && state.pedigreeData === prevState.pedigreeData) return;
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => saveDocument(usePedigreeStore.getState().doc), 300);
+  saveTimer = setTimeout(() => {
+    const st = usePedigreeStore.getState();
+    saveDocument({ ...st.doc, layoutHints: hintsFromNodes(st.pedigreeData.nodes) });
+  }, 300);
 });
