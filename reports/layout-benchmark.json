@@ -1,0 +1,619 @@
+{
+  "generatedAt": "2026-10-18T00:18:54.300Z",
+  "rows": [
+    {
+      "engine": "recursive",
+      "fixture": "CS-01",
+      "name": "Üç kuşak başlangıç",
+      "ms": 0.63,
+      "invariantCodes": [],
+      "readabilityCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "readabilityViolations": 4,
+      "metrics": {
+        "individuals": 7,
+        "unionsWithChildren": 3,
+        "offCenter": 1,
+        "maxCentreOffset": 113,
+        "sideHang": 3,
+        "longUnions": 0,
+        "maxUnionSpan": 225,
+        "crossings": 0,
+        "width": 295,
+        "widthPerIndividual": 42.1
+      }
+    },
+    {
+      "engine": "recursive",
+      "fixture": "CS-02",
+      "name": "Ders kitabı OD pedigrisi (4 kuşak, 7 kardeş, gelin/damatlar)",
+      "ms": 0.3,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 46,
+        "unionsWithChildren": 10,
+        "offCenter": 0,
+        "maxCentreOffset": 35,
+        "sideHang": 1,
+        "longUnions": 0,
+        "maxUnionSpan": 70,
+        "crossings": 0,
+        "width": 2930,
+        "widthPerIndividual": 63.7
+      }
+    },
+    {
+      "engine": "recursive",
+      "fixture": "CS-03",
+      "name": "Eşin ebeveynleri de çizili",
+      "ms": 0.12,
+      "invariantCodes": [],
+      "readabilityCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "readabilityViolations": 8,
+      "metrics": {
+        "individuals": 13,
+        "unionsWithChildren": 5,
+        "offCenter": 2,
+        "maxCentreOffset": 136,
+        "sideHang": 4,
+        "longUnions": 1,
+        "maxUnionSpan": 272,
+        "crossings": 0,
+        "width": 626,
+        "widthPerIndividual": 48.2
+      }
+    },
+    {
+      "engine": "recursive",
+      "fixture": "CS-04",
+      "name": "Ebeveynler birinci kuzen",
+      "ms": 0.08,
+      "invariantCodes": [],
+      "readabilityCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_CONNECTOR_CROSSING",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "readabilityViolations": 7,
+      "metrics": {
+        "individuals": 14,
+        "unionsWithChildren": 4,
+        "offCenter": 1,
+        "maxCentreOffset": 228,
+        "sideHang": 1,
+        "longUnions": 1,
+        "maxUnionSpan": 456,
+        "crossings": 2,
+        "width": 684,
+        "widthPerIndividual": 48.9
+      }
+    },
+    {
+      "engine": "recursive",
+      "fixture": "CS-05",
+      "name": "Çift birinci kuzen evliliği",
+      "ms": 0.17,
+      "invariantCodes": [],
+      "readabilityCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_CONNECTOR_CROSSING",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "readabilityViolations": 22,
+      "metrics": {
+        "individuals": 14,
+        "unionsWithChildren": 5,
+        "offCenter": 3,
+        "maxCentreOffset": 242,
+        "sideHang": 3,
+        "longUnions": 3,
+        "maxUnionSpan": 484,
+        "crossings": 3,
+        "width": 753,
+        "widthPerIndividual": 53.8
+      }
+    },
+    {
+      "engine": "recursive",
+      "fixture": "CS-06",
+      "name": "Üç partner, yarım kardeşler",
+      "ms": 0.07,
+      "invariantCodes": [],
+      "readabilityCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "readabilityViolations": 5,
+      "metrics": {
+        "individuals": 13,
+        "unionsWithChildren": 4,
+        "offCenter": 3,
+        "maxCentreOffset": 522,
+        "sideHang": 3,
+        "longUnions": 0,
+        "maxUnionSpan": 140,
+        "crossings": 0,
+        "width": 1116,
+        "widthPerIndividual": 85.8
+      }
+    },
+    {
+      "engine": "recursive",
+      "fixture": "CS-07",
+      "name": "Harmanlanmış aile (iki tarafın önceki çocukları)",
+      "ms": 0.07,
+      "invariantCodes": [],
+      "readabilityCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "readabilityViolations": 4,
+      "metrics": {
+        "individuals": 13,
+        "unionsWithChildren": 5,
+        "offCenter": 1,
+        "maxCentreOffset": 182,
+        "sideHang": 4,
+        "longUnions": 1,
+        "maxUnionSpan": 454,
+        "crossings": 0,
+        "width": 798,
+        "widthPerIndividual": 61.4
+      }
+    },
+    {
+      "engine": "recursive",
+      "fixture": "CS-08",
+      "name": "12 çocuklu kardeşlik, her biri evli ve çocuklu",
+      "ms": 0.15,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 50,
+        "unionsWithChildren": 13,
+        "offCenter": 0,
+        "maxCentreOffset": 35,
+        "sideHang": 0,
+        "longUnions": 0,
+        "maxUnionSpan": 70,
+        "crossings": 0,
+        "width": 2635,
+        "widthPerIndividual": 52.7
+      }
+    },
+    {
+      "engine": "recursive",
+      "fixture": "CS-09",
+      "name": "Altı kuşak + her kuşakta yan dal",
+      "ms": 0.11,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 28,
+        "unionsWithChildren": 11,
+        "offCenter": 0,
+        "maxCentreOffset": 35,
+        "sideHang": 6,
+        "longUnions": 0,
+        "maxUnionSpan": 70,
+        "crossings": 0,
+        "width": 990,
+        "widthPerIndividual": 35.4
+      }
+    },
+    {
+      "engine": "recursive",
+      "fixture": "CS-10",
+      "name": "Tekrarlayan akraba evliliği (2. ve 4. kuşak)",
+      "ms": 0.08,
+      "invariantCodes": [],
+      "readabilityCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_CONNECTOR_CROSSING",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "readabilityViolations": 14,
+      "metrics": {
+        "individuals": 19,
+        "unionsWithChildren": 6,
+        "offCenter": 2,
+        "maxCentreOffset": 314,
+        "sideHang": 2,
+        "longUnions": 2,
+        "maxUnionSpan": 627,
+        "crossings": 3,
+        "width": 912,
+        "widthPerIndividual": 48
+      }
+    },
+    {
+      "engine": "recursive",
+      "fixture": "CS-11",
+      "name": "Berdel (karşılıklı evlilik)",
+      "ms": 0.07,
+      "invariantCodes": [],
+      "readabilityCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_CONNECTOR_CROSSING",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "readabilityViolations": 22,
+      "metrics": {
+        "individuals": 12,
+        "unionsWithChildren": 4,
+        "offCenter": 2,
+        "maxCentreOffset": 285,
+        "sideHang": 2,
+        "longUnions": 1,
+        "maxUnionSpan": 569,
+        "crossings": 2,
+        "width": 626,
+        "widthPerIndividual": 52.2
+      }
+    },
+    {
+      "engine": "recursive",
+      "fixture": "CS-12",
+      "name": "Pedigri çökmesi (iki akrabalık döngüsü)",
+      "ms": 0.06,
+      "invariantCodes": [],
+      "readabilityCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_CONNECTOR_CROSSING",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "readabilityViolations": 10,
+      "metrics": {
+        "individuals": 15,
+        "unionsWithChildren": 6,
+        "offCenter": 2,
+        "maxCentreOffset": 197,
+        "sideHang": 4,
+        "longUnions": 2,
+        "maxUnionSpan": 394,
+        "crossings": 2,
+        "width": 606,
+        "widthPerIndividual": 40.4
+      }
+    },
+    {
+      "engine": "recursive",
+      "fixture": "CS-13",
+      "name": "İki ebeveyn tarafından yarım kardeşler",
+      "ms": 0.08,
+      "invariantCodes": [],
+      "readabilityCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "readabilityViolations": 3,
+      "metrics": {
+        "individuals": 8,
+        "unionsWithChildren": 3,
+        "offCenter": 3,
+        "maxCentreOffset": 280,
+        "sideHang": 3,
+        "longUnions": 1,
+        "maxUnionSpan": 559,
+        "crossings": 0,
+        "width": 659,
+        "widthPerIndividual": 82.4
+      }
+    },
+    {
+      "engine": "legacy",
+      "fixture": "CS-01",
+      "name": "Üç kuşak başlangıç",
+      "ms": 0.34,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 7,
+        "unionsWithChildren": 3,
+        "offCenter": 0,
+        "maxCentreOffset": 40,
+        "sideHang": 1,
+        "longUnions": 0,
+        "maxUnionSpan": 70,
+        "crossings": 0,
+        "width": 180,
+        "widthPerIndividual": 25.7
+      }
+    },
+    {
+      "engine": "legacy",
+      "fixture": "CS-02",
+      "name": "Ders kitabı OD pedigrisi (4 kuşak, 7 kardeş, gelin/damatlar)",
+      "ms": 0.21,
+      "invariantCodes": [
+        "UNRELATED_NODE_IN_CHILD_FOOTPRINT"
+      ],
+      "readabilityCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "readabilityViolations": 16,
+      "metrics": {
+        "individuals": 46,
+        "unionsWithChildren": 10,
+        "offCenter": 5,
+        "maxCentreOffset": 465,
+        "sideHang": 5,
+        "longUnions": 0,
+        "maxUnionSpan": 70,
+        "crossings": 0,
+        "width": 2595,
+        "widthPerIndividual": 56.4
+      }
+    },
+    {
+      "engine": "legacy",
+      "fixture": "CS-03",
+      "name": "Eşin ebeveynleri de çizili",
+      "ms": 0.07,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 13,
+        "unionsWithChildren": 5,
+        "offCenter": 0,
+        "maxCentreOffset": 40,
+        "sideHang": 1,
+        "longUnions": 0,
+        "maxUnionSpan": 70,
+        "crossings": 0,
+        "width": 235,
+        "widthPerIndividual": 18.1
+      }
+    },
+    {
+      "engine": "legacy",
+      "fixture": "CS-04",
+      "name": "Ebeveynler birinci kuzen",
+      "ms": 0.06,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 14,
+        "unionsWithChildren": 4,
+        "offCenter": 0,
+        "maxCentreOffset": 30,
+        "sideHang": 0,
+        "longUnions": 0,
+        "maxUnionSpan": 70,
+        "crossings": 0,
+        "width": 435,
+        "widthPerIndividual": 31.1
+      }
+    },
+    {
+      "engine": "legacy",
+      "fixture": "CS-05",
+      "name": "Çift birinci kuzen evliliği",
+      "ms": 0.05,
+      "invariantCodes": [
+        "CROSS_BRANCH_UNION_COLLAPSES_ANCESTOR_BLOCKS",
+        "EDGE_THROUGH_NON_OWNER_NODE",
+        "UNION_LINE_THROUGH_NODE"
+      ],
+      "readabilityCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "readabilityViolations": 5,
+      "metrics": {
+        "individuals": 14,
+        "unionsWithChildren": 5,
+        "offCenter": 3,
+        "maxCentreOffset": 163,
+        "sideHang": 3,
+        "longUnions": 1,
+        "maxUnionSpan": 325,
+        "crossings": 0,
+        "width": 495,
+        "widthPerIndividual": 35.4
+      }
+    },
+    {
+      "engine": "legacy",
+      "fixture": "CS-06",
+      "name": "Üç partner, yarım kardeşler",
+      "ms": 0.04,
+      "invariantCodes": [
+        "EDGE_THROUGH_NON_OWNER_NODE",
+        "UNION_LINE_THROUGH_NODE"
+      ],
+      "readabilityCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "readabilityViolations": 5,
+      "metrics": {
+        "individuals": 13,
+        "unionsWithChildren": 4,
+        "offCenter": 2,
+        "maxCentreOffset": 125,
+        "sideHang": 2,
+        "longUnions": 0,
+        "maxUnionSpan": 250,
+        "crossings": 0,
+        "width": 535,
+        "widthPerIndividual": 41.2
+      }
+    },
+    {
+      "engine": "legacy",
+      "fixture": "CS-07",
+      "name": "Harmanlanmış aile (iki tarafın önceki çocukları)",
+      "ms": 0.04,
+      "invariantCodes": [],
+      "readabilityCodes": [
+        "FOREIGN_T_JUNCTION"
+      ],
+      "readabilityViolations": 4,
+      "metrics": {
+        "individuals": 13,
+        "unionsWithChildren": 5,
+        "offCenter": 2,
+        "maxCentreOffset": 90,
+        "sideHang": 2,
+        "longUnions": 0,
+        "maxUnionSpan": 155,
+        "crossings": 0,
+        "width": 360,
+        "widthPerIndividual": 27.7
+      }
+    },
+    {
+      "engine": "legacy",
+      "fixture": "CS-08",
+      "name": "12 çocuklu kardeşlik, her biri evli ve çocuklu",
+      "ms": 0.23,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 50,
+        "unionsWithChildren": 13,
+        "offCenter": 0,
+        "maxCentreOffset": 0,
+        "sideHang": 0,
+        "longUnions": 0,
+        "maxUnionSpan": 70,
+        "crossings": 0,
+        "width": 2070,
+        "widthPerIndividual": 41.4
+      }
+    },
+    {
+      "engine": "legacy",
+      "fixture": "CS-09",
+      "name": "Altı kuşak + her kuşakta yan dal",
+      "ms": 0.1,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 28,
+        "unionsWithChildren": 11,
+        "offCenter": 0,
+        "maxCentreOffset": 20,
+        "sideHang": 1,
+        "longUnions": 0,
+        "maxUnionSpan": 70,
+        "crossings": 0,
+        "width": 660,
+        "widthPerIndividual": 23.6
+      }
+    },
+    {
+      "engine": "legacy",
+      "fixture": "CS-10",
+      "name": "Tekrarlayan akraba evliliği (2. ve 4. kuşak)",
+      "ms": 0.08,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 19,
+        "unionsWithChildren": 6,
+        "offCenter": 1,
+        "maxCentreOffset": 75,
+        "sideHang": 1,
+        "longUnions": 0,
+        "maxUnionSpan": 70,
+        "crossings": 0,
+        "width": 625,
+        "widthPerIndividual": 32.9
+      }
+    },
+    {
+      "engine": "legacy",
+      "fixture": "CS-11",
+      "name": "Berdel (karşılıklı evlilik)",
+      "ms": 0.04,
+      "invariantCodes": [
+        "CROSS_BRANCH_UNION_COLLAPSES_ANCESTOR_BLOCKS",
+        "EDGE_THROUGH_NON_OWNER_NODE",
+        "UNION_LINE_THROUGH_NODE"
+      ],
+      "readabilityCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "readabilityViolations": 5,
+      "metrics": {
+        "individuals": 12,
+        "unionsWithChildren": 4,
+        "offCenter": 2,
+        "maxCentreOffset": 155,
+        "sideHang": 2,
+        "longUnions": 1,
+        "maxUnionSpan": 310,
+        "crossings": 0,
+        "width": 440,
+        "widthPerIndividual": 36.7
+      }
+    },
+    {
+      "engine": "legacy",
+      "fixture": "CS-12",
+      "name": "Pedigri çökmesi (iki akrabalık döngüsü)",
+      "ms": 0.05,
+      "invariantCodes": [],
+      "readabilityCodes": [],
+      "readabilityViolations": 0,
+      "metrics": {
+        "individuals": 15,
+        "unionsWithChildren": 6,
+        "offCenter": 0,
+        "maxCentreOffset": 5,
+        "sideHang": 1,
+        "longUnions": 0,
+        "maxUnionSpan": 70,
+        "crossings": 0,
+        "width": 227.5,
+        "widthPerIndividual": 15.2
+      }
+    },
+    {
+      "engine": "legacy",
+      "fixture": "CS-13",
+      "name": "İki ebeveyn tarafından yarım kardeşler",
+      "ms": 0.02,
+      "invariantCodes": [
+        "EDGE_THROUGH_NON_OWNER_NODE",
+        "UNION_LINE_THROUGH_NODE"
+      ],
+      "readabilityCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "readabilityViolations": 2,
+      "metrics": {
+        "individuals": 8,
+        "unionsWithChildren": 3,
+        "offCenter": 0,
+        "maxCentreOffset": 45,
+        "sideHang": 2,
+        "longUnions": 0,
+        "maxUnionSpan": 135,
+        "crossings": 0,
+        "width": 270,
+        "widthPerIndividual": 33.8
+      }
+    }
+  ]
+}

@@ -29,15 +29,19 @@
 /**
  * Remove a set of individuals (by ID) from an already-built graph, and
  * cascade-clean everything that referenced them:
- *   - any union where either partner is being deleted is removed entirely
- *     (a union with a missing partner is not a valid union)
- *   - any parentChildRelationship for a removed union is removed
- *   - the deleted individual is stripped from any OTHER
- *     parentChildRelationship's children list (they simply stop being a
- *     child of that union — they are not further cascade-deleted; a
- *     parent's removal does not delete their children, matching the
- *     "affected children" preview language in the deletion confirmation UI)
- *   - a parentChildRelationship left with zero children is dropped
+ *   - the deleted individual is stripped from every parentChildRelationship's
+ *     children list (a parent's removal never deletes their children);
+ *   - a union where BOTH partners are deleted is removed, with its
+ *     parentChildRelationship;
+ *   - a union where ONE partner is deleted and children remain keeps the
+ *     children attached to the surviving parent: the deleted partner is
+ *     replaced by an explicit placeholder individual (sex 'unknown',
+ *     `placeholder: true`, label "Belirtilmemiş ebeveyn") — the same
+ *     representation the "add mother only" action already uses. (v0.5 Faz 2a,
+ *     DM-4: previously the whole union was dropped, which silently cut the
+ *     child's link to the OTHER parent as well.)
+ *   - a union where one partner is deleted and no children remain is removed;
+ *   - a parentChildRelationship left with zero children is dropped.
  *
  * Pure — never mutates the input graph.
  *
@@ -49,18 +53,53 @@ export function applyIndividualDeletions(graph, deletedIds) {
   const deleteSet = new Set(deletedIds || []);
   if (deleteSet.size === 0) return graph;
 
+  const byId = new Map(graph.individuals.map(i => [i.id, i]));
   const individuals = graph.individuals.filter(i => !deleteSet.has(i.id));
 
+  const survivingChildren = new Map();
+  for (const rel of graph.parentChildRelationships) {
+    survivingChildren.set(rel.unionId, rel.children.filter(cid => !deleteSet.has(cid)));
+  }
+
   const removedUnionIds = new Set();
-  const unions = graph.unions.filter(u => {
-    const touchesDeleted = (u.partners || []).some(p => deleteSet.has(p));
-    if (touchesDeleted) removedUnionIds.add(u.id);
-    return !touchesDeleted;
-  });
+  const unions = [];
+  for (const u of graph.unions) {
+    const partners = u.partners || [];
+    const deletedPartners = partners.filter(p => deleteSet.has(p));
+    if (deletedPartners.length === 0) { unions.push(u); continue; }
+    const kids = survivingChildren.get(u.id) || [];
+    if (deletedPartners.length === partners.length || kids.length === 0) {
+      removedUnionIds.add(u.id);
+      continue;
+    }
+    const survivor = byId.get(partners.find(p => !deleteSet.has(p)));
+    const placeholderId = `${u.id}__unspecified`;
+    individuals.push({
+      id: placeholderId,
+      sex: 'unknown',
+      generation: survivor ? survivor.generation : byId.get(deletedPartners[0])?.generation,
+      relation: 'unspecified_parent',
+      label: 'Belirtilmemiş ebeveyn',
+      displayLabel: '',
+      placeholder: true,
+      affected: false, carrier: false, deceased: false, proband: false,
+      pregnancyLoss: false, stillbirth: false, notes: '',
+    });
+    unions.push({
+      ...u,
+      partners: partners.map(p => (deleteSet.has(p) ? placeholderId : p)),
+      // a consanguinity claim about a person who is no longer in the
+      // pedigree cannot be carried over to an unspecified stand-in
+      consanguineous: false,
+      consanguinityStatus: 'none',
+      consanguinityDegree: null,
+      relationshipBackground: 'not_asked',
+    });
+  }
 
   const parentChildRelationships = graph.parentChildRelationships
     .filter(rel => !removedUnionIds.has(rel.unionId))
-    .map(rel => ({ ...rel, children: rel.children.filter(cid => !deleteSet.has(cid)) }))
+    .map(rel => ({ ...rel, children: survivingChildren.get(rel.unionId) || [] }))
     .filter(rel => rel.children.length > 0);
 
   return { ...graph, individuals, unions, parentChildRelationships };

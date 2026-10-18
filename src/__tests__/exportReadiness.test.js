@@ -159,7 +159,10 @@ describe('assessExportReadiness (v0.2 follow-up)', () => {
     expect(result.warnings.some(w => w.includes('Klinik olarak'))).toBe(false);
   });
 
-  it('WARNING: a zoomed/panned view warns about possible export clipping', () => {
+  // v0.5 Faz 2a (EX-2): export renders a canonical copy with the zoom/pan
+  // transform removed, so the on-screen view can no longer clip the file —
+  // the old "you are zoomed in, reset first" warning no longer applies.
+  it('a zoomed/panned view no longer warns: export is view-independent', () => {
     const result = assessExportReadiness({
       pedigreeData: basePedigreeData(),
       integrityIssues: [],
@@ -167,7 +170,7 @@ describe('assessExportReadiness (v0.2 follow-up)', () => {
       zoomTransform: { k: 2.5, x: 40, y: -30 },
     });
     expect(result.canExport).toBe(true);
-    expect(result.warnings.some(w => w.includes('yakınlaştırılmış'))).toBe(true);
+    expect(result.warnings.some(w => w.includes('yakınlaştırılmış'))).toBe(false);
   });
 
   it('a default identity zoom transform does not trigger the clipping warning', () => {

@@ -204,10 +204,15 @@ body {
   fill: #1e293b;
 }
 
-.node-selected rect,
-.node-selected circle,
-.node-selected path {
-  stroke: var(--primary);
+/* Selection highlight lives only in the page stylesheet, so it never reaches
+   an exported SVG/PNG (PedigreeCanvas.jsx / exportUtils.js, v0.5 Faz 2a EX-1). */
+.node-selected > .pedigree-shape {
+  stroke: #3b82f6;
+  stroke-width: 3px;
+}
+
+.node-selected-secondary > .pedigree-shape {
+  stroke: #8b5cf6;
   stroke-width: 3px;
 }
 

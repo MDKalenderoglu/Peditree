@@ -163,14 +163,38 @@ export default function IndividualEditor({
         <div style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b' }}>
           {pedigreeId ? pedigreeId.displayId : '—'}
         </div>
-        <div><strong>Cinsiyet:</strong> {node.sex === 'male' ? 'Erkek' : node.sex === 'female' ? 'Kadin' : 'Bilinmiyor'}</div>
+        {node.placeholder ? (
+          <div style={{ color: '#64748b' }}>
+            Belirtilmemiş ebeveyn — bu kişi silinen ya da bilinmeyen diğer ebeveynin yerini tutar.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <strong>Cinsiyet:</strong>
+            {/* v0.5 Faz 2a (DM-8): sex is editable for every individual (it
+                used to be read-only outside the wizard's proband field, so an
+                individual added as "unknown" could never be corrected — and
+                therefore never receive a partner). The store refuses a change
+                that would contradict an existing partnership and explains why. */}
+            <select
+              value={node.sex || 'unknown'}
+              onChange={e => onUpdate(node.id, { sex: e.target.value })}
+              className="form-input"
+              style={{ fontSize: '0.78rem', padding: '2px 4px', width: 'auto' }}
+              aria-label="Cinsiyet"
+            >
+              <option value="male">Erkek</option>
+              <option value="female">Kadın</option>
+              <option value="unknown">Bilinmiyor</option>
+            </select>
+          </div>
+        )}
         <div><strong>Jenerasyon:</strong> {node.generation}</div>
         {node.relation && <div><strong>Iliski:</strong> {node.relation}</div>}
         <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: '4px' }}>Teknik ID: {node.id}</div>
       </div>
 
       {/* ── Graph editing buttons ── */}
-      {!isLoss && (
+      {!isLoss && !node.placeholder && (
         <div style={{
           marginBottom: '12px', padding: '10px', background: '#eff6ff',
           borderRadius: '6px', border: '1px solid #bfdbfe',
@@ -574,12 +598,12 @@ export default function IndividualEditor({
             proband first, rather than silently leaving zero probands as a
             side effect. The store's deleteIndividual re-validates
             independently regardless of what this button shows. */}
-        {onDeleteIndividual && (
+        {onDeleteIndividual && !node.placeholder && (
           <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
             {!node.proband ? (
               <button
                 onClick={() => {
-                  if (window.confirm(`"${displayNameFor(node.id)}" silinsin mi? Bağlı birlik(ler) kaldırılacak; çocuklar silinmez, sadece bu ebeveyn bağlantısı kaldırılır.`)) {
+                  if (window.confirm(`"${displayNameFor(node.id)}" silinsin mi?\n\nÇocukları silinmez ve diğer ebeveynle bağlı kalır; silinen kişinin yerinde "belirtilmemiş ebeveyn" gösterilir. Çocuğu olmayan birliktelikleri kaldırılır.\n\nBu işlem "Geri Al" ile geri alınabilir.`)) {
                     onDeleteIndividual(node.id);
                   }
                 }}

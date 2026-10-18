@@ -26,6 +26,115 @@ function tagIssues(issues, source) {
 }
 
 /**
+ * v0.5 Faz 2a (DM-2): allocate the numeric suffix for a new direct-edit id.
+ * Ids used to be `…_${graphEdits.length}`, so removing an earlier edit made
+ * the next edit reuse a live id — and the builder silently drops duplicate
+ * ids, so the new spouse/child never appeared. The allocator is monotonic:
+ * it never returns a number already used by any edit or custom link, and it
+ * records the high-water mark in `wizardData.editSeq`.
+ */
+const EDIT_ID_FIELDS = ['spouseId', 'childId', 'unionId', 'parent1Id', 'parent2Id'];
+function allocEditIndex(wd) {
+  let next = Math.max(wd.editSeq || 0, (wd.graphEdits || []).length);
+  for (const e of wd.graphEdits || []) {
+    for (const k of EDIT_ID_FIELDS) {
+      const m = typeof e[k] === 'string' && e[k].match(/_(\d+)(?:_[12])?$/);
+      if (m) next = Math.max(next, Number(m[1]) + 1);
+    }
+  }
+  for (const link of wd.customConsanguinity || []) {
+    if (Number.isInteger(link.seq)) next = Math.max(next, link.seq + 1);
+  }
+  wd.editSeq = next + 1;
+  return next;
+}
+
+/**
+ * Store-level feedback for an action that was refused. Returned from an
+ * updater instead of `{}` so the reason reaches the UI (App.jsx shows it as
+ * a dismissible notice) rather than only the developer console. wizardData
+ * is unchanged, so nothing is pushed onto the undo stack.
+ */
+function blocked(reason) {
+  return { actionNotice: { message: reason, at: Date.now() } };
+}
+
+const hasOwn = (obj, key) => !!obj && Object.prototype.hasOwnProperty.call(obj, key);
+
+/** Wizard fields that set a specific person's age/sex (see updateWizardData). */
+const WIZARD_FIELD_OVERRIDES = {
+  'proband.age': { id: 'proband', field: 'age' },
+  'proband.sex': { id: 'proband', field: 'sex' },
+  'parents.motherAge': { id: 'mother', field: 'age' },
+  'parents.fatherAge': { id: 'father', field: 'age' },
+};
+
+/**
+ * Reason string if giving `personId` the sex `newSex` would contradict one of
+ * their existing partnerships under the current union rule (kadın + erkek,
+ * both sexes known), otherwise null. Placeholder partners ("belirtilmemiş
+ * ebeveyn") are exempt — they stand in for an unknown person by design.
+ */
+function partnerSexConflict(pedigreeData, personId, newSex) {
+  const individuals = pedigreeData.individuals || [];
+  const byId = new Map(individuals.map(i => [i.id, i]));
+  for (const u of pedigreeData.unions || []) {
+    if (!u.partners.includes(personId)) continue;
+    const partner = byId.get(u.partners.find(p => p !== personId));
+    if (!partner || partner.placeholder) continue;
+    if (newSex === 'unknown') {
+      return 'Bu bireyin bir eşi/birlikteliği var; cinsiyet "bilinmiyor" olarak değiştirilemez.';
+    }
+    if (partner.sex === newSex) {
+      return 'Bu cinsiyet değişikliği mevcut bir birlikteliği aynı cinsiyetli yapar; değişiklik uygulanmadı.';
+    }
+  }
+  return null;
+}
+
+/**
+ * v0.5 Faz 2a (DM-5/DM-6): ids of wizard-derived individuals are positional
+ * (`mat_uncle_2` is "the third maternal uncle"), so once a count goes down
+ * and up again a *different* person receives the same id. Any per-person
+ * overlay still keyed by that id (manual edits — affected, label, age — a
+ * deletion tombstone, direct edits hanging off them, custom sibling links)
+ * would silently re-attach to the new person. Prune every overlay entry whose
+ * id the builder no longer produces, using the pre-deletion graph so the
+ * deletion overlay itself does not prune its own tombstones.
+ *
+ * Mutates `wizardData` (always a fresh clone owned by the calling action).
+ */
+function pruneStaleOverlays(wizardData, builtGraph) {
+  const liveIds = new Set(builtGraph.individuals.map(i => i.id));
+  const liveUnionIds = new Set(builtGraph.unions.map(u => u.id));
+  if (wizardData.manualEdits) {
+    for (const id of Object.keys(wizardData.manualEdits)) {
+      if (!liveIds.has(id)) delete wizardData.manualEdits[id];
+    }
+  }
+  if (Array.isArray(wizardData.deletedIndividualIds)) {
+    wizardData.deletedIndividualIds = wizardData.deletedIndividualIds.filter(id => liveIds.has(id));
+  }
+  if (Array.isArray(wizardData.graphEdits)) {
+    // An edit whose created entity is absent never materialised (its target
+    // or union is gone); keeping it would resurrect it on whoever reuses the
+    // target id later.
+    wizardData.graphEdits = wizardData.graphEdits.filter(e => {
+      if (e.type === 'addSpouse') return liveIds.has(e.spouseId);
+      if (e.type === 'addChild') return liveIds.has(e.childId);
+      if (e.type === 'linkPartners') return liveUnionIds.has(e.unionId);
+      if (e.type === 'addParents') return liveIds.has(e.parent1Id);
+      return true;
+    });
+  }
+  if (Array.isArray(wizardData.customConsanguinity)) {
+    wizardData.customConsanguinity = wizardData.customConsanguinity.filter(
+      link => liveIds.has(link.person1) && liveIds.has(link.person2)
+    );
+  }
+}
+
+/**
  * Pure, read-only check for whether `targetId` can be safely deleted via
  * direct graph edits, and (if so) the full transitive cascade of graphEdits
  * entries + individual IDs that removal must take with it.
@@ -71,13 +180,19 @@ export function computeDeletionPlan(wizardData, pedigreeData, targetId) {
       reason: 'Proband silinemez. Önce başka bir bireyi proband olarak atayın, ardından tekrar deneyin.',
     };
   }
+  if (targetInd.placeholder) {
+    return {
+      ok: false,
+      reason: 'Belirtilmemiş ebeveyn ayrıca silinemez; diğer ebeveyni silerseniz bu birliktelik de kaldırılır.',
+    };
+  }
 
   // Preview data for the confirmation dialog: which unions this person is a
-  // partner in (these unions are removed entirely — a union needs exactly
-  // two partners), and which children are affected (they are NOT deleted;
-  // they lose their link to the removed union and become parent-less,
-  // exactly like any other "orphan" individual this app already tolerates
-  // as a warning, not an error).
+  // partner in, and which children are affected. Children are never
+  // deleted; while a union still has children and another partner it is
+  // kept with an "unspecified parent" placeholder in the deleted person's
+  // slot, so the children stay linked to the surviving parent (v0.5 Faz 2a,
+  // DM-4 — see graphDeletion.js).
   const affectedUnionIds = unions.filter(u => (u.partners || []).includes(targetId)).map(u => u.id);
   const affectedChildIds = [...new Set(
     pcrs
@@ -453,6 +568,9 @@ function generateDerivedData(wizardData, currentPedigreeData) {
   wizardData.childOrders = migrateSiblingOrder(wizardData);
 
   let newGraph = buildPedigreeFromWizard(wizardData);
+  // Pruned entries never contributed anything to this build (their target
+  // ids are absent), so the graph does not need to be rebuilt afterwards.
+  pruneStaleOverlays(wizardData, newGraph);
 
   // v0.3a.2 generic "delete anyone" overlay — applied post-build, before
   // any audit runs, so the audit reflects the pedigree the user actually
@@ -463,10 +581,9 @@ function generateDerivedData(wizardData, currentPedigreeData) {
   }
 
   // ── Graph integrity audit (detect-only, never mutates) ──
+  // (v0.5 Faz 2a, PF-1: the full graph — which carries clinical labels and
+  // notes — is no longer dumped to the browser console on every rebuild.)
   const graphIssues = tagIssues(auditPedigreeGraph(newGraph), 'graph');
-  console.log("GRAPH:", newGraph);
-  console.log("INTEGRITY ISSUE COUNT:", graphIssues.length);
-  console.table(graphIssues);
 
   const errors = graphIssues.filter(i => i.severity === 'error');
   if (errors.length > 0) {
@@ -485,9 +602,19 @@ function generateDerivedData(wizardData, currentPedigreeData) {
   // graph-derived, assigned once by the builder's stage 10d from
   // wizardData.probandId, which is the single source of truth for it.
   const manualEditsOverlay = wizardData.manualEdits || {};
-  const mergedIndividuals = newGraph.individuals.map(newInd => {
-    const existing = (currentPedigreeData.individuals || []).find(i => i.id === newInd.id);
-    const persisted = manualEditsOverlay[newInd.id];
+  const mergedIndividuals = newGraph.individuals.map(builtInd => {
+    const existing = (currentPedigreeData.individuals || []).find(i => i.id === builtInd.id);
+    const persisted = manualEditsOverlay[builtInd.id];
+    // v0.5 Faz 2a (DM-3): age and sex are taken ONLY from explicit editor
+    // edits (the persisted overlay), never from the previous snapshot —
+    // otherwise a stale snapshot value would shadow a later wizard edit.
+    // Previously neither was merged at all, so an age typed in the right
+    // panel vanished on the next structural rebuild.
+    const newInd = {
+      ...builtInd,
+      ...(hasOwn(persisted, 'age') ? { age: persisted.age } : {}),
+      ...(hasOwn(persisted, 'sex') ? { sex: persisted.sex } : {}),
+    };
     const source = existing || persisted;
     if (source) {
       return {
@@ -646,6 +773,7 @@ export const usePedigreeStore = create((zSet, get) => {
       zSet((state) => ({
         _history: [...(state._history || []), prevWizardData].slice(-MAX_UNDO_HISTORY),
         _future: [],
+        actionNotice: null,
       }));
     }
   };
@@ -660,6 +788,9 @@ export const usePedigreeStore = create((zSet, get) => {
   selectedId2: null,
   // Dismissed warnings (v0.3a.2) — stable content-derived IDs, see warningIds.js.
   dismissedWarningIds: [],
+  // v0.5 Faz 2a — why the last relationship action was refused (shown to the
+  // clinician in Turkish instead of only logged to the console).
+  actionNotice: null,
   // v0.3a.3 — which single left-panel accordion section is open (true
   // single-open accordion: opening one closes all others). Lives in the
   // store, not local component state, so it resets cleanly with the rest
@@ -687,6 +818,9 @@ export const usePedigreeStore = create((zSet, get) => {
     if (!state.selectedId) return { selectedId: id, selectedId2: null };
     return { selectedId2: id };
   }),
+
+  /** Dismiss the "action refused" notice. Pure UI state, not undoable. */
+  dismissActionNotice: () => zSet(() => ({ actionNotice: null })),
 
   /** Clear both selection slots. */
   clearSelection: () => zSet(() => ({ selectedId: null, selectedId2: null })),
@@ -719,7 +853,19 @@ export const usePedigreeStore = create((zSet, get) => {
   })),
 
   updateWizardData: (section, field, value) => set((state) => {
+    // v0.5 Faz 2a (DM-7): changing the proband's sex must not silently turn
+    // an existing partnership into a same-sex or unknown-sex union.
+    if (section === 'proband' && field === 'sex') {
+      const conflict = partnerSexConflict(state.pedigreeData, 'proband', value);
+      if (conflict) return blocked(conflict);
+    }
     const wd = JSON.parse(JSON.stringify(state.wizardData));
+    // v0.5 Faz 2a (DM-3): the wizard field is the newest value for this
+    // person — drop any older right-panel override of the same field.
+    const overrideTarget = WIZARD_FIELD_OVERRIDES[`${section}.${field}`];
+    if (overrideTarget && wd.manualEdits && wd.manualEdits[overrideTarget.id]) {
+      delete wd.manualEdits[overrideTarget.id][overrideTarget.field];
+    }
     if (section === 'proband') wd.proband[field] = value;
     else if (section === 'parents') wd.parents[field] = value;
     else if (section === 'siblings') wd.siblings[field] = value;
@@ -767,6 +913,8 @@ export const usePedigreeStore = create((zSet, get) => {
   updateSiblingAge: (type, idx, age) => set((state) => {
     const wd = JSON.parse(JSON.stringify(state.wizardData));
     wd.siblings[type][idx].age = age;
+    const sibId = `sib_${{ male: 'm', female: 'f', unknown: 'u' }[type]}_${idx}`;
+    if (wd.manualEdits && wd.manualEdits[sibId]) delete wd.manualEdits[sibId].age;
     const derived = generateDerivedData(wd, state.pedigreeData);
     return { wizardData: wd, ...derived };
   }),
@@ -861,8 +1009,7 @@ export const usePedigreeStore = create((zSet, get) => {
     // action is never unsafe to call directly, regardless of caller.
     const plan = computeSiblingCreationPlan(state.pedigreeData, person1, person2);
     if (!plan.ok) {
-      console.warn('[usePedigreeStore] addCustomConsanguinity blocked:', plan.reason);
-      return {};
+      return blocked(plan.reason);
     }
     if (plan.action === 'noop') {
       return {}; // already siblings — nothing to do
@@ -872,6 +1019,9 @@ export const usePedigreeStore = create((zSet, get) => {
     if (!wd.customConsanguinity) wd.customConsanguinity = [];
     wd.customConsanguinity.push({
       id: `_cc_${Math.random()}`,
+      // Stable number for the fabricated shared-parent ids (`cc_${seq}_f`);
+      // positional numbering shifted them when an earlier link was removed.
+      seq: allocEditIndex(wd),
       type: 'siblings',
       person1,
       person2,
@@ -884,8 +1034,7 @@ export const usePedigreeStore = create((zSet, get) => {
     const derived = generateDerivedData(wd, state.pedigreeData);
     const assessment = assessRelationshipMutation(state.integrityIssues, derived.integrityIssues);
     if (assessment.blocked) {
-      console.warn('[usePedigreeStore] addCustomConsanguinity rolled back:', assessment.reason);
-      return {};
+      return blocked(assessment.reason);
     }
     return { wizardData: wd, ...derived };
   }),
@@ -1013,14 +1162,17 @@ export const usePedigreeStore = create((zSet, get) => {
    */
   addSpouseTo: (targetId, spouseSex = 'unknown') => set((state) => {
     const target = (state.pedigreeData.individuals || []).find(i => i.id === targetId);
-    if (!target || target.sex === 'unknown' || spouseSex === 'unknown' || spouseSex === target.sex) {
-      console.warn('[usePedigreeStore] addSpouseTo blocked: union yalnızca kadın+erkek çiftler arasında kurulabilir.');
-      return {};
+    if (!target) return blocked('Birey grafikte bulunamadı.');
+    if (target.sex === 'unknown') {
+      return blocked('Eş eklemek için önce bu bireyin cinsiyeti belirtilmeli (birey düzenleme panelinden).');
+    }
+    if (spouseSex === 'unknown' || spouseSex === target.sex) {
+      return blocked('Eş/birliktelik yalnızca kadın ve erkek arasında kurulabilir.');
     }
 
     const wd = JSON.parse(JSON.stringify(state.wizardData));
     if (!wd.graphEdits) wd.graphEdits = [];
-    const idx = wd.graphEdits.length;
+    const idx = allocEditIndex(wd);
     const spouseId = `de_sp_${idx}`;
     const unionId = `U_DE_${idx}`;
     wd.graphEdits.push({
@@ -1041,7 +1193,7 @@ export const usePedigreeStore = create((zSet, get) => {
   addChildToUnion: (unionId, sex = 'unknown') => set((state) => {
     const wd = JSON.parse(JSON.stringify(state.wizardData));
     if (!wd.graphEdits) wd.graphEdits = [];
-    const idx = wd.graphEdits.length;
+    const idx = allocEditIndex(wd);
     const childId = `de_ch_${idx}`;
     wd.graphEdits.push({
       type: 'addChild',
@@ -1066,7 +1218,7 @@ export const usePedigreeStore = create((zSet, get) => {
 
     if (existingUnion) {
       // Add child to existing union
-      const idx = wd.graphEdits.length;
+      const idx = allocEditIndex(wd);
       wd.graphEdits.push({
         type: 'addChild',
         unionId: existingUnion.id,
@@ -1075,7 +1227,7 @@ export const usePedigreeStore = create((zSet, get) => {
       });
     } else {
       // Need to create spouse + union first, then add child
-      const idx = wd.graphEdits.length;
+      const idx = allocEditIndex(wd);
       const targetInd = graph.individuals?.find(i => i.id === targetId);
       const spouseSex = targetInd?.sex === 'male' ? 'female' : targetInd?.sex === 'female' ? 'male' : 'unknown';
       const spouseId = `de_sp_${idx}`;
@@ -1111,6 +1263,12 @@ export const usePedigreeStore = create((zSet, get) => {
 
   // Update individual properties (from right-panel editor) — recalculate layout
   updateIndividual: (id, updates) => set((state) => {
+    // v0.5 Faz 2a (DM-7/DM-8): sex is now editable for every individual,
+    // but never in a way that contradicts an existing partnership.
+    if (hasOwn(updates, 'sex')) {
+      const conflict = partnerSexConflict(state.pedigreeData, id, updates.sex);
+      if (conflict) return blocked(conflict);
+    }
     // Proband is a graph-derived, single-holder flag (see
     // pedigreeBuilderFromWizard.js stage 10d) — route any change to it
     // through a full rebuild via wizardData.probandId instead of the
@@ -1149,6 +1307,8 @@ export const usePedigreeStore = create((zSet, get) => {
     const wd = JSON.parse(JSON.stringify(state.wizardData));
     if (!wd.manualEdits) wd.manualEdits = {};
     wd.manualEdits[id] = { ...(wd.manualEdits[id] || {}), ...updates };
+    // Keep the wizard's own proband sex selector in step with an editor edit.
+    if (id === 'proband' && hasOwn(updates, 'sex')) wd.proband.sex = updates.sex;
 
     const individuals = state.pedigreeData.individuals.map(ind =>
       ind.id === id ? { ...ind, ...updates } : ind
@@ -1284,8 +1444,7 @@ export const usePedigreeStore = create((zSet, get) => {
   deleteIndividual: (id) => set((state) => {
     const plan = computeDeletionPlan(state.wizardData, state.pedigreeData, id);
     if (!plan.ok) {
-      console.warn('[usePedigreeStore] deleteIndividual blocked:', plan.reason);
-      return {};
+      return blocked(plan.reason);
     }
 
     const wd = JSON.parse(JSON.stringify(state.wizardData));
@@ -1305,8 +1464,18 @@ export const usePedigreeStore = create((zSet, get) => {
         link => link.person1 !== id && link.person2 !== id
       );
     }
+    // v0.5 Faz 2a (DM-4): a union keeps existing (with a placeholder in the
+    // deleted partner's slot) while it still has children and another
+    // partner, so its birth order must be kept; only its consanguinity /
+    // relationship-background claims are dropped (they described the person
+    // being deleted).
+    const deletedSet = new Set(wd.deletedIndividualIds);
     (plan.affectedUnionIds || []).forEach(uid => {
-      if (wd.childOrders) delete wd.childOrders[uid];
+      const union = (state.pedigreeData.unions || []).find(u => u.id === uid);
+      const rel = (state.pedigreeData.parentChildRelationships || []).find(r => r.unionId === uid);
+      const survivingKids = ((rel && rel.children) || []).filter(c => !deletedSet.has(c));
+      const unionRemoved = !union || union.partners.every(p => deletedSet.has(p)) || survivingKids.length === 0;
+      if (unionRemoved && wd.childOrders) delete wd.childOrders[uid];
       if (wd.consanguineousUnions) delete wd.consanguineousUnions[uid];
       if (wd.unionRelationshipBackgrounds) delete wd.unionRelationshipBackgrounds[uid];
     });
@@ -1383,13 +1552,12 @@ export const usePedigreeStore = create((zSet, get) => {
     const plan = computeUnionCreationPlan(state.pedigreeData, id1, id2);
     const proceedAnyway = plan.requiresConsanguineousFlag && opts.markConsanguineous;
     if (!plan.ok && !proceedAnyway) {
-      console.warn('[usePedigreeStore] createUnionBetween blocked:', plan.reason);
-      return {};
+      return blocked(plan.reason);
     }
 
     const wd = JSON.parse(JSON.stringify(state.wizardData));
     if (!wd.graphEdits) wd.graphEdits = [];
-    const idx = wd.graphEdits.length;
+    const idx = allocEditIndex(wd);
     const unionId = `U_DE_LINK_${idx}`;
     wd.graphEdits.push({ type: 'linkPartners', person1: id1, person2: id2, unionId, status: 'together' });
 
@@ -1406,8 +1574,7 @@ export const usePedigreeStore = create((zSet, get) => {
     const derived = generateDerivedData(wd, state.pedigreeData);
     const assessment = assessRelationshipMutation(state.integrityIssues, derived.integrityIssues);
     if (assessment.blocked) {
-      console.warn('[usePedigreeStore] createUnionBetween rolled back:', assessment.reason);
-      return {};
+      return blocked(assessment.reason);
     }
     return { wizardData: wd, ...derived };
   }),
@@ -1427,13 +1594,12 @@ export const usePedigreeStore = create((zSet, get) => {
   addParentsTo: (targetId, opts = {}) => set((state) => {
     const plan = computeAddParentsPlan(state.pedigreeData, targetId);
     if (!plan.ok) {
-      console.warn('[usePedigreeStore] addParentsTo blocked:', plan.reason);
-      return {};
+      return blocked(plan.reason);
     }
 
     const wd = JSON.parse(JSON.stringify(state.wizardData));
     if (!wd.graphEdits) wd.graphEdits = [];
-    const idx = wd.graphEdits.length;
+    const idx = allocEditIndex(wd);
     const parent1Id = `de_par_${idx}_1`;
     const parent2Id = `de_par_${idx}_2`;
     const unionId = `U_DE_PARENTS_${idx}`;
@@ -1458,8 +1624,7 @@ export const usePedigreeStore = create((zSet, get) => {
     const derived = generateDerivedData(wd, state.pedigreeData);
     const assessment = assessRelationshipMutation(state.integrityIssues, derived.integrityIssues);
     if (assessment.blocked) {
-      console.warn('[usePedigreeStore] addParentsTo rolled back:', assessment.reason);
-      return {};
+      return blocked(assessment.reason);
     }
     return { wizardData: wd, ...derived };
   }),
@@ -1472,20 +1637,18 @@ export const usePedigreeStore = create((zSet, get) => {
   addSiblingTo: (targetId, sex = 'unknown') => set((state) => {
     const plan = computeAddSiblingPlan(state.pedigreeData, targetId);
     if (!plan.ok) {
-      console.warn('[usePedigreeStore] addSiblingTo blocked:', plan.reason);
-      return {};
+      return blocked(plan.reason);
     }
 
     const wd = JSON.parse(JSON.stringify(state.wizardData));
     if (!wd.graphEdits) wd.graphEdits = [];
-    const idx = wd.graphEdits.length;
+    const idx = allocEditIndex(wd);
     wd.graphEdits.push({ type: 'addChild', unionId: plan.unionId, childId: `de_ch_${idx}`, sex });
 
     const derived = generateDerivedData(wd, state.pedigreeData);
     const assessment = assessRelationshipMutation(state.integrityIssues, derived.integrityIssues);
     if (assessment.blocked) {
-      console.warn('[usePedigreeStore] addSiblingTo rolled back:', assessment.reason);
-      return {};
+      return blocked(assessment.reason);
     }
     return { wizardData: wd, ...derived };
   }),

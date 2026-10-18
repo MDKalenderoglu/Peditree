@@ -30,14 +30,31 @@ describe('graphDeletion — applyIndividualDeletions', () => {
     expect(result.individuals.map(i => i.id)).toEqual(['a', 'b', 'd']);
   });
 
-  it('removing a union partner removes the whole union', () => {
+  // v0.5 Faz 2a (DM-4): removing ONE parent used to drop the whole union,
+  // silently cutting the children's link to the OTHER parent too. The
+  // children now stay attached to the surviving parent through an explicit
+  // "unspecified parent" placeholder in the deleted partner's slot.
+  it('removing one partner of a union with children keeps the surviving parent link via a placeholder', () => {
     const result = applyIndividualDeletions(sampleGraph(), ['a']);
-    expect(result.unions).toHaveLength(0);
+    expect(result.unions).toHaveLength(1);
+    expect(result.unions[0].partners).toEqual(['U1__unspecified', 'b']);
+    const ph = result.individuals.find(i => i.id === 'U1__unspecified');
+    expect(ph).toMatchObject({ sex: 'unknown', placeholder: true });
+    expect(result.parentChildRelationships).toEqual([{ unionId: 'U1', children: ['c', 'd'] }]);
   });
 
-  it('removing a union partner removes its parentChildRelationship entirely', () => {
-    const result = applyIndividualDeletions(sampleGraph(), ['a']);
+  it('removing both partners removes the union and its parentChildRelationship', () => {
+    const result = applyIndividualDeletions(sampleGraph(), ['a', 'b']);
+    expect(result.unions).toHaveLength(0);
     expect(result.parentChildRelationships).toHaveLength(0);
+  });
+
+  it('removing one partner of a childless union removes the union', () => {
+    const g = sampleGraph();
+    g.parentChildRelationships = [];
+    const result = applyIndividualDeletions(g, ['a']);
+    expect(result.unions).toHaveLength(0);
+    expect(result.individuals.some(i => i.placeholder)).toBe(false);
   });
 
   it('removing one child leaves the union and PCR intact, minus that child', () => {

@@ -845,9 +845,13 @@ export function buildPedigreeFromWizard(state) {
       // Neither has parents, or both have different parents — create shared parents
       if (!p1ParentUnion && !p2ParentUnion) {
         const parentGen = Math.min(p1.generation, p2.generation) - 1;
-        const ggfId = `cc_${idx}_f`;
-        const ggmId = `cc_${idx}_m`;
-        const unionId = `U_CC_${idx}`;
+        // v0.5 Faz 2a: links created from now on carry a stable `seq`, so the
+        // fabricated parents keep their ids when an earlier link is removed
+        // (positional `idx` is kept only for links saved before this field).
+        const n = Number.isInteger(link.seq) ? link.seq : idx;
+        const ggfId = `cc_${n}_f`;
+        const ggmId = `cc_${n}_m`;
+        const unionId = `U_CC_${n}`;
         addInd({ id: ggfId, sex: 'male', generation: parentGen, relation: 'cc_parent', label: `Ortak Baba ${idx + 1}` });
         addInd({ id: ggmId, sex: 'female', generation: parentGen, relation: 'cc_parent', label: `Ortak Anne ${idx + 1}` });
         addUnion(unionId, ggfId, ggmId);

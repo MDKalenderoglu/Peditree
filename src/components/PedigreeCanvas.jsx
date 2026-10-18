@@ -90,7 +90,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     cp.append('rect').attr('x', 0).attr('y', 0).attr('width', 0.5).attr('height', 1).attr('fill', NODE_STROKE);
     cp.append('rect').attr('x', 0.5).attr('y', 0).attr('width', 0.5).attr('height', 1).attr('fill', NODE_FILL);
 
-    const g = svg.append('g');
+    // The zoom/pan transform is applied to this group only; export resets it
+    // so the file always contains the whole pedigree (exportUtils.js).
+    const g = svg.append('g').attr('class', 'pedigree-viewport');
 
     // =====================
     // DRAW EDGES
@@ -187,8 +189,13 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       .enter()
       .append('g')
       .attr('class', d => {
+        // Selection is expressed ONLY through these classes, styled by the
+        // page stylesheet (app.css). It is never written onto the SVG shape
+        // itself, so a selected person is not exported with a blue outline
+        // (v0.5 Faz 2a, EX-1).
         let cls = 'node-group';
-        if (d.id === selectedNodeId || d.id === selectedNodeId2) cls += ' node-selected';
+        if (d.id === selectedNodeId) cls += ' node-selected';
+        else if (d.id === selectedNodeId2) cls += ' node-selected-secondary';
         return cls;
       })
       .attr('transform', d => `translate(${d.x},${d.y})`)
@@ -246,16 +253,10 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       let fill = NODE_FILL;
       if (d.affected || hasAffectedCondition(d)) fill = NODE_STROKE;
       else if (d.carrier) fill = 'url(#carrier-half)';
-      shape.attr('fill', fill).attr('stroke', NODE_STROKE).attr('stroke-width', 2);
-
-      // Selection highlight — primary (blue) vs. secondary Cmd/Ctrl-click
-      // selection (violet), so a two-person selection is visually
-      // distinguishable, not just "two blue nodes."
-      if (d.id === selectedNodeId) {
-        shape.attr('stroke', '#3b82f6').attr('stroke-width', 3);
-      } else if (d.id === selectedNodeId2) {
-        shape.attr('stroke', '#8b5cf6').attr('stroke-width', 3);
-      }
+      shape.attr('class', 'pedigree-shape')
+        .attr('fill', fill).attr('stroke', NODE_STROKE).attr('stroke-width', 2);
+      // Selection highlight (primary blue / secondary violet) comes from the
+      // node-group classes above via app.css — see EX-1 note there.
 
       // Stillbirth cross (X)
       if (d.stillbirth) {

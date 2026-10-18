@@ -21,6 +21,7 @@ function App() {
     addParentsTo, addSiblingTo,
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
+    actionNotice, dismissActionNotice,
   } = usePedigreeStore();
   const [exportError, setExportError] = React.useState(null);
   const [exportNotice, setExportNotice] = React.useState(null);
@@ -166,6 +167,18 @@ function App() {
             <ImageIcon size={16} /> PNG
           </button>
         </div>
+
+        {actionNotice && (
+          <div className="warning-panel" role="status" style={{ borderColor: '#2563eb', background: '#eff6ff' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+              <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '5px', color: '#1d4ed8' }}>
+                <AlertTriangle size={16} /> İşlem uygulanmadı
+              </h4>
+              <button onClick={dismissActionNotice} title="Kapat" style={dismissBtnStyle}>×</button>
+            </div>
+            <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: '#1e3a8a', whiteSpace: 'pre-line' }}>{actionNotice.message}</p>
+          </div>
+        )}
 
         {exportError && (
           <div className="warning-panel" style={{ borderColor: '#dc2626', background: '#fef2f2' }}>

@@ -294,7 +294,7 @@ describe('v0.3a.1 — store: computeDeletionPlan', () => {
     expect(plan.affectedChildIds).toEqual([childEdit.childId]);
   });
 
-  it('deleting a spouse orphans (does not delete) their child', () => {
+  it('deleting a spouse keeps their child (child stays linked to the surviving parent)', () => {
     usePedigreeStore.getState().addSpouseTo('proband', 'female');
     let state = usePedigreeStore.getState();
     const spouseEdit = state.wizardData.graphEdits.find(e => e.type === 'addSpouse');
@@ -308,10 +308,14 @@ describe('v0.3a.1 — store: computeDeletionPlan', () => {
     const ids = state.pedigreeData.individuals.map(i => i.id);
     expect(ids).not.toContain(spouseEdit.spouseId); // the deleted spouse is gone
     expect(ids).toContain(childEdit.childId); // the child is NOT deleted
-    const childHasParentUnion = state.pedigreeData.parentChildRelationships.some(
-      rel => rel.children.includes(childEdit.childId)
+    // v0.5 Faz 2a (DM-4): the child keeps its link to the surviving parent
+    // (proband); the deleted spouse's slot becomes an unspecified placeholder.
+    const rel = state.pedigreeData.parentChildRelationships.find(
+      r => r.children.includes(childEdit.childId)
     );
-    expect(childHasParentUnion).toBe(false); // but is now orphaned (no parent link)
+    expect(rel).toBeTruthy();
+    const union = state.pedigreeData.unions.find(u => u.id === rel.unionId);
+    expect(union.partners).toContain('proband');
   });
 
   it('deleteIndividual actually removes the individual and its cascade from the graph', () => {
@@ -353,13 +357,18 @@ describe('v0.3a.1 — store: computeDeletionPlan', () => {
     expect(errors).toHaveLength(0);
   });
 
-  it('v0.3a.2: deleting mother removes U_PARENTS union but does not delete father or proband', () => {
+  it('deleting mother does not delete father or proband, and proband stays the father\'s child', () => {
     usePedigreeStore.getState().deleteIndividual('mother');
     const state = usePedigreeStore.getState();
     const ids = state.pedigreeData.individuals.map(i => i.id);
     expect(ids).toContain('father');
     expect(ids).toContain('proband');
-    expect(state.pedigreeData.unions.some(u => u.id === 'U_PARENTS')).toBe(false);
+    expect(ids).not.toContain('mother');
+    // v0.5 Faz 2a (DM-4): U_PARENTS survives with an unspecified placeholder
+    // in the mother's slot, so the proband's link to the father is kept.
+    const u = state.pedigreeData.unions.find(x => x.id === 'U_PARENTS');
+    expect(u.partners).toContain('father');
+    expect(u.partners).not.toContain('mother');
   });
 });
 

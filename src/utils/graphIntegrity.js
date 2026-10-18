@@ -257,6 +257,31 @@ export function auditPedigreeGraph(graph) {
   }
 
   // ──────────────────────────────────────
+  // 11b. Union partner sex conflict (v0.5 Faz 2a, DM-7). Under the current
+  //      product rule a partnership is woman + man; the rule is enforced
+  //      when a union is created, but a later sex change (or imported data)
+  //      could still produce a same-sex union silently. Placeholder partners
+  //      ("belirtilmemiş ebeveyn") stand in for an unknown person and are
+  //      exempt; unknown-sex partners are not flagged here (open product
+  //      decision, see docs/PEDITREE_AUDIT_REPORT.md §4).
+  // ──────────────────────────────────────
+  {
+    const sexById = new Map(individuals.map(i => [i.id, i]));
+    for (const u of unions) {
+      const [a, b] = (u.partners || []).map(pid => sexById.get(pid));
+      if (!a || !b || a.placeholder || b.placeholder) continue;
+      if ((a.sex === 'male' || a.sex === 'female') && a.sex === b.sex) {
+        issues.push({
+          severity: 'error',
+          code: 'UNION_PARTNER_SEX_CONFLICT',
+          message: `Birliktelikteki iki birey aynı cinsiyette görünüyor (${a.displayLabel || a.label || a.id} ve ${b.displayLabel || b.label || b.id}); cinsiyet kayıtlarını kontrol edin.`,
+          ids: [u.id, a.id, b.id],
+        });
+      }
+    }
+  }
+
+  // ──────────────────────────────────────
   // 12. Consanguinity reported but not structurally resolved.
   //     Distinct from CHECK 13 below: this is an EXPECTED, non-broken state
   //     (the user declared consanguinity for a degree/path this app doesn't

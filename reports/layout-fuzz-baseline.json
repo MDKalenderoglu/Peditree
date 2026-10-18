@@ -1,21 +1,12 @@
 {
-  "generatedAt": "2026-07-06T20:07:31.680Z",
+  "generatedAt": "2026-10-18T00:18:53.848Z",
   "seed": "1",
   "cases": 1000,
   "maxOps": 14,
-  "passed": 248,
-  "failed": 752,
-  "failureRate": 0.752,
-  "codeCounts": {
-    "UNRELATED_FAMILY_BLOCK_OVERLAP": 284,
-    "NODE_SYMBOL_OVERLAP": 290,
-    "UNRELATED_NODE_IN_CHILD_FOOTPRINT": 183,
-    "CROSS_BRANCH_UNION_COLLAPSES_ANCESTOR_BLOCKS": 17,
-    "EDGE_THROUGH_NON_OWNER_NODE": 130,
-    "UNION_LINE_THROUGH_NODE": 130,
-    "SHARED_CHILD_BUS_BETWEEN_UNRELATED_UNIONS": 13,
-    "WRONG_PARENT_BUS_ATTACHMENT": 20
-  },
+  "passed": 1000,
+  "failed": 0,
+  "failureRate": 0,
+  "codeCounts": {},
   "implementedInvariants": [
     "NODE_SYMBOL_OVERLAP",
     "UNION_LINE_THROUGH_NODE",
@@ -31,281 +22,256 @@
     "GENERATION_ORDER_BROKEN",
     "PEDIGREE_ID_ORDER_BROKEN"
   ],
-  "topFailingSeeds": [
-    {
-      "caseSeed": 2856050349,
-      "failStep": 10,
-      "codes": [
-        "UNRELATED_FAMILY_BLOCK_OVERLAP"
-      ],
-      "opCount": 11
+  "topFailingSeeds": [],
+  "minimalRepros": [],
+  "readability": {
+    "codes": [
+      "FOREIGN_CONNECTOR_CROSSING",
+      "COLLINEAR_FOREIGN_CONNECTORS",
+      "FOREIGN_T_JUNCTION"
+    ],
+    "failed": 988,
+    "failureRate": 0.988,
+    "codeCounts": {
+      "COLLINEAR_FOREIGN_CONNECTORS": 988,
+      "FOREIGN_T_JUNCTION": 988
     },
-    {
-      "caseSeed": 140661886,
-      "failStep": 2,
-      "codes": [
-        "NODE_SYMBOL_OVERLAP"
-      ],
-      "opCount": 3
-    },
-    {
-      "caseSeed": 1288782296,
-      "failStep": 0,
-      "codes": [
-        "NODE_SYMBOL_OVERLAP"
-      ],
-      "opCount": 1
-    },
-    {
-      "caseSeed": 588892009,
-      "failStep": 13,
-      "codes": [
-        "UNRELATED_NODE_IN_CHILD_FOOTPRINT"
-      ],
-      "opCount": 14
-    },
-    {
-      "caseSeed": 2168487226,
-      "failStep": 9,
-      "codes": [
-        "NODE_SYMBOL_OVERLAP"
-      ],
-      "opCount": 10
-    },
-    {
-      "caseSeed": 3317131924,
-      "failStep": 3,
-      "codes": [
-        "UNRELATED_FAMILY_BLOCK_OVERLAP"
-      ],
-      "opCount": 4
-    },
-    {
-      "caseSeed": 3154108453,
-      "failStep": 2,
-      "codes": [
-        "NODE_SYMBOL_OVERLAP"
-      ],
-      "opCount": 3
-    },
-    {
-      "caseSeed": 438724598,
-      "failStep": 10,
-      "codes": [
-        "UNRELATED_FAMILY_BLOCK_OVERLAP"
-      ],
-      "opCount": 11
-    },
-    {
-      "caseSeed": 4167998855,
-      "failStep": 0,
-      "codes": [
-        "NODE_SYMBOL_OVERLAP"
-      ],
-      "opCount": 1
-    },
-    {
-      "caseSeed": 1586828112,
-      "failStep": 4,
-      "codes": [
-        "UNRELATED_FAMILY_BLOCK_OVERLAP"
-      ],
-      "opCount": 5
+    "firstFailures": [
+      {
+        "caseSeed": 2856050349,
+        "failStep": 12,
+        "codes": [
+          "COLLINEAR_FOREIGN_CONNECTORS",
+          "FOREIGN_T_JUNCTION"
+        ],
+        "opSeq": [
+          {
+            "op": "deleteIndividual",
+            "id": "mother"
+          },
+          {
+            "op": "deleteIndividual",
+            "id": "mat_gf"
+          },
+          {
+            "op": "addSibling",
+            "target": "pat_gf",
+            "sex": "unknown"
+          },
+          {
+            "op": "addParents",
+            "target": "U_PARENTS__unspecified"
+          },
+          {
+            "op": "addChild",
+            "target": "father",
+            "sex": "unknown"
+          },
+          {
+            "op": "addSiblingCat",
+            "category": "male"
+          },
+          {
+            "op": "setSex",
+            "id": "de_ch_1",
+            "sex": "female"
+          },
+          {
+            "op": "addSibling",
+            "target": "proband",
+            "sex": "unknown"
+          },
+          {
+            "op": "deleteIndividual",
+            "id": "de_ch_1"
+          },
+          {
+            "op": "deleteIndividual",
+            "id": "de_ch_2"
+          },
+          {
+            "op": "addParents",
+            "target": "pat_gm"
+          },
+          {
+            "op": "addSiblingCat",
+            "category": "female"
+          },
+          {
+            "op": "createUnion",
+            "a": "mat_gm",
+            "b": "pat_gf"
+          }
+        ]
+      },
+      {
+        "caseSeed": 140661886,
+        "failStep": 0,
+        "codes": [
+          "COLLINEAR_FOREIGN_CONNECTORS",
+          "FOREIGN_T_JUNCTION"
+        ],
+        "opSeq": [
+          {
+            "op": "addChildToUnion",
+            "unionId": "U_PAT_GP",
+            "sex": "unknown"
+          }
+        ]
+      },
+      {
+        "caseSeed": 4004170255,
+        "failStep": 0,
+        "codes": [
+          "COLLINEAR_FOREIGN_CONNECTORS",
+          "FOREIGN_T_JUNCTION"
+        ],
+        "opSeq": [
+          {
+            "op": "addSiblingCat",
+            "category": "pregnancyLoss"
+          }
+        ]
+      },
+      {
+        "caseSeed": 588892009,
+        "failStep": 0,
+        "codes": [
+          "COLLINEAR_FOREIGN_CONNECTORS",
+          "FOREIGN_T_JUNCTION"
+        ],
+        "opSeq": [
+          {
+            "op": "addParents",
+            "target": "father"
+          }
+        ]
+      },
+      {
+        "caseSeed": 2168487226,
+        "failStep": 0,
+        "codes": [
+          "COLLINEAR_FOREIGN_CONNECTORS",
+          "FOREIGN_T_JUNCTION"
+        ],
+        "opSeq": [
+          {
+            "op": "addChildToUnion",
+            "unionId": "U_MAT_GP",
+            "sex": "male"
+          }
+        ]
+      },
+      {
+        "caseSeed": 1737028811,
+        "failStep": 0,
+        "codes": [
+          "COLLINEAR_FOREIGN_CONNECTORS",
+          "FOREIGN_T_JUNCTION"
+        ],
+        "opSeq": [
+          {
+            "op": "addChild",
+            "target": "mat_gm",
+            "sex": "male"
+          }
+        ]
+      },
+      {
+        "caseSeed": 3317131924,
+        "failStep": 0,
+        "codes": [
+          "COLLINEAR_FOREIGN_CONNECTORS",
+          "FOREIGN_T_JUNCTION"
+        ],
+        "opSeq": [
+          {
+            "op": "addChild",
+            "target": "proband",
+            "sex": "male"
+          }
+        ]
+      },
+      {
+        "caseSeed": 3154108453,
+        "failStep": 0,
+        "codes": [
+          "COLLINEAR_FOREIGN_CONNECTORS",
+          "FOREIGN_T_JUNCTION"
+        ],
+        "opSeq": [
+          {
+            "op": "addRelativeBranch",
+            "side": "maternalRelatives",
+            "type": "uncles",
+            "male": 1,
+            "female": 1
+          }
+        ]
+      },
+      {
+        "caseSeed": 438724598,
+        "failStep": 0,
+        "codes": [
+          "COLLINEAR_FOREIGN_CONNECTORS",
+          "FOREIGN_T_JUNCTION"
+        ],
+        "opSeq": [
+          {
+            "op": "setState",
+            "id": "pat_gf",
+            "field": "carrier"
+          }
+        ]
+      },
+      {
+        "caseSeed": 4167998855,
+        "failStep": 0,
+        "codes": [
+          "COLLINEAR_FOREIGN_CONNECTORS",
+          "FOREIGN_T_JUNCTION"
+        ],
+        "opSeq": [
+          {
+            "op": "addSpouse",
+            "target": "mat_gf",
+            "sex": "female"
+          }
+        ]
+      }
+    ],
+    "metrics": {
+      "cases": 1000,
+      "withOffCenter": 921,
+      "withSideHang": 968,
+      "withLongUnion": 810,
+      "withCrossing": 165,
+      "crossings": 376
     }
-  ],
-  "minimalRepros": [
-    {
-      "caseSeed": 1288782296,
-      "signature": "NODE_SYMBOL_OVERLAP",
-      "opCount": 1,
-      "codes": [
-        "NODE_SYMBOL_OVERLAP"
-      ],
-      "opSeq": [
-        {
-          "op": "deleteIndividual",
-          "id": "father"
-        }
-      ]
-    },
-    {
-      "caseSeed": 1793374714,
-      "signature": "EDGE_THROUGH_NON_OWNER_NODE+UNION_LINE_THROUGH_NODE",
-      "opCount": 1,
-      "codes": [
-        "EDGE_THROUGH_NON_OWNER_NODE",
-        "UNION_LINE_THROUGH_NODE"
-      ],
-      "opSeq": [
-        {
-          "op": "addSpouse",
-          "target": "pat_gf",
-          "sex": "female"
-        }
-      ]
-    },
-    {
-      "caseSeed": 4117796537,
-      "signature": "EDGE_THROUGH_NON_OWNER_NODE+UNION_LINE_THROUGH_NODE+UNRELATED_FAMILY_BLOCK_OVERLAP",
-      "opCount": 1,
-      "codes": [
-        "EDGE_THROUGH_NON_OWNER_NODE",
-        "UNION_LINE_THROUGH_NODE",
-        "UNRELATED_FAMILY_BLOCK_OVERLAP"
-      ],
-      "opSeq": [
-        {
-          "op": "addSpouse",
-          "target": "mat_gm",
-          "sex": "female"
-        }
-      ]
-    },
-    {
-      "caseSeed": 3035574093,
-      "signature": "UNRELATED_FAMILY_BLOCK_OVERLAP",
-      "opCount": 2,
-      "codes": [
-        "UNRELATED_FAMILY_BLOCK_OVERLAP"
-      ],
-      "opSeq": [
-        {
-          "op": "addRelativeBranch",
-          "side": "maternalRelatives",
-          "type": "uncles",
-          "male": 1,
-          "female": 1
-        },
-        {
-          "op": "deleteIndividual",
-          "id": "mat_gm"
-        }
-      ]
-    },
-    {
-      "caseSeed": 4288284983,
-      "signature": "UNRELATED_NODE_IN_CHILD_FOOTPRINT",
-      "opCount": 2,
-      "codes": [
-        "UNRELATED_NODE_IN_CHILD_FOOTPRINT"
-      ],
-      "opSeq": [
-        {
-          "op": "addRelativeBranch",
-          "side": "paternalRelatives",
-          "type": "uncles",
-          "male": 2,
-          "female": 2
-        },
-        {
-          "op": "addRelativeBranch",
-          "side": "maternalRelatives",
-          "type": "uncles",
-          "male": 0,
-          "female": 0
-        }
-      ]
-    },
-    {
-      "caseSeed": 709087886,
-      "signature": "NODE_SYMBOL_OVERLAP+UNRELATED_FAMILY_BLOCK_OVERLAP",
-      "opCount": 2,
-      "codes": [
-        "NODE_SYMBOL_OVERLAP",
-        "UNRELATED_FAMILY_BLOCK_OVERLAP"
-      ],
-      "opSeq": [
-        {
-          "op": "addParents",
-          "target": "pat_gf"
-        },
-        {
-          "op": "addSpouse",
-          "target": "pat_gm",
-          "sex": "female"
-        }
-      ]
-    },
-    {
-      "caseSeed": 499115965,
-      "signature": "EDGE_THROUGH_NON_OWNER_NODE+NODE_SYMBOL_OVERLAP+UNION_LINE_THROUGH_NODE",
-      "opCount": 2,
-      "codes": [
-        "NODE_SYMBOL_OVERLAP"
-      ],
-      "opSeq": [
-        {
-          "op": "addSpouse",
-          "target": "father",
-          "sex": "female"
-        },
-        {
-          "op": "addSpouse",
-          "target": "de_sp_0",
-          "sex": "male"
-        }
-      ]
-    },
-    {
-      "caseSeed": 1498476092,
-      "signature": "EDGE_THROUGH_NON_OWNER_NODE+NODE_SYMBOL_OVERLAP+UNION_LINE_THROUGH_NODE+UNRELATED_FAMILY_BLOCK_OVERLAP",
-      "opCount": 1,
-      "codes": [
-        "NODE_SYMBOL_OVERLAP"
-      ],
-      "opSeq": [
-        {
-          "op": "deleteIndividual",
-          "id": "father"
-        }
-      ]
-    },
-    {
-      "caseSeed": 3851146147,
-      "signature": "UNRELATED_FAMILY_BLOCK_OVERLAP+UNRELATED_NODE_IN_CHILD_FOOTPRINT",
-      "opCount": 2,
-      "codes": [
-        "UNRELATED_NODE_IN_CHILD_FOOTPRINT"
-      ],
-      "opSeq": [
-        {
-          "op": "addSpouse",
-          "target": "mother",
-          "sex": "female"
-        },
-        {
-          "op": "addRelativeBranch",
-          "side": "paternalRelatives",
-          "type": "aunts",
-          "male": 0,
-          "female": 3
-        }
-      ]
-    },
-    {
-      "caseSeed": 833510177,
-      "signature": "CROSS_BRANCH_UNION_COLLAPSES_ANCESTOR_BLOCKS+EDGE_THROUGH_NON_OWNER_NODE+UNION_LINE_THROUGH_NODE+UNRELATED_FAMILY_BLOCK_OVERLAP",
-      "opCount": 1,
-      "codes": [
-        "EDGE_THROUGH_NON_OWNER_NODE",
-        "UNION_LINE_THROUGH_NODE",
-        "UNRELATED_FAMILY_BLOCK_OVERLAP"
-      ],
-      "opSeq": [
-        {
-          "op": "addSpouse",
-          "target": "mat_gm",
-          "sex": "male"
-        }
-      ]
-    }
-  ],
+  },
   "namedScenarios": [
     {
       "name": "upper-generation-child-add-overlap",
       "description": "Add a sibling to each parent (collateral uncles/aunts), then a wide proband sibship — the footprint-encroachment case.",
       "failed": false,
       "codes": [],
+      "readFailed": true,
+      "readCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "metrics": {
+        "individuals": 13,
+        "unionsWithChildren": 3,
+        "offCenter": 1,
+        "maxCentreOffset": 199,
+        "sideHang": 0,
+        "longUnions": 1,
+        "maxUnionSpan": 398,
+        "crossings": 0,
+        "width": 867,
+        "widthPerIndividual": 66.7
+      },
       "opSeq": [
         {
           "op": "addSibling",
@@ -340,6 +306,23 @@
       "description": "Aunt/uncle branches WITH children on both sides plus a proband sibship — cousin branches must stay isolated.",
       "failed": false,
       "codes": [],
+      "readFailed": true,
+      "readCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "metrics": {
+        "individuals": 17,
+        "unionsWithChildren": 5,
+        "offCenter": 1,
+        "maxCentreOffset": 142,
+        "sideHang": 1,
+        "longUnions": 1,
+        "maxUnionSpan": 284,
+        "crossings": 0,
+        "width": 867,
+        "widthPerIndividual": 51
+      },
       "opSeq": [
         {
           "op": "addRelativeBranch",
@@ -370,6 +353,23 @@
       "description": "Childless aunt + uncle immediately beside a large 6-child proband sibship.",
       "failed": false,
       "codes": [],
+      "readFailed": true,
+      "readCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "metrics": {
+        "individuals": 15,
+        "unionsWithChildren": 3,
+        "offCenter": 1,
+        "maxCentreOffset": 256,
+        "sideHang": 0,
+        "longUnions": 1,
+        "maxUnionSpan": 512,
+        "crossings": 0,
+        "width": 1095,
+        "widthPerIndividual": 73
+      },
       "opSeq": [
         {
           "op": "addRelativeBranch",
@@ -416,6 +416,23 @@
       "description": "A union between two far-apart same-generation collateral individuals (mat_uncle_0 × pat_uncle_0).",
       "failed": false,
       "codes": [],
+      "readFailed": true,
+      "readCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "metrics": {
+        "individuals": 9,
+        "unionsWithChildren": 3,
+        "offCenter": 1,
+        "maxCentreOffset": 115,
+        "sideHang": 1,
+        "longUnions": 0,
+        "maxUnionSpan": 230,
+        "crossings": 0,
+        "width": 481,
+        "widthPerIndividual": 53.4
+      },
       "opSeq": [
         {
           "op": "addRelativeBranch",
@@ -443,6 +460,23 @@
       "description": "Siblings added via the selected-person editor path (graphEdits origin) rather than the wizard arrays.",
       "failed": false,
       "codes": [],
+      "readFailed": true,
+      "readCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "metrics": {
+        "individuals": 10,
+        "unionsWithChildren": 3,
+        "offCenter": 1,
+        "maxCentreOffset": 176,
+        "sideHang": 3,
+        "longUnions": 1,
+        "maxUnionSpan": 351,
+        "crossings": 0,
+        "width": 592,
+        "widthPerIndividual": 59.2
+      },
       "opSeq": [
         {
           "op": "addSibling",
@@ -466,6 +500,23 @@
       "description": "Left-heavy collateral expansion that pushes coordinates negative, plus a wide sibship — export must not clip.",
       "failed": false,
       "codes": [],
+      "readFailed": true,
+      "readCodes": [
+        "COLLINEAR_FOREIGN_CONNECTORS",
+        "FOREIGN_T_JUNCTION"
+      ],
+      "metrics": {
+        "individuals": 20,
+        "unionsWithChildren": 6,
+        "offCenter": 1,
+        "maxCentreOffset": 227,
+        "sideHang": 4,
+        "longUnions": 1,
+        "maxUnionSpan": 453,
+        "crossings": 0,
+        "width": 1248,
+        "widthPerIndividual": 62.4
+      },
       "opSeq": [
         {
           "op": "addRelativeBranch",

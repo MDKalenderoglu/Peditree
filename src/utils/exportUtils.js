@@ -30,9 +30,52 @@ function resolveSvgElement(svgElement) {
   return el;
 }
 
+/**
+ * Read the svg's viewBox as numbers, or null if absent/unparseable.
+ */
+function readViewBox(svg) {
+  const raw = svg && typeof svg.getAttribute === 'function' ? svg.getAttribute('viewBox') : null;
+  if (!raw) return null;
+  const [x, y, width, height] = raw.split(/[\s,]+/).map(Number);
+  return [x, y, width, height].every(Number.isFinite) && width > 0 && height > 0 ? { x, y, width, height } : null;
+}
+
+/**
+ * v0.5 Faz 2a (EX-1/EX-2): export a canonical copy of the drawing, never the
+ * live on-screen state. The live <svg> carries the current zoom/pan transform
+ * (which could crop the pedigree), a responsive `width="100%"` (no intrinsic
+ * size) and a light-grey screen background. Selection highlighting is page
+ * CSS only (app.css), so it is not part of the serialized markup at all.
+ *
+ * Falls back to the element itself when it cannot be cloned (non-DOM stubs).
+ */
+export function prepareExportSvg(svg) {
+  if (!svg || typeof svg.cloneNode !== 'function') return svg;
+  const clone = svg.cloneNode(true);
+  const vb = readViewBox(svg);
+  if (vb) {
+    clone.setAttribute('width', String(Math.ceil(vb.width)));
+    clone.setAttribute('height', String(Math.ceil(vb.height)));
+  }
+  clone.removeAttribute('style');
+  clone.removeAttribute('id');
+  const viewport = clone.querySelector('.pedigree-viewport');
+  if (viewport) viewport.removeAttribute('transform');
+  if (vb && clone.ownerDocument) {
+    const bg = clone.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bg.setAttribute('x', String(vb.x));
+    bg.setAttribute('y', String(vb.y));
+    bg.setAttribute('width', String(vb.width));
+    bg.setAttribute('height', String(vb.height));
+    bg.setAttribute('fill', '#ffffff');
+    clone.insertBefore(bg, clone.firstChild);
+  }
+  return clone;
+}
+
 function serializeSvg(svg) {
   const serializer = new XMLSerializer();
-  let source = serializer.serializeToString(svg);
+  let source = serializer.serializeToString(prepareExportSvg(svg));
 
   // Add name spaces.
   if (!source.match(/^<svg[^>]+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/)) {
@@ -89,18 +132,22 @@ export function exportPNG(svgElement) {
 
     img.onload = function () {
       try {
-        const rect = svg.getBoundingClientRect();
-        const width = rect.width || svg.viewBox?.baseVal?.width || 800;
-        const height = rect.height || svg.viewBox?.baseVal?.height || 600;
+        // Size from the drawing itself (viewBox), not from the on-screen panel,
+        // so a large pedigree is not shrunk to the window width (EX-2). Scale
+        // 2× for print quality, capped below common browser canvas limits.
+        const vb = readViewBox(svg);
+        const width = vb ? vb.width : 800;
+        const height = vb ? vb.height : 600;
+        const MAX_SIDE = 16000;
+        const scale = Math.max(0.25, Math.min(2, MAX_SIDE / Math.max(width, height)));
 
         const canvas = document.createElement('canvas');
-        canvas.width = width * 2; // high res
-        canvas.height = height * 2;
+        canvas.width = Math.ceil(width * scale);
+        canvas.height = Math.ceil(height * scale);
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.scale(2, 2);
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         URL.revokeObjectURL(url);
 
         const imgURI = canvas.toDataURL('image/png').replace('image/png', 'image/octet-stream');

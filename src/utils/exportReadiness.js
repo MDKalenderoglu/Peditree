@@ -110,16 +110,12 @@ export function assessExportReadiness({ pedigreeData, integrityIssues, svgElemen
     );
   }
 
-  // Layout overflow / possible clipping — the current view is zoomed or
-  // panned away from the default identity transform. SVG/PNG export
-  // serializes whatever is currently on screen, so a non-default view can
-  // silently clip part of the pedigree out of the exported file.
-  if (zoomTransform && (Math.abs(zoomTransform.k - 1) > 0.01 || Math.abs(zoomTransform.x) > 1 || Math.abs(zoomTransform.y) > 1)) {
-    warnings.push(
-      'Görünüm yakınlaştırılmış veya kaydırılmış durumda — export edilen görsel pedigrinin tamamını içermeyebilir. ' +
-      'Export öncesi "Sıfırla" ile görünümü sıfırlamanız önerilir.'
-    );
-  }
+  // (v0.5 Faz 2a, EX-2: export now always renders the whole pedigree from a
+  // canonical copy with the zoom/pan transform removed — see
+  // exportUtils.prepareExportSvg — so the current on-screen view can no
+  // longer clip the file and no longer warrants a warning. `zoomTransform`
+  // is still accepted for API compatibility.)
+  void zoomTransform;
 
   return { fatal, errors, warnings, canExport: fatal.length === 0 };
 }
