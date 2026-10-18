@@ -41,7 +41,7 @@ const FOOTPRINT_MARGIN = 6;   // px inside the allowed boundary
 // outermost children's centres): an aunt standing right above the proband
 // reads like a parent even when she is not strictly inside the fan.
 const FOOTPRINT_INSET = 0;
-const FOOTPRINT_ROUNDS = 80;
+const FOOTPRINT_ROUNDS = 400;   // upper bound; only pathological graphs need more than a few
 
 /**
  * @param {{individuals:Array, unions:Array, parentChildRelationships:Array}} graph
@@ -180,7 +180,10 @@ export function computePclLayout(graph, opts = {}) {
         const existing = footprintTerms.get(key);
         if (existing) {
           const violation = leftSide ? xq - (L + FOOTPRINT_INSET) : (R - FOOTPRINT_INSET) - xq;
-          existing.d -= violation + FOOTPRINT_MARGIN;
+          // a pair that stays violated round after round is fighting other
+          // terms: grow its step (bounded) so it converges in few rounds
+          existing.updates = (existing.updates || 0) + 1;
+          existing.d -= (violation + FOOTPRINT_MARGIN) * Math.min(8, 1 + 0.5 * existing.updates);
           changed++;
           continue;
         }
