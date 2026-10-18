@@ -520,3 +520,145 @@ export function orderLayers(S, opts = {}) {
   }
   return { order, cost, componentOrder: compOrder };
 }
+
+// ── stable (edit-local) ordering — KI-2 ─────────────────────────────────
+//
+// After an edit, start from the order the clinician already sees (atoms
+// keyed by their people's previous x) instead of a fresh search, and let
+// only the atoms that contain affected people move ('local'), or every atom
+// ('wide', previous order still preferred). Re-ordering a pre-existing atom
+// costs W_INVERSION per pair drawn in a different left-right order than
+// before — less than a descent crossing, so correctness still wins, but
+// enough that ties and near-ties keep the drawing where it was.
+
+const W_INVERSION = 3;
+
+/**
+ * @param {object} S  structure (buildStructure)
+ * @param {{ prevX: Map<string, number>, freePersons: Set<string> | null }} stability
+ *   freePersons null = 'wide' (every atom may move)
+ */
+export function orderLayersStable(S, { prevX, freePersons }) {
+  const atomKey = new Map();
+  for (const atom of S.atoms) {
+    const xs = atom.persons.filter((p) => prevX.has(p)).map((p) => prevX.get(p));
+    if (xs.length) atomKey.set(atom.id, xs.reduce((a, b) => a + b, 0) / xs.length);
+  }
+  const isNew = (aid) => S.atoms[aid].persons.some((p) => !prevX.has(p));
+  const isFree = (aid) => freePersons === null || isNew(aid) || S.atoms[aid].persons.some((p) => freePersons.has(p));
+
+  // estimate for atoms without a previous position: parents, then partners, then children
+  const estimate = (aid) => {
+    const atom = S.atoms[aid];
+    if (atomKey.has(aid) && !isNew(aid)) return atomKey.get(aid);
+    const xs = [];
+    if (atom.kind === 'sib') {
+      for (const p of S.unionById.get(atom.unionId).partners) if (prevX.has(p)) xs.push(prevX.get(p));
+    }
+    if (!xs.length) {
+      for (const p of atom.persons) {
+        for (const uid of S.partnerUnions.get(p) || []) {
+          const q = S.partnerIn(uid, p);
+          if (prevX.has(q)) xs.push(prevX.get(q));
+          for (const c of S.childrenOf.get(uid) || []) if (prevX.has(c)) xs.push(prevX.get(c));
+        }
+      }
+    }
+    if (!xs.length && atomKey.has(aid)) return atomKey.get(aid);
+    return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : Number.POSITIVE_INFINITY;
+  };
+
+  // arrangement closest to the previous order of the atom's known people
+  for (const atom of S.atoms) {
+    if (!atom.arrangements || atom.arrangements.length < 2) continue;
+    const inv = (arr) => {
+      const xs = arr.filter((p) => prevX.has(p)).map((p) => prevX.get(p));
+      let n = 0;
+      for (let i = 0; i < xs.length; i++) for (let j = i + 1; j < xs.length; j++) if (xs[i] > xs[j]) n++;
+      return n;
+    };
+    let best = atom.arrangements[0], bestInv = inv(best);
+    for (const arr of atom.arrangements) { const v = inv(arr); if (v < bestInv) { best = arr; bestInv = v; } }
+    atom.persons = best;
+  }
+
+  const order = new Map(S.gens.map((g) => [g, []]));
+  for (const atom of S.atoms) order.get(atom.gen).push(atom.id);
+  for (const g of S.gens) {
+    const keyed = order.get(g).map((aid) => ({ aid, key: estimate(aid) }));
+    keyed.sort((a, b) => (a.key - b.key) || (a.aid - b.aid));
+    order.set(g, keyed.map((k) => k.aid));
+  }
+
+  const model = new CostModel(S, S.gens, order);
+  const inversions = (g) => {
+    const ids = order.get(g).filter((aid) => atomKey.has(aid) && !isNew(aid));
+    let n = 0;
+    for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) if (atomKey.get(ids[i]) > atomKey.get(ids[j])) n++;
+    return n;
+  };
+  const local = (g) => model.rowLocal(g) + W_INVERSION * inversions(g);
+
+  const flexByGen = new Map();
+  for (const atom of S.atoms) {
+    if (!isFree(atom.id) || !atom.arrangements || atom.arrangements.length < 2) continue;
+    if (!flexByGen.has(atom.gen)) flexByGen.set(atom.gen, []);
+    flexByGen.get(atom.gen).push(atom.id);
+  }
+  const arrange = () => {
+    let gain = 0;
+    for (const [g, list] of flexByGen) {
+      for (const aid of list) {
+        const atom = S.atoms[aid];
+        const current = atom.persons;
+        const before = local(g);
+        let bestArr = current, bestHere = before;
+        for (const arr of atom.arrangements) {
+          if (arr === current) continue;
+          atom.persons = arr;
+          model.layoutRow(g);
+          const c = local(g);
+          if (c < bestHere - 1e-9) { bestHere = c; bestArr = arr; }
+        }
+        atom.persons = bestArr;
+        model.layoutRow(g);
+        gain += before - bestHere;
+      }
+    }
+    return gain;
+  };
+
+  for (let pass = 0; pass < MAX_SIFT_PASSES + 2; pass++) {
+    let improved = arrange() > 1e-9;
+    for (const g of S.gens) {
+      const row = order.get(g);
+      for (let i = 0; i + 1 < row.length; i++) {
+        if (!isFree(row[i]) && !isFree(row[i + 1])) continue;
+        const before = local(g);
+        [row[i], row[i + 1]] = [row[i + 1], row[i]];
+        model.layoutRow(g);
+        if (local(g) < before - 1e-9) improved = true;
+        else { [row[i], row[i + 1]] = [row[i + 1], row[i]]; model.layoutRow(g); }
+      }
+      for (const aid of row.slice()) {
+        if (!isFree(aid)) continue;
+        const from = row.indexOf(aid);
+        const before = local(g);
+        row.splice(from, 1);
+        let bestPos = from, bestHere = Infinity;
+        for (let p = 0; p <= row.length; p++) {
+          row.splice(p, 0, aid);
+          model.layoutRow(g);
+          const c = local(g);
+          row.splice(p, 1);
+          if (c < bestHere - 1e-9 || (Math.abs(c - bestHere) <= 1e-9 && p === from)) { bestHere = c; bestPos = p; }
+        }
+        row.splice(bestPos, 0, aid);
+        model.layoutRow(g);
+        if (bestHere < before - 1e-9) improved = true;
+      }
+    }
+    if (!improved) break;
+  }
+  return { order, cost: model.total() };
+}

@@ -15,7 +15,7 @@
  * Pure and deterministic.
  */
 import { buildStructure } from './structure';
-import { orderLayers } from './ordering';
+import { orderLayers, orderLayersStable } from './ordering';
 import { solveSeparatedQP } from './qp';
 import { routeConnectors, estimateLevelNeeds, planBands } from './routing';
 import { displayParentage } from '../../graph/model';
@@ -35,6 +35,29 @@ const W_FAR_PARTNERS = 0.03;
 const W_COMPACT_IN = 0.02;
 const W_COMPACT_OUT = 0.01;
 const W_STABLE = 0.05;
+// edit-local stability (KI-2): people the edit did not touch are pulled to
+// their previous x much harder than any drawing preference (centre = 1),
+// but still softer than hard gaps and the footprint rule (40) — stability
+// never overrides correctness.
+const W_PIN = 6;
+// untouched families keep their SHAPE (spacing between neighbours), so a
+// family that must make room for a widened sibship moves as a unit instead
+// of being distorted
+const W_SHAPE = 12;
+const IRLS_ROUNDS = 30;
+const IRLS_EPS_PX = 8;
+const IRLS_MIN_SCALE = 0.01;
+const IRLS_MAX_SCALE = 8;
+// edit-local mode: the two terms that shape a couple — centred over its
+// children, partners side by side — count as much as the firmest pin, in the
+// PCL's own proportion (centre : partner gap = 1 : 0.5). Readability before
+// stability: weaker, off-centre couples accumulate edit after edit; centring
+// alone, partners drift apart under their own parents. Untouched families do
+// not move all the same (anchoring, below).
+const COUPLE_SCALE = W_PIN * IRLS_MAX_SCALE;
+const W_STABLE_FREE = 0.05;
+const W_STABLE_WIDE = 0.4;
+
 const W_FOOTPRINT = 40;
 const FOOTPRINT_MARGIN = 6;   // px inside the allowed boundary
 // The invariant tolerates a bystander up to half a symbol inside the outer
@@ -46,7 +69,13 @@ const FOOTPRINT_ROUNDS = 400;   // upper bound; only pathological graphs need mo
 
 /**
  * @param {{individuals:Array, unions:Array, parentChildRelationships:Array}} graph
- * @param {{ previous?: Map<string, number> }} [opts]  previous x per id (stability)
+ * @param {{ previous?: Map<string, number>,
+ *           stability?: { prevX: Map<string, number>, prevY?: Map<string, number>,
+ *                         freePersons: Set<string> | null, frozen?: boolean } }} [opts]
+ *   previous: legacy weak pull towards previous x
+ *   stability: edit-local relayout (KI-2, see src/layout/pcl/incremental.js):
+ *     freePersons = people affected by the edit (null = every one free, 'wide');
+ *     frozen = graph unchanged: reuse previous coordinates exactly
  */
 export function computePclLayout(inputGraph, opts = {}) {
   // social-only children (e.g. adopted-in) are drawn under their social parents
@@ -57,7 +86,8 @@ export function computePclLayout(inputGraph, opts = {}) {
   const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const t0 = now();
   const S = buildStructure(graph);
-  const { order } = orderLayers(S);
+  const stability = opts.stability || null;
+  const { order } = stability ? orderLayersStable(S, stability) : orderLayers(S);
   const tOrdered = now();
 
   // ── persons per row, in order ──
@@ -104,7 +134,7 @@ export function computePclLayout(inputGraph, opts = {}) {
         const w = sameAtom(row[k - 1], id) ? W_COMPACT_IN : W_COMPACT_OUT;
         terms.push({ w, idx: [index.get(id), index.get(row[k - 1])], c: [1, -1], d: gap });
       }
-      x0[index.get(id)] = cursor;
+      x0[index.get(id)] = stability && stability.prevX.has(id) ? stability.prevX.get(id) : cursor;
     });
     layers.push({ ids: row.map(id => index.get(id)), gaps });
   }
@@ -120,7 +150,7 @@ export function computePclLayout(inputGraph, opts = {}) {
       const [l, r] = rowPos.get(a) <= rowPos.get(b) ? [a, b] : [b, a];
       const adjacent = Math.abs(rowPos.get(a) - rowPos.get(b)) === 1;
       terms.push(adjacent
-        ? { w: W_SPOUSE, idx: [index.get(r), index.get(l)], c: [1, -1], d: PCL.SPOUSE_GAP }
+        ? { w: W_SPOUSE, idx: [index.get(r), index.get(l)], c: [1, -1], d: PCL.SPOUSE_GAP, couple: true }
         : { w: W_FAR_PARTNERS, idx: [index.get(r), index.get(l)], c: [1, -1], d: PCL.SPOUSE_GAP });
     }
     const kids = (S.childrenOf.get(u.id) || []).filter(c => index.has(c));
@@ -131,10 +161,61 @@ export function computePclLayout(inputGraph, opts = {}) {
     const c = [0.5, 0.5];
     if (first === last) { idx.push(index.get(first)); c.push(-1); }
     else { idx.push(index.get(first), index.get(last)); c.push(-0.5, -0.5); }
-    terms.push({ w: W_CENTRE, idx, c, d: 0 });
+    terms.push({ w: W_CENTRE, idx, c, d: 0, couple: true });
   }
 
-  if (opts.previous instanceof Map) {
+  const pinTerms = [];
+  if (stability && stability.freePersons !== null) {
+    for (const t of terms) if (t.couple) t.w *= COUPLE_SCALE;
+  }
+  if (stability) {
+    for (const [id, px] of stability.prevX) {
+      if (!index.has(id) || !Number.isFinite(px)) continue;
+      const w = stability.freePersons === null ? W_STABLE_WIDE
+        : (stability.freePersons.has(id) ? W_STABLE_FREE : W_PIN);
+      const term = { w, idx: [index.get(id)], c: [1], d: px };
+      terms.push(term);
+      if (stability.freePersons !== null && !stability.freePersons.has(id)) pinTerms.push(term);
+    }
+    if (stability.freePersons !== null) {
+      const pinned = (id) => stability.prevX.has(id) && !stability.freePersons.has(id);
+      const heads = (id) => (S.partnerUnions.get(id) || []).some((uid) => (S.childrenOf.get(uid) || []).length > 0);
+      const partners = (a, b) => (S.partnerUnions.get(a) || []).some((uid) => S.partnerIn(uid, a) === b);
+      // neighbours on a row that were drawn side by side keep their spacing —
+      // unless both head a family of their own (e.g. two siblings who are
+      // parents): the gap between two families may grow when one widens
+      for (const g of gens) {
+        const row = rows.get(g);
+        for (let k = 1; k < row.length; k++) {
+          const a = row[k - 1], b = row[k];
+          if (!pinned(a) || !pinned(b)) continue;
+          if (!partners(a, b) && (heads(a) || heads(b))) continue;
+          const prevGap = stability.prevX.get(b) - stability.prevX.get(a);
+          if (prevGap <= 0) continue;
+          terms.push({ w: W_SHAPE, idx: [index.get(b), index.get(a)], c: [1, -1], d: prevGap });
+        }
+      }
+      // Anchoring: the previous drawing must be at rest. Terms among untouched
+      // people still pull a little at their previous positions (the previous
+      // solve had footprint multipliers and a solver tolerance this one does
+      // not share); those forces are cancelled by offsetting each pin's
+      // target, so only what the edit changed — terms involving new or
+      // affected people, a family re-centred firmly — can move anyone.
+      const fixed = new Set(ids.map((id, i) => (pinned(id) ? i : -1)).filter((i) => i >= 0));
+      const pinSet = new Set(pinTerms);
+      const g = new Float64Array(n);
+      for (const t of terms) {
+        if (pinSet.has(t) || !t.idx.every((k) => fixed.has(k))) continue;
+        const r = t.idx.reduce((acc, k, q) => acc + t.c[q] * stability.prevX.get(ids[k]), 0) - t.d;
+        t.idx.forEach((k, q) => { g[k] += 2 * t.w * r * t.c[q]; });
+      }
+      for (const t of pinTerms) {
+        t.prev = t.d;
+        t.bias = g[t.idx[0]];
+        t.d = t.prev + t.bias / (2 * t.w);
+      }
+    }
+  } else if (opts.previous instanceof Map) {
     for (const [id, px] of opts.previous) {
       if (index.has(id) && Number.isFinite(px)) terms.push({ w: W_STABLE, idx: [index.get(id)], c: [1], d: px });
     }
@@ -165,66 +246,121 @@ export function computePclLayout(inputGraph, opts = {}) {
   let solution = solveSeparatedQP(n, layers, terms, x0);
   let qpIterations = solution.iterations;
   let qpSolves = 1;
-  let needPolish = false;
-  for (let round = 0; round < FOOTPRINT_ROUNDS; round++) {
-    const xs = solution.x;
-    let changed = 0;
-    for (const { u, first, last, parentRow } of unionKids) {
-      const L = xs[index.get(first)], R = xs[index.get(last)];
-      if (R - L <= 2 * FOOTPRINT_INSET) continue;
-      for (const q of parentRow) {
-        if (u.partners.includes(q)) continue;
-        const xq = xs[index.get(q)];
-        // 1 px safety: coordinates are rounded to 0.5 px afterwards and the
-        // invariant's test is strict
-        if (xq <= L + FOOTPRINT_INSET - 1 || xq >= R - FOOTPRINT_INSET + 1) continue;
-        const leftSide = xq <= (L + R) / 2;
-        const key = `${u.id}|${q}|${leftSide ? 'L' : 'R'}`;
-        const existing = footprintTerms.get(key);
-        if (existing) {
-          const violation = leftSide ? xq - (L + FOOTPRINT_INSET) : (R - FOOTPRINT_INSET) - xq;
-          // a pair that stays violated round after round is fighting other
-          // terms: grow its step (bounded) so it converges in few rounds
-          existing.updates = (existing.updates || 0) + 1;
-          existing.d -= (violation + FOOTPRINT_MARGIN) * Math.min(8, 1 + 0.5 * existing.updates);
+  // run after every solve that may have moved people (the edit-local
+  // reweighting rounds below re-solve, so they settle the footprint again)
+  const settleFootprint = () => {
+    let needPolish = false;
+    for (let round = 0; round < FOOTPRINT_ROUNDS; round++) {
+      const xs = solution.x;
+      let changed = 0;
+      for (const { u, first, last, parentRow } of unionKids) {
+        const L = xs[index.get(first)], R = xs[index.get(last)];
+        if (R - L <= 2 * FOOTPRINT_INSET) continue;
+        for (const q of parentRow) {
+          if (u.partners.includes(q)) continue;
+          const xq = xs[index.get(q)];
+          // 1 px safety: coordinates are rounded to 0.5 px afterwards and the
+          // invariant's test is strict
+          if (xq <= L + FOOTPRINT_INSET - 1 || xq >= R - FOOTPRINT_INSET + 1) continue;
+          const leftSide = xq <= (L + R) / 2;
+          const key = `${u.id}|${q}|${leftSide ? 'L' : 'R'}`;
+          const existing = footprintTerms.get(key);
+          if (existing) {
+            const violation = leftSide ? xq - (L + FOOTPRINT_INSET) : (R - FOOTPRINT_INSET) - xq;
+            // a pair that stays violated round after round is fighting other
+            // terms: grow its step (bounded) so it converges in few rounds
+            existing.updates = (existing.updates || 0) + 1;
+            existing.d -= (violation + FOOTPRINT_MARGIN) * Math.min(8, 1 + 0.5 * existing.updates);
+            changed++;
+            continue;
+          }
+          const term = leftSide
+            ? { w: W_FOOTPRINT, idx: [index.get(q), index.get(first)], c: [1, -1], d: FOOTPRINT_INSET - FOOTPRINT_MARGIN }
+            : { w: W_FOOTPRINT, idx: [index.get(last), index.get(q)], c: [1, -1], d: FOOTPRINT_INSET - FOOTPRINT_MARGIN };
+          footprintTerms.set(key, term);
+          terms.push(term);
           changed++;
-          continue;
         }
-        const term = leftSide
-          ? { w: W_FOOTPRINT, idx: [index.get(q), index.get(first)], c: [1, -1], d: FOOTPRINT_INSET - FOOTPRINT_MARGIN }
-          : { w: W_FOOTPRINT, idx: [index.get(last), index.get(q)], c: [1, -1], d: FOOTPRINT_INSET - FOOTPRINT_MARGIN };
-        footprintTerms.set(key, term);
-        terms.push(term);
-        changed++;
       }
+      if (!changed && !needPolish) break;
+      // Settle the footprint terms at a coarse tolerance, then polish at full
+      // tolerance and check again (the polish may move a pair back over).
+      const polish = !changed;
+      solution = solveSeparatedQP(n, layers, terms, solution.x, polish ? {} : { tol: 2e-2 });
+      needPolish = !polish;
+      qpIterations += solution.iterations;
+      qpSolves++;
     }
-    if (!changed && !needPolish) break;
-    // Settle the footprint terms at a coarse tolerance, then polish at full
-    // tolerance and check again (the polish may move a pair back over).
-    const polish = !changed;
-    solution = solveSeparatedQP(n, layers, terms, solution.x, polish ? {} : { tol: 2e-2 });
-    needPolish = !polish;
-    qpIterations += solution.iterations;
-    qpSolves++;
+  };
+  settleFootprint();
+  // Edit-local mode: approximate an L1 position objective by iteratively
+  // reweighted least squares — a pinned person who barely moved is pulled
+  // much harder (snaps back exactly), one who must make room is pulled less
+  // (moves with its block). Least squares alone spreads a displacement over
+  // many people; L1 prefers moving few. Hard gaps are kept by every solve;
+  // the footprint rule is settled again after every round.
+  if (pinTerms.length) {
+    for (let round = 0; round < IRLS_ROUNDS; round++) {
+      let change = 0;
+      for (const t of pinTerms) {
+        const d = Math.abs(solution.x[t.idx[0]] - t.prev);
+        const w = W_PIN * Math.min(IRLS_MAX_SCALE, Math.max(IRLS_MIN_SCALE, IRLS_EPS_PX / Math.max(d, 1e-6)));
+        change = Math.max(change, Math.abs(w - t.w) / t.w);
+        t.w = w;
+        t.d = t.prev + t.bias / (2 * t.w); // keep the anchoring exact
+      }
+      if (change < 0.02) break; // weights settled
+      solution = solveSeparatedQP(n, layers, terms, solution.x);
+      qpIterations += solution.iterations;
+      qpSolves++;
+      settleFootprint();
+    }
   }
   const tSolved = now();
   const { x } = solution;
 
   let minX = Infinity;
   for (const v of x) minX = Math.min(minX, v);
-  const shift = opts.previous instanceof Map ? 0 : PCL.X_MARGIN - minX;
+  // with a previous layout, coordinates stay absolute (no re-normalisation)
+  const shift = (opts.previous instanceof Map || stability) ? 0 : PCL.X_MARGIN - minX;
   const xPos = {};
   ids.forEach((id, i) => { xPos[id] = Math.round((x[i] + shift) * 2) / 2; });
+  if (stability && stability.frozen && ids.every((id) => stability.prevX.has(id))) {
+    // unchanged graph (e.g. a reopened file): the previous coordinates exactly
+    ids.forEach((id) => { xPos[id] = stability.prevX.get(id); });
+  }
 
   // Rows are GEN_Y_SPACING apart unless the gap above a row needs more room
   // for its relationship lanes and sibship buses (routing.planBands).
   const plans = planBands(estimateLevelNeeds(S, rows, xPos), PCL.GEN_Y_SPACING);
   const rowY = new Map();
-  let yCursor = PCL.Y_TOP;
-  gens.forEach((g, k) => {
-    if (k > 0) yCursor += (plans.get(g) || { gap: PCL.GEN_Y_SPACING }).gap * (g - gens[k - 1]);
-    rowY.set(g, yCursor);
-  });
+  // a row keeps its previous height unless the gap above it now needs more
+  // room for its lines (then it, and the rows below, move down)
+  const prevRowY = new Map();
+  if (stability && stability.prevY) {
+    for (const g of gens) {
+      const id = rows.get(g).find((p) => stability.prevY.has(p));
+      if (id !== undefined) prevRowY.set(g, stability.prevY.get(id));
+    }
+  }
+  const gapAbove = (k) => (plans.get(gens[k]) || { gap: PCL.GEN_Y_SPACING }).gap * (gens[k] - gens[k - 1]);
+  const k0 = gens.findIndex((g) => prevRowY.has(g));
+  if (k0 < 0) {
+    let yCursor = PCL.Y_TOP;
+    gens.forEach((g, k) => {
+      if (k > 0) yCursor += gapAbove(k);
+      rowY.set(g, yCursor);
+    });
+  } else {
+    // the topmost previously drawn row keeps its height; new rows above it
+    // stack upwards, rows below keep theirs unless a gap must grow
+    rowY.set(gens[k0], prevRowY.get(gens[k0]));
+    for (let k = k0 - 1; k >= 0; k--) rowY.set(gens[k], rowY.get(gens[k + 1]) - gapAbove(k + 1));
+    for (let k = k0 + 1; k < gens.length; k++) {
+      const needed = rowY.get(gens[k - 1]) + gapAbove(k);
+      rowY.set(gens[k], prevRowY.has(gens[k]) ? Math.max(needed, prevRowY.get(gens[k])) : needed);
+    }
+  }
   const yPos = {};
   ids.forEach((id) => { yPos[id] = rowY.get(S.indById.get(id).generation ?? gens[0]); });
 
@@ -236,7 +372,7 @@ export function computePclLayout(inputGraph, opts = {}) {
     nodes, edges,
     meta: {
       order: rows,
-      timings: { orderMs: tOrdered - t0, solveMs: tSolved - tOrdered, routeMs: tRouted - tSolved, qpSolves, qpIterations },
+      timings: { orderMs: tOrdered - t0, solveMs: tSolved - tOrdered, routeMs: tRouted - tSolved, qpSolves, qpIterations, footprintTerms: footprintTerms.size },
     },
   };
 }
