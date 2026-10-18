@@ -54,6 +54,8 @@ export function validatePedigree(data) {
   // that train users to ignore warnings).
   const hasPartner = new Set();
   unions.forEach(u => (u.partners || []).forEach(p => hasPartner.add(p)));
+  // a child linked only socially (adopted-in, foster) is connected too
+  (data.socialParentLinks || []).forEach(l => { childToUnion[l.childId] = childToUnion[l.childId] || l.unionId; });
   individuals.forEach(ind => {
     if (ind.generation >= 3 && !childToUnion[ind.id] && !hasPartner.has(ind.id)) {
       warnings.push(`Uyarı: "${ind.displayLabel || ind.label || ind.id}" ne bir ebeveyn çiftine ne de bir eşe bağlı.`);

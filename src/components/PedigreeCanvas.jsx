@@ -56,9 +56,13 @@ function connectorPath(x1, y1, x2, y2, bridges) {
 
 /** One stroke of a connector, optionally offset (dx, dy) — used for double lines. */
 function drawStroke(g, edge, dx = 0, dy = 0) {
-  return g.append('path')
+  const path = g.append('path')
     .attr('d', connectorPath(edge.x1 + dx, edge.y1 + dy, edge.x2 + dx, edge.y2 + dy, edge.bridges))
     .attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5).attr('fill', 'none');
+  // NSGC: a line of descent to an adoptive/foster child is dashed (model:
+  // graph.socialParentLinks, layout: edge.descentKind).
+  if (edge.descentKind) path.attr('stroke-dasharray', '6 4');
+  return path;
 }
 
 // SVG export needs a stable handle to the actual rendered <svg> node.

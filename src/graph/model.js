@@ -100,3 +100,30 @@ export function ancestorsOf(graph, id, idx = indexGraph(graph)) {
   }
   return out;
 }
+
+/**
+ * The parentage used for DRAWING and generation: biological links, plus a
+ * social link (adoptive, foster, …) for a child that has no biological
+ * parents in the graph — such a child is drawn under its social parents
+ * (NSGC: adopted-in child, dashed line of descent). A child with biological
+ * parents is drawn under them; its social link is kept in the model and
+ * drawn as a second line in Faz 4.
+ *
+ * Returns the graph with those children folded into parentChildRelationships
+ * and `socialChildren`: Map childId → kind.
+ */
+export function displayParentage(graph) {
+  const links = graph.socialParentLinks || [];
+  const socialChildren = new Map();
+  if (!links.length) return { graph, socialChildren };
+  const bio = new Set((graph.parentChildRelationships || []).flatMap((r) => r.children));
+  const pcrs = (graph.parentChildRelationships || []).map((r) => ({ ...r, children: [...r.children] }));
+  for (const l of links) {
+    if (bio.has(l.childId) || socialChildren.has(l.childId)) continue;
+    let rel = pcrs.find((r) => r.unionId === l.unionId);
+    if (!rel) { rel = { unionId: l.unionId, children: [] }; pcrs.push(rel); }
+    rel.children.push(l.childId);
+    socialChildren.set(l.childId, l.kind);
+  }
+  return { graph: { ...graph, parentChildRelationships: pcrs }, socialChildren };
+}

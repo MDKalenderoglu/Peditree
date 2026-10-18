@@ -18,6 +18,7 @@ import { buildStructure } from './structure';
 import { orderLayers } from './ordering';
 import { solveSeparatedQP } from './qp';
 import { routeConnectors, estimateLevelNeeds, planBands } from './routing';
+import { displayParentage } from '../../graph/model';
 
 export const PCL = {
   GEN_Y_SPACING: 160,
@@ -47,7 +48,9 @@ const FOOTPRINT_ROUNDS = 400;   // upper bound; only pathological graphs need mo
  * @param {{individuals:Array, unions:Array, parentChildRelationships:Array}} graph
  * @param {{ previous?: Map<string, number> }} [opts]  previous x per id (stability)
  */
-export function computePclLayout(graph, opts = {}) {
+export function computePclLayout(inputGraph, opts = {}) {
+  // social-only children (e.g. adopted-in) are drawn under their social parents
+  const { graph, socialChildren } = displayParentage(inputGraph);
   const individuals = graph.individuals || [];
   if (individuals.length === 0) return { nodes: [], edges: [] };
 
@@ -226,6 +229,7 @@ export function computePclLayout(graph, opts = {}) {
   ids.forEach((id) => { yPos[id] = rowY.get(S.indById.get(id).generation ?? gens[0]); });
 
   const edges = routeConnectors(S, rows, xPos, yPos, plans);
+  if (socialChildren.size) markSocialDescent(edges, S, socialChildren);
   const tRouted = now();
   const nodes = individuals.map(ind => ({ ...ind, x: xPos[ind.id] ?? 0, y: yPos[ind.id] ?? 0 }));
   return {
@@ -235,4 +239,22 @@ export function computePclLayout(graph, opts = {}) {
       timings: { orderMs: tOrdered - t0, solveMs: tSolved - tOrdered, routeMs: tRouted - tSolved, qpSolves, qpIterations },
     },
   };
+}
+
+/**
+ * Lines of descent to a child linked only socially carry `descentKind`
+ * (the renderer draws them dashed): the child's own stem always; the
+ * union's drop and sibship line when every child of the union is social.
+ */
+function markSocialDescent(edges, S, socialChildren) {
+  const allSocial = new Set();
+  for (const [uid, kids] of S.childrenOf) {
+    if (kids.length && kids.every((c) => socialChildren.has(c))) allSocial.add(uid);
+  }
+  for (const e of edges) {
+    if (e.type === 'childStem' && socialChildren.has(e.childId)) e.descentKind = socialChildren.get(e.childId);
+    else if ((e.type === 'parentChildDrop' || e.type === 'sibship') && allSocial.has(e.unionId)) {
+      e.descentKind = socialChildren.get(S.childrenOf.get(e.unionId)[0]);
+    }
+  }
 }

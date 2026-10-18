@@ -16,7 +16,7 @@
  */
 import { computeGenerations } from '../utils/graphTraversal';
 import { defaultChildOrder } from '../utils/childOrdering';
-import { indexGraph, ancestorsOf } from './model';
+import { indexGraph, ancestorsOf, displayParentage } from './model';
 
 export function finalizeGraph(graph, { anchorId = 'proband' } = {}) {
   const idx0 = indexGraph(graph);
@@ -31,7 +31,10 @@ export function finalizeGraph(graph, { anchorId = 'proband' } = {}) {
   const anchor = idx0.byId.has(anchorId)
     ? anchorId
     : (graph.individuals.find((i) => i.proband) || graph.individuals[0] || {}).id;
-  if (anchor) computeGenerations(graph, anchor, 3);
+  // generations follow the drawn parentage (a child with only adoptive
+  // parents sits one row below them); the folded copy shares the
+  // individual objects, so the computed generations land on the graph
+  if (anchor) computeGenerations(displayParentage(graph).graph, anchor, 3);
 
   const idx = indexGraph(graph);
   for (const u of graph.unions) {

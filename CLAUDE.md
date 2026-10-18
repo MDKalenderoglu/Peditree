@@ -78,7 +78,7 @@ Known PCL limitations (tracked in `docs/PEDITREE_KNOWN_ISSUES.md`, never silentl
 
 ## Current Architectural Priority
 
-**Faz 2b — graph-first data model, permanent IDs, schema v2** (`docs/PEDITREE_DATA_MODEL_V2.md`). Steps 2b-1 … 2b-4 are done: the store holds only the v2 document; every mutation goes through `src/graph/ops.js` (editor) or `src/graph/wizardAdapter.js` (wizard), both built on the atomic `commit` (clone → mutate → finalize → validate; a new error refuses the whole operation). The v1 replay pipeline survives only in `src/graph/v1pipeline.js` for migration (and `src/__tests__/support/v1Store.js` for tests). Remaining: 2b-5 social parent links in layout/UI, then KI-2 edit-local layout.
+**Faz 2b — graph-first data model, permanent IDs, schema v2** (`docs/PEDITREE_DATA_MODEL_V2.md`). Steps 2b-1 … 2b-5 are done: the store holds only the v2 document; every mutation goes through `src/graph/ops.js` (editor) or `src/graph/wizardAdapter.js` (wizard), both built on the atomic `commit` (clone → mutate → finalize → validate; a new error refuses the whole operation). The v1 replay pipeline survives only in `src/graph/v1pipeline.js` for migration (and `src/__tests__/support/v1Store.js` for tests). Social parent links are in model, validation and layout (adopted-in child under social parents, dashed descent; editor UI and brackets in Faz 4). Next: KI-2 edit-local layout.
 
 - The pedigree graph is the single source of truth for relationships. The wizard and the person editor are input adapters that apply graph operations to the same graph.
 - IDs never change when a person's position or role changes; never reused.

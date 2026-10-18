@@ -1,6 +1,6 @@
 # Peditree — Veri modeli değerlendirmesi ve graph-first şema v2 (Faz 2b)
 
-Durum: **2b-1 … 2b-4 uygulandı (2026-10-18); 2b-5 (sosyal ebeveynlik — yerleşim ve arayüz) sırada** · İlgili bulgular: DM-1, DM-6, DM-9, DM-10, EX-4,
+Durum: **2b-1 … 2b-5 uygulandı (2026-10-18)**; sosyal ebeveynlik düzenleme arayüzü ve köşeli parantez gösterimi Faz 4 · İlgili bulgular: DM-1, DM-6, DM-9, DM-10, EX-4,
 UX-1 (`PEDITREE_AUDIT_REPORT.md`).
 
 ## 1. Mevcut model (v1) — gerçekte nasıl çalışıyor
@@ -127,7 +127,7 @@ işlem yığına girmez; seçim ve uyarı gizleme yığına girmez (v1 ile aynı
 | ✅ 2b-2 | `migrateV1ToV2` + v2 kalıcılık zarfı + v1 yedeği | v1 fuzz durumları (binlerce) ve fikstürlerde `G1` ≡ v2 grafiği; kaydet→yükle→kaydet özdeşliği |
 | ✅ 2b-3 | Store geçişi: belge kaynak; tüm eylemler graf işlemi; sihirbaz görünümü grafikten türetilir; geri al/yinele belgeyle | tüm mevcut davranış testleri (v1 iç yapısını okuyan testler grafik düzeyindeki eşdeğer iddialara taşınır), veri bütünlüğü, PCL kapıları |
 | ✅ 2b-4 | Proje dosyası kaydet/aç (`.peditree.json`), v1 dosyası açılırsa göç | uçtan uca kaydet→aç→düzenle→kaydet testi |
-| 2b-5 | Sosyal ebeveynlik bağları (model, doğrulama, yerleşim yapısı) | birim + yerleşim testleri |
+| ✅ 2b-5 | Sosyal ebeveynlik bağları (model, doğrulama, yerleşim yapısı) | birim + yerleşim testleri |
 | sonra | KI-2 düzenleme-yerel yerleşim (önceki yerleşimin korunması) — kalıcı kimliklere dayanır | `knownIssues` hedef testi |
 
 ## 3. Göç doğrulama sonuçları (2b-2, 2026-10-18)
@@ -173,3 +173,15 @@ işlem yığına girmez; seçim ve uyarı gizleme yığına girmez (v1 ile aynı
   birliğine eklenen kardeş bağı ayrıca listelenmez (geri al ile ya da kişiyi silerek kaldırılır).
 - Akrabalık yolu değiştirildiğinde şablonun oluşturduğu büyük ebeveynler yeni kimlik alır (ör. `ggf_2`); bilgi girilmiş
   şablon kişileri varsa değişiklik reddedilir.
+
+## 5. Sosyal ebeveynlik (2b-5) — uygulandı
+
+- Model: `graph.socialParentLinks` (`adoptive | foster | step | guardian`), doğrulama (`validate.js`), işlemler
+  (`addSocialParentLink`, `removeSocialParentLink`) ve store eylemleri.
+- Yerleşim: biyolojik ebeveyni çizilmemiş, yalnız sosyal bağı olan çocuk sosyal ebeveynlerinin altına yerleşir
+  (`displayParentage`); kuşağı da buna göre türetilir; iniş çizgisi `descentKind` taşır ve **kesikli** çizilir (NSGC).
+  Biyolojik ebeveyni de olan çocuk biyolojik ailesinin altında çizilir; sosyal bağın ikinci çizgisi Faz 4.
+- Doğrulayıcı sosyal bağlı çocuğu "bağlantısız" saymaz.
+- Ekran görüntüsü: `docs/screenshots/faz2b/2b-5-adopted-in-dashed-descent.jpg`.
+- Sınır: düzenleme arayüzü (evlat edinme ekleme), köşeli parantez ve iki çizgili (biyolojik + evlat edinen) gösterim
+  Faz 4'te.

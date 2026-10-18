@@ -27,6 +27,7 @@ import { computePedigreeLayoutV2 as computePedigreeLayout } from '../utils/pedig
 import { auditLayoutIntegrity } from '../utils/layoutIntegrity';
 import { assessRelationshipMutation } from '../utils/relationshipSafety';
 import { validateDocument } from '../graph/validate';
+import { displayParentage } from '../graph/model';
 import * as ops from '../graph/ops';
 import { wizardOps, deriveWizardView } from '../graph/wizardAdapter';
 import { migrateV1ToV2 } from '../graph/migrate';
@@ -65,7 +66,9 @@ function deriveAll(doc, ui = {}) {
   const graphIssues = tagIssues(validateDocument(doc), 'graph');
   const errors = graphIssues.filter(i => i.severity === 'error');
   if (errors.length > 0) console.error('Pedigree graph integrity failed', errors);
-  const layoutIssues = tagIssues(auditLayoutIntegrity(layout, graph), 'layout');
+  // geometry is audited against the parentage that is drawn (adopted-in
+  // children under their social parents), see displayParentage
+  const layoutIssues = tagIssues(auditLayoutIntegrity(layout, displayParentage(graph).graph), 'layout');
   const integrityIssues = [...graphIssues, ...layoutIssues];
   return {
     pedigreeData: combined,
@@ -261,6 +264,9 @@ export const usePedigreeStore = create((zSet, get) => {
     addParentsTo: (targetId, opts = {}) => applyGuarded(ops.addParents(get().doc, targetId, opts)),
     addSiblingTo: (targetId, sex = 'unknown') => applyGuarded(ops.addSibling(get().doc, targetId, { sex })),
     createUnionBetween: (id1, id2, opts = {}) => applyGuarded(ops.linkPartners(get().doc, id1, id2, opts)),
+    // social (non-biological) parenthood — model + layout in Faz 2b; editor UI in Faz 4
+    addSocialParentLink: (childId, unionId, kind) => applyGuarded(ops.addSocialParentLink(get().doc, childId, unionId, kind)),
+    removeSocialParentLink: (childId, unionId) => apply(ops.removeSocialParentLink(get().doc, childId, unionId)),
 
     updateIndividual: (id, updates) => {
       const rest = { ...updates };
