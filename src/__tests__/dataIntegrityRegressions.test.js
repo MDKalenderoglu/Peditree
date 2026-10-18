@@ -174,3 +174,25 @@ describe('DM-12 — "Doğum Sırası" works for every sibship, not only the wiza
     expect(S().pedigreeData.parentChildRelationships.find(r => r.unionId === uid).children).toEqual([second, first]);
   });
 });
+
+describe('KI-7 — no false "not connected" warnings for people who married into the family', () => {
+  const notConnected = () => (S().warnings || []).filter(w => /ebeveyn birliğine|ne bir ebeveyn çiftine/.test(String(w)));
+
+  it('proband with a spouse (childless) and a sibling with spouse and child produce no such warning', () => {
+    S().updateSiblingCount('male', 1);
+    S().addSpouseTo('proband', 'female');
+    S().addSpouseTo('sib_m_0', 'female');
+    const uid = S().pedigreeData.unions.find(u => u.partners.includes('sib_m_0')).id;
+    S().addChildToUnion(uid, 'male');
+    expect(notConnected()).toEqual([]);
+  });
+
+  it('a person with neither parents nor partner is still reported', async () => {
+    const { validatePedigree } = await import('../utils/validators');
+    const w = validatePedigree({
+      individuals: [{ id: 'a', sex: 'male', generation: 3, label: 'Ali' }],
+      unions: [], parentChildRelationships: [],
+    });
+    expect(w.some(m => m.includes('Ali') && m.includes('ne bir ebeveyn çiftine'))).toBe(true);
+  });
+});

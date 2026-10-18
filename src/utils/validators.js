@@ -46,37 +46,17 @@ export function validatePedigree(data) {
     }
   });
 
-  // 2. Orphan check — gen 3+ individuals should be in some parent union
+  // 2. Orphan check — a gen 3+ individual with neither parents nor a partner
+  // is disconnected from the pedigree. Someone who married into the family
+  // (a partner, no parents drawn) is a normal founder and is NOT warned
+  // (KI-7: the old rule warned for every married-in spouse, and a childless
+  // couple was flagged as a "spouse not connected" — both false positives
+  // that train users to ignore warnings).
+  const hasPartner = new Set();
+  unions.forEach(u => (u.partners || []).forEach(p => hasPartner.add(p)));
   individuals.forEach(ind => {
-    if (ind.generation >= 3 && !childToUnion[ind.id]) {
-      if (ind.relation === 'spouse_gen4' || ind.relation === 'spouse_mother' || ind.relation === 'spouse_father') return;
-      warnings.push(`Uyarı: "${ind.label || ind.id}" herhangi bir ebeveyn birliğine bağlı değil.`);
-    }
-  });
-
-  // 3. Spouse without children — only warn for truly disconnected spouses
-  // Childless couples are a valid clinical pedigree convention (inverted-T marker).
-  // Skip warnings for collateral relative unions (uncle/aunt unions) — they are
-  // intentionally childless when the user enters zero children.
-  unions.forEach(u => {
-    const children = parentChildRelationships.find(r => r.unionId === u.id);
-    if (!children || children.children.length === 0) {
-      // Skip: nuclear family, all collateral relative unions (any level)
-      if (u.id === 'U_PARENTS') return;
-      // Collateral unions at any level (uncles, aunts, GP uncles, GP aunts)
-      const collateralPrefixes = [
-        'U_MAT_UNCLE', 'U_MAT_AUNT', 'U_PAT_UNCLE', 'U_PAT_AUNT',
-        'U_GP_MAT_UNCLE', 'U_GP_MAT_AUNT', 'U_GP_PAT_UNCLE', 'U_GP_PAT_AUNT',
-        'U_MOTHER_OTHER', 'U_FATHER_OTHER', 'U_GEN4', 'U_CC_',
-      ];
-      if (collateralPrefixes.some(prefix => u.id.startsWith(prefix))) return;
-
-      const p1 = indById[u.partners[0]];
-      const p2 = indById[u.partners[1]];
-      const hasRelSpouse = [p1, p2].some(p => p && (p.relation || '').includes('spouse'));
-      if (hasRelSpouse) {
-        warnings.push(`Uyarı: Eş (${u.id}) herhangi bir ebeveyn birliğine bağlı değil.`);
-      }
+    if (ind.generation >= 3 && !childToUnion[ind.id] && !hasPartner.has(ind.id)) {
+      warnings.push(`Uyarı: "${ind.displayLabel || ind.label || ind.id}" ne bir ebeveyn çiftine ne de bir eşe bağlı.`);
     }
   });
 
