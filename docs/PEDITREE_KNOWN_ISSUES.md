@@ -20,7 +20,7 @@ görünmez kalabilir) · P1 = güveni/kullanılabilirliği ciddi bozar · P2 = g
 | KI-5 | P0 | **düzeltildi** (bu adım) | Uyarılar kutusu tuvalin üstünde sabit; alt kuşaktaki sembolleri (yeni eklenen çocuk dahil) örtüyordu | Bir birey görünmez kalabilir | uyarılar tuvalin üstünde normal akışta (kaynak testi) + tarayıcıda ölçüm (çakışma 0 px) |
 | KI-6 | P2 | **düzeltildi** (bu adım) | ~1100 px genişlikte araç çubuğu "Sıfırla" düğmesinin üstüne biniyordu | — | araç çubuğu satır kaydırır, tuvalin üstüne binmez |
 | KI-7 | P1 | **düzeltildi** (bu adım) | Aileye dışarıdan katılan her eş ve her çocuksuz çift için "herhangi bir ebeveyn birliğine bağlı değil" uyarısı (iç ID ile) | Yanlış-pozitif uyarılar kullanıcıyı gerçek uyarıları yok saymaya alıştırır | `dataIntegrityRegressions.test.js` KI-7 (eski doğrulayıcıyla 2 test kırmızı) |
-| KI-8 | P2 | açık | Bir kişinin "dışarıdan evlenen" ikinci eşi yapısal adımda hep aynı tarafa (erkek-solda kuralı) konuyor; diğer eşi başka bir aileden gelip o tarafta kalırsa (ör. açık doğum sırası babayı o tarafa zorlarsa) akraba evliliği çizgisi ikinci eşin üstünden şeritle geçiyor | Çizgi doğru ve atlamalı; okunması zorlaşır | hedef (`it.fails`) |
+| KI-8 | P2 | **düzeltildi** (2026-10-19) | Dışarıdan evlenen eşin tarafı sıralamadan önce sabitti (erkek-solda); kişinin başka aileden partneri o tarafta kalınca partnerlik çizgisi eşin üstünden geçiyordu. Aynı sınıftan: eşin eşi satır sonuna ekleniyordu; kurucu zincirleri veri sırasıyla diziliyordu. Partnerin üstünden geçen çizgi (1582 düzenleme, store) 68 → 8; kalan 8 yapısal olarak kaçınılmaz (3+ partner, iki kız kardeşle evlilik) | Çizgi başka bir partnerde bitiyormuş gibi okunur | `knownIssues.test.js` (normal test) + `ki8PartnerSide.test.js` (25 test); ayrıntı `docs/PEDITREE_KI8_REPORT.md` |
 | KI-9 | P1 | **düzeltildi** (Faz 2b) | "Klinik Notlar" lejantı etiketi olmayan kişiler için iç kimliği (`mat_uncle_0_cf_1`) yazıyordu; SVG/PNG dışa aktarmaya da giriyordu | Dışa aktarılan klinik belgede anlamsız kimlik | kaynak testi + tarayıcıda doğrulandı ("[1] IV-7: …") |
 | KI-10 | P2 | açık | 387 / 474 kişilik stres grafiklerinde yerleşim 1,7 / 2,8 s sürüyor (ayak izi kuralı 281 / 301 çözücü turu gerektiriyor); 263 kişide 0,18 s | Çok yoğun ailede düzenleme sonrası belirgin bekleme | `ki3Regression.test.js` süre tavanı (3,5 / 5 s — regresyon tavanı, ürün hedefi değil) |
 
@@ -77,6 +77,10 @@ görünmez kalabilir) · P1 = güveni/kullanılabilirliği ciddi bozar · P2 = g
     En kötü süre ~2,8 s (üç yerleşim hesaplanır; KI-10).
   - Yana sarkan kardeşlik çizgisi tazeden %29 fazla (çoğu, tam ebeveynlerinin altında olmayan tek çocuk).
   - Eş eklendiğinde KI-8 (eşin tarafı) nedeniyle kardeşler yer açmak zorunda kalabiliyor.
+- **KI-8 sonrası (2026-10-19, `reports/layout-stability-ki8-{before,after}.md`):** gerekçesiz çevrilme 0; toplam
+  çevrilme 14 → 9; ortalama kayma 23,7 → 21,2 px; kesişim 75 → 22; uzun eş çizgisi 38 → 7. Hedeflenmiş düzenlemelerde
+  blok dışı hareket **80 → 80 (değişmedi)**; yana sarkma 2318 → 2331 (kötüleşti); tazeden fazla kayık çiftli
+  düzenleme 6 → 9.
 - **Kullanıcı kontrolü:** araç çubuğunda "Yeniden Düzenle" — tüm pedigriyi taze yerleştirir; geri alınabilir.
   Proje dosyası ve otomatik kayıt çizimi (`layoutHints`) saklar; açılışta çizim birebir geri gelir.
 

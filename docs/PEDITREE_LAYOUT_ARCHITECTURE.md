@@ -159,5 +159,8 @@ karmaşık pedigri, düzenleme öncesi/sonrası yönelim).
    yeniden yerleşim `src/layout/pcl/incremental.js` (düzeyler yerel → geniş → taze; okunabilirlik koruması),
    `computePclLayout(graph, { stability })` (kararlı sıralama, iğneler + IRLS, çapalama, şekil terimleri, satır
    yüksekliği çapası). Ölçüm: `reports/layout-stability-{before,after}.md`; açık kalanlar `PEDITREE_KNOWN_ISSUES.md`.
+5a. **Partner tarafı (KI-8, 2026-10-19):** dışarıdan evlenen eşin tarafı artık sıralama adımında seçilebilir
+   (başka aileden partneri olan kişiler için ayna blok alternatifleri); eşin eşi ve kurucu zincirleri bağlı
+   oldukları partnerin yanında. Ayrıntı ve ölçüm: `PEDITREE_KI8_REPORT.md`.
 5. Renderer: pedigri numarası (ör. III-5) tam iniş çizgisinin sembole girdiği yerde; çizgi etiketin içinden geçiyor
    (Faz 4 sembol/etiket işi).
