@@ -137,7 +137,7 @@ export function checkConnectorReadability(pd) {
 /** Soft quality measures for comparing engines. */
 export function readabilityMetrics(pd) {
   const m = {
-    individuals: 0, unionsWithChildren: 0, offCenter: 0, maxCentreOffset: 0, sideHang: 0,
+    individuals: 0, unionsWithChildren: 0, offCenter: 0, maxCentreOffset: 0, sideHang: 0, lineOverOwnPartner: 0,
     longUnions: 0, maxUnionSpan: 0, crossings: 0, bridgedCrossings: 0, stackedBuses: 0,
     width: 0, widthPerIndividual: 0,
   };
@@ -161,6 +161,24 @@ export function readabilityMetrics(pd) {
       m.maxCentreOffset = Math.max(m.maxCentreOffset, off);
       if (off > SLOT / 2) m.offCenter++;
       if (mid < lo - 1 || mid > hi + 1) m.sideHang++;
+    }
+    // A partnership line that runs over another partner of one of its two
+    // partners (KI-8): the line reads as if it ended at that partner.
+    const yOf = new Map(nodes.map(n => [n.id, n.y]));
+    const partnersOf = new Map();
+    for (const u of (pd.unions || [])) {
+      for (const p of u.partners || []) {
+        if (!partnersOf.has(p)) partnersOf.set(p, new Set());
+        for (const q of u.partners) if (q !== p) partnersOf.get(p).add(q);
+      }
+    }
+    for (const u of (pd.unions || [])) {
+      const [a, b] = u.partners || [];
+      if (!finite(x.get(a)) || !finite(x.get(b)) || yOf.get(a) !== yOf.get(b)) continue;
+      const lo = Math.min(x.get(a), x.get(b)), hi = Math.max(x.get(a), x.get(b));
+      const others = new Set([...(partnersOf.get(a) || []), ...(partnersOf.get(b) || [])]);
+      others.delete(a); others.delete(b);
+      if ([...others].some(o => yOf.get(o) === yOf.get(a) && x.get(o) > lo && x.get(o) < hi)) m.lineOverOwnPartner++;
     }
     m.crossings = checkConnectorReadability(pd).filter(v => v.code === 'FOREIGN_CONNECTOR_CROSSING').length;
     // Crossings drawn with a line jump are unambiguous but still a cost the

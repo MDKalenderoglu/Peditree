@@ -34,8 +34,9 @@
  *   meanShiftPx    mean |Δx| (raw) and aligned on the proband
  *   readability    after every edit, the drawing the store shows vs a fresh
  *                  PCL layout of the same graph: off-centre couples, line
- *                  crossings, long partner lines (> 3 slots) and side-hanging
- *                  sibship lines (connectorReadability.readabilityMetrics) —
+ *                  crossings, long partner lines (> 3 slots), side-hanging
+ *                  sibship lines and partnership lines running over another
+ *                  partner of one of the two (KI-8) (readabilityMetrics) —
  *                  the price, if any, that stability pays in readability
  * Targeted edits also report: people outside the affected block that moved
  * (> 2 px), family shape changes (couples and sibships entirely outside the
@@ -135,11 +136,13 @@ function summarize(rows) {
         crossingsDrawn: sum('bridgedCrossings', 'drawn'), crossingsFresh: sum('bridgedCrossings', 'fresh'),
         longUnionsDrawn: sum('longUnions', 'drawn'), longUnionsFresh: sum('longUnions', 'fresh'),
         sideHangDrawn: sum('sideHang', 'drawn'), sideHangFresh: sum('sideHang', 'fresh'),
+        lineOverOwnPartnerDrawn: sum('lineOverOwnPartner', 'drawn'), lineOverOwnPartnerFresh: sum('lineOverOwnPartner', 'fresh'),
         editsMoreOffCenterThanFresh: worse('offCenter'), editsMoreCrossingsThanFresh: worse('bridgedCrossings'),
         editsMoreLongUnionsThanFresh: worse('longUnions'),
       };
     })(),
     layoutLevels: rows.reduce((acc, r) => { if (r.level) acc[r.level] = (acc[r.level] || 0) + 1; return acc; }, {}),
+    maxShiftPx: Math.round(Math.max(0, ...rows.map((r) => r.maxRaw))),
     p90MaxShiftPx: (() => { const m = rows.map((r) => r.maxRaw).sort((a, b) => a - b); return Math.round(m[Math.floor(m.length * 0.9)] || 0); })(),
   };
 }
@@ -310,3 +313,55 @@ export function runTargeted(store) {
   }
   return results;
 }
+
+// ── large families: the frozen KI-3 stress pedigrees ──
+
+const FIXTURE_EDITS = [
+  ['child to proband', (ops, d) => ops.addChildToPerson(d, 'proband', { sex: 'female' })],
+  ['sibling to proband', (ops, d) => ops.addSibling(d, 'proband', { sex: 'male' })],
+  ['spouse to mother', (ops, d) => ops.addPartner(d, 'mother', { sex: 'male' })],
+];
+
+/**
+ * PCL level: each fixture's fresh layout is the previous drawing; one edit is
+ * applied and drawn edit-locally (computeStableLayout). Reports the level
+ * used, movement, readability (drawn vs a fresh layout of the edited graph),
+ * violations and time. Dependencies are passed in so the harness itself does
+ * not load the 400-person fixtures unless asked.
+ */
+export function runFixtureEdits({ fixtures, ops, computePclLayout, computeStableLayout, displayParentage, checkAllInvariants, checkConnectorReadability, createDocument }) {
+  const keys = ['offCenter', 'bridgedCrossings', 'longUnions', 'sideHang', 'lineOverOwnPartner'];
+  const pick = (m) => Object.fromEntries(keys.map((k) => [k, m[k]]));
+  const out = [];
+  for (const [id, graph] of fixtures) {
+    const doc = createDocument(graph);
+    let t0 = performance.now();
+    const prev = computePclLayout(doc.graph);
+    const freshMs = Math.round(performance.now() - t0);
+    t0 = performance.now();
+    const frozen = computeStableLayout(doc.graph, { prevNodes: prev.nodes, frozen: true });
+    const reopenMs = Math.round(performance.now() - t0);
+    const reopenExact = frozen.nodes.every((n, k) => n.x === prev.nodes[k].x && n.y === prev.nodes[k].y);
+    for (const [edit, run] of FIXTURE_EDITS) {
+      const r = run(ops, doc);
+      if (!r.ok) { out.push({ fixture: id, edit, skipped: true }); continue; }
+      t0 = performance.now();
+      const L = computeStableLayout(r.doc.graph, { prevGraph: doc.graph, prevNodes: prev.nodes, prevEdges: prev.edges });
+      const ms = Math.round(performance.now() - t0);
+      const drawn = { ...displayParentage(r.doc.graph).graph, ...L };
+      const fresh = { ...displayParentage(r.doc.graph).graph, ...computePclLayout(r.doc.graph) };
+      const px = new Map(prev.nodes.map((n) => [n.id, n]));
+      const shifts = L.nodes.filter((n) => px.has(n.id)).map((n) => Math.max(Math.abs(n.x - px.get(n.id).x), Math.abs(n.y - px.get(n.id).y)));
+      out.push({
+        fixture: id, edit, people: prev.nodes.length, level: L.meta.stability.level,
+        moved: shifts.filter((d) => d > MOVE_PX).length, maxShiftPx: Math.round(Math.max(0, ...shifts)),
+        meanShiftPx: +(shifts.reduce((a, b) => a + b, 0) / (shifts.length || 1)).toFixed(1),
+        drawn: pick(readabilityMetrics(drawn)), fresh: pick(readabilityMetrics(fresh)),
+        invariants: checkAllInvariants(drawn).length, readabilityViolations: checkConnectorReadability(drawn).length,
+        ms, freshMs, reopenMs, reopenExact,
+      });
+    }
+  }
+  return out;
+}
+
