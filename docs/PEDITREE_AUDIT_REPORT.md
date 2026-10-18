@@ -1,7 +1,7 @@
 # Peditree — Bağımsız Teknik Denetim Raporu (Faz 0 + Faz 1)
 
 Tarih: 2026-10-18 · Denetlenen commit: `f516a6d` (main) · Çalışma branch'i: `stabilization/clinical-layout`
-· Güncelleme: Faz 2a ve Faz 3 durumları §5'te; Faz 3'te bulunan yeni bulgular DM-12, RN-11, UX-9, UX-10.
+· Güncelleme: Faz 2a ve Faz 3 durumları §5'te; Faz 3'te bulunan yeni bulgular DM-12, RN-11, UX-9, UX-10; Faz 2b'de DM-13.
 
 Bu rapor eski plan/rapor dokümanlarındaki iddiaları **gerçek durum kabul etmez**. Her bulgu ya çalışan
 koddan ölçülmüş (tanı testi / tarayıcı) ya da doğrudan kaynak koddan doğrulanmıştır. Tanı testleri geçici
@@ -107,6 +107,7 @@ pedigri oluşturmayı engelleyen işlevsel hata · **P2** performans/belirgin ku
 | DM-10 | P1 | Bütünlük denetimi boşlukları: atalık döngüsü (kişinin kendi atası olması), union cinsiyet tutarlılığı, ebeveyn-çocuk/kardeş union'ı `auditPedigreeGraph`'ta yok (yalnızca oluşturma planı veya uyarı metni). | `graphIntegrity.js` kod envanteri |
 | DM-11 | P1* | Farklı kuşaktan eş oluşturma kategorik olarak engelli. Biyolojik olarak mümkün avunküler (amca/dayı–yeğen) birliktelikler temsil edilemez. (*kural ürün kararına bağlı) | `computeUnionCreationPlan` |
 | DM-12 | P1 | *(Faz 3'te bulundu, düzeltildi)* "Doğum Sırası ◀/▶" düğmeleri sırayı her kardeşlik için `childOrders`'a kaydediyor, ama oluşturucu bunu yalnızca proband kardeşlerine, yarım kardeşlere, kuzenlere ve 4. kuşağa uyguluyordu: babayı amcalar arasında taşımak (büyükanne-büyükbaba kardeşliği) veya doğrudan eklenen çocukları sıralamak **sessizce etkisizdi**. Düzeltme: oluşturucu aşama 10e kayıtlı sırayı her kardeşliğe uygular ve `birthOrderExplicit` ile işaretler; kuşak anlık görüntüsü değişmedi. | `dataIntegrityRegressions.test.js` DM-12 (düzeltme olmadan 2 test kırmızı) |
+| DM-13 | P1 | *(Faz 2b göç doğrulamasında bulundu)* "Belirtilmemiş ebeveyn" yer tutucusuna girilen klinik veri (ör. taşıyıcı) oturum içinde görünüyor ama `pruneStaleOverlays` yer tutucu kimliğini oluşturucu çıktısında bulamadığı için `manualEdits`'ten siliniyor; sayfa yenilenince **veri kayboluyor**. Kaydedilmiş v1 verisinde artık bulunmadığı için göçle geri getirilemez. v2'de veri kişinin üstünde durduğundan bu sınıf tasarım gereği ortadan kalkar (store geçişi, 2b-3). | `migrationV2.test.js` (300 rastgele v1 oturumunun 3'ünde görüldü) |
 
 ### 2.2 Yerleşim motoru (LY)
 

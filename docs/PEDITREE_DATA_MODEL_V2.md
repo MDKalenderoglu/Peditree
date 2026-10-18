@@ -64,7 +64,7 @@ graf işlemi üretir.
       { unionId, childId, kind: 'adoptive' | 'foster' | 'step' | 'guardian' }
     ],
   },
-  ids: { seq: number, retired: [id] },         // kalıcı kimlik ayırıcı: hiçbir kimlik yeniden kullanılmaz
+  ids: { counters: { [önek]: sonKullanılan }, retired: [id] },  // kalıcı kimlik ayırıcı: hiçbir kimlik yeniden kullanılmaz
   wizardAnchorId: 'proband',                   // sihirbazın "göreli" çalıştığı kişi (v1'deki sabit proband yuvası)
   provenance: { migratedFrom?: 1, migratedAt?, v1Snapshot? }  // göç denetimi için v1 verisinin tam kopyası
 }
@@ -105,7 +105,7 @@ graf işlemi üretir.
    kullanıcının v1'de gördüğü grafik `G1`.
 2. `doc.graph = G1` (kimlikler, birlik bayrakları, doğum sırası ve klinik alanlar dahil). v1'in yaşa göre sıraladığı
    kardeşlikler `orderPolicy:'byAge'`, diğerleri `'insertion'` alır.
-3. `ids.seq` = v1'deki en yüksek düzenleme numarası + 1; v1'de silinmiş/budanmış kimlikler `retired`.
+3. Doğrudan düzenleme sayacı v1'in `editSeq` değerinden devam eder; v1'de silinmiş kimlikler `retired`.
 4. `provenance.v1Snapshot` = v1 `wizardData`'nın tam kopyası (denetim/geri dönüş için).
 5. Doğrulama: `deriveGraph(doc)` ile `G1` anlamsal olarak eşit olmalı (kişiler + klinik alanlar, birlikler + bayraklar,
    ebeveyn-çocuk bağları + sıra). Eşit değilse göç **reddedilir**, v1 verisi dokunulmadan kalır.
@@ -129,3 +129,15 @@ işlem yığına girmez; seçim ve uyarı gizleme yığına girmez (v1 ile aynı
 | 2b-4 | Proje dosyası kaydet/aç (`.peditree.json`), v1 dosyası açılırsa göç | uçtan uca kaydet→aç→düzenle→kaydet testi |
 | 2b-5 | Sosyal ebeveynlik bağları (model, doğrulama, yerleşim yapısı) | birim + yerleşim testleri |
 | sonra | KI-2 düzenleme-yerel yerleşim (önceki yerleşimin korunması) — kalıcı kimliklere dayanır | `knownIssues` hedef testi |
+
+## 3. Göç doğrulama sonuçları (2b-2, 2026-10-18)
+
+- Zengin v1 oturumu (her v1 katmanı: el ile düzenlemeler, silme + yer tutucu, eş/ebeveyn/çocuk ekleme, akraba evliliği
+  bağı, doğum sırası, ilişki geçmişi, proband değişikliği): göç edilen grafik v1'de görünen grafikle **anlamsal olarak
+  aynı**; v2 türetme kuralları hiçbir şeyi değiştirmiyor.
+- 120 (test paketinde) + 300 (ölçüm) rastgele v1 düzenleme oturumu (14 işlem, 16–34 kişi): göç hatası 0, v2
+  normalizasyonu 0. Fark yalnızca DM-13 sınıfında (v1'in kendi veri kaybı; kaydedilmiş veride yok).
+- Depolama: v1 oturumu ilk açılışta taşınır, v2 yazılır, v1 zarfı `…v1.backup` anahtarına aynen taşınır; tanınmayan
+  veya bozuk kayıt hiçbir veriye dokunmadan bildirilir.
+- Proje dosyası: kaydet → aç → düzenle → kaydet → aç döngüsünde ilişkiler, kimlikler ve kimlik sayaçları korunuyor;
+  v1 dosyası açılırsa göç ediliyor; yabancı/bozuk dosya reddediliyor.
