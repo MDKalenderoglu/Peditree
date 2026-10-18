@@ -69,6 +69,9 @@ describe('KI-1 (open, P1) — couple centring on large pedigrees', () => {
   }, 30000);
 });
 
+// What the store draws after an edit (edit-local relayout, Aşama 1) is
+// measured in ki2Stability.test.js. The ratchet below measures FRESH layouts
+// of successive graphs — what "Yeniden Düzenle" and the full fallback draw.
 describe('KI-2 (open, P1) — edits re-arrange unrelated parts of the drawing', () => {
   const S = () => usePedigreeStore.getState();
   const xMap = () => new Map(S().pedigreeData.nodes.map(n => [n.id, n.x]));
@@ -84,7 +87,7 @@ describe('KI-2 (open, P1) — edits re-arrange unrelated parts of the drawing', 
     S().addSpouseTo('proband', 'female');
   }
 
-  it('ratchet: parent left/right flips over 40 random edit sequences do not increase', () => {
+  it('ratchet (fresh layouts, not the store drawing): parent left/right flips between successive fresh layouts over 40 random edit sequences do not increase', () => {
     let flips = 0;
     for (let c = 0; c < 40; c++) {
       const rng = makeRng(seedToInt('ki2-' + c));
@@ -105,6 +108,9 @@ describe('KI-2 (open, P1) — edits re-arrange unrelated parts of the drawing', 
     expect(flips).toBeLessThanOrEqual(KI2_FLIP_CEILING);
   }, 60000);
 
+  // Still failing after Aşama 1: the sibling's sibship widens by two slots,
+  // and with the parents kept centred over it the neighbouring families must
+  // make room (docs/PEDITREE_KNOWN_ISSUES.md, KI-2).
   it.fails('target: adding a spouse and a child to one sibling moves nobody outside that family block', () => {
     scenario();
     const before = xMap();
@@ -162,7 +168,7 @@ describe('KI-5 / KI-6 (fixed) — notices and toolbar never cover the canvas', (
   });
 });
 
-// Measured 2026-10-18 (PCL with man-left tie-breaker). Lower it when it improves.
+// Measured 2026-10-18 on fresh layouts (PCL with man-left tie-breaker). Lower it when it improves.
 const KI2_FLIP_CEILING = 31;
 
 describe('KI-8 (open, P2) — a married-in second partner separates a couple from two families', () => {
