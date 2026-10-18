@@ -20,25 +20,31 @@ Three collections form the graph:
 
 ```js
 Individual   { id, sex, age, generation, relation, label, displayLabel,
-               affected, carrier, deceased, proband,
-               pregnancyLoss, stillbirth, notes, x?, y? }
+               affected, carrier, deceased, proband, placeholder?,
+               pregnancyLoss, stillbirth, notes, condition?, conditions?,
+               ageAtDeath?, causeOfDeath? }
 
-Union        { id, partners: [id, id], consanguineous, consanguinityDegree,
-               consanguinityPath, status, relationshipBackground }
+Union        { id, partners: [id, id], status, consanguineous, consanguinityDegree,
+               consanguinityStatus, relationshipBackground }
 
-ParentChildRelationship  { unionId, children: string[], birthOrderExplicit? }
+ParentChildRelationship  { unionId, children: string[],      // BIOLOGICAL, ≤ 1 per child
+                           birthOrderExplicit?, orderPolicy: 'byAge' | 'insertion' }
+
+SocialParentLink         { childId, unionId, kind: 'adoptive' | 'foster' | 'step' | 'guardian' }
 ```
 
-`birthOrderExplicit: true` means the user set the sibling order ("Doğum Sırası"); the layout then treats it as a hard rule. Without it, the stored order is insertion order only.
+The persisted unit is the schema v2 document (`src/graph/document.js`): `{ schemaVersion: 2, graph: { individuals, unions, parentChildRelationships, socialParentLinks }, ids: { counters, retired }, wizardAnchorId, wizardMeta?, provenance }`. Clinical data lives on the person (no overlay). `placeholder: true` marks an "unspecified parent" created when a parent is deleted.
 
-**ID scheme is deterministic and symbolic** — `mother`, `mat_gf`, `mat_uncle_0`, `sib_f_2`, `U_MAT_GP`. Do not switch to UUID for wizard-built nodes. The parser uses UUID; that is intentional and isolated. Faz 2b (in progress) makes IDs permanent: once assigned, an ID never moves to another person and is never reused.
+Birth order: `birthOrderExplicit: true` (user set "Doğum Sırası") is a hard rule for the layout; otherwise `orderPolicy: 'byAge'` sorts by known ages (oldest left) and `'insertion'` keeps stored order. Without explicit order, PCL may move a sibling who married into another drawn family to the end of the sibship, but never contradicts known ages.
+
+**ID scheme is deterministic and symbolic** — `mother`, `mat_gf`, `mat_uncle_0`, `sib_f_2`, `U_MAT_GP`. Do not switch to UUID for wizard-built nodes. The parser uses UUID; that is intentional and isolated. IDs are permanent (Faz 2b): once assigned, an ID never moves to another person and is never reused (`ids.retired`, `src/graph/ids.js`); a re-added person gets a new ID.
 
 ---
 
 ## Non-Negotiable Clinical and Graph Constraints
 
-1. Every individual has a globally unique ID. `idSet` enforces this at build time — never bypass it.
-2. Each individual belongs to at most one **biological** parent union. `childToUnionMap` enforces this — never attach a child to two biological parent unions. (Faz 2b adds separately typed social parent links, e.g. adoption; they never replace or duplicate the biological link.)
+1. Every individual has a globally unique ID — enforced by `validateGraphStructure`/`auditPedigreeGraph` on every graph operation (and `idSet` in the v1 builder used for migration). Never bypass it.
+2. Each individual belongs to at most one **biological** parent union. `childToUnionMap` enforces this — never attach a child to two biological parent unions. Social parenthood (adoption, foster …) is a separate `socialParentLinks` entry; it never replaces or duplicates the biological link. A child with only a social link is drawn under the social parents with a dashed line of descent (`displayParentage`).
 3. A union connects exactly two partners. Never siblings. Never self.
 4. Consanguinity must reflect true shared ancestry: shared ancestor nodes must exist in the graph. A double line rendered without shared ancestor nodes is a structural error.
 5. `pregnancyLoss` (spontaneous miscarriage), `stillbirth`, and termination of pregnancy are distinct clinical types with distinct symbols. Do not conflate them.
@@ -51,7 +57,7 @@ ParentChildRelationship  { unionId, children: string[], birthOrderExplicit? }
 
 ## Generation
 
-`generation` is topology-derived: `computeGenerations(graph, 'proband', 3)` (`src/utils/graphTraversal.js`) runs once at the end of `buildPedigreeFromWizard()` and overwrites the constructor literals. `GENERATION_INCONSISTENT`, `SIBLING_GENERATION_INCONSISTENT` and `PARTNER_GENERATION_INCONSISTENT` are enforced. New `addInd()` calls may still pass a literal (used only for nodes unreachable from the proband); do not depend on it. Run `node verify-generations.mjs` after any builder change — the generation snapshot must stay identical.
+`generation` is topology-derived by `computeGenerations(graph, anchor, 3)` (`src/utils/graphTraversal.js`): in v2 it runs after EVERY graph operation (`src/graph/finalize.js`, over the drawn parentage incl. social-only children), anchored at `doc.wizardAnchorId`; the v1 builder (migration only) runs it at the end of `buildPedigreeFromWizard()`. A stored generation is kept only for people unreachable from the anchor. `GENERATION_INCONSISTENT`, `SIBLING_GENERATION_INCONSISTENT` and `PARTNER_GENERATION_INCONSISTENT` are enforced. Run `node verify-generations.mjs` after any builder change — the generation snapshot must stay identical.
 
 ---
 
@@ -72,13 +78,15 @@ Layout gates (must hold after any layout or builder change):
 - `npm run audit:layout-fuzz -- --seed 1` and `--seed 12345` — 0 % invariant and 0 % readability failures for the default engine.
 - `src/__tests__/pclLayout.test.js` — fixtures, determinism, birth order, time budgets (100 people < 500 ms, 300 < 2 s), orientation stability.
 
-Known PCL limitations (tracked in `docs/PEDITREE_KNOWN_ISSUES.md`, never silently accept regressions): couple centring on 200–300-person pedigrees, parent left/right flips after some edits, footprint violations on adversarial 387/474-person graphs, no incremental (edit-local) layout yet.
+Known PCL limitations (tracked in `docs/PEDITREE_KNOWN_ISSUES.md` with guard tests; never silently accept regressions): KI-1 couple centring on 200–300-person pedigrees; KI-2 no edit-local layout (unrelated people move, parent left/right flips); KI-4 pedigree number drawn on the line of descent; KI-8 a married-in second partner can separate a couple from two families; KI-10 layout of the 387/474-person stress graphs takes 1.7–2.8 s. KI-3 (footprint violations on the stress graphs) is fixed and guarded by frozen JSON fixtures (`src/__tests__/regression/ki3/`, `ki3Regression.test.js`; regenerate only with `npm run audit:freeze-ki3`).
 
 ---
 
 ## Current Architectural Priority
 
-**Faz 2b — graph-first data model, permanent IDs, schema v2** (`docs/PEDITREE_DATA_MODEL_V2.md`). Steps 2b-1 … 2b-5 are done: the store holds only the v2 document; every mutation goes through `src/graph/ops.js` (editor) or `src/graph/wizardAdapter.js` (wizard), both built on the atomic `commit` (clone → mutate → finalize → validate; a new error refuses the whole operation). The v1 replay pipeline survives only in `src/graph/v1pipeline.js` for migration (and `src/__tests__/support/v1Store.js` for tests). Social parent links are in model, validation and layout (adopted-in child under social parents, dashed descent; editor UI and brackets in Faz 4). Next: KI-2 edit-local layout.
+**Next: KI-2 — edit-local layout stability** (user priority, approved plan 2026-10-18): adding a spouse, child or sibling must not move unrelated branches; previous order and coordinates keyed by permanent IDs; local relayout first, wider/full relayout only when needed for correctness; optional "Yeniden Düzenle". Stability must never preserve a wrong or misleading connection. Then KI-8 and KI-1 (ordering/blocks first, not just weights). Faz 4–5 visualization requirements (common-ancestor paths, selectable lineages, colour view, adoption notation) are documented in `docs/PEDITREE_UX_REVIEW.md` and stay out of the KI-2 scope.
+
+**Done: Faz 2b — graph-first data model, permanent IDs, schema v2** (`docs/PEDITREE_DATA_MODEL_V2.md`). Steps 2b-1 … 2b-5 are done: the store holds only the v2 document; every mutation goes through `src/graph/ops.js` (editor) or `src/graph/wizardAdapter.js` (wizard), both built on the atomic `commit` (clone → mutate → finalize → validate; a new error refuses the whole operation). The v1 replay pipeline survives only in `src/graph/v1pipeline.js` for migration (and `src/__tests__/support/v1Store.js` for tests). Social parent links are in model, validation and layout (adopted-in child under social parents, dashed descent; editor UI and brackets in Faz 4).
 
 - The pedigree graph is the single source of truth for relationships. The wizard and the person editor are input adapters that apply graph operations to the same graph.
 - IDs never change when a person's position or role changes; never reused.

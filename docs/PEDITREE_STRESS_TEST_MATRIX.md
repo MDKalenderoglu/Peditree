@@ -87,7 +87,7 @@ Fuzz harness'ı gerçek store eylemleriyle rastgele işlem dizileri üretir; her
 | ID | Senaryo | Durum |
 |---|---|---|
 | F-1 | Uzun çapraz bağlantılar (A1: 33 kişilik gerçekçi aile — eşin ebeveynleri + kuzen evliliği) | ❌ recursive: 7 sessiz kesişim (`docs/screenshots/audit/A1-…`) · ✅ **pcl**: 0 ihlal, kuzen kardeşlikleri ebeveynlerinin altında, 1 atlamalı kesişim (eşin ebeveynleri halanın ailesinin üstünden — yapısal) (`docs/screenshots/faz3/F3-03-…`) |
-| F-2 | Aynı dala tekrar tekrar ekleme (rastgele 60–400 işlem, 66–474 kişi) | ❌ recursive: binlerce px uzak eşler · **pcl**: 263 / 387 / 474 kişide 0 ihlal (KI-3 düzeltmesi sonrası; `knownIssues.test.js`) |
+| F-2 | Aynı dala tekrar tekrar ekleme (orijinal KI-3 aileleri: 263 / 387 / 474 kişi, sabit JSON fixture) | ❌ recursive: binlerce px uzak eşler · **pcl**: 0 invariant / 0 okunabilirlik ihlali; 0,18 / 1,7 / 2,8 s (KI-10) — `ki3Regression.test.js` |
 | F-3 | Çok sayıda partner + yeniden birleşen soy hatları | ⏳ |
 
 ## G. Gerçekçi büyük pedigriler (sentetik, `src/audit/largePedigrees.js`)
