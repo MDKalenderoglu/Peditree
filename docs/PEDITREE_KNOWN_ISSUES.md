@@ -20,6 +20,8 @@ görünmez kalabilir) · P1 = güveni/kullanılabilirliği ciddi bozar · P2 = g
 | KI-5 | P0 | **düzeltildi** (bu adım) | Uyarılar kutusu tuvalin üstünde sabit; alt kuşaktaki sembolleri (yeni eklenen çocuk dahil) örtüyordu | Bir birey görünmez kalabilir | uyarılar tuvalin üstünde normal akışta (kaynak testi) + tarayıcıda ölçüm (çakışma 0 px) |
 | KI-6 | P2 | **düzeltildi** (bu adım) | ~1100 px genişlikte araç çubuğu "Sıfırla" düğmesinin üstüne biniyordu | — | araç çubuğu satır kaydırır, tuvalin üstüne binmez |
 | KI-7 | P1 | **düzeltildi** (bu adım) | Aileye dışarıdan katılan her eş ve her çocuksuz çift için "herhangi bir ebeveyn birliğine bağlı değil" uyarısı (iç ID ile) | Yanlış-pozitif uyarılar kullanıcıyı gerçek uyarıları yok saymaya alıştırır | `dataIntegrityRegressions.test.js` KI-7 (eski doğrulayıcıyla 2 test kırmızı) |
+| KI-8 | P2 | açık | Bir kişinin "dışarıdan evlenen" ikinci eşi yapısal adımda hep aynı tarafa (erkek-solda kuralı) konuyor; diğer eşi başka bir aileden gelip o tarafta kalırsa (ör. açık doğum sırası babayı o tarafa zorlarsa) akraba evliliği çizgisi ikinci eşin üstünden şeritle geçiyor | Çizgi doğru ve atlamalı; okunması zorlaşır | hedef (`it.fails`) |
+| KI-9 | P1 | **düzeltildi** (Faz 2b) | "Klinik Notlar" lejantı etiketi olmayan kişiler için iç kimliği (`mat_uncle_0_cf_1`) yazıyordu; SVG/PNG dışa aktarmaya da giriyordu | Dışa aktarılan klinik belgede anlamsız kimlik | kaynak testi + tarayıcıda doğrulandı ("[1] IV-7: …") |
 
 ## Ayrıntılar
 

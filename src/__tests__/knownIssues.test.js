@@ -160,3 +160,40 @@ describe('KI-5 / KI-6 (fixed) — notices and toolbar never cover the canvas', (
 
 // Measured 2026-10-18 (PCL with man-left tie-breaker). Lower it when it improves.
 const KI2_FLIP_CEILING = 31;
+
+describe('KI-8 (open, P2) — a married-in second partner separates a couple from two families', () => {
+  it.fails('target: consanguineous parents stay adjacent when the mother also has a married-in partner', () => {
+    const S = () => usePedigreeStore.getState();
+    S().resetPedigree();
+    // parents are first cousins through their mothers (seen in the editor)
+    S().updateWizardData('parents', 'consanguineous', true);
+    S().updateWizardData('parents', 'consanguinityDegree', 'first_cousin');
+    S().updateWizardData('parents', 'consanguinityPath', 'mothers_maternal_is_fathers_maternal');
+    S().updateRelativeCount('maternalRelatives', 'uncles', 1);
+    S().updateRelativeCount('paternalRelatives', 'aunts', 1);
+    S().addOtherUnion('mother');
+    S().updateOtherUnion('mother', 0, 'male', 1);
+    // explicit birth order: the father is the younger sibling (right of his sister),
+    // which puts the paternal side on the left; the mother's married-in partner is
+    // always placed on her left (man-left rule) — between her and the father
+    const patGP = S().pedigreeData.parentChildRelationships.find(r => r.children.includes('father')).unionId;
+    S().setChildOrder(patGP, ['pat_aunt_0', 'father']);
+    const rows = new Map();
+    for (const n of S().pedigreeData.nodes) {
+      if (!rows.has(n.y)) rows.set(n.y, []);
+      rows.get(n.y).push(n);
+    }
+    const row = [...rows.values()].find(r => r.some(n => n.id === 'mother')).sort((a, b) => a.x - b.x).map(n => n.id);
+    expect(Math.abs(row.indexOf('father') - row.indexOf('mother'))).toBe(1);
+  });
+});
+
+describe('KI-9 (fixed, P1) — clinical notes legend shows pedigree numbers, not internal ids', () => {
+  it('the legend label never falls back to the internal id', () => {
+    const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
+    const legend = src.slice(src.indexOf("entries.push(`[${i + 1}]"), src.indexOf("entries.push(`[${i + 1}]") + 1);
+    expect(legend).toBeTruthy();
+    expect(src).not.toMatch(/const label = n\.displayLabel \|\| n\.label \|\| n\.id;/);
+    expect(src).toMatch(/pedigreeIds\.get\(n\.id\)\?\.displayId/);
+  });
+});

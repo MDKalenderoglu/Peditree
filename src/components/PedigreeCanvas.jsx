@@ -354,7 +354,12 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         if (n.deceased && n.causeOfDeath) parts.push(`Olum: ${n.causeOfDeath}`);
         if (n.notes) parts.push(n.notes);
         const text = parts.join(' | ');
-        const label = n.displayLabel || n.label || n.id;
+        // Clinician-facing identity: pedigree number (e.g. "IV-7") plus the
+        // label when there is one — never the internal graph id, which used
+        // to appear here (and in exports) for unlabelled people.
+        const pid = pedigreeIds.get(n.id)?.displayId;
+        const name = n.displayLabel || n.label;
+        const label = pid ? (name ? `${pid} (${name})` : pid) : (name || 'birey');
         entries.push(`[${i + 1}] ${label}: ${text}`);
       });
 
