@@ -109,6 +109,8 @@ Neden bu sırayla: (3) çapraz/bitişiklik sorunlarını, (4) merkezleme sorunun
 
 ## 7. Faz 3 sonuçları (ölçülmüş, 2026-10-18)
 
+Açık riskler ve koruma testleri ayrıca `PEDITREE_KNOWN_ISSUES.md`'de (KI-1 … KI-7) izlenir.
+
 ### 7.1 Uygulanan yapı (`src/layout/pcl/`)
 
 | Dosya | Görev |
@@ -150,8 +152,8 @@ karmaşık pedigri, düzenleme öncesi/sonrası yönelim).
 2. **Yönelim çevrilmesi**: düzenlemelerin %7,1'inde ebeveynlerin sol/sağ sırası değişiyor (recursive %3,8). "Erkek
    solda" eşitlik bozucu bunu %12,6'dan düşürdü; tam çözüm önceki sıralamayı başlangıç/eşitlik bozucu olarak
    kullanmak (store'dan önceki yerleşimin aktarılması gerekir — Faz 4/5).
-3. **Rastgele işlemle üretilmiş aşırı yoğun grafikler** (387 / 474 kişi, 30 çocuklu kardeşlik, 9–13 aileler arası
-   evlilik): 12 / 7 ayak izi ihlali kalıyor (80 tur sınırı). 263 kişiye kadar temiz.
+3. ~~Rastgele işlemle üretilmiş aşırı yoğun grafiklerde ayak izi ihlali~~ — **düzeltildi** (KI-3): sürekli ihlal
+   edilen çiftin çarpan adımı büyütüldü, üst sınır 400 tur; 263 / 387 / 474 kişi → 0 ihlal (474 kişide ~2,5 s).
 4. **Kararlılık terimi uygulamaya bağlı değil** (`opts.previous`); ölçülen etkisi küçük (%68 → %70,5), sıralama
    değişimi baskın.
 5. Renderer: pedigri numarası (ör. III-5) tam iniş çizgisinin sembole girdiği yerde; çizgi etiketin içinden geçiyor

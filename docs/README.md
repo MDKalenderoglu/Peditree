@@ -9,6 +9,9 @@ Güncel durum için bu klasördeki PEDITREE_* dokümanları esas alınır. Kök 
 | [PEDITREE_CLINICAL_REQUIREMENTS.md](PEDITREE_CLINICAL_REQUIREMENTS.md) | NSGC 2008/2022/2025'e göre semboller, çizgiler, ilişkiler; standart vs tercih |
 | [PEDITREE_LAYOUT_ARCHITECTURE.md](PEDITREE_LAYOUT_ARCHITECTURE.md) | Yerleşim motoru kararı (PCL, Faz 3'ten beri varsayılan), alternatifler, kabul kriterleri, ölçülmüş sonuçlar ve kalan riskler |
 | [PEDITREE_STRESS_TEST_MATRIX.md](PEDITREE_STRESS_TEST_MATRIX.md) | Normal, karmaşık ve adversarial senaryolar; test durumu |
+| [PEDITREE_KNOWN_ISSUES.md](PEDITREE_KNOWN_ISSUES.md) | Açık/kapatılmış sorun kayıtları (KI-…), öncelik, koruma testleri, çıkış ölçütleri |
+| [PEDITREE_UX_REVIEW.md](PEDITREE_UX_REVIEW.md) | Kalıcı UX gereksinimleri (akıllı ilişki görselleştirmesi, düzenleme kararlılığı) ve kabul kriterleri |
+| [PEDITREE_DATA_MODEL_V2.md](PEDITREE_DATA_MODEL_V2.md) | Faz 2b: mevcut veri modelinin değerlendirmesi, graph-first şema v2, göç ve kalıcı kimlikler |
 
 Ölçüm komutları:
 

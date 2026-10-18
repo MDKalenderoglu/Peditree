@@ -2,13 +2,15 @@
 
 ## Project Purpose
 
-Turkish-language, clinical-grade pedigree drawing tool for genetic counseling. Produces structurally valid pedigree graphs per ACMG/NSGC nomenclature standards. Not a family tree app — clinical correctness of the graph model takes priority over visual polish.
+Turkish-language, clinical-grade pedigree drawing tool for genetic counseling. Produces structurally valid pedigree graphs per ACMG/NSGC nomenclature standards. Not a family tree app — clinical correctness of the graph model takes priority over visual polish. A clinician must never misread who is whose child, sibling, partner, or consanguineous relative.
+
+Living documentation (source of truth for status, decisions, risks): `docs/PEDITREE_*.md` — audit report, clinical requirements, layout architecture, stress test matrix, UX review, data model. Root-level `PEDIGREE_*.md` files are historical.
 
 ---
 
 ## Stack
 
-React 19 + Vite · D3.js (SVG) · Zustand · UUID
+React 19 + Vite · D3.js (SVG) · Zustand · Vitest (node env) · UUID
 
 ---
 
@@ -22,65 +24,80 @@ Individual   { id, sex, age, generation, relation, label, displayLabel,
                pregnancyLoss, stillbirth, notes, x?, y? }
 
 Union        { id, partners: [id, id], consanguineous, consanguinityDegree,
-               consanguinityPath, status }
+               consanguinityPath, status, relationshipBackground }
 
-ParentChildRelationship  { unionId, children: string[] }
+ParentChildRelationship  { unionId, children: string[], birthOrderExplicit? }
 ```
 
-**ID scheme is deterministic and symbolic** — `mother`, `mat_gf`, `mat_uncle_0`, `sib_f_2`, `U_MAT_GP`. Do not switch to UUID for wizard-built nodes. The parser uses UUID; that is intentional and isolated.
+`birthOrderExplicit: true` means the user set the sibling order ("Doğum Sırası"); the layout then treats it as a hard rule. Without it, the stored order is insertion order only.
+
+**ID scheme is deterministic and symbolic** — `mother`, `mat_gf`, `mat_uncle_0`, `sib_f_2`, `U_MAT_GP`. Do not switch to UUID for wizard-built nodes. The parser uses UUID; that is intentional and isolated. Faz 2b (in progress) makes IDs permanent: once assigned, an ID never moves to another person and is never reused.
 
 ---
 
 ## Non-Negotiable Clinical and Graph Constraints
 
 1. Every individual has a globally unique ID. `idSet` enforces this at build time — never bypass it.
-2. Each individual belongs to at most one parent union. `childToUnionMap` enforces this — never attach a child to two unions.
+2. Each individual belongs to at most one **biological** parent union. `childToUnionMap` enforces this — never attach a child to two biological parent unions. (Faz 2b adds separately typed social parent links, e.g. adoption; they never replace or duplicate the biological link.)
 3. A union connects exactly two partners. Never siblings. Never self.
 4. Consanguinity must reflect true shared ancestry: shared ancestor nodes must exist in the graph. A double line rendered without shared ancestor nodes is a structural error.
 5. `pregnancyLoss` (spontaneous miscarriage), `stillbirth`, and termination of pregnancy are distinct clinical types with distinct symbols. Do not conflate them.
-6. `proband: true` must be set on exactly one individual. Zero or multiple probands is a validation error.
+6. `proband: true` must be set on exactly one individual. Zero or multiple probands is a validation error. (Product decision pending: NSGC allows no proband / a consultand — see audit report §4.)
 7. Integrity audit (`auditPedigreeGraph`) and semantic validation (`validatePedigree`) must pass after every graph mutation. Do not suppress their output.
+8. Partners must be of opposite sex (current product rule, `UNION_PARTNER_SEX_CONFLICT`). Same-sex partnership, unknown-sex partners and cross-generation unions are pending clinician decisions — do not change the rule without the user.
+9. Never let a colour, highlight or styling hide or compensate for a layout error. Standard notation (solid/dashed/double lines, "//") keeps its meaning in every view.
 
 ---
 
-## Multigenerational Expansion Requirement
+## Generation
 
-The system must not be limited to the current ~5-generation wizard-driven depth. It must support:
-- Expansion upward to earlier ancestors (beyond great-grandparents)
-- Lateral expansion to collateral relatives on both sides
-- Downward expansion to descendants of any individual in the graph, not only the proband
-- Cousins' partners and their children
+`generation` is topology-derived: `computeGenerations(graph, 'proband', 3)` (`src/utils/graphTraversal.js`) runs once at the end of `buildPedigreeFromWizard()` and overwrites the constructor literals. `GENERATION_INCONSISTENT`, `SIBLING_GENERATION_INCONSISTENT` and `PARTNER_GENERATION_INCONSISTENT` are enforced. New `addInd()` calls may still pass a literal (used only for nodes unreachable from the proband); do not depend on it. Run `node verify-generations.mjs` after any builder change — the generation snapshot must stay identical.
 
-This means `generation` must eventually be a topology-derived property, not a hardcoded literal at each `addInd()` call site.
+---
+
+## Layout Engine (Faz 3 — done)
+
+**Default engine: PCL (Pedigree-Constrained Layered layout), `src/layout/pcl/`.** Entry: `computePedigreeLayoutV2(data)` → `computePclLayout`. Contract to the renderer: `{ nodes, edges }`; every structural edge carries its owner `unionId`.
+
+- `structure.js` — atoms (sibships in birth order + married-in spouses; founder groups); unknown birth order allows a sibling who (or whose descendant) married into another drawn family to sit at the sibship end facing it; known ages / explicit order are never contradicted.
+- `ordering.js` — family-tree DFS + data + mirror starts, barycentre sweeps, transposes, sifting; costs: descent crossings, lanes, people under lanes, union length, man-left tie-breaker (orientation stability).
+- `qp.js` — separated QP (FISTA + exact per-row PAVA projection): symbols can never overlap.
+- `index.js` — objective (couple over children, spouse gap, compactness, optional stability), footprint rule (nobody but the parents above a sibship line), adaptive row gaps.
+- `routing.js` — NSGC connectors, relationship lanes, line jumps for unavoidable crossings.
+
+Fallback engines are kept (do not delete until PCL has been validated for at least one release): `PEDITREE_PACKER=recursive` (`recursiveIntervalPacker.js`) and `PEDITREE_PACKER=legacy` (`pedigreeLayout.js` / legacy `layoutPacking`). `globalThis.__PEDITREE_PACKER__` overrides in the browser.
+
+Layout gates (must hold after any layout or builder change):
+- `npm run audit:layout-benchmark` — PCL fully clean on 13/13 clinical fixtures; realistic large pedigrees 0 invariant / 0 readability violations.
+- `npm run audit:layout-fuzz -- --seed 1` and `--seed 12345` — 0 % invariant and 0 % readability failures for the default engine.
+- `src/__tests__/pclLayout.test.js` — fixtures, determinism, birth order, time budgets (100 people < 500 ms, 300 < 2 s), orientation stability.
+
+Known PCL limitations (tracked in `docs/PEDITREE_KNOWN_ISSUES.md`, never silently accept regressions): couple centring on 200–300-person pedigrees, parent left/right flips after some edits, footprint violations on adversarial 387/474-person graphs, no incremental (edit-local) layout yet.
 
 ---
 
 ## Current Architectural Priority
 
-**Active work: make `generation` a derived property computed by BFS from graph topology.**
+**Faz 2b — graph-first data model, permanent IDs, schema v2** (`docs/PEDITREE_DATA_MODEL_V2.md`).
 
-The target function is `computeGenerations(graph, anchorId = 'proband', anchorGeneration = 3)` in a new file `src/utils/graphTraversal.js`. It is called once at the end of `buildPedigreeFromWizard()`, after all nodes and relationships are created, overwriting the hardcoded generation values with BFS-derived ones.
+- The pedigree graph is the single source of truth for relationships. The wizard and the person editor are input adapters that apply graph operations to the same graph.
+- IDs never change when a person's position or role changes; never reused.
+- One person may take part in several partnerships and parenthoods; biological and social parenthood are distinct link types.
+- Saved v1 sessions (`wizardData` + `graphEdits` + `deletedIndividualIds` + `manualEdits` + `childOrders` …) migrate automatically to v2 with no loss: the migrated graph must equal the graph the user saw in v1.
+- Save → load → edit → save preserves every semantic relationship; undo/redo is consistent.
 
-BFS rules:
-- Upward through PCR → union.partners: parent gets `child.generation - 1`
-- Downward through union.partners → PCR.children: child gets `parent.generation + 1`
-- Lateral through union membership: co-partner gets same generation as partner (handles spouse stubs)
-- Conflict (two paths disagree): emit `GENERATION_INCONSISTENT`, keep first-derived value
-- Disconnected node (not reachable from proband): keep constructor-assigned generation
-
-After this, add two checks to `graphIntegrity.js`:
-- `SIBLING_GENERATION_INCONSISTENT`: all children in the same PCR must share one generation value
-- `PARTNER_GENERATION_INCONSISTENT`: both partners in a union must share one generation value
+After Faz 2b: layout stability (edit-local relayout using the previous layout), notation (Faz 4), UI/UX + smart relationship highlighting (Faz 5), release validation with E2E (Faz 6).
 
 ---
 
 ## Refactor Rules
 
-- **Graph model is source of truth.** The wizard is an input adapter. Future work inverts the current dependency so that graph operations (`addInd`, `addUnion`, `addChild`) are callable independently of the wizard.
-- **Do not duplicate maternal/paternal logic.** The four relative-builder loops (maternal uncles, maternal aunts, paternal uncles, paternal aunts) are ~150 lines of copy-pasted code. They will eventually be collapsed into one parameterised `buildCollateralBranch()` function. Do not add more duplicated loops.
-- **Do not hardcode new generation numbers.** After `computeGenerations` is implemented, new `addInd()` calls should omit `generation` or pass a placeholder — the BFS pass will assign the correct value.
-- **Do not replace the layout engine yet.** `pedigreeLayout.js` reads `ind.generation` and produces correct Y positions. It does not need to change until the BFS-derived generation work is complete and the need for a Sugiyama-style layout is validated.
-- **Do not add UI cleanup, new components, or i18n in the same slice as graph logic changes.** Keep graph correctness work isolated.
+- **Graph model is source of truth.** Do not add new state that duplicates relationships outside the graph.
+- **Do not duplicate maternal/paternal logic.** The four relative-builder loops are collapsed into `buildCollateralBranch()`; keep it parameterised.
+- **Do not hardcode new generation numbers** as a source of truth (see Generation).
+- **Do not delete fallback layout engines** yet; do not weaken PCL gates, fuzz thresholds or exclude failing cases to make numbers look better.
+- **One concern per slice.** Graph correctness work and layout work do not mix in the same change. Builder changes and UI changes do not mix. Commit per verified slice.
+- **New clinical node types go in the model first**, then layout, then renderer — in that order. Never add a visual symbol without a corresponding model field.
 
 ---
 
@@ -89,21 +106,24 @@ After this, add two checks to `graphIntegrity.js`:
 | Invariant | Where enforced |
 |---|---|
 | No duplicate individual IDs | `idSet` in builder + CHECK 1 in `graphIntegrity.js` |
-| No child in multiple parent unions | `childToUnionMap` in builder + CHECK 7 in `graphIntegrity.js` |
+| No child in multiple biological parent unions | `childToUnionMap` in builder + CHECK 7 in `graphIntegrity.js` |
 | No missing union partners | CHECK 3 in `graphIntegrity.js` |
-| Consanguinity shared ancestors exist in graph | Consanguinity path engine in builder, stages 7 |
+| Opposite-sex partners | `UNION_PARTNER_SEX_CONFLICT` in `graphIntegrity.js` |
+| Consanguinity shared ancestors exist in graph | Consanguinity path engine in builder, stage 7 |
 | `auditPedigreeGraph` returns zero errors | Run after every change |
-| Layout produces valid x/y for all nodes | Visual regression check after any builder or layout change |
-| Manual edits (displayLabel, affected, carrier, notes) survive graph rebuild | `mergeManualEdits` in `usePedigreeStore.js` |
-| SVG and PNG export render all nodes and edges | Check after any canvas or layout change |
+| Layout gates (see Layout Engine) | benchmark, fuzz, `pclLayout.test.js` |
+| No silent data loss / misattribution on edits | `dataIntegrityRegressions.test.js` |
+| Manual edits (displayLabel, affected, carrier, notes, age, sex) survive graph rebuild | `mergeManualEdits` in `usePedigreeStore.js` (v1); graph itself in v2 |
+| Generation snapshot unchanged by builder changes | `node verify-generations.mjs` |
+| SVG and PNG export render all nodes and edges, without selection styling | `exportUtils.test.js`, `EXPORT_VIEWBOX_CLIPS_CONTENT` |
 
 ---
 
-## Preferred Workflow for Future Tasks
+## Preferred Workflow
 
-1. **Read before writing.** Read `pedigreeBuilderFromWizard.js`, `pedigreeLayout.js`, and the relevant validator before proposing any change.
-2. **Audit first.** After any graph change, call `auditPedigreeGraph()` and confirm zero errors before touching the layout engine.
-3. **One concern per slice.** Graph correctness work and layout work do not mix in the same change. Builder changes and UI changes do not mix.
-4. **Snapshot generation values.** Before any builder change, record the `generation` field of every individual for a representative pedigree (first-cousin consanguinity + maternal/paternal relatives + gen4 child). Assert the snapshot is unchanged after the change.
-5. **New clinical node types go in the builder first**, then layout, then renderer — in that order. Never add a visual symbol without a corresponding model field.
-6. **Do not remove hardcoded `generation: N` literals from the builder** until `computeGenerations()` is implemented, tested, and confirmed to produce identical values for all existing pedigree shapes.
+1. **Read before writing.** Read the relevant module (store, builder, `src/layout/pcl/*`, validators) before proposing a change.
+2. **Measure first.** Reproduce with a test or the audit tools before fixing; show real results, never claim untested success.
+3. **After every graph change:** `npx vitest run`, `node verify-generations.mjs`, and for layout-affecting changes the benchmark + both fuzz seeds. Revert fuzz side effects in `src/__tests__/fixtures` after runs.
+4. **Snapshot generation values** before builder changes and assert they are unchanged afterwards.
+5. **Git:** work on `stabilization/clinical-layout`; never commit directly to `main`; the user pushes (GitHub Desktop) — do not push, fetch or rewrite history without explicit approval.
+6. **Visual check:** for renderer/layout changes, verify in the browser preview (`peditree-dev`) and compare engines with `globalThis.__PEDITREE_PACKER__`.

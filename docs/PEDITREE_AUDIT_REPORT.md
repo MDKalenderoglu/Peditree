@@ -135,7 +135,7 @@ pedigri oluşturmayı engelleyen işlevsel hata · **P2** performans/belirgin ku
 | RN-8 | P1 | Ayrılık tek eğik çizgi, boşanma çift eğik çizgi ile çiziliyor. Standart (08, 22 Şekil 3): *"A break in a relationship line indicates the relationship no longer exists"* — **tek gösterim "//"**; ayrılık/boşanma ayrımı standartta yok, yalnız kayıt bilgisi olmalı. |
 | RN-9 | P2 | Partneri bilinmeyen/silinen ebeveyn bir "belirtilmemiş" karo sembolüyle çiziliyor. Standart örnekte (22/25 Şekil 3) partner gösterilmediğinde iniş çizgisi doğrudan tek ebeveynden iner. |
 | RN-10 | P2 | Etkilenmemiş bir kişi proband yapılabiliyor; standart: proband her zaman etkilenmiştir, etkilenmemiş başvuran consultand'dır (consultand kavramı yok). |
-| RN-11 | P3 | *(Faz 3 görsel QA)* Pedigri numarası (ör. "III-5") sembolün tam üst ortasında; kardeş çizgisinden inen dikey çizgi etiketin içinden geçiyor. Standart örneklerde numara sembolün sol üstünde/altında. |
+| RN-11 | P2 | *(Faz 3 görsel QA; KI-4, açık)* Pedigri numarası (ör. "III-5") sembolün tam üst ortasında; kardeş çizgisinden inen dikey çizgi etiketin içinden geçiyor. Standart örneklerde numara sembolün sol üstünde/altında. |
 
 ### 2.4 Dışa aktarma ve kalıcılık (EX)
 
@@ -152,14 +152,14 @@ pedigri oluşturmayı engelleyen işlevsel hata · **P2** performans/belirgin ku
 |---|---|---|
 | UX-1 | P1 | İki paralel düzenleme modeli (sol: sayılar, sağ: kişi) ve aralarında senkron yok (DM-6). Tarihsel #10. |
 | UX-2 | P2 | Her düzenlemede zoom/pan sıfırlanıyor (`svg.call(zoom.transform, d3.zoomIdentity)` her render'da). |
-| UX-3 | P2 | Uyarılar iç ID gösteriyor ("Eş (U_DE_0) …"); ebeveyni gösterilmeyen her eş için yanlış-pozitif uyarı — kullanıcıyı uyarıları yok saymaya alıştırır. |
+| UX-3 | P2 | *(Yanlış-pozitif eş uyarıları KI-7 ile düzeltildi; diğer mesajlarda iç ID hâlâ var)* Uyarılar iç ID gösteriyor ("Eş (U_DE_0) …"); ebeveyni gösterilmeyen her eş için yanlış-pozitif uyarı — kullanıcıyı uyarıları yok saymaya alıştırır. |
 | UX-4 | P2 | Türkçe karakterleri olmayan etiketler ("Kardesler", "Es Ekle", "Kadin Es") ile düzgün Türkçe karışık. |
 | UX-5 | P2 | Yalnızca 2 kişilik seçim; toplu silme yok; silme onay metni gerçeği yansıtmıyor (DM-4). |
 | UX-6 | P2 | Ebeveyni olmayan (kurucu) bireye kardeş eklenemiyor; önce ebeveyn eklemek gerekiyor. |
 | UX-7 | P2 | Doğum sırası yalnızca düğmelerle; model düzeyinde çalışıyor, sürükle-bırak yok; tek çocukta düğme görünmüyor. |
 | UX-8 | P2 | "Yalnız anne/baba ekle" görünmez bir "belirtilmemiş" partner üretiyor; varsayılan çift ekleme değil. |
-| UX-9 | P2 | *(Faz 3 görsel QA)* ~1100 px pencere genişliğinde araç çubuğunda "Sıfırla" düğmesi "Yeni Pedigri" düğmesinin üstüne biniyor. |
-| UX-10 | P2 | *(Faz 3 görsel QA)* Uyarılar kutusu çizimin üstünde sabit duruyor ve alt kuşaktaki sembolleri örtüyor (yeni eklenen çocuk görünmez kalabiliyor). UX-3'teki yanlış-pozitif "eş bir ebeveyn birliğine bağlı değil" uyarıları kutuyu büyüterek bunu ağırlaştırıyor. |
+| UX-9 | P2 | *(Faz 3 görsel QA; KI-6, düzeltildi)* ~1100 px pencere genişliğinde araç çubuğunda "Sıfırla" düğmesi "Yeni Pedigri" düğmesinin üstüne biniyor. |
+| UX-10 | P0→ | *(Faz 3 görsel QA; KI-5, düzeltildi — bir bireyi gizleyebildiği için P0 sayıldı)* Uyarılar kutusu çizimin üstünde sabit duruyor ve alt kuşaktaki sembolleri örtüyor (yeni eklenen çocuk görünmez kalabiliyor). UX-3'teki yanlış-pozitif "eş bir ebeveyn birliğine bağlı değil" uyarıları kutuyu büyüterek bunu ağırlaştırıyor. |
 
 ### 2.6 Performans ve işletim (PF)
 
