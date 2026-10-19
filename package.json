@@ -13,7 +13,8 @@
     "audit:layout-fuzz": "node scripts/layout-fuzz.mjs",
     "audit:layout-benchmark": "node scripts/layout-benchmark.mjs",
     "audit:freeze-ki3": "node scripts/ki3-fixtures.mjs",
-    "audit:layout-stability": "node scripts/layout-stability.mjs"
+    "audit:layout-stability": "node scripts/layout-stability.mjs",
+    "audit:clinical-benchmark": "node scripts/clinical-benchmark.mjs"
   },
   "dependencies": {
     "d3": "^7.9.0",
