@@ -52,6 +52,7 @@ Birth order: `birthOrderExplicit: true` (user set "Doğum Sırası") is a hard r
 7. Integrity audit (`auditPedigreeGraph`) and semantic validation (`validatePedigree`) must pass after every graph mutation. Do not suppress their output.
 8. Partners must be of opposite sex (current product rule, `UNION_PARTNER_SEX_CONFLICT`). Same-sex partnership, unknown-sex partners and cross-generation unions are pending clinician decisions — do not change the rule without the user.
 9. Never let a colour, highlight or styling hide or compensate for a layout error. Standard notation (solid/dashed/double lines, "//") keeps its meaning in every view.
+10. Clinical notation is governed by `docs/PEDITREE_CLINICAL_NOTATION_SPEC_V1.md`: the layout engine may only place and route, never change what a symbol or line means. Rules R1–R6 there are clinician-approved; every other symbol rule (marked "doğrulama bekliyor" / "karar gerekli") needs the clinician's approval before it is implemented.
 
 ---
 

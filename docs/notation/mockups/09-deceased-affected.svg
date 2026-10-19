@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="190" viewBox="0 0 760 190" font-family="system-ui, sans-serif">
+<rect width="760" height="190" fill="#fff"/>
+<text x="12" y="20" font-size="13" font-weight="700" fill="#1e293b">Vefat etmiş ve etkilenmiş birey</text>
+<text x="748" y="20" font-size="11" fill="#b91c1c" text-anchor="end">taslak — klinik onay bekliyor, üretimde değil</text>
+<rect x="180" y="70" width="40" height="40" fill="#1e293b" stroke="#1e293b" stroke-width="2"/><line x1="176" y1="66" x2="224" y2="114" stroke="#1e293b" stroke-width="2"/><text x="200" y="145" font-size="11" fill="#1e293b" text-anchor="middle">A — mevcut: koyu çizgi koyu dolgu</text><text x="200" y="159" font-size="11" fill="#1e293b" text-anchor="middle">üstünde yalnız köşelerde görünür</text><rect x="540" y="70" width="40" height="40" fill="#1e293b" stroke="#1e293b" stroke-width="2"/><line x1="530" y1="60" x2="590" y2="120" stroke="#1e293b" stroke-width="2"/><line x1="543" y1="73" x2="577" y2="107" stroke="#fff" stroke-width="2"/><text x="560" y="145" font-size="11" fill="#475569" text-anchor="middle">B — sembol içinde açık renk çizgi</text><text x="560" y="159" font-size="11" fill="#475569" text-anchor="middle">(görünürlük; anlam aynı)</text>
+</svg>
