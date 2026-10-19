@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Klinik Benchmark SVG</title>
+<style>
+  :root { --bg: #f8fafc; --card: #ffffff; --ink: #0f172a; --muted: #475569; --line: #e2e8f0; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 system-ui, sans-serif; }
+  header { padding: 16px 24px; border-bottom: 1px solid var(--line); background: var(--card); }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  p { margin: 0; color: var(--muted); }
+  main { padding: 16px 24px; display: grid; gap: 24px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; }
+  h2 { font-size: 15px; margin: 0 0 8px; }
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  figure { margin: 0; }
+  figcaption { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+  img { width: 100%; height: auto; border: 1px solid var(--line); background: #fff; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Klinik Kullanılabilirlik Benchmark'ı — gerçek SVG çıktıları</h1>
+  <p>Uygulamanın kendi çizici ve SVG dışa aktarımıyla (<code>prepareExportSvg</code>) üretildi. Vakalar: <code>src/audit/clinicalBenchmark.js</code>; ölçümler: <code>reports/clinical-benchmark-&lt;etiket&gt;.md</code>.</p>
+</header>
+<main id="cases"></main>
+<script>
+  const CASES = [
+    ['CB-01', 'Rutin üç kuşak (14)'], ['CB-02', 'Birinci derece kuzen evliliği (24)'],
+    ['CB-03', 'Birden fazla akraba evliliği döngüsü (30)'], ['CB-04', 'Birden fazla partner ve yarım kardeşler (18)'],
+    ['CB-05', 'Farklı kollarda etkilenmiş bireyler, X-bağlı (25)'], ['CB-06', 'Kuşaklar boyu tekrar eden akraba evliliği (40)'],
+    ['CB-07', 'Evlat edinme ve sosyal ebeveynlik (14)'], ['CB-08', 'Geniş kırsal aile (66)'],
+  ];
+  // labels shown side by side (add 'after' in Aşama C)
+  const LABELS = new URLSearchParams(location.search).get('labels')?.split(',') || ['baseline'];
+  const main = document.getElementById('cases');
+  for (const [id, name] of CASES) {
+    const s = document.createElement('section');
+    s.innerHTML = `<h2>${id} — ${name}</h2><div class="cols">${LABELS.map((l) => `<figure><figcaption>${l}</figcaption><img loading="lazy" src="${l}/${id}.svg" alt="${id} ${l}"></figure>`).join('')}</div>`;
+    main.appendChild(s);
+  }
+</script>
+</body>
+</html>
