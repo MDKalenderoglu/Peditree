@@ -117,3 +117,37 @@ describe('relationship status and proband are shared', () => {
     expect(errors()).toEqual([]);
   });
 });
+
+describe('right panel quick adds (clinician feedback 2026-10-24)', () => {
+  it('a miscarriage and a stillbirth added beside the proband are the wizard’s sibling counts', () => {
+    S().addSiblingTo('proband', 'unknown', { pregnancyLoss: true });
+    S().addSiblingTo('proband', 'unknown', { stillbirth: true });
+    expect(wd().siblings.pregnancyLoss).toBe(1);
+    expect(wd().siblings.deceased).toBe(1);
+  });
+
+  it('a miscarriage can be added under any couple', () => {
+    S().addChildToUnion(wd().parents.unionId, 'unknown', { pregnancyLoss: true });
+    expect(S().doc.graph.individuals.filter(i => i.pregnancyLoss)).toHaveLength(1);
+  });
+
+  it('"Anne ve baba ekle" adds a woman and a man, never an unknown-sex parent', () => {
+    S().addSpouseTo('proband', 'female');
+    const spouse = S().doc.graph.unions.find(u => u.partners.includes('proband') && u.id !== wd().parents.unionId)
+      .partners.find(p => p !== 'proband');
+    S().addParentsTo(spouse, {});
+    const pu = S().doc.graph.parentChildRelationships.find(r => r.children.includes(spouse)).unionId;
+    const sexes = S().doc.graph.unions.find(u => u.id === pu).partners
+      .map(id => S().doc.graph.individuals.find(i => i.id === id).sex).sort();
+    expect(sexes).toEqual(['female', 'male']);
+  });
+
+  it('a click on a relationship line selects the couple; a second spouse can be added', () => {
+    S().selectUnion(wd().parents.unionId);
+    expect([S().selectedId, S().selectedId2].sort()).toEqual(['father', 'mother']);
+    S().addSpouseTo('father', 'female');
+    expect(wd().parents.fatherOtherUnions).toHaveLength(1);
+    S().setUnionStatus(wd().parents.fatherOtherUnions[0].unionId, 'divorced');
+    expect(wd().parents.fatherOtherUnions[0].status).toBe('divorced');
+  });
+});

@@ -32,13 +32,74 @@ function Header({ title, sub, onClose }) {
   );
 }
 
-/** Two individuals selected via Cmd/Ctrl-click — pair-level quick actions. */
-function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSiblings, onClearSelection }) {
+// what can be added under a couple or beside a sibling: [label, sex, extra]
+const KIN_KINDS = [
+  ['Erkek', 'male', {}], ['Kız', 'female', {}], ['Bilinmeyen', 'unknown', {}],
+  ['Düşük', 'unknown', { pregnancyLoss: true }], ['Ölü doğum', 'unknown', { stillbirth: true }],
+];
+
+function AddButtons({ onAdd, title }) {
+  return (
+    <div className="add-grid">
+      {KIN_KINDS.map(([t, sex, extra]) => (
+        <button key={t} className="ui-btn ui-btn-sm" onClick={() => onAdd(sex, extra)} title={title}>{t}</button>
+      ))}
+    </div>
+  );
+}
+
+/** One partnership: children, status (divorce/separation), consanguinity. */
+function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground }) {
+  const children = pcrs.find(r => r.unionId === u.id)?.children || [];
+  return (
+    <>
+      {onSetUnionStatus && (
+        <label className="field">
+          <span className="field-label">İlişki</span>
+          <select className="select" value={u.status === 'separated' ? 'divorced' : (u.status || 'together')}
+            onChange={e => onSetUnionStatus(u.id, e.target.value)}>
+            {STATUS_OPTIONS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+          </select>
+        </label>
+      )}
+      <div className="field-col">
+        <span className="field-label">Çocuk ekle{children.length > 0 ? ` (şu an ${children.length})` : ''}</span>
+        <AddButtons onAdd={(sex, extra) => onAddChild(u.id, sex, null, extra)} />
+      </div>
+      {u.consanguinityStatus === 'known_supported' ? (
+        // drawn shared ancestors decide it (finalize.js); nothing to choose here
+        <div className="field-col">
+          <span className="field-label">Akraba evliliği</span>
+          <span className="field-hint">Çizime göre: {degreeLabel(u.consanguinityDegree) || 'akraba'} — ortak atalar çizimde.</span>
+        </div>
+      ) : onSetUnionRelationshipBackground && (
+        <label className="field-col">
+          <span className="field-label">Akrabalık geçmişi</span>
+          <select className="select input-wide" value={u.relationshipBackground || 'not_asked'}
+            onChange={e => onSetUnionRelationshipBackground(u.id, e.target.value)}>
+            {RELATIONSHIP_BACKGROUND_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
+          {/* metadata only: consanguinity is always the standard double line */}
+          {u.relationshipBackground === 'consanguinity_reported' && (
+            <span className="field-hint">Ortak atalar çizimde yok; çift çizgi bildirime dayanır.</span>
+          )}
+        </label>
+      )}
+    </>
+  );
+}
+
+/**
+ * Two individuals selected (Cmd/Ctrl-click, or a click on their relationship
+ * line): an existing couple gets its relationship card, others the pair actions.
+ */
+function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSiblings, onClearSelection, unionProps }) {
   // Authoritative safety checks (self/duplicate, pregnancy loss, siblings,
   // cross-generation; two different parent unions cannot be merged).
   const unionPlan = computeUnionCreationPlan(pedigreeData, node.id, node2.id);
   const siblingPlan = computeSiblingCreationPlan(pedigreeData, node.id, node2.id);
   const siblingBlocked = !siblingPlan.ok || siblingPlan.action === 'noop';
+  const couple = (pedigreeData.unions || []).find(u => u.partners.includes(node.id) && u.partners.includes(node2.id));
 
   const pedigreeIds = computePedigreeIds(pedigreeData?.nodes || []);
   const label = (p) => {
@@ -49,8 +110,15 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
 
   return (
     <>
-      <Header title="İki kişi seçili" sub={`${label(node)}  +  ${label(node2)}`} onClose={onClearSelection} />
+      <Header title={couple ? 'İlişki' : 'İki kişi seçili'} sub={`${label(node)}  +  ${label(node2)}`} onClose={onClearSelection} />
       <div className="editor-body">
+        {couple && (
+          <div className="card">
+            <div className="card-title">Bu çift</div>
+            <UnionControls u={couple} pcrs={pedigreeData.parentChildRelationships || []} {...unionProps} />
+          </div>
+        )}
+        {!couple && (
         <div className="card">
           <div className="card-title">Bu iki kişiyi</div>
           <button className="ui-btn ui-btn-primary" disabled={!unionPlan.ok} onClick={() => onCreateUnion(node.id, node2.id)}>
@@ -63,7 +131,8 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
           </button>
           {siblingBlocked && <div className="field-hint">{siblingPlan.reason}</div>}
         </div>
-        <div className="field-hint">İpucu: Cmd/Ctrl ile tıklayarak iki kişi seçilir.</div>
+        )}
+        <div className="field-hint">İpucu: Cmd/Ctrl ile tıklayarak iki kişi seçilir; bir ilişki çizgisine tıklamak o çifti seçer.</div>
       </div>
     </>
   );
@@ -78,7 +147,8 @@ export default function IndividualEditor({
   if (node && node2) {
     return (
       <TwoPersonActions node={node} node2={node2} pedigreeData={pedigreeData}
-        onCreateUnion={onCreateUnion} onMakeSiblings={onMakeSiblings} onClearSelection={onClearSelection} />
+        onCreateUnion={onCreateUnion} onMakeSiblings={onMakeSiblings} onClearSelection={onClearSelection}
+        unionProps={{ onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground }} />
     );
   }
   if (!node) return null;
@@ -204,23 +274,12 @@ export default function IndividualEditor({
             {/* parents only when there is no parent union (never duplicates);
                 siblings only when there is one (never fabricates parents) */}
             {onAddParents && !ownParentRel && (
-              <div className="field-col">
-                <span className="field-label">Ebeveyn</span>
-                <div className="add-grid">
-                  <button className="ui-btn ui-btn-sm" onClick={() => onAddParents(node.id, { onlyMother: true })} title="Diğer ebeveyn belirtilmemiş olarak eklenir">Anne</button>
-                  <button className="ui-btn ui-btn-sm" onClick={() => onAddParents(node.id, { onlyFather: true })} title="Diğer ebeveyn belirtilmemiş olarak eklenir">Baba</button>
-                  <button className="ui-btn ui-btn-sm" onClick={() => onAddParents(node.id, {})}>İkisi</button>
-                </div>
-              </div>
+              <button className="ui-btn ui-btn-sm" onClick={() => onAddParents(node.id, {})}>Anne ve baba ekle</button>
             )}
             {onAddSibling && ownParentRel && (
               <div className="field-col">
                 <span className="field-label">Kardeş</span>
-                <div className="add-grid">
-                  <button className="ui-btn ui-btn-sm" onClick={() => onAddSibling(node.id, 'male')}>Erkek</button>
-                  <button className="ui-btn ui-btn-sm" onClick={() => onAddSibling(node.id, 'female')}>Kız</button>
-                  <button className="ui-btn ui-btn-sm" onClick={() => onAddSibling(node.id, 'unknown')}>Bilinmeyen</button>
-                </div>
+                <AddButtons onAdd={(sex, extra) => onAddSibling(node.id, sex, extra)} />
               </div>
             )}
             {/* a union is woman + man only: offer the opposite sex, nothing for unknown */}
@@ -230,62 +289,29 @@ export default function IndividualEditor({
                 {node.sex === 'unknown' ? (
                   <div className="field-hint">Eş ya da çocuk eklemek için önce cinsiyeti seçin.</div>
                 ) : (
-                  <div className="add-grid">
-                    <button className="ui-btn ui-btn-sm" onClick={() => onAddSpouse(node.id, node.sex === 'female' ? 'male' : 'female')}>Eş</button>
-                    <button className="ui-btn ui-btn-sm" onClick={() => onAddChild(null, 'male', node.id)} title="Eş otomatik eklenir">Oğul</button>
-                    <button className="ui-btn ui-btn-sm" onClick={() => onAddChild(null, 'female', node.id)} title="Eş otomatik eklenir">Kız</button>
-                  </div>
+                  <>
+                    <button className="ui-btn ui-btn-sm" onClick={() => onAddSpouse(node.id, node.sex === 'female' ? 'male' : 'female')}>Eş ekle</button>
+                    <span className="field-hint">Çocuk ekle (eş otomatik eklenir):</span>
+                    <AddButtons onAdd={(sex, extra) => onAddChild(null, sex, node.id, extra)} />
+                  </>
                 )}
               </div>
+            )}
+            {hasUnion && (node.sex === 'male' || node.sex === 'female') && (
+              <button className="ui-btn ui-btn-sm" onClick={() => onAddSpouse(node.id, node.sex === 'female' ? 'male' : 'female')}>
+                Başka bir eş ekle
+              </button>
             )}
           </div>
         )}
 
-        {!isLoss && !node.placeholder && existingUnions.map(u => {
-          const partnerId = u.partners.find(p => p !== node.id);
-          const children = pcrs.find(r => r.unionId === u.id)?.children || [];
-          return (
-            <div className="card" key={u.id}>
-              <div className="card-title">Eş: {displayNameFor(partnerId)}</div>
-              <div className="field-col">
-                <span className="field-label">Çocuk ekle{children.length > 0 ? ` (şu an ${children.length})` : ''}</span>
-                <div className="add-grid">
-                  <button className="ui-btn ui-btn-sm" onClick={() => onAddChild(u.id, 'male')}>Oğul</button>
-                  <button className="ui-btn ui-btn-sm" onClick={() => onAddChild(u.id, 'female')}>Kız</button>
-                  <button className="ui-btn ui-btn-sm" onClick={() => onAddChild(u.id, 'unknown')}>Bilinmeyen</button>
-                </div>
-              </div>
-              {onSetUnionStatus && (
-                <label className="field">
-                  <span className="field-label">İlişki</span>
-                  <select className="select" value={u.status === 'separated' ? 'divorced' : (u.status || 'together')}
-                    onChange={e => onSetUnionStatus(u.id, e.target.value)}>
-                    {STATUS_OPTIONS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
-                  </select>
-                </label>
-              )}
-              {u.consanguinityStatus === 'known_supported' ? (
-                // drawn shared ancestors decide it (finalize.js); nothing to choose here
-                <div className="field-col">
-                  <span className="field-label">Akraba evliliği</span>
-                  <span className="field-hint">Çizime göre: {degreeLabel(u.consanguinityDegree) || 'akraba'} — ortak atalar çizimde.</span>
-                </div>
-              ) : onSetUnionRelationshipBackground && (
-                <label className="field-col">
-                  <span className="field-label">Akrabalık geçmişi</span>
-                  <select className="select input-wide" value={u.relationshipBackground || 'not_asked'}
-                    onChange={e => onSetUnionRelationshipBackground(u.id, e.target.value)}>
-                    {RELATIONSHIP_BACKGROUND_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                  </select>
-                  {/* metadata only: consanguinity is always the standard double line */}
-                  {u.relationshipBackground === 'consanguinity_reported' && (
-                    <span className="field-hint">Ortak atalar çizimde yok; çift çizgi bildirime dayanır.</span>
-                  )}
-                </label>
-              )}
-            </div>
-          );
-        })}
+        {!isLoss && !node.placeholder && existingUnions.map(u => (
+          <div className="card" key={u.id}>
+            <div className="card-title">Eş: {displayNameFor(u.partners.find(p => p !== node.id))}</div>
+            <UnionControls u={u} pcrs={pcrs} onAddChild={onAddChild} onSetUnionStatus={onSetUnionStatus}
+              onSetUnionRelationshipBackground={onSetUnionRelationshipBackground} />
+          </div>
+        ))}
 
         {/* moves this child within its own sibship only, never to another union */}
         {onReorderChild && siblingOrder && siblingOrder.length > 1 && (

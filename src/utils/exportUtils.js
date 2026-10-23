@@ -59,6 +59,8 @@ export function prepareExportSvg(svg) {
   }
   clone.removeAttribute('style');
   clone.removeAttribute('id');
+  // click targets and other screen-only helpers are not part of the drawing
+  clone.querySelectorAll?.('.ui-only').forEach((n) => n.remove());
   const viewport = clone.querySelector('.pedigree-viewport');
   if (viewport) viewport.removeAttribute('transform');
   if (vb && clone.ownerDocument) {

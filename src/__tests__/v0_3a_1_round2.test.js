@@ -225,7 +225,7 @@ describe('v0.3a.1 round 2 — computeSiblingCreationPlan ("Kardeş Yap" safety)'
     const state = usePedigreeStore.getState();
     const plan = computeSiblingCreationPlan(state.pedigreeData, 'mat_uncle_0', 'pat_aunt_0');
     expect(plan.ok).toBe(false);
-    expect(plan.reason).toMatch(/farklı ebeveyn birlikleri/);
+    expect(plan.reason).toMatch(/anne-babası ayrı ayrı çizili/);
   });
 
   it('blocks a self-pair', () => {
@@ -273,7 +273,7 @@ describe('v0.3a.1 round 2 — computeSiblingCreationPlan ("Kardeş Yap" safety)'
 
     const plan = computeSiblingCreationPlan(state.pedigreeData, spouse1, spouse2);
     expect(plan.ok).toBe(false);
-    expect(plan.reason).toMatch(/jenerasyon/);
+    expect(plan.reason).toMatch(/farklı kuşaklarda/);
   });
 
   it('addCustomConsanguinity itself remains a real biological link (builder-level fact)', () => {

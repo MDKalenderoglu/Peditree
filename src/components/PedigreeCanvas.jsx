@@ -72,7 +72,7 @@ function drawStroke(g, edge, dx = 0, dy = 0) {
 // belt-and-suspenders fallback for exportUtils.js and for tests/tools
 // that query the DOM directly.
 const PedigreeCanvas = forwardRef(function PedigreeCanvas(
-  { nodes, edges, selectedNodeId, selectedNodeId2, onNodeSelect },
+  { nodes, edges, selectedNodeId, selectedNodeId2, onNodeSelect, onUnionSelect },
   forwardedRef
 ) {
   const svgRef = useRef(null);
@@ -187,6 +187,21 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           break;
       }
     });
+
+    // Relationship lines are clickable (selects the couple). Wide transparent
+    // hit lines, screen only: export removes '.ui-only'.
+    if (onUnionSelect) {
+      edges.filter(e => e.unionId && ['union', 'consanguineousUnion', 'consanguineousUnionUnresolved'].includes(e.type))
+        .forEach(edge => {
+          g.append('path')
+            .attr('class', 'ui-only union-hit')
+            .attr('d', connectorPath(edge.x1, edge.y1, edge.x2, edge.y2, edge.bridges))
+            .attr('stroke', 'transparent').attr('stroke-width', 12).attr('fill', 'none')
+            .style('cursor', 'pointer').style('pointer-events', 'stroke')
+            .on('click', (event) => { event.stopPropagation(); onUnionSelect(edge.unionId); })
+            .append('title').text('İlişkiyi düzenle');
+        });
+    }
 
     // =====================
     // DRAW NODES
@@ -461,7 +476,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // Store for external reset
     svg.node().__zoom_ref = zoom;
 
-  }, [nodes, edges, selectedNodeId, selectedNodeId2, onNodeSelect]);
+  }, [nodes, edges, selectedNodeId, selectedNodeId2, onNodeSelect, onUnionSelect]);
 
   const zoomBy = (k) => {
     const svg = d3.select(svgRef.current);

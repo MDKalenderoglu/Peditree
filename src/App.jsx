@@ -17,7 +17,7 @@ function App() {
     pedigreeData, warnings, integrityIssues,
     updateIndividual, addSpouseTo, addChildTo, addChildToUnion,
     setProband, clearProband, resetPedigree,
-    selectedId, selectedId2, selectIndividual, clearSelection,
+    selectedId, selectedId2, selectIndividual, clearSelection, selectUnion,
     deleteIndividual, createUnionBetween, addCustomConsanguinity,
     reorderChild, setUnionRelationshipBackground, setUnionStatus,
     addParentsTo, addSiblingTo,
@@ -250,6 +250,7 @@ function App() {
           selectedNodeId={selectedId}
           selectedNodeId2={selectedId2}
           onNodeSelect={handleNodeSelect}
+          onUnionSelect={selectUnion}
         />
         </div>
       </div>
@@ -261,11 +262,11 @@ function App() {
           pedigreeData={pedigreeData}
           onUpdate={updateIndividual}
           onAddSpouse={addSpouseTo}
-          onAddChild={(unionId, sex, targetId) => {
+          onAddChild={(unionId, sex, targetId, extra) => {
             if (unionId) {
-              addChildToUnion(unionId, sex);
+              addChildToUnion(unionId, sex, extra);
             } else if (targetId) {
-              addChildTo(targetId, sex);
+              addChildTo(targetId, sex, extra);
             }
           }}
           onSetProband={setProband}

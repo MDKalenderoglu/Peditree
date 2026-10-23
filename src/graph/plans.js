@@ -156,13 +156,13 @@ export function computeUnionCreationPlan(pedigreeData, id1, id2) {
       ind1.generation !== ind2.generation) {
     return {
       ok: false,
-      reason: 'Bu iki birey farklı kuşaklarda olduğu için eş/partner ilişkisi güvenli çizilemez.',
+      reason: 'Farklı kuşaktaki iki kişi arasında eş bağı henüz çizilemiyor.',
     };
   }
 
   const alreadyPartnered = unions.some(u => u.partners.includes(id1) && u.partners.includes(id2));
   if (alreadyPartnered) {
-    return { ok: false, reason: 'Bu iki birey zaten aynı birlikte (union).' };
+    return { ok: false, reason: 'Bu iki kişi zaten eş.' };
   }
 
   const childToUnion = {};
@@ -235,13 +235,13 @@ export function computeSiblingCreationPlan(pedigreeData, id1, id2) {
     // error. Block before the builder ever gets there.
     return {
       ok: false,
-      reason: `Bu iki birey farklı jenerasyonlarda (${ind1.generation} ve ${ind2.generation}) — kardeş yapılamaz.`,
+      reason: 'Kardeşler aynı kuşakta olur; bu iki kişi çizimde farklı kuşaklarda.',
     };
   }
 
   const alreadyPartnered = unions.some(u => u.partners.includes(id1) && u.partners.includes(id2));
   if (alreadyPartnered) {
-    return { ok: false, reason: 'Bu iki birey zaten eş (union) — aynı anda kardeş yapılamaz.' };
+    return { ok: false, reason: 'Bu iki kişi eş; aynı zamanda kardeş yapılamaz.' };
   }
 
   const childToUnion = {};
@@ -258,9 +258,8 @@ export function computeSiblingCreationPlan(pedigreeData, id1, id2) {
     // invariant — it would silently no-op today. Block explicitly instead.
     return {
       ok: false,
-      reason: 'Her iki bireyin de farklı ebeveyn birlikleri zaten var — bu ikisi doğrudan kardeş ' +
-        'yapılamaz (mevcut iki ayrı ebeveyn birliği güvenli şekilde birleştirilemez). ' +
-        'Bu işlem devre dışı bırakıldı; graf modeli bu birleştirmeyi desteklemeden etkinleştirilmeyecek.',
+      reason: 'İkisinin de anne-babası ayrı ayrı çizili; bir kişinin tek biyolojik anne-babası olur. ' +
+        'Kardeşlerse, birinin çizili anne-babasını silip sonra kardeş yapın.',
     };
   }
 

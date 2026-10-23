@@ -244,6 +244,11 @@ export const usePedigreeStore = create((zSet, get) => {
     }),
     dismissActionNotice: () => zSet(() => ({ actionNotice: null })),
     clearSelection: () => zSet(() => ({ selectedId: null, selectedId2: null })),
+    // clicking a relationship line selects the couple (pair panel: status, children)
+    selectUnion: (unionId) => zSet((state) => {
+      const u = state.doc.graph.unions.find(x => x.id === unionId);
+      return u ? { selectedId: u.partners[0], selectedId2: u.partners[1] } : {};
+    }),
     dismissWarning: (warningId) => zSet((state) => ({
       dismissedWarningIds: [...new Set([...(state.dismissedWarningIds || []), warningId])],
     })),
@@ -311,10 +316,11 @@ export const usePedigreeStore = create((zSet, get) => {
 
     // ── person editor ──
     addSpouseTo: (targetId, spouseSex = 'unknown') => apply(ops.addPartner(get().doc, targetId, { sex: spouseSex })),
-    addChildToUnion: (unionId, sex = 'unknown') => apply(ops.addChild(get().doc, unionId, { sex })),
-    addChildTo: (targetId, childSex = 'unknown') => apply(ops.addChildToPerson(get().doc, targetId, { sex: childSex })),
+    // extra: { pregnancyLoss: true } or { stillbirth: true } for a pregnancy outcome
+    addChildToUnion: (unionId, sex = 'unknown', extra = {}) => apply(ops.addChild(get().doc, unionId, { sex, ...extra })),
+    addChildTo: (targetId, childSex = 'unknown', extra = {}) => apply(ops.addChildToPerson(get().doc, targetId, { sex: childSex, ...extra })),
     addParentsTo: (targetId, opts = {}) => applyGuarded(ops.addParents(get().doc, targetId, opts)),
-    addSiblingTo: (targetId, sex = 'unknown') => applyGuarded(ops.addSibling(get().doc, targetId, { sex })),
+    addSiblingTo: (targetId, sex = 'unknown', extra = {}) => applyGuarded(ops.addSibling(get().doc, targetId, { sex, ...extra })),
     createUnionBetween: (id1, id2, opts = {}) => applyGuarded(ops.linkPartners(get().doc, id1, id2, opts)),
     // social (non-biological) parenthood — model + layout in Faz 2b; editor UI in Faz 4
     addSocialParentLink: (childId, unionId, kind) => applyGuarded(ops.addSocialParentLink(get().doc, childId, unionId, kind)),

@@ -261,7 +261,8 @@ export function addChild(doc, unionId, opts = {}) {
       id: childId, sex,
       generation: parent ? parent.generation + 1 : 3,
       relation: opts.relation || 'child_direct',
-      label: opts.label ?? (sex === 'male' ? 'Cocuk (E)' : sex === 'female' ? 'Cocuk (K)' : 'Cocuk'),
+      label: opts.label ?? (opts.pregnancyLoss ? 'Düşük' : opts.stillbirth ? 'Ölü Doğum'
+        : sex === 'male' ? 'Cocuk (E)' : sex === 'female' ? 'Cocuk (K)' : 'Cocuk'),
       ...(opts.pregnancyLoss ? { pregnancyLoss: true } : {}),
       ...(opts.stillbirth ? { stillbirth: true, deceased: true } : {}),
     });
