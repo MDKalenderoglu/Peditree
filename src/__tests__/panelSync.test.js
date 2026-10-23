@@ -1,0 +1,119 @@
+/**
+ * panelSync.test.js — the left panel (wizard) and the right panel (person
+ * editor) are two views of ONE graph: whatever one panel does, the other
+ * shows (clinician report 2026-10-23: consanguinity drawn via "make
+ * siblings" while the wizard still offered an empty consanguinity choice).
+ */
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+import { usePedigreeStore } from '../state/usePedigreeStore';
+import { kinshipOf } from '../graph/kinship';
+
+beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
+beforeEach(() => S().resetPedigree());
+
+const S = () => usePedigreeStore.getState();
+const wd = () => S().wizardData;
+const union = (id) => S().doc.graph.unions.find(u => u.id === id);
+const errors = () => (S().integrityIssues || []).filter(i => i.severity === 'error');
+const parentsEdge = () => S().pedigreeData.edges.find(e => e.unionId === wd().parents.unionId && /[uU]nion/.test(e.type));
+
+describe('consanguinity follows the drawing, whichever panel drew it', () => {
+  it('grandparents made siblings → parents are 1st cousins on both panels, double line, no "degree unknown" note', () => {
+    expect(wd().parents.consanguineous).toBe(false);
+    S().addCustomConsanguinity('mat_gf', 'pat_gm'); // right panel "Kardeş yap" / left "Ek akrabalık bağları"
+    const p = wd().parents;
+    expect(p.consanguineous).toBe(true);
+    expect(p.consanguinityDegree).toBe('first_cousin');
+    expect(p.consanguinityPath).toBe('cross_cousin_2');
+    expect(p.kinship).toMatchObject({ degree: 'first_cousin', fromTemplate: false });
+    expect(p.kinship.ancestors).toHaveLength(2);
+    expect(union(p.unionId).consanguinityStatus).toBe('known_supported');
+    expect(parentsEdge().type).toBe('consanguineousUnion');
+    expect(S().warnings.join(' ')).not.toMatch(/derece/);
+    expect(errors()).toEqual([]);
+  });
+
+  it('ticking the box afterwards changes nothing (the drawing already decides)', () => {
+    S().addCustomConsanguinity('mat_gm', 'pat_gm');
+    const before = S().doc;
+    S().updateWizardData('parents', 'consanguineous', true);
+    expect(wd().parents.consanguinityPath).toBe('mothers_maternal_is_fathers_maternal');
+    expect(S().doc.graph).toEqual(before.graph);
+  });
+
+  it('a degree chosen in the wizard draws the ancestors and both panels read the same degree', () => {
+    S().updateWizardData('parents', 'consanguineous', true);
+    S().updateWizardData('parents', 'consanguinityDegree', 'first_cousin');
+    S().updateWizardData('parents', 'consanguinityPath', 'mothers_paternal_is_fathers_paternal');
+    const p = wd().parents;
+    expect(p.kinship).toMatchObject({ degree: 'first_cousin', fromTemplate: true });
+    expect(union(p.unionId).consanguinityDegree).toBe('first_cousin');
+    S().updateWizardData('parents', 'consanguineous', false);
+    expect(wd().parents.consanguineous).toBe(false);
+    expect(wd().parents.kinship).toBe(null);
+  });
+
+  it('second cousins and once-removed are read from the drawing', () => {
+    S().updateWizardData('parents', 'consanguineous', true);
+    S().updateWizardData('parents', 'consanguinityDegree', 'second_cousin');
+    expect(wd().parents.kinship.degree).toBe('second_cousin');
+    const g = S().doc.graph;
+    // mother: 3 generations up to the shared couple, paternal grandfather: 2
+    expect(kinshipOf(g, 'mother', 'pat_gf').degree).toBe('first_cousin_once_removed');
+    expect(kinshipOf(g, 'mother', 'mother')).toBe(null);
+  });
+});
+
+describe('counts on the left include what the right panel added', () => {
+  it('a sibling of unknown sex added to the mother shows up on the maternal side', () => {
+    S().addSiblingTo('mother', 'unknown');
+    expect(wd().maternalRelatives.others).toBe(1);
+  });
+
+  it('a child added to an uncle from the right panel is counted on the left', () => {
+    S().updateRelativeCount('maternalRelatives', 'uncles', 1);
+    S().updateRelativeChildren('maternalRelatives', 'uncles', 0, 'male', 1);
+    const uid = wd().maternalRelatives.uncles[0].unionId;
+    S().addChildToUnion(uid, 'female');
+    expect(wd().maternalRelatives.uncles[0].children).toMatchObject({ male: 1, female: 1 });
+  });
+
+  it('someone with a role of their own is not counted again as a great-aunt; one ancestor couple counts once', () => {
+    S().addCustomConsanguinity('mat_gf', 'pat_gm');
+    expect(wd().maternalGPRelatives.aunts).toHaveLength(0);
+    expect(wd().maternalGPRelatives.alsoInRole).toEqual(['pat_gm']);
+    expect(wd().greatGrandparentCouples).toBe(1);
+    S().updateRelativeCount('maternalGPRelatives', 'aunts', 1);
+    S().updateRelativeCount('maternalGPRelatives', 'aunts', 0);
+    expect(S().doc.graph.individuals.some(i => i.id === 'pat_gm')).toBe(true);
+    expect(errors()).toEqual([]);
+  });
+
+  it('a sibling age typed on the right is the age on the left, and back', () => {
+    S().addSiblingOfCategory('male');
+    const id = wd().siblings.male[0].id;
+    S().updateIndividual(id, { age: '7' });
+    expect(wd().siblings.male[0].age).toBe('7');
+    S().updateSiblingAge('male', 0, '9');
+    expect(S().doc.graph.individuals.find(i => i.id === id).age).toBe('9');
+  });
+});
+
+describe('relationship status and proband are shared', () => {
+  it('the parents’ status set on the right is the status on the left, and back', () => {
+    S().setUnionStatus(wd().parents.unionId, 'divorced');
+    expect(wd().parents.relationshipStatus).toBe('divorced');
+    S().updateWizardData('parents', 'relationshipStatus', 'together');
+    expect(union(wd().parents.unionId).status).toBe('together');
+  });
+
+  it('making someone else the proband on the right moves the left panel to that person', () => {
+    S().setProband('mother');
+    expect(wd().proband.id).toBe('mother');
+    expect([wd().parents.motherId, wd().parents.fatherId].sort()).toEqual(['mat_gf', 'mat_gm']);
+    S().updateWizardData('proband', 'age', '41');
+    expect(S().doc.graph.individuals.find(i => i.id === 'mother').age).toBe('41');
+    expect(S().doc.graph.individuals.filter(i => i.proband).map(i => i.id)).toEqual(['mother']);
+    expect(errors()).toEqual([]);
+  });
+});

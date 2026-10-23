@@ -7,16 +7,21 @@
  *      first; unaged keep their place; then pregnancy losses, stillbirths);
  *   2. generation (topology-derived BFS from the wizard anchor — the same
  *      computeGenerations the v1 builder runs);
- *   3. consanguinity: a union declared consanguineous is 'known_supported'
- *      only when the partners share an ancestor that exists in the graph
- *      (non-negotiable rule 4), otherwise 'reported_unresolved'; its
+ *   3. consanguinity: partners who share an ancestor that exists in the
+ *      graph are consanguineous, 'known_supported', with the degree the
+ *      drawing shows (kinship.js; non-negotiable rule 4); a union declared
+ *      consanguineous without shared ancestors is 'reported_unresolved'; its
  *      relationshipBackground follows (same rule as builder stage 10b).
  *
  * Mutates the (already cloned) graph in place and returns it.
  */
 import { computeGenerations } from '../utils/graphTraversal';
 import { defaultChildOrder } from '../utils/childOrdering';
-import { indexGraph, ancestorsOf, displayParentage } from './model';
+import { indexGraph, displayParentage } from './model';
+import { kinshipOf } from './kinship';
+
+// declared degrees richer than a partly drawn structure
+const KEEP_DECLARED = new Set(['other', 'multiple_relationship', 'double_first_cousin']);
 
 export function finalizeGraph(graph, { anchorId = 'proband' } = {}) {
   const idx0 = indexGraph(graph);
@@ -36,18 +41,34 @@ export function finalizeGraph(graph, { anchorId = 'proband' } = {}) {
   // individual objects, so the computed generations land on the graph
   if (anchor) computeGenerations(displayParentage(graph).graph, anchor, 3);
 
+  deriveConsanguinity(graph);
+  return graph;
+}
+
+/**
+ * Step 3: partners who share a drawn ancestor ARE consanguineous, whichever
+ * panel drew the shared ancestry, with the degree the drawing shows (a
+ * declared degree richer than a partly drawn structure is kept). Returns the
+ * ids of the unions whose consanguinity fields it changed.
+ */
+export function deriveConsanguinity(graph) {
   const idx = indexGraph(graph);
+  const changed = [];
   for (const u of graph.unions) {
+    const before = JSON.stringify([u.consanguineous, u.consanguinityDegree, u.consanguinityStatus, u.relationshipBackground]);
+    const kin = kinshipOf(graph, u.partners[0], u.partners[1], idx);
+    if (kin) {
+      u.consanguineous = true;
+      if (!KEEP_DECLARED.has(u.consanguinityDegree)) u.consanguinityDegree = kin.degree;
+    }
     if (!u.consanguineous) {
       if (!u.consanguinityStatus) u.consanguinityStatus = 'none';
       if (!u.relationshipBackground) u.relationshipBackground = 'not_asked';
-      continue;
+    } else {
+      u.consanguinityStatus = kin ? 'known_supported' : 'reported_unresolved';
+      u.relationshipBackground = kin ? 'consanguinity_structurally_supported' : 'consanguinity_reported';
     }
-    const [a, b] = u.partners;
-    const aa = ancestorsOf(graph, a, idx);
-    const shared = [...ancestorsOf(graph, b, idx)].some((x) => aa.has(x));
-    u.consanguinityStatus = shared ? 'known_supported' : 'reported_unresolved';
-    u.relationshipBackground = shared ? 'consanguinity_structurally_supported' : 'consanguinity_reported';
+    if (JSON.stringify([u.consanguineous, u.consanguinityDegree, u.consanguinityStatus, u.relationshipBackground]) !== before) changed.push(u.id);
   }
-  return graph;
+  return changed;
 }

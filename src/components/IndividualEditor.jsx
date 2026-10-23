@@ -10,8 +10,11 @@ import { computeSiblingCreationPlan, computeUnionCreationPlan } from '../state/u
 import { sanitizeAgeValue } from '../utils/ageValidation';
 import { RELATIONSHIP_BACKGROUND_OPTIONS } from '../utils/relationshipBackground';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
+import { degreeLabel } from '../graph/kinship';
 
 const SEX_WORD = { male: 'Erkek', female: 'Kadın', unknown: 'Cinsiyet bilinmiyor' };
+// same options and wording as the wizard; an older 'separated' shows as the combined one
+const STATUS_OPTIONS = [['together', 'Birlikte'], ['divorced', 'Boşanmış/Ayrılmış'], ['unknown', 'Bilinmiyor']];
 
 function Header({ title, sub, onClose }) {
   return (
@@ -69,7 +72,7 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
 export default function IndividualEditor({
   node, node2, pedigreeData, onUpdate, onAddSpouse, onAddChild, onSetProband, onClearProband,
   onDeleteIndividual, onCreateUnion, onMakeSiblings,
-  onClearSelection, onReorderChild, onSetUnionRelationshipBackground,
+  onClearSelection, onReorderChild, onSetUnionRelationshipBackground, onSetUnionStatus,
   onAddParents, onAddSibling,
 }) {
   if (node && node2) {
@@ -252,7 +255,22 @@ export default function IndividualEditor({
                   <button className="ui-btn ui-btn-sm" onClick={() => onAddChild(u.id, 'unknown')}>Bilinmeyen</button>
                 </div>
               </div>
-              {onSetUnionRelationshipBackground && (
+              {onSetUnionStatus && (
+                <label className="field">
+                  <span className="field-label">İlişki</span>
+                  <select className="select" value={u.status === 'separated' ? 'divorced' : (u.status || 'together')}
+                    onChange={e => onSetUnionStatus(u.id, e.target.value)}>
+                    {STATUS_OPTIONS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+                  </select>
+                </label>
+              )}
+              {u.consanguinityStatus === 'known_supported' ? (
+                // drawn shared ancestors decide it (finalize.js); nothing to choose here
+                <div className="field-col">
+                  <span className="field-label">Akraba evliliği</span>
+                  <span className="field-hint">Çizime göre: {degreeLabel(u.consanguinityDegree) || 'akraba'} — ortak atalar çizimde.</span>
+                </div>
+              ) : onSetUnionRelationshipBackground && (
                 <label className="field-col">
                   <span className="field-label">Akrabalık geçmişi</span>
                   <select className="select input-wide" value={u.relationshipBackground || 'not_asked'}

@@ -19,7 +19,7 @@ function App() {
     setProband, clearProband, resetPedigree,
     selectedId, selectedId2, selectIndividual, clearSelection,
     deleteIndividual, createUnionBetween, addCustomConsanguinity,
-    reorderChild, setUnionRelationshipBackground,
+    reorderChild, setUnionRelationshipBackground, setUnionStatus,
     addParentsTo, addSiblingTo,
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
@@ -276,6 +276,7 @@ function App() {
           onClearSelection={clearSelection}
           onReorderChild={reorderChild}
           onSetUnionRelationshipBackground={setUnionRelationshipBackground}
+          onSetUnionStatus={setUnionStatus}
           onAddParents={addParentsTo}
           onAddSibling={addSiblingTo}
         />

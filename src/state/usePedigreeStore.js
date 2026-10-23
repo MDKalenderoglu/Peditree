@@ -298,6 +298,7 @@ export const usePedigreeStore = create((zSet, get) => {
     removeCustomConsanguinity: (idx) => apply(wizardOps.removeCustomSiblingLink(get().doc, idx)),
     markUnionConsanguineous: (unionId, value) => apply(ops.setUnionConsanguineous(get().doc, unionId, value)),
     setUnionRelationshipBackground: (unionId, value) => apply(ops.setRelationshipBackground(get().doc, unionId, value)),
+    setUnionStatus: (unionId, status) => apply(ops.setUnionStatus(get().doc, unionId, status)),
 
     // ── birth order ──
     getChildOrder: (unionId) => {

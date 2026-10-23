@@ -10,7 +10,7 @@ import { usePedigreeStore } from '../state/usePedigreeStore';
 import { ChevronRight, User, Users, Heart, GitFork, Network, Link2, Layers, Baby } from 'lucide-react';
 import ChildOrderEditor from './ChildOrderEditor';
 import { sanitizeAgeValue } from '../utils/ageValidation';
-import { RELATIONSHIP_BACKGROUND_OPTIONS } from '../utils/relationshipBackground';
+import { degreeLabel } from '../graph/kinship';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { deriveSiblingCounts } from '../utils/siblingCounts';
 
@@ -151,7 +151,6 @@ export default function WizardPanel() {
     getChildOrder, setChildOrder,
     toggleGreatGrandparents,
     addCustomConsanguinity, removeCustomConsanguinity,
-    setUnionRelationshipBackground,
     pedigreeData,
     openSectionId, setOpenSection,
   } = usePedigreeStore();
@@ -202,7 +201,8 @@ export default function WizardPanel() {
   const relatives = (id, icon, title, side, uncleLabel, auntLabel) => {
     const rel = wd[side] || { uncles: [], aunts: [] };
     const uncles = rel.uncles || [], aunts = rel.aunts || [];
-    const summary = [uncles.length && `${uncles.length} ${uncleLabel}`, aunts.length && `${aunts.length} ${auntLabel}`].filter(Boolean).join(' · ') || 'yok';
+    const summary = [uncles.length && `${uncles.length} ${uncleLabel}`, aunts.length && `${aunts.length} ${auntLabel}`,
+      rel.others && `${rel.others} diğer`].filter(Boolean).join(' · ') || 'yok';
     const people = (type, label) => (rel[type] || []).map((r, idx) => (
       <div className="sub" key={r.id}>
         <div className="sub-head">
@@ -224,6 +224,12 @@ export default function WizardPanel() {
           <Count label={uncleLabel} value={uncles.length} onChange={v => updateRelativeCount(side, 'uncles', v)} />
           <Count label={auntLabel} value={aunts.length} onChange={v => updateRelativeCount(side, 'aunts', v)} />
         </div>
+        {rel.others > 0 && (
+          <div className="field-hint">Ayrıca çizimde {rel.others} kardeş daha var (cinsiyeti bilinmeyen ya da düşük/ölü doğum); çizimde seçip sağ panelden düzenleyin.</div>
+        )}
+        {(rel.alsoInRole || []).map(id => (
+          <div className="field-hint" key={id}>{nameOf(id)} bu kişilerin kardeşi; kendi yerinde sayılır.</div>
+        ))}
         {people('uncles', uncleLabel)}
         {people('aunts', auntLabel)}
       </Section>
@@ -241,10 +247,19 @@ export default function WizardPanel() {
     ...wd.siblings.unknown.map((s, i) => ['unknown', i, `Kardeş ${i + 1}`, s]),
   ];
   const sexWord = { male: 'erkek', female: 'kadın', unknown: 'cinsiyet bilinmiyor' }[wd.proband.sex];
-  const ggCount = Object.values(wd.greatGrandparents || {}).filter(Boolean).length;
+  const ggCount = wd.greatGrandparentCouples || 0;
+  // the drawing decides: shared ancestors drawn by any panel make the parents
+  // consanguineous with the degree they show (graph/finalize.js)
+  const kin = wd.parents.kinship;
   const consSummary = wd.parents.consanguineous
     ? ({ first_cousin: '1. kuzen', second_cousin: '2. kuzen', unknown: 'derece bilinmiyor' }[wd.parents.consanguinityDegree] || 'var')
     : 'yok';
+  const PATH_TEXT = {
+    mothers_paternal_is_fathers_paternal: 'Annenin babası ile babanın babası kardeş',
+    mothers_maternal_is_fathers_maternal: 'Annenin annesi ile babanın annesi kardeş',
+    cross_cousin_1: 'Annenin annesi ile babanın babası kardeş',
+    cross_cousin_2: 'Annenin babası ile babanın annesi kardeş',
+  };
 
   return (
     <aside className="side side-left wizard-panel">
@@ -343,38 +358,52 @@ export default function WizardPanel() {
 
         <div className="group-label">Akrabalık</div>
         <Section id="consanguinity" icon={Link2} title="Akraba evliliği (anne-baba)" summary={consSummary} {...sec}>
-          <label className="check"><input type="checkbox" checked={wd.parents.consanguineous}
-            onChange={e => updateWizardData('parents', 'consanguineous', e.target.checked)} /> Anne ve baba akraba</label>
-          {wd.parents.consanguineous && (
+          {kin && (
+            <div className="sub">
+              <div className="sub-head"><span>Çizime göre: {degreeLabel(kin.degree)}</span></div>
+              {PATH_TEXT[wd.parents.consanguinityPath] && <div className="field-hint">{PATH_TEXT[wd.parents.consanguinityPath]}.</div>}
+              <div className="field-hint">Ortak atalar: {kin.ancestors.map(nameOf).join(', ')}</div>
+              {!kin.fromTemplate && (
+                <div className="field-hint">Bu bilgi çizimdeki ortak atalardan gelir. Değiştirmek için ilgili kişiyi ya da akrabalık bağını kaldırın.</div>
+              )}
+            </div>
+          )}
+          {(!kin || kin.fromTemplate) && (
             <>
-              <label className="field-col">
-                <span className="field-label">Derece</span>
-                <select className="select input-wide" value={wd.parents.consanguinityDegree} onChange={e => updateWizardData('parents', 'consanguinityDegree', e.target.value)}>
-                  <option value="unknown">Bilinmiyor</option>
-                  <option value="first_cousin">1. derece kuzen</option>
-                  <option value="second_cousin">2. derece kuzen</option>
-                  <option value="first_cousin_once_removed">1. kuzenin çocuğu (bir kuşak fark)</option>
-                  <option value="second_cousin_once_removed">2. kuzenin çocuğu (bir kuşak fark)</option>
-                  <option value="double_first_cousin">Çift 1. derece kuzen</option>
-                  <option value="multiple_relationship">Birden fazla akrabalık yolu</option>
-                  <option value="other">Diğer</option>
-                </select>
-              </label>
-              {wd.parents.consanguinityDegree === 'first_cousin' && (
+            <label className="check"><input type="checkbox" checked={wd.parents.consanguineous}
+              onChange={e => updateWizardData('parents', 'consanguineous', e.target.checked)} /> Anne ve baba akraba</label>
+            {wd.parents.consanguineous && (
+              <>
                 <label className="field-col">
-                  <span className="field-label">Ortak atalar kimin üzerinden?</span>
-                  <select className="select input-wide" value={wd.parents.consanguinityPath} onChange={e => updateWizardData('parents', 'consanguinityPath', e.target.value)}>
+                  <span className="field-label">Derece</span>
+                  <select className="select input-wide" value={wd.parents.consanguinityDegree} onChange={e => updateWizardData('parents', 'consanguinityDegree', e.target.value)}>
                     <option value="unknown">Bilinmiyor</option>
-                    <option value="mothers_paternal_is_fathers_paternal">Annenin babası ile babanın babası kardeş</option>
-                    <option value="mothers_maternal_is_fathers_maternal">Annenin annesi ile babanın annesi kardeş</option>
-                    <option value="cross_cousin_1">Annenin annesi ile babanın babası kardeş</option>
-                    <option value="cross_cousin_2">Annenin babası ile babanın annesi kardeş</option>
+                    <option value="first_cousin">1. derece kuzen</option>
+                    <option value="second_cousin">2. derece kuzen</option>
+                    <option value="first_cousin_once_removed">1. kuzenin çocuğu (bir kuşak fark)</option>
+                    <option value="second_cousin_once_removed">2. kuzenin çocuğu (bir kuşak fark)</option>
+                    <option value="double_first_cousin">Çift 1. derece kuzen</option>
+                    <option value="multiple_relationship">Birden fazla akrabalık yolu</option>
+                    <option value="other">Diğer</option>
                   </select>
                 </label>
-              )}
-              {(wd.parents.consanguinityDegree === 'unknown' || (wd.parents.consanguinityDegree === 'first_cousin' && wd.parents.consanguinityPath === 'unknown')) && (
-                <div className="field-hint">Ortak atalar seçilmediği için yalnızca çift çizgi çizilir; ortak atalar gösterilmez.</div>
-              )}
+                {wd.parents.consanguinityDegree === 'first_cousin' && (
+                  <label className="field-col">
+                    <span className="field-label">Ortak atalar kimin üzerinden?</span>
+                    <select className="select input-wide" value={wd.parents.consanguinityPath} onChange={e => updateWizardData('parents', 'consanguinityPath', e.target.value)}>
+                      <option value="unknown">Bilinmiyor</option>
+                      <option value="mothers_paternal_is_fathers_paternal">Annenin babası ile babanın babası kardeş</option>
+                      <option value="mothers_maternal_is_fathers_maternal">Annenin annesi ile babanın annesi kardeş</option>
+                      <option value="cross_cousin_1">Annenin annesi ile babanın babası kardeş</option>
+                      <option value="cross_cousin_2">Annenin babası ile babanın annesi kardeş</option>
+                    </select>
+                  </label>
+                )}
+                {!kin && (wd.parents.consanguinityDegree === 'unknown' || (wd.parents.consanguinityDegree === 'first_cousin' && wd.parents.consanguinityPath === 'unknown')) && (
+                  <div className="field-hint">Ortak atalar seçilmediği için yalnızca çift çizgi çizilir; ortak atalar gösterilmez.</div>
+                )}
+              </>
+            )}
             </>
           )}
         </Section>
@@ -389,22 +418,6 @@ export default function WizardPanel() {
             </div>
           ))}
           <SiblingLinker individuals={pedigreeData?.individuals || []} onAdd={(a, b) => addCustomConsanguinity(a, b)} nameOf={nameOf} />
-          {pedigreeData?.unions?.length > 0 && (
-            <div className="field-col">
-              <div className="divider" />
-              <div className="order-title">Çiftlerin akrabalık geçmişi</div>
-              {pedigreeData.unions.map(u => (
-                <label className="field-col" key={u.id}>
-                  <span className="field-hint">{nameOf(u.partners[0])} — {nameOf(u.partners[1])}</span>
-                  <select className="select input-wide" value={u.relationshipBackground || 'not_asked'}
-                    disabled={u.id === wd.parents.unionId && wd.parents.consanguineous}
-                    onChange={e => setUnionRelationshipBackground(u.id, e.target.value)}>
-                    {RELATIONSHIP_BACKGROUND_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                  </select>
-                </label>
-              ))}
-            </div>
-          )}
         </Section>
 
         <Section id="gen4" icon={Baby} title="Probandın / kardeşlerin çocukları" summary={wd.gen4.length ? `${wd.gen4.length} aile` : ''} {...sec}>

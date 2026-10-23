@@ -20,6 +20,7 @@ import { commit, block, draftAddPerson, draftAddUnion, draftAddChild, draftRemov
 import { indexGraph, hasClinicalData } from './model';
 import { allocateId } from './ids';
 import { computeDeletionPlanFor } from './plans';
+import { kinshipOf } from './kinship';
 
 // ── id helpers ──
 
@@ -94,13 +95,20 @@ const SIDE = {
   paternalGPRelatives: { base: 'pat_gf', sideKey: 'gp_pat', union: 'GP_PAT' },
 };
 
+const ROLE_KEYS = ['anchor', 'mother', 'father', 'mat_gf', 'mat_gm', 'pat_gf', 'pat_gm'];
+
 function relativesView(r, side) {
   const { idx } = r;
   const baseId = r[SIDE[side].base];
-  const out = { uncles: [], aunts: [] };
+  // someone with a role of their own (e.g. the paternal grandmother who is
+  // also the maternal grandfather's sister) is counted in that role only
+  const roles = new Set(ROLE_KEYS.map((k) => r[k]).filter(Boolean));
+  const out = { uncles: [], aunts: [], others: 0, alsoInRole: [] };
   for (const id of siblingsOf(idx, baseId)) {
     const p = idx.byId.get(id);
-    if (p.pregnancyLoss || p.stillbirth || (p.sex !== 'male' && p.sex !== 'female')) continue;
+    if (roles.has(id)) { out.alsoInRole.push(id); continue; }
+    // unknown sex / pregnancy losses: drawn and counted, edited in the person editor
+    if (p.pregnancyLoss || p.stillbirth || (p.sex !== 'male' && p.sex !== 'female')) { out.others++; continue; }
     const unionId = firstUnionOf(idx, id);
     (p.sex === 'male' ? out.uncles : out.aunts).push({
       id, personId: id, unionId,
@@ -140,6 +148,14 @@ export function deriveWizardView(doc, ui = {}) {
     }));
 
   const meta = doc.wizardMeta?.parentsConsanguinity;
+  const kin = pu ? kinshipOf(doc.graph, pu.partners[0], pu.partners[1], idx) : null;
+  // first-cousin path read from the drawing: which grandparents are siblings
+  let drawnPath = null;
+  if (kin && kin.degree === 'first_cousin') {
+    const common = new Set(kin.ancestors);
+    const childOfCommon = (k) => r[k] && (idx.unionById.get(idx.bioParentUnion.get(r[k]))?.partners || []).some((x) => common.has(x));
+    drawnPath = Object.keys(FIRST_COUSIN_PATHS).find((key) => FIRST_COUSIN_PATHS[key].every(childOfCommon)) || null;
+  }
   const gen4 = [];
   const sibship = [r.anchor, ...(r.parentsUnion ? idx.childrenOf(r.parentsUnion) : [])]
     .filter((id, i, a) => id && a.indexOf(id) === i && isReal(idx, id) && !p(id).pregnancyLoss && !p(id).stillbirth);
@@ -171,7 +187,13 @@ export function deriveWizardView(doc, ui = {}) {
       fatherExists: !!r.father, fatherAge: p(r.father)?.age || '',
       consanguineous: !!pu?.consanguineous,
       consanguinityDegree: pu?.consanguineous ? (pu.consanguinityDegree || 'unknown') : 'yok',
-      consanguinityPath: pu?.consanguineous ? (meta?.path || 'unknown') : 'unknown',
+      consanguinityPath: pu?.consanguineous ? (drawnPath || (meta?.path && meta.path !== 'unknown' ? meta.path : 'unknown')) : 'unknown',
+      // the relationship the drawing shows; fromTemplate: drawn by the
+      // degree/path choice below (changing the choice redraws it)
+      kinship: kin ? {
+        degree: kin.degree, label: kin.label, ancestors: kin.ancestors,
+        fromTemplate: !!(meta && ((meta.createdIds || []).length || (meta.attached || []).length)),
+      } : null,
       relationshipStatus: pu?.status || 'together',
       motherOtherUnions: otherUnions(r.mother),
       fatherOtherUnions: otherUnions(r.father),
@@ -181,6 +203,8 @@ export function deriveWizardView(doc, ui = {}) {
     maternalGPRelatives: relativesView(r, 'maternalGPRelatives'),
     paternalGPRelatives: relativesView(r, 'paternalGPRelatives'),
     greatGrandparents: Object.fromEntries(['mat_gf', 'mat_gm', 'pat_gf', 'pat_gm'].map((k) => [k, !!(r[k] && idx.bioParentUnion.get(r[k]))])),
+    // distinct couples (two grandparents may be siblings with the same parents)
+    greatGrandparentCouples: new Set(['mat_gf', 'mat_gm', 'pat_gf', 'pat_gm'].map((k) => r[k] && idx.bioParentUnion.get(r[k])).filter(Boolean)).size,
     gen4,
     customConsanguinity,
   };

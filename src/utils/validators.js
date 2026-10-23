@@ -76,7 +76,7 @@ export function validatePedigree(data) {
     if (u.consanguineous) {
       if (!u.consanguinityDegree || u.consanguinityDegree === 'yok') {
         warnings.push('Uyarı: Akraba evliliği işaretli ancak derece seçilmemiş.');
-      } else if (u.consanguinityDegree === 'unknown') {
+      } else if (u.consanguinityDegree === 'unknown' && u.consanguinityStatus !== 'known_supported') {
         warnings.push('Bilgi: Akraba evliliği derecesi bilinmiyor — üst soy bağlantısı çizilmeyecek.');
       }
     }

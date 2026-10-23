@@ -8,7 +8,7 @@ import { computePedigreeIds } from './pedigreeNumbering';
 
 /** Rewrite rules for issue codes whose raw message is technical. */
 const BY_CODE = {
-  CONSANGUINITY_UNRESOLVED: (pair) => `${pair}: akraba evliliği işaretli, ortak ataları çizimde yok. Çift çizgi gösteriliyor; ortak ataları çizmek için 4. Akrabalık bölümünden derece ve yolu seçin.`,
+  CONSANGUINITY_UNRESOLVED: (pair) => `${pair}: akraba evliliği işaretli, ortak ataları çizimde yok. Çift çizgi gösteriliyor; ortak ataları çizmek için sol paneldeki Akrabalık bölümünden derece ve yolu seçin.`,
   CONSANGUINITY_STATUS_MISSING: (pair) => `${pair}: akraba evliliği bilgisi eksik.`,
 };
 

@@ -29,6 +29,14 @@ const shownGraph = () => ({
   socialParentLinks: [],
 });
 const withoutPolicy = (g) => ({ ...g, parentChildRelationships: g.parentChildRelationships.map(({ orderPolicy, ...r }) => r) }); // eslint-disable-line no-unused-vars
+// v2 derives consanguinity from drawn shared ancestors (finalize.js
+// deriveConsanguinity); v1 could draw such partners with a single line and no
+// degree. Those unions are listed in r.consanguinityDerived — every one must
+// be structurally supported; the rest of the graph must equal what v1 showed.
+const withV1Consanguinity = (v1, v2, derived) => {
+  for (const id of derived) expect(v2.unions.find((u) => u.id === id).consanguinityStatus).toBe('known_supported');
+  return { ...v2, unions: v2.unions.map((u) => (derived.includes(u.id) ? v1.unions.find((x) => x.id === u.id) || u : u)) };
+};
 const person = (doc, id) => doc.graph.individuals.find(i => i.id === id);
 
 /** A v1 session that uses every v1 overlay mechanism, built through the v1 store. */
@@ -61,7 +69,7 @@ describe('migrateV1ToV2', () => {
     const r = migrateV1ToV2(wd);
     expect(r.ok).toBe(true);
     expect(r.normalizations).toEqual([]);
-    expect(semanticDiff(withoutPolicy(shownGraph()), withoutPolicy(r.doc.graph))).toEqual([]);
+    { const shown = shownGraph(); expect(semanticDiff(withoutPolicy(shown), withoutPolicy(withV1Consanguinity(shown, r.doc.graph, r.consanguinityDerived)))).toEqual([]); }
 
     const doc = r.doc;
     expect(person(doc, 'mother')).toMatchObject({ affected: true, displayLabel: 'Ayşe', notes: 'tip 2 DM', age: '52', proband: true });
@@ -115,7 +123,8 @@ describe('migrateV1ToV2', () => {
         expect(r.normalizations).toEqual([]);
         // Only known v1 data loss may differ (DM-13: v1 drops clinical
         // edits made on an "unspecified parent" placeholder on reload).
-        const diffs = semanticDiff(withoutPolicy(shownGraph()), withoutPolicy(r.doc.graph))
+        const shown = shownGraph();
+        const diffs = semanticDiff(withoutPolicy(shown), withoutPolicy(withV1Consanguinity(shown, r.doc.graph, r.consanguinityDerived)))
           .filter(d => !/^kişi \S+__unspecified:/.test(d));
         expect(diffs).toEqual([]);
         checked++;

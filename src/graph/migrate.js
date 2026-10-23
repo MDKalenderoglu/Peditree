@@ -13,13 +13,18 @@
  * 3. Ids: v1 ids are kept unchanged; deleted ids are retired; the direct-edit
  *    counter continues from v1's editSeq.
  * 4. The complete v1 wizardData is kept in provenance.v1Snapshot.
- * 5. Verification: the v2 derivation rules (finalize.js), which every later
- *    operation applies, must not change G1. Any difference is reported in
- *    `normalizations` (an empty list is the expected outcome).
+ * 5. Consanguinity is derived from the drawn shared ancestors
+ *    (finalize.js deriveConsanguinity): v1 drew partners who share an
+ *    ancestor with a single line unless someone ticked the box, and left the
+ *    degree empty. The unions this changes are listed in
+ *    `consanguinityDerived` — added facts, never a loss.
+ * 6. Verification: the v2 derivation rules (finalize.js), which every later
+ *    operation applies, must not change the graph further. Any difference is
+ *    reported in `normalizations` (an empty list is the expected outcome).
  */
 import { deriveV1Graph, mergeWithDefaults } from './v1pipeline';
 import { createDocument } from './document';
-import { finalizeGraph } from './finalize';
+import { finalizeGraph, deriveConsanguinity } from './finalize';
 import { cloneGraph, indexGraph } from './model';
 import { defaultChildOrder } from '../utils/childOrdering';
 
@@ -42,6 +47,7 @@ export function migrateV1ToV2(rawWizardData, { now = new Date().toISOString() } 
     rel.orderPolicy = V1_SORTED_GROUP.test(rel.unionId) && ageOrdered ? 'byAge' : 'insertion';
   }
   graph.socialParentLinks = [];
+  const consanguinityDerived = deriveConsanguinity(graph);
 
   const editSeq = Number.isInteger(wd.editSeq) ? wd.editSeq : 0;
   const retired = [...new Set((wd.deletedIndividualIds || []).filter((id) => !idx.byId.has(id)))].sort();
@@ -53,7 +59,7 @@ export function migrateV1ToV2(rawWizardData, { now = new Date().toISOString() } 
   doc.createdAt = snapshot.savedAt || now;
 
   const normalizations = semanticDiff(doc.graph, finalizeGraph(cloneGraph(doc.graph), { anchorId: doc.wizardAnchorId }));
-  return { ok: true, doc, normalizations };
+  return { ok: true, doc, normalizations, consanguinityDerived };
 }
 
 // Absent and empty-default values ('' / [] / false / null) mean the same

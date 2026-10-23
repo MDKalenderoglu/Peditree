@@ -54,7 +54,7 @@ export function commit(doc, mutate) {
   // callers see a no-op (no undo step, no autosave, same object identity).
   const sameAs = (x, y) => JSON.stringify(x) === JSON.stringify(y);
   if (sameAs(draft.graph, cloneGraph(doc.graph)) && sameAs(draft.ids, { counters: { ...(doc.ids?.counters || {}) }, retired: [...(doc.ids?.retired || [])] })
-      && sameAs(draft.wizardMeta ?? null, doc.wizardMeta ?? null)) {
+      && sameAs(draft.wizardMeta ?? null, doc.wizardMeta ?? null) && draft.wizardAnchorId === doc.wizardAnchorId) {
     return { ok: true, doc, created: {}, ...extra };
   }
   const introduced = errorsOf(validateDocument(draft)).filter((i) => !before.has(issueKey(i)));
@@ -197,11 +197,15 @@ export function updatePerson(doc, id, fields) {
   });
 }
 
-/** Exactly one proband (or none, an explicit mid-edit state). */
+/**
+ * Exactly one proband (or none, an explicit mid-edit state). The wizard
+ * works relative to the proband, so its anchor follows (clearing keeps it).
+ */
 export function setProband(doc, id) {
   return commit(doc, (d) => {
     if (id !== null && !d.graph.individuals.some((i) => i.id === id)) block('Birey grafikte bulunamadı.');
     for (const p of d.graph.individuals) p.proband = p.id === id;
+    if (id !== null) d.wizardAnchorId = id;
   });
 }
 
