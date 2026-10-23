@@ -65,7 +65,7 @@ function sectorPath(a0, a1, r) {
  * Fill the given regions of a symbol (NSGC: one region per condition, see
  * graph/conditionKey.js): sectors clipped to the symbol's outline, a thin
  * white gap between neighbouring filled regions; a carrier of a condition
- * gets a dot in its region.
+ * gets half of its region filled (clinician decision 2026-10-24).
  */
 function drawRegions(el, defs, clipId, outline, { count, filled, carriers }, sz) {
   const clip = defs.append('clipPath').attr('id', clipId);
@@ -79,9 +79,8 @@ function drawRegions(el, defs, clipId, outline, { count, filled, carriers }, sz)
   for (const i of carriers) {
     if (filled.includes(i)) continue;
     const [a0, a1] = regionAngles(i, count);
-    const mid = ((a0 + a1) / 2) * Math.PI / 180;
-    regions.append('circle').attr('cx', sz * 0.5 * Math.cos(mid)).attr('cy', sz * 0.5 * Math.sin(mid))
-      .attr('r', Math.max(2, sz * 0.14)).attr('fill', NODE_STROKE);
+    regions.append('path').attr('class', 'condition-carrier').attr('d', sectorPath(a0, (a0 + a1) / 2, sz * 1.8))
+      .attr('fill', NODE_STROKE).attr('stroke', NODE_FILL).attr('stroke-width', 1.5);
   }
   // outline on top, so the regions never thin the symbol's border
   el.node().appendChild(outline.node().cloneNode());

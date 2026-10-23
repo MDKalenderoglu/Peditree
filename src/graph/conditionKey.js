@@ -50,6 +50,7 @@ export function keyIndex(key, label) {
  *                                            pedigree, or affected with no
  *                                            condition named)
  *   { mode: 'segments', count, filled, carriers } — region indices
+ *                                            (a carrier's region is half filled)
  */
 export function fillFor(person, key = []) {
   const conds = (Array.isArray(person.conditions) ? person.conditions : []).filter((c) => c && c.label);
