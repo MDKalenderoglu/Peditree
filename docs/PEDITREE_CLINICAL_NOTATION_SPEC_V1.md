@@ -290,5 +290,8 @@ Onay sonrası her kural için:
 | 2026-10-23 | K10 — proband | proband okuna "P" eklenir (uygulandı); ayrı danışan alanı bekliyor | kullanıcı (klinisyen) |
 | 2026-10-23 | §4.7 — ayrılık / boşanma | ikisi de ilişki çizgisinde **tek eğik çizgi** (uygulandı) | kullanıcı (klinisyen) |
 | 2026-10-23 | §4.6 — akraba evliliği yapıdan | çizimde ortak atası olan çift (üst kuşaklar birleşiyorsa) **otomatik olarak akraba evliliği** sayılır ve çift çizgiyle çizilir; derece ortak atalardan hesaplanır (`src/graph/kinship.js`, `finalize.js`); aile "akrabalık yok" dese de çizim belirleyicidir (uygulandı) | kullanıcı (klinisyen) |
+| 2026-10-24 | çoklu bulgu | birden çok bulgu varsa sembol bölgelere ayrılır, her bulgu kendi bölgesini boyar (1 sol üst, 2 sağ üst, 3 sağ alt, 4 sol alt; dörtten fazlası pasta dilimleri), anlamı çizimin altındaki "Açıklama"da (NSGC 2022); tek bulgu = klasik tam dolgu (uygulandı, `graph/conditionKey.js`) | kullanıcı (klinisyen) isteği |
+| | bulgu bazında taşıyıcı | bir bulgunun taşıyıcısı: o bölgede nokta (uygulandı, **doğrulama bekliyor**); kişi düzeyindeki taşıyıcı yarım dolgu olarak kalır | bekliyor |
+| | farklı kuşaklar arası eşlik | izin verilecek (klinisyen 2026-10-24); çizim biçimi **karar gerekli** | bekliyor |
 | | K2–K4, K6–K9, K11–K13 | bekliyor | |
 | | §4 "Standart" özetleri (orijinal yayına karşı) | bekliyor | |
