@@ -652,7 +652,10 @@ export const wizardOps = {
       const parent = rolesOf(d.graph, d.wizardAnchorId)[parentType];
       const n = (v.unionId.match(/(\d+)$/) || [])[1] ?? v.unionId;
       setChildrenCount(d, parent, v.unionId, field, value, `hsib_${parentType === 'mother' ? 'mat' : 'pat'}`,
-        { male: { suffix: `m_${n}`, props: { sex: 'male' } }, female: { suffix: `f_${n}`, props: { sex: 'female' } }, unknown: { suffix: `u_${n}`, props: { sex: 'unknown' } } },
+        {
+          male: { suffix: `m_${n}`, props: { sex: 'male' } }, female: { suffix: `f_${n}`, props: { sex: 'female' } }, unknown: { suffix: `u_${n}`, props: { sex: 'unknown' } },
+          pregnancyLoss: { suffix: `loss_${n}`, props: COUSIN_KIND.pregnancyLoss.props }, stillbirth: { suffix: `still_${n}`, props: COUSIN_KIND.stillbirth.props },
+        },
         parentType === 'mother' ? 'half_sibling_maternal' : 'half_sibling_paternal');
     });
   },

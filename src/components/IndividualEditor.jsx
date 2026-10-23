@@ -112,8 +112,8 @@ export default function IndividualEditor({
   if (!node) {
     return (
       <>
-        <h3 style={{ marginBottom: '15px', color: '#1e293b', fontSize: '1rem' }}>Birey Duzenle</h3>
-        <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Duzenlemek icin grafikten bir birey secin.</p>
+        <h3 style={{ marginBottom: '15px', color: '#1e293b', fontSize: '1rem' }}>Birey Düzenle</h3>
+        <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Düzenlemek için grafikten bir birey seçin.</p>
       </>
     );
   }
@@ -147,7 +147,7 @@ export default function IndividualEditor({
 
   return (
     <>
-      <h3 style={{ marginBottom: '15px', color: '#1e293b', fontSize: '1rem' }}>Birey Duzenle</h3>
+      <h3 style={{ marginBottom: '15px', color: '#1e293b', fontSize: '1rem' }}>Birey Düzenle</h3>
 
       {/* Identity header — v0.3a.3: the pedigree-standard ID (e.g. "II-3")
           is the primary identifier shown to the clinician, matching what's
@@ -188,9 +188,6 @@ export default function IndividualEditor({
             </select>
           </div>
         )}
-        <div><strong>Jenerasyon:</strong> {node.generation}</div>
-        {node.relation && <div><strong>Iliski:</strong> {node.relation}</div>}
-        <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: '4px' }}>Teknik ID: {node.id}</div>
       </div>
 
       {/* ── Graph editing buttons ── */}
@@ -265,7 +262,7 @@ export default function IndividualEditor({
               unknown-sex partner. */}
           {!hasUnion && (
             <div style={{ marginBottom: '6px' }}>
-              <div style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '3px' }}>Es Ekle</div>
+              <div style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '3px' }}>Eş Ekle</div>
               {node.sex === 'unknown' ? (
                 <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
                   Eş eklemek için önce bu bireyin cinsiyeti belirtilmeli (union yalnızca kadın+erkek arasında kurulabilir).
@@ -277,14 +274,14 @@ export default function IndividualEditor({
                       className="btn"
                       style={{ fontSize: '0.7rem', padding: '3px 8px', background: '#dbeafe', border: '1px solid #93c5fd' }}
                       onClick={() => onAddSpouse(node.id, 'male')}
-                    >♂ Erkek Es</button>
+                    >♂ Erkek Eş</button>
                   )}
                   {node.sex === 'male' && (
                     <button
                       className="btn"
                       style={{ fontSize: '0.7rem', padding: '3px 8px', background: '#fce7f3', border: '1px solid #f9a8d4' }}
                       onClick={() => onAddSpouse(node.id, 'female')}
-                    >♀ Kadin Es</button>
+                    >♀ Kadın Eş</button>
                   )}
                 </div>
               )}
@@ -337,17 +334,17 @@ export default function IndividualEditor({
                     className="btn"
                     style={{ fontSize: '0.68rem', padding: '2px 6px', background: '#dbeafe', border: '1px solid #93c5fd' }}
                     onClick={() => onAddChild(u.id, 'male')}
-                  >+ Erkek Cocuk</button>
+                  >+ Erkek Çocuk</button>
                   <button
                     className="btn"
                     style={{ fontSize: '0.68rem', padding: '2px 6px', background: '#fce7f3', border: '1px solid #f9a8d4' }}
                     onClick={() => onAddChild(u.id, 'female')}
-                  >+ Kiz Cocuk</button>
+                  >+ Kız Çocuk</button>
                   <button
                     className="btn"
                     style={{ fontSize: '0.68rem', padding: '2px 6px', background: '#f1f5f9', border: '1px solid #cbd5e1' }}
                     onClick={() => onAddChild(u.id, 'unknown')}
-                  >+ Bil. Cocuk</button>
+                  >+ Bil. Çocuk</button>
                 </div>
               </div>
             );
@@ -357,19 +354,19 @@ export default function IndividualEditor({
           {!hasUnion && (
             <div style={{ marginTop: '4px' }}>
               <div style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '3px' }}>
-                Cocuk Ekle (es otomatik olusturulur)
+                Çocuk Ekle (eş otomatik oluşturulur)
               </div>
               <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                 <button
                   className="btn"
                   style={{ fontSize: '0.68rem', padding: '2px 6px', background: '#dbeafe', border: '1px solid #93c5fd' }}
                   onClick={() => onAddChild(null, 'male', node.id)}
-                >+ Erkek Cocuk</button>
+                >+ Erkek Çocuk</button>
                 <button
                   className="btn"
                   style={{ fontSize: '0.68rem', padding: '2px 6px', background: '#fce7f3', border: '1px solid #f9a8d4' }}
                   onClick={() => onAddChild(null, 'female', node.id)}
-                >+ Kiz Cocuk</button>
+                >+ Kız Çocuk</button>
               </div>
             </div>
           )}
@@ -393,7 +390,7 @@ export default function IndividualEditor({
         {/* Age — v0.3a.2: negative values are clamped to 0, never stored. */}
         {!isLoss && (
           <div className="form-group">
-            <label className="form-label">Yas</label>
+            <label className="form-label">Yaş</label>
             <input
               type="number"
               min="0"
@@ -423,7 +420,7 @@ export default function IndividualEditor({
         {/* Age at death — only shown when deceased. Negative values clamped to 0. */}
         {!!node.deceased && !isLoss && (
           <div className="form-group">
-            <label className="form-label">Olum Yasi</label>
+            <label className="form-label">Ölüm Yaşı</label>
             <input
               type="number"
               min="0"
@@ -439,7 +436,7 @@ export default function IndividualEditor({
         {/* Cause of death — only shown when deceased */}
         {!!node.deceased && !isLoss && (
           <div className="form-group">
-            <label className="form-label">Olum Nedeni</label>
+            <label className="form-label">Ölüm Nedeni</label>
             <input
               type="text"
               value={node.causeOfDeath || ''}
@@ -534,7 +531,7 @@ export default function IndividualEditor({
             usePedigreeStore.js and PEDIGREE_COMPLEXITY_REQUIREMENTS.md §1). */}
         <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
           <div style={{ fontSize: '0.8rem', fontWeight: '600', marginBottom: '6px', color: '#475569' }}>
-            Klinik Isaretleme
+            Klinik İşaretleme
           </div>
           {/* Proband is a single-holder flag, not a free-form field — checking
               this box unsets it everywhere else in the graph; unchecking it
@@ -548,18 +545,18 @@ export default function IndividualEditor({
           <label className="checkbox-label" style={{ marginTop: '4px' }}>
             <input type="checkbox" checked={!!node.affected}
               onChange={e => onUpdate(node.id, { affected: e.target.checked })} />
-            Etkilenmis (Affected)
+            Etkilenmiş (Affected)
           </label>
           <label className="checkbox-label" style={{ marginTop: '4px' }}>
             <input type="checkbox" checked={!!node.carrier}
               onChange={e => onUpdate(node.id, { carrier: e.target.checked })} />
-            Tasiyici (Carrier)
+            Taşıyıcı (Carrier)
           </label>
           {!isLoss && (
             <label className="checkbox-label" style={{ marginTop: '4px' }}>
               <input type="checkbox" checked={!!node.deceased}
                 onChange={e => onUpdate(node.id, { deceased: e.target.checked })} />
-              Olu (Deceased)
+              Ölü (Deceased)
             </label>
           )}
         </div>

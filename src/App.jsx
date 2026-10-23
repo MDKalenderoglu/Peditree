@@ -4,6 +4,7 @@ import { usePedigreeStore } from './state/usePedigreeStore';
 import { exportSVG, exportPNG } from './utils/exportUtils';
 import { assessExportReadiness } from './utils/exportReadiness';
 import { withStableIdsExcludingDismissed } from './utils/warningIds';
+import { clinicalNotices } from './utils/clinicalNotices';
 import PedigreeCanvas from './components/PedigreeCanvas';
 import IndividualEditor from './components/IndividualEditor';
 import WizardPanel from './components/WizardPanel';
@@ -42,6 +43,7 @@ function App() {
   const visibleErrorIssues = withStableIdsExcludingDismissed(errorIssues, dismissedWarningIds);
   const visibleWarningIssues = withStableIdsExcludingDismissed(warningIssues, dismissedWarningIds);
   const visibleWarnings = withStableIdsExcludingDismissed(warnings, dismissedWarningIds);
+  const notices = clinicalNotices({ errorIssues: visibleErrorIssues, warningIssues: visibleWarningIssues, warnings: visibleWarnings }, pedigreeData);
   const dismissBtnStyle = {
     background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8',
     fontSize: '1rem', lineHeight: 1, padding: '0 2px', flexShrink: 0,
@@ -130,7 +132,7 @@ function App() {
     redo();
   };
 
-  const [warningsOpen, setWarningsOpen] = React.useState(true);
+  const [warningsOpen, setWarningsOpen] = React.useState(false); // notes collapsed; errors always shown
   const fileInputRef = React.useRef(null);
 
   // Project file (schema v2 document, .peditree.json) — Faz 2b.
@@ -236,38 +238,22 @@ function App() {
           </div>
         )}
 
-        {(visibleErrorIssues.length > 0 || visibleWarningIssues.length > 0 || visibleWarnings.length > 0) && (
-          <div className="warning-panel">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-              <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <AlertTriangle size={16} /> Uyarılar ({visibleErrorIssues.length + visibleWarningIssues.length + visibleWarnings.length})
-                {visibleErrorIssues.length > 0 && <span style={{ color: '#dc2626' }}>· {visibleErrorIssues.length} hata</span>}
-              </h4>
-              <button className="btn" onClick={() => setWarningsOpen(o => !o)} aria-expanded={warningsOpen} style={{ padding: '2px 8px', fontSize: '0.8rem' }}>
-                {warningsOpen ? 'Gizle' : 'Göster'}
-              </button>
-            </div>
-            {warningsOpen && (
-            <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', fontSize: '0.9rem', listStyle: 'none' }}>
-              {visibleErrorIssues.map(({ item, _warningId }) => (
-                <li key={_warningId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '4px' }}>
-                  <span style={{ color: '#dc2626', fontWeight: 600 }}>{item.message}</span>
-                  <button onClick={() => dismissWarning(_warningId)} title="Bu uyarıyı gizle" style={dismissBtnStyle}>×</button>
-                </li>
-              ))}
-              {visibleWarningIssues.map(({ item, _warningId }) => (
-                <li key={_warningId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '4px' }}>
-                  <span>{item.message}</span>
-                  <button onClick={() => dismissWarning(_warningId)} title="Bu uyarıyı gizle" style={dismissBtnStyle}>×</button>
-                </li>
-              ))}
-              {visibleWarnings.map(({ item, _warningId }) => (
-                <li key={_warningId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '4px' }}>
-                  <span>{item}</span>
-                  <button onClick={() => dismissWarning(_warningId)} title="Bu uyarıyı gizle" style={dismissBtnStyle}>×</button>
-                </li>
-              ))}
-            </ul>
+        {notices.length > 0 && (
+          <div className={`notice-strip${notices.some(n => n.level === 'error') ? ' notice-strip-error' : ''}`}>
+            <button className="notice-strip-toggle" onClick={() => setWarningsOpen(o => !o)} aria-expanded={warningsOpen}>
+              <AlertTriangle size={14} />
+              {notices.some(n => n.level === 'error') ? 'Düzeltilmesi gereken' : 'Not'}: {notices.length}
+              {!notices.some(n => n.level === 'error') && <span className="notice-strip-hint">{warningsOpen ? 'gizle' : 'göster'}</span>}
+            </button>
+            {(warningsOpen || notices.some(n => n.level === 'error')) && (
+              <ul>
+                {notices.map(n => (
+                  <li key={n.ids[0]} className={n.level === 'error' ? 'notice-error' : undefined}>
+                    <span>{n.text}</span>
+                    <button onClick={() => n.ids.forEach(dismissWarning)} title="Bu notu gizle" style={dismissBtnStyle}>×</button>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         )}

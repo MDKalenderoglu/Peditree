@@ -47,7 +47,7 @@ function SelectedPersonCard({ wizardData, pedigreeData, selectedId, selectedId2,
       <div style={{ fontSize: '0.78rem', color: '#1e293b', lineHeight: 1.5 }}>
         <strong>{pid || person.displayLabel || person.label}</strong>
         {person.displayLabel || person.label ? <span style={{ color: '#64748b' }}> — {person.displayLabel || person.label}</span> : null}
-        {' '}({person.sex === 'male' ? 'Erkek' : person.sex === 'female' ? 'Kadin' : 'Bilinmiyor'})
+        {' '}({person.sex === 'male' ? 'Erkek' : person.sex === 'female' ? 'Kadın' : 'Bilinmiyor'})
         {flags.length > 0 && (
           <div style={{ marginTop: '2px', color: '#64748b' }}>{flags.join(' · ')}</div>
         )}
@@ -129,7 +129,7 @@ function SelectedPersonCard({ wizardData, pedigreeData, selectedId, selectedId2,
 }
 
 /* ── Custom consanguinity person picker ── */
-function CustomConsanguinityAdder({ individuals, onAdd }) {
+function CustomConsanguinityAdder({ individuals, onAdd, nameOf }) {
   const [p1, setP1] = useState('');
   const [p2, setP2] = useState('');
 
@@ -156,7 +156,7 @@ function CustomConsanguinityAdder({ individuals, onAdd }) {
   // Filter: no pregnancy losses/stillbirths, no proband
   const options = individuals
     .filter(i => !i.pregnancyLoss && !i.stillbirth && !i.proband)
-    .map(i => ({ id: i.id, label: i.displayLabel || i.label || i.id, generation: i.generation }));
+    .map(i => ({ id: i.id, label: nameOf(i.id), generation: i.generation }));
 
   // When p1 is selected, filter p2 to same generation only
   const p1Ind = options.find(o => o.id === p1);
@@ -167,32 +167,32 @@ function CustomConsanguinityAdder({ individuals, onAdd }) {
   return (
     <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-end', flexWrap: 'wrap', marginTop: '6px' }}>
       <div style={{ flex: 1, minWidth: '80px' }}>
-        <div style={{ fontSize: '0.65rem', color: '#64748b' }}>Kisi 1</div>
+        <div style={{ fontSize: '0.65rem', color: '#64748b' }}>Kişi 1</div>
         <select value={p1} onChange={e => { setP1(e.target.value); setP2(''); }}
           className="form-input" style={{ fontSize: '0.72rem', padding: '2px' }}>
-          <option value="">Sec...</option>
+          <option value="">Seç...</option>
           {options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
         </select>
       </div>
       <div style={{ flex: 1, minWidth: '80px' }}>
-        <div style={{ fontSize: '0.65rem', color: '#64748b' }}>Kisi 2 {p1 && p2Options.length === 0 && <span style={{color:'#ef4444'}}>(ayni jenerasyon yok)</span>}</div>
+        <div style={{ fontSize: '0.65rem', color: '#64748b' }}>Kişi 2 {p1 && p2Options.length === 0 && <span style={{color:'#ef4444'}}>(aynı kuşak yok)</span>}</div>
         <select value={p2} onChange={e => setP2(e.target.value)}
           className="form-input" style={{ fontSize: '0.72rem', padding: '2px' }}>
-          <option value="">Sec...</option>
+          <option value="">Seç...</option>
           {p2Options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
         </select>
       </div>
       <button onClick={handleAdd} disabled={!p1 || !p2 || p1 === p2}
         className="btn btn-primary"
         style={{ padding: '3px 8px', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
-        + Kardes Yap
+        + Kardeş Yap
       </button>
     </div>
   );
 }
 
 /* ── Reusable compact stepper ── */
-const Stepper = ({ label, value, onChange, min = 0, max = 10 }) => (
+const Stepper = ({ label, value, onChange, min = 0, max = Infinity }) => (
   <div className="form-group-row">
     <span className="form-label">{label}</span>
     <div className="stepper">
@@ -213,7 +213,7 @@ const Stepper = ({ label, value, onChange, min = 0, max = 10 }) => (
  * produced the individual being removed — see removeLastSibling's docblock
  * in usePedigreeStore.js.
  */
-const SiblingStepper = ({ label, value, onIncrement, onDecrement, max = 12 }) => (
+const SiblingStepper = ({ label, value, onIncrement, onDecrement, max = Infinity }) => (
   <div className="form-group-row">
     <span className="form-label">{label}</span>
     <div className="stepper">
@@ -271,8 +271,8 @@ function childItems(pedigreeData, unionId, childIds, anchorId) {
   const counters = {};
   const tag = (p) => {
     if (p.id === anchorId) return 'Proband';
-    if (p.pregnancyLoss) return 'Dusuk';
-    if (p.stillbirth) return 'Olu D.';
+    if (p.pregnancyLoss) return 'Düşük';
+    if (p.stillbirth) return 'Ölü D.';
     return p.sex === 'male' ? 'E' : p.sex === 'female' ? 'K' : 'Bil.';
   };
   return (childIds || []).map(id => byId.get(id)).filter(Boolean).map(p => {
@@ -327,7 +327,7 @@ export default function WizardPanel() {
         {list.map((u, idx) => {
           const unionId = u.unionId;
           const hSibItems = childItems(pedigreeData, unionId, u.childIds);
-          const totalKids = (u.children.male || 0) + (u.children.female || 0) + (u.children.unknown || 0);
+          const totalKids = (u.children.male || 0) + (u.children.female || 0) + (u.children.unknown || 0) + (u.children.pregnancyLoss || 0) + (u.children.stillbirth || 0);
 
           return (
             <div key={u.id} style={{ border: '1px solid #e2e8f0', padding: '8px', borderRadius: '4px', marginBottom: '6px', background: '#fff' }}>
@@ -335,24 +335,26 @@ export default function WizardPanel() {
                 <span className="form-label" style={{ fontSize: '0.75rem' }}>Durum</span>
                 <select value={u.status} onChange={e => updateOtherUnion(parentType, idx, 'status', e.target.value)} className="form-input" style={{ width: '110px', fontSize: '0.8rem' }}>
                   <option value="together">Birlikte</option>
-                  <option value="separated">Ayri</option>
-                  <option value="divorced">Bosanmis</option>
+                  <option value="separated">Ayrı</option>
+                  <option value="divorced">Boşanmış</option>
                   <option value="unknown">Bilinmiyor</option>
                 </select>
               </div>
               <Stepper label="Erkek" value={u.children.male} onChange={v => updateOtherUnion(parentType, idx, 'male', v)} />
-              <Stepper label="Kiz" value={u.children.female} onChange={v => updateOtherUnion(parentType, idx, 'female', v)} />
+              <Stepper label="Kız" value={u.children.female} onChange={v => updateOtherUnion(parentType, idx, 'female', v)} />
               <Stepper label="Bil." value={u.children.unknown} onChange={v => updateOtherUnion(parentType, idx, 'unknown', v)} />
+              <Stepper label="Düşük" value={u.children.pregnancyLoss || 0} onChange={v => updateOtherUnion(parentType, idx, 'pregnancyLoss', v)} />
+              <Stepper label="Ölü Doğum" value={u.children.stillbirth || 0} onChange={v => updateOtherUnion(parentType, idx, 'stillbirth', v)} />
               {totalKids >= 2 && unionId && (
                 <ChildOrderEditor
                   unionId={unionId}
                   items={hSibItems}
                   getOrder={() => getChildOrder(unionId)}
                   setOrder={(order) => setChildOrder(unionId, order)}
-                  label="Cocuk Sirasi"
+                  label="Çocuk Sırası"
                 />
               )}
-              <button onClick={() => removeOtherUnion(parentType, idx)} style={{ marginTop: '6px', width: '100%', padding: '3px', fontSize: '0.7rem', background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '3px', cursor: 'pointer' }}>Kaldir</button>
+              <button onClick={() => removeOtherUnion(parentType, idx)} style={{ marginTop: '6px', width: '100%', padding: '3px', fontSize: '0.7rem', background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '3px', cursor: 'pointer' }}>Kaldır</button>
             </div>
           );
         })}
@@ -371,12 +373,9 @@ export default function WizardPanel() {
 
     return (
       <Accordion id={side} title={title} summary={summary} open={openSectionId === side} onToggle={setOpenSection}>
-        {/* v0.3a.4: the old max={4} was an arbitrary silent cap. Removed —
-            clinical sibships can exceed 4. The layout-safety net (rollback
-            on increased ambiguity) is what actually guards readability now,
-            not a hard-coded count. A generous soft ceiling remains only to
-            keep the stepper UI sane. */}
-        <Stepper label={`${uncleLabel} Sayisi`} value={uncles.length} onChange={v => updateRelativeCount(side, uncleKey, v)} max={12} />
+        {/* No count caps (clinician request 2026-10-23): clinical sibships
+            can be large; the layout, not a stepper limit, guards readability. */}
+        <Stepper label={`${uncleLabel} Sayısı`} value={uncles.length} onChange={v => updateRelativeCount(side, uncleKey, v)} />
         {uncles.map((rel, idx) => {
           const unionId = rel.unionId;
           const cousinItems = childItems(pedigreeData, unionId, rel.childIds);
@@ -386,18 +385,18 @@ export default function WizardPanel() {
           return (
             <div key={rel.id} style={{ padding: '6px', background: '#f8fafc', borderRadius: '4px', marginTop: '4px' }}>
               <div style={{ fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '4px' }}>{uncleLabel} {idx + 1} Cocuklari</div>
-              <Stepper label="E" value={rel.children.male} onChange={v => updateRelativeChildren(side, uncleKey, idx, 'male', v)} max={6} />
-              <Stepper label="K" value={rel.children.female} onChange={v => updateRelativeChildren(side, uncleKey, idx, 'female', v)} max={6} />
-              <Stepper label="B" value={rel.children.unknown} onChange={v => updateRelativeChildren(side, uncleKey, idx, 'unknown', v)} max={6} />
-              <Stepper label="Dusuk" value={rel.children.pregnancyLoss || 0} onChange={v => updateRelativeChildren(side, uncleKey, idx, 'pregnancyLoss', v)} max={6} />
-              <Stepper label="Olu Dogum" value={rel.children.stillbirth || 0} onChange={v => updateRelativeChildren(side, uncleKey, idx, 'stillbirth', v)} max={6} />
+              <Stepper label="E" value={rel.children.male} onChange={v => updateRelativeChildren(side, uncleKey, idx, 'male', v)} />
+              <Stepper label="K" value={rel.children.female} onChange={v => updateRelativeChildren(side, uncleKey, idx, 'female', v)} />
+              <Stepper label="B" value={rel.children.unknown} onChange={v => updateRelativeChildren(side, uncleKey, idx, 'unknown', v)} />
+              <Stepper label="Düşük" value={rel.children.pregnancyLoss || 0} onChange={v => updateRelativeChildren(side, uncleKey, idx, 'pregnancyLoss', v)} />
+              <Stepper label="Ölü Doğum" value={rel.children.stillbirth || 0} onChange={v => updateRelativeChildren(side, uncleKey, idx, 'stillbirth', v)} />
               {totalKids >= 2 && unionId && (
                 <ChildOrderEditor
                   unionId={unionId}
                   items={cousinItems}
                   getOrder={() => getChildOrder(unionId)}
                   setOrder={(order) => setChildOrder(unionId, order)}
-                  label="Cocuk Sirasi"
+                  label="Çocuk Sırası"
                 />
               )}
             </div>
@@ -405,8 +404,7 @@ export default function WizardPanel() {
         })}
 
         <div style={{ marginTop: '10px' }}>
-          {/* v0.3a.4: 4-person cap removed (see uncle stepper above). */}
-          <Stepper label={`${auntLabel} Sayisi`} value={aunts.length} onChange={v => updateRelativeCount(side, auntKey, v)} max={12} />
+          <Stepper label={`${auntLabel} Sayısı`} value={aunts.length} onChange={v => updateRelativeCount(side, auntKey, v)} />
           {aunts.map((rel, idx) => {
             const unionId = rel.unionId;
             const cousinItems = childItems(pedigreeData, unionId, rel.childIds);
@@ -416,18 +414,18 @@ export default function WizardPanel() {
             return (
               <div key={rel.id} style={{ padding: '6px', background: '#f8fafc', borderRadius: '4px', marginTop: '4px' }}>
                 <div style={{ fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '4px' }}>{auntLabel} {idx + 1} Cocuklari</div>
-                <Stepper label="E" value={rel.children.male} onChange={v => updateRelativeChildren(side, auntKey, idx, 'male', v)} max={6} />
-                <Stepper label="K" value={rel.children.female} onChange={v => updateRelativeChildren(side, auntKey, idx, 'female', v)} max={6} />
-                <Stepper label="B" value={rel.children.unknown} onChange={v => updateRelativeChildren(side, auntKey, idx, 'unknown', v)} max={6} />
-                <Stepper label="Dusuk" value={rel.children.pregnancyLoss || 0} onChange={v => updateRelativeChildren(side, auntKey, idx, 'pregnancyLoss', v)} max={6} />
-                <Stepper label="Olu Dogum" value={rel.children.stillbirth || 0} onChange={v => updateRelativeChildren(side, auntKey, idx, 'stillbirth', v)} max={6} />
+                <Stepper label="E" value={rel.children.male} onChange={v => updateRelativeChildren(side, auntKey, idx, 'male', v)} />
+                <Stepper label="K" value={rel.children.female} onChange={v => updateRelativeChildren(side, auntKey, idx, 'female', v)} />
+                <Stepper label="B" value={rel.children.unknown} onChange={v => updateRelativeChildren(side, auntKey, idx, 'unknown', v)} />
+                <Stepper label="Düşük" value={rel.children.pregnancyLoss || 0} onChange={v => updateRelativeChildren(side, auntKey, idx, 'pregnancyLoss', v)} />
+                <Stepper label="Ölü Doğum" value={rel.children.stillbirth || 0} onChange={v => updateRelativeChildren(side, auntKey, idx, 'stillbirth', v)} />
                 {totalKids >= 2 && unionId && (
                   <ChildOrderEditor
                     unionId={unionId}
                     items={cousinItems}
                     getOrder={() => getChildOrder(unionId)}
                     setOrder={(order) => setChildOrder(unionId, order)}
-                    label="Cocuk Sirasi"
+                    label="Çocuk Sırası"
                   />
                 )}
               </div>
@@ -463,12 +461,12 @@ export default function WizardPanel() {
           <span className="form-label">Cinsiyet</span>
           <select value={wd.proband.sex} onChange={e => updateWizardData('proband', 'sex', e.target.value)} className="form-input">
             <option value="male">Erkek</option>
-            <option value="female">Kadin</option>
+            <option value="female">Kadın</option>
             <option value="unknown">Bilinmiyor</option>
           </select>
         </div>
         <div className="form-group-row">
-          <span className="form-label">Yas</span>
+          <span className="form-label">Yaş</span>
           <input type="number" min="0" value={wd.proband.age} onChange={e => updateWizardData('proband', 'age', sanitizeAgeValue(e.target.value))} className="form-input" placeholder="..." style={{ width: '70px' }} />
         </div>
       </Accordion>
@@ -482,8 +480,8 @@ export default function WizardPanel() {
       {(() => {
         const sc = deriveSiblingCounts(pedigreeData);
         return (
-          <Accordion id="siblings" title="2. Kardesler" summary={`${sc.male}E ${sc.female}K ${sc.unknown}B`} open={openSectionId === 'siblings'} onToggle={setOpenSection}>
-            <SiblingStepper label="Erkek Kardes" value={sc.male} onIncrement={() => addSiblingOfCategory('male')} onDecrement={() => removeLastSibling('male')} />
+          <Accordion id="siblings" title="2. Kardeşler" summary={`${sc.male}E ${sc.female}K ${sc.unknown}B`} open={openSectionId === 'siblings'} onToggle={setOpenSection}>
+            <SiblingStepper label="Erkek Kardeş" value={sc.male} onIncrement={() => addSiblingOfCategory('male')} onDecrement={() => removeLastSibling('male')} />
             {wd.siblings.male.map((s, i) => (
               <div key={s.id} className="form-group-row" style={{ paddingLeft: 14 }}>
                 <span className="form-label" style={{ fontSize: '0.72rem' }}>E.K. {i + 1} Yas:</span>
@@ -491,7 +489,7 @@ export default function WizardPanel() {
               </div>
             ))}
 
-            <SiblingStepper label="Kiz Kardes" value={sc.female} onIncrement={() => addSiblingOfCategory('female')} onDecrement={() => removeLastSibling('female')} />
+            <SiblingStepper label="Kız Kardeş" value={sc.female} onIncrement={() => addSiblingOfCategory('female')} onDecrement={() => removeLastSibling('female')} />
             {wd.siblings.female.map((s, i) => (
               <div key={s.id} className="form-group-row" style={{ paddingLeft: 14 }}>
                 <span className="form-label" style={{ fontSize: '0.72rem' }}>K.K. {i + 1} Yas:</span>
@@ -507,8 +505,8 @@ export default function WizardPanel() {
               </div>
             ))}
 
-            <SiblingStepper label="Dusuk/Kayip" value={sc.pregnancyLoss} onIncrement={() => addSiblingOfCategory('pregnancyLoss')} onDecrement={() => removeLastSibling('pregnancyLoss')} />
-            <SiblingStepper label="Olu Dogum" value={sc.deceased} onIncrement={() => addSiblingOfCategory('deceased')} onDecrement={() => removeLastSibling('deceased')} />
+            <SiblingStepper label="Düşük/Kayıp" value={sc.pregnancyLoss} onIncrement={() => addSiblingOfCategory('pregnancyLoss')} onDecrement={() => removeLastSibling('pregnancyLoss')} />
+            <SiblingStepper label="Ölü Doğum" value={sc.deceased} onIncrement={() => addSiblingOfCategory('deceased')} onDecrement={() => removeLastSibling('deceased')} />
 
             {totalProbandSibs >= 2 && parentsUnionId && (
               <ChildOrderEditor
@@ -516,7 +514,7 @@ export default function WizardPanel() {
                 items={probandItems}
                 getOrder={() => getChildOrder(parentsUnionId)}
                 setOrder={(order) => setChildOrder(parentsUnionId, order)}
-                label="Kardes Sirasi"
+                label="Kardeş Sırası"
               />
             )}
           </Accordion>
@@ -529,7 +527,7 @@ export default function WizardPanel() {
         <label className="checkbox-label"><input type="checkbox" checked={wd.parents.motherExists} onChange={e => updateWizardData('parents', 'motherExists', e.target.checked)} /> Anne Var</label>
         {wd.parents.motherExists && (
           <div style={{ marginLeft: 16 }}>
-            <div className="form-group-row"><span className="form-label">Yas:</span><input type="number" min="0" value={wd.parents.motherAge} onChange={e => updateWizardData('parents', 'motherAge', sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '70px' }} placeholder="..." /></div>
+            <div className="form-group-row"><span className="form-label">Yaş:</span><input type="number" min="0" value={wd.parents.motherAge} onChange={e => updateWizardData('parents', 'motherAge', sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '70px' }} placeholder="..." /></div>
             {renderOtherUnions('mother')}
           </div>
         )}
@@ -537,25 +535,25 @@ export default function WizardPanel() {
         <label className="checkbox-label"><input type="checkbox" checked={wd.parents.fatherExists} onChange={e => updateWizardData('parents', 'fatherExists', e.target.checked)} /> Baba Var</label>
         {wd.parents.fatherExists && (
           <div style={{ marginLeft: 16 }}>
-            <div className="form-group-row"><span className="form-label">Yas:</span><input type="number" min="0" value={wd.parents.fatherAge} onChange={e => updateWizardData('parents', 'fatherAge', sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '70px' }} placeholder="..." /></div>
+            <div className="form-group-row"><span className="form-label">Yaş:</span><input type="number" min="0" value={wd.parents.fatherAge} onChange={e => updateWizardData('parents', 'fatherAge', sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '70px' }} placeholder="..." /></div>
             {renderOtherUnions('father')}
           </div>
         )}
         <div style={{ margin: '8px 0', borderTop: '1px solid #e2e8f0' }} />
         <div className="form-group-row">
-          <span className="form-label">Iliski Durumu</span>
+          <span className="form-label">İlişki Durumu</span>
           <select value={wd.parents.relationshipStatus} onChange={e => updateWizardData('parents', 'relationshipStatus', e.target.value)} className="form-input" style={{ fontSize: '0.8rem' }}>
             <option value="together">Birlikte</option>
-            <option value="separated">Ayri</option>
-            <option value="divorced">Bosanmis</option>
+            <option value="separated">Ayrı</option>
+            <option value="divorced">Boşanmış</option>
             <option value="unknown">Bilinmiyor</option>
           </select>
         </div>
       </Accordion>
 
       {/* ── 4. AKRABALIK ── */}
-      <Accordion id="consanguinity" title="4. Akrabalik" summary={wd.parents.consanguineous ? wd.parents.consanguinityDegree : 'Yok'} open={openSectionId === 'consanguinity'} onToggle={setOpenSection}>
-        <label className="checkbox-label"><input type="checkbox" checked={wd.parents.consanguineous} onChange={e => updateWizardData('parents', 'consanguineous', e.target.checked)} /> Akraba Evliligi Var</label>
+      <Accordion id="consanguinity" title="4. Akrabalık" summary={wd.parents.consanguineous ? wd.parents.consanguinityDegree : 'Yok'} open={openSectionId === 'consanguinity'} onToggle={setOpenSection}>
+        <label className="checkbox-label"><input type="checkbox" checked={wd.parents.consanguineous} onChange={e => updateWizardData('parents', 'consanguineous', e.target.checked)} /> Akraba Evliliği Var</label>
 
         {wd.parents.consanguineous && (
           <div style={{ marginLeft: 16, marginTop: 8 }}>
@@ -565,30 +563,30 @@ export default function WizardPanel() {
                 <option value="unknown">Bilinmiyor</option>
                 <option value="first_cousin">1. Kuzen</option>
                 <option value="second_cousin">2. Kuzen</option>
-                <option value="first_cousin_once_removed">1. Kuzen - bir kez uzaklastirilmis</option>
-                <option value="second_cousin_once_removed">2. Kuzen - bir kez uzaklastirilmis</option>
-                <option value="double_first_cousin">Cift 1. kuzen</option>
-                <option value="multiple_relationship">Birden fazla akrabalik hatti</option>
-                <option value="other">Diger</option>
+                <option value="first_cousin_once_removed">1. Kuzen - bir kez uzaklaştırılmış</option>
+                <option value="second_cousin_once_removed">2. Kuzen - bir kez uzaklaştırılmış</option>
+                <option value="double_first_cousin">Çift 1. kuzen</option>
+                <option value="multiple_relationship">Birden fazla akrabalık hattı</option>
+                <option value="other">Diğer</option>
               </select>
             </div>
 
             {wd.parents.consanguinityDegree === 'first_cousin' && (
               <div className="form-group" style={{ marginTop: 8 }}>
-                <label className="form-label">Akrabalik Yolu</label>
+                <label className="form-label">Akrabalık Yolu</label>
                 <select value={wd.parents.consanguinityPath} onChange={e => updateWizardData('parents', 'consanguinityPath', e.target.value)} className="form-input" style={{ fontSize: '0.8rem' }}>
                   <option value="unknown">Bilinmiyor</option>
-                  <optgroup label="Parallel Cousin">
-                    <option value="mothers_paternal_is_fathers_paternal">Dede (Anne) - Dede (Baba) kardes</option>
-                    <option value="mothers_maternal_is_fathers_maternal">Anneanne - Babaanne kardes</option>
+                  <optgroup label="Paralel kuzen">
+                    <option value="mothers_paternal_is_fathers_paternal">Dede (Anne) - Dede (Baba) kardeş</option>
+                    <option value="mothers_maternal_is_fathers_maternal">Anneanne - Babaanne kardeş</option>
                   </optgroup>
-                  <optgroup label="Cross Cousin">
-                    <option value="cross_cousin_1">Anneanne - Dede (Baba) kardes</option>
-                    <option value="cross_cousin_2">Dede (Anne) - Babaanne kardes</option>
+                  <optgroup label="Çapraz kuzen">
+                    <option value="cross_cousin_1">Anneanne - Dede (Baba) kardeş</option>
+                    <option value="cross_cousin_2">Dede (Anne) - Babaanne kardeş</option>
                   </optgroup>
                 </select>
                 {wd.parents.consanguinityPath === 'unknown' && (
-                  <div style={{ fontSize: '0.7rem', color: '#ef4444', marginTop: 4 }}>* Yol bilinmediginden ust soy baglantisi cizilmeyecek.</div>
+                  <div style={{ fontSize: '0.7rem', color: '#ef4444', marginTop: 4 }}>* Yol bilinmediğinden üst soy bağlantısı çizilmeyecek.</div>
                 )}
               </div>
             )}
@@ -597,11 +595,11 @@ export default function WizardPanel() {
       </Accordion>
 
       {/* ── 4b. CUSTOM CONSANGUINITY ── */}
-      <Accordion id="customConsanguinity" title="4b. Ozel Akrabalik Baglari"
-        summary={`${(wd.customConsanguinity || []).length} baglanti`}
+      <Accordion id="customConsanguinity" title="4b. Özel Akrabalık Bağları"
+        summary={`${(wd.customConsanguinity || []).length} bağlantı`}
         open={openSectionId === 'customConsanguinity'} onToggle={setOpenSection}>
         <div style={{ fontSize: '0.75rem', color: '#475569', marginBottom: '8px' }}>
-          Sablonda olmayan akrabalik baglarini tanimlayin. Iki birey secip "kardes" olarak isaretleyin — ortak ebeveyn otomatik olusturulur.
+          Şablonda olmayan akrabalık bağlarını tanımlayın. İki birey seçip "kardeş" olarak işaretleyin — ortak ebeveyn otomatik oluşturulur.
         </div>
 
         {(wd.customConsanguinity || []).map((link, idx) => (
@@ -622,6 +620,7 @@ export default function WizardPanel() {
         <CustomConsanguinityAdder
           individuals={pedigreeData?.individuals || []}
           onAdd={(p1, p2) => addCustomConsanguinity(p1, p2)}
+          nameOf={nameOf}
         />
 
         {/* Union relationship background (v0.3a.2) — replaces the old
@@ -635,7 +634,7 @@ export default function WizardPanel() {
             </div>
             {pedigreeData.unions.map(u => (
               <div key={u.id} style={{ marginBottom: '6px' }}>
-                <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{u.id} ({u.partners.join(' + ')})</div>
+                <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{nameOf(u.partners[0])} — {nameOf(u.partners[1])}</div>
                 <select
                   value={u.relationshipBackground || 'not_asked'}
                   disabled={u.id === wd.parents.unionId && wd.parents.consanguineous}
@@ -655,21 +654,21 @@ export default function WizardPanel() {
 
       <LayerHeader label="Genişletilmiş Aile" />
       {/* ── 5-6. MATERNAL / PATERNAL ── */}
-      {renderRelatives('maternalRelatives', '5. Anne Tarafi', 'Dayi', 'Teyze')}
-      {renderRelatives('paternalRelatives', '6. Baba Tarafi', 'Amca', 'Hala')}
+      {renderRelatives('maternalRelatives', '5. Anne Tarafı', 'Dayı', 'Teyze')}
+      {renderRelatives('paternalRelatives', '6. Baba Tarafı', 'Amca', 'Hala')}
 
       {/* ── 7-8. GRANDPARENT SIBLINGS ── */}
-      {renderRelatives('maternalGPRelatives', '7. Dede/Nine Kardesler (Anne)', 'B.Dayi', 'B.Teyze')}
-      {renderRelatives('paternalGPRelatives', '8. Dede/Nine Kardesler (Baba)', 'B.Amca', 'B.Hala')}
+      {renderRelatives('maternalGPRelatives', '7. Dede/Nine Kardeşler (Anne)', 'B.Dayı', 'B.Teyze')}
+      {renderRelatives('paternalGPRelatives', '8. Dede/Nine Kardeşler (Baba)', 'B.Amca', 'B.Hala')}
 
       {/* ── 9. GREAT-GRANDPARENTS ── */}
-      <Accordion id="greatGrandparents" title="9. Ust Jenerasyon (B.Dede/B.Anne)"
+      <Accordion id="greatGrandparents" title="9. Üst Jenerasyon (B.Dede/B.Anne)"
         summary={Object.values(wd.greatGrandparents || {}).filter(Boolean).length > 0
-          ? `${Object.values(wd.greatGrandparents || {}).filter(Boolean).length} gosteriliyor`
+          ? `${Object.values(wd.greatGrandparents || {}).filter(Boolean).length} gösteriliyor`
           : 'Yok'}
         open={openSectionId === 'greatGrandparents'} onToggle={setOpenSection}>
         <div style={{ fontSize: '0.8rem', color: '#475569', marginBottom: '8px' }}>
-          Her dedenin/ninenin ebeveynlerini gostermek icin isaretleyin:
+          Her dedenin/ninenin ebeveynlerini göstermek için işaretleyin:
         </div>
         {[
           { key: 'mat_gf', label: 'Dede (Anne) Ebeveynleri' },
@@ -690,7 +689,7 @@ export default function WizardPanel() {
 
       <LayerHeader label="İleri Seçenekler" />
       {/* ── 10. GEN 4 / ILERI ── */}
-      <Accordion id="gen4" title="10. Ileri Akrabalar (4. Jen.)" summary={`${wd.gen4.length} kayit`} open={openSectionId === 'gen4'} onToggle={setOpenSection}>
+      <Accordion id="gen4" title="10. İleri Akrabalar (4. Jen.)" summary={`${wd.gen4.length} kayıt`} open={openSectionId === 'gen4'} onToggle={setOpenSection}>
         {wd.gen4.map((g, idx) => {
           const unionId = g.unionId;
           const totalKids = (g.male || 0) + (g.female || 0) + (g.unknown || 0);
@@ -699,16 +698,16 @@ export default function WizardPanel() {
           return (
             <div key={g.id} style={{ border: '1px solid #e2e8f0', padding: '8px', borderRadius: '4px', marginBottom: '6px', background: '#f8fafc' }}>
               <div className="form-group" style={{ marginBottom: 6 }}>
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>Kimin cocugu?</label>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>Kimin çocuğu?</label>
                 <select value={g.targetPath} onChange={e => updateGen4(idx, 'targetPath', e.target.value)} disabled={totalKids > 0} className="form-input" style={{ fontSize: '0.8rem' }}>
                   <option value={wd.proband.id}>Proband</option>
-                  {wd.siblings.male.map((sib, i) => <option key={sib.id} value={sib.id}>E. Kardes {i + 1}</option>)}
-                  {wd.siblings.female.map((sib, i) => <option key={sib.id} value={sib.id}>K. Kardes {i + 1}</option>)}
-                  {wd.siblings.unknown.map((sib, i) => <option key={sib.id} value={sib.id}>Kardes {i + 1}</option>)}
+                  {wd.siblings.male.map((sib, i) => <option key={sib.id} value={sib.id}>E. Kardeş {i + 1}</option>)}
+                  {wd.siblings.female.map((sib, i) => <option key={sib.id} value={sib.id}>K. Kardeş {i + 1}</option>)}
+                  {wd.siblings.unknown.map((sib, i) => <option key={sib.id} value={sib.id}>Kardeş {i + 1}</option>)}
                 </select>
               </div>
               <Stepper label="Erkek" value={g.male} onChange={v => updateGen4(idx, 'male', v)} />
-              <Stepper label="Kiz" value={g.female} onChange={v => updateGen4(idx, 'female', v)} />
+              <Stepper label="Kız" value={g.female} onChange={v => updateGen4(idx, 'female', v)} />
               <Stepper label="Bil." value={g.unknown} onChange={v => updateGen4(idx, 'unknown', v)} />
               {totalKids >= 2 && unionId && (
                 <ChildOrderEditor
@@ -716,14 +715,14 @@ export default function WizardPanel() {
                   items={gen4Items}
                   getOrder={() => getChildOrder(unionId)}
                   setOrder={(order) => setChildOrder(unionId, order)}
-                  label="Cocuk Sirasi"
+                  label="Çocuk Sırası"
                 />
               )}
-              <button onClick={() => removeGen4(idx)} style={{ marginTop: 6, width: '100%', padding: '3px', fontSize: '0.7rem', background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '3px', cursor: 'pointer' }}>Kaldir</button>
+              <button onClick={() => removeGen4(idx)} style={{ marginTop: 6, width: '100%', padding: '3px', fontSize: '0.7rem', background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '3px', cursor: 'pointer' }}>Kaldır</button>
             </div>
           );
         })}
-        <button className="btn btn-primary" onClick={() => addGen4(wd.proband.id)} style={{ fontSize: '0.8rem', padding: '6px 10px', width: '100%' }}>+ Jenerasyon 4 Ekle</button>
+        <button className="btn btn-primary" onClick={() => addGen4(wd.proband.id)} style={{ fontSize: '0.8rem', padding: '6px 10px', width: '100%' }}>+ 4. Kuşak Ekle</button>
       </Accordion>
     </div>
   );
