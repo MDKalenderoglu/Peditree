@@ -190,6 +190,8 @@ export const usePedigreeStore = create((zSet, get) => {
   };
 
   /** What an edit's relayout starts from: the previous graph and what was drawn. */
+  // A removal keeps the previous order but closes up the drawing
+  // (incremental.js 'compact'); additions stay edit-local.
   const editContext = (state) => ({ prevGraph: state.doc.graph, prevNodes: state.pedigreeData.nodes, prevEdges: state.pedigreeData.edges });
 
   /** Everything derived from a document, as drawn — restored verbatim by undo/redo. */

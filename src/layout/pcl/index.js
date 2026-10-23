@@ -75,7 +75,8 @@ const FOOTPRINT_ROUNDS = 400;   // upper bound; only pathological graphs need mo
  *   previous: legacy weak pull towards previous x
  *   stability: edit-local relayout (KI-2, see src/layout/pcl/incremental.js):
  *     freePersons = people affected by the edit (null = every one free, 'wide');
- *     frozen = graph unchanged: reuse previous coordinates exactly
+ *     frozen = graph unchanged: reuse previous coordinates exactly;
+ *     orderOnly = keep the previous order, fresh coordinates (after a removal)
  */
 export function computePclLayout(inputGraph, opts = {}) {
   // social-only children (e.g. adopted-in) are drawn under their social parents
@@ -88,6 +89,9 @@ export function computePclLayout(inputGraph, opts = {}) {
   const S = buildStructure(graph);
   const stability = opts.stability || null;
   const { order } = stability ? orderLayersStable(S, stability) : orderLayers(S);
+  // orderOnly (after a removal): keep the previous left-to-right order,
+  // but lay coordinates out afresh so the drawing closes up
+  const place = stability && !stability.orderOnly ? stability : null;
   const tOrdered = now();
 
   // ── persons per row, in order ──
@@ -134,7 +138,7 @@ export function computePclLayout(inputGraph, opts = {}) {
         const w = sameAtom(row[k - 1], id) ? W_COMPACT_IN : W_COMPACT_OUT;
         terms.push({ w, idx: [index.get(id), index.get(row[k - 1])], c: [1, -1], d: gap });
       }
-      x0[index.get(id)] = stability && stability.prevX.has(id) ? stability.prevX.get(id) : cursor;
+      x0[index.get(id)] = place && place.prevX.has(id) ? place.prevX.get(id) : cursor;
     });
     layers.push({ ids: row.map(id => index.get(id)), gaps });
   }
@@ -165,20 +169,20 @@ export function computePclLayout(inputGraph, opts = {}) {
   }
 
   const pinTerms = [];
-  if (stability && stability.freePersons !== null) {
+  if (place && place.freePersons !== null) {
     for (const t of terms) if (t.couple) t.w *= COUPLE_SCALE;
   }
-  if (stability) {
-    for (const [id, px] of stability.prevX) {
+  if (place) {
+    for (const [id, px] of place.prevX) {
       if (!index.has(id) || !Number.isFinite(px)) continue;
-      const w = stability.freePersons === null ? W_STABLE_WIDE
-        : (stability.freePersons.has(id) ? W_STABLE_FREE : W_PIN);
+      const w = place.freePersons === null ? W_STABLE_WIDE
+        : (place.freePersons.has(id) ? W_STABLE_FREE : W_PIN);
       const term = { w, idx: [index.get(id)], c: [1], d: px };
       terms.push(term);
-      if (stability.freePersons !== null && !stability.freePersons.has(id)) pinTerms.push(term);
+      if (place.freePersons !== null && !place.freePersons.has(id)) pinTerms.push(term);
     }
-    if (stability.freePersons !== null) {
-      const pinned = (id) => stability.prevX.has(id) && !stability.freePersons.has(id);
+    if (place.freePersons !== null) {
+      const pinned = (id) => place.prevX.has(id) && !place.freePersons.has(id);
       const heads = (id) => (S.partnerUnions.get(id) || []).some((uid) => (S.childrenOf.get(uid) || []).length > 0);
       const partners = (a, b) => (S.partnerUnions.get(a) || []).some((uid) => S.partnerIn(uid, a) === b);
       // neighbours on a row that were drawn side by side keep their spacing —
@@ -190,7 +194,7 @@ export function computePclLayout(inputGraph, opts = {}) {
           const a = row[k - 1], b = row[k];
           if (!pinned(a) || !pinned(b)) continue;
           if (!partners(a, b) && (heads(a) || heads(b))) continue;
-          const prevGap = stability.prevX.get(b) - stability.prevX.get(a);
+          const prevGap = place.prevX.get(b) - place.prevX.get(a);
           if (prevGap <= 0) continue;
           terms.push({ w: W_SHAPE, idx: [index.get(b), index.get(a)], c: [1, -1], d: prevGap });
         }
@@ -206,7 +210,7 @@ export function computePclLayout(inputGraph, opts = {}) {
       const g = new Float64Array(n);
       for (const t of terms) {
         if (pinSet.has(t) || !t.idx.every((k) => fixed.has(k))) continue;
-        const r = t.idx.reduce((acc, k, q) => acc + t.c[q] * stability.prevX.get(ids[k]), 0) - t.d;
+        const r = t.idx.reduce((acc, k, q) => acc + t.c[q] * place.prevX.get(ids[k]), 0) - t.d;
         t.idx.forEach((k, q) => { g[k] += 2 * t.w * r * t.c[q]; });
       }
       for (const t of pinTerms) {
@@ -322,12 +326,12 @@ export function computePclLayout(inputGraph, opts = {}) {
   let minX = Infinity;
   for (const v of x) minX = Math.min(minX, v);
   // with a previous layout, coordinates stay absolute (no re-normalisation)
-  const shift = (opts.previous instanceof Map || stability) ? 0 : PCL.X_MARGIN - minX;
+  const shift = (opts.previous instanceof Map || place) ? 0 : PCL.X_MARGIN - minX;
   const xPos = {};
   ids.forEach((id, i) => { xPos[id] = Math.round((x[i] + shift) * 2) / 2; });
-  if (stability && stability.frozen && ids.every((id) => stability.prevX.has(id))) {
+  if (place && place.frozen && ids.every((id) => place.prevX.has(id))) {
     // unchanged graph (e.g. a reopened file): the previous coordinates exactly
-    ids.forEach((id) => { xPos[id] = stability.prevX.get(id); });
+    ids.forEach((id) => { xPos[id] = place.prevX.get(id); });
   }
 
   // Rows are GEN_Y_SPACING apart unless the gap above a row needs more room
@@ -337,10 +341,10 @@ export function computePclLayout(inputGraph, opts = {}) {
   // a row keeps its previous height unless the gap above it now needs more
   // room for its lines (then it, and the rows below, move down)
   const prevRowY = new Map();
-  if (stability && stability.prevY) {
+  if (place && place.prevY) {
     for (const g of gens) {
-      const id = rows.get(g).find((p) => stability.prevY.has(p));
-      if (id !== undefined) prevRowY.set(g, stability.prevY.get(id));
+      const id = rows.get(g).find((p) => place.prevY.has(p));
+      if (id !== undefined) prevRowY.set(g, place.prevY.get(id));
     }
   }
   const gapAbove = (k) => (plans.get(gens[k]) || { gap: PCL.GEN_Y_SPACING }).gap * (gens[k] - gens[k - 1]);

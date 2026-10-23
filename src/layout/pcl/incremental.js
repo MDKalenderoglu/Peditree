@@ -130,9 +130,21 @@ export function computeStableLayout(graph, previous = {}) {
   });
   const total = (p) => p.crossings + p.offCenter + p.longUnions;
 
+  // Someone was removed: keep the order the clinician knows, but close up
+  // the gaps (clinician request 2026-10-23) — fresh coordinates, previous order.
+  const ids = new Set(graph.individuals.map((i) => i.id));
+  const removed = !!previous.prevGraph && (previous.prevGraph.individuals || []).some((i) => !ids.has(i.id));
+  if (removed) {
+    tried.push('compact');
+    const compact = computePclLayout(graph, { stability: { prevX, prevY, freePersons: null, orderOnly: true } });
+    if (clean(graph, compact)) return done(compact, 'compact');
+  }
+  // (a removal whose compact layout was not clean goes straight to a fresh layout)
   const attempts = [];
-  if (affected.size / people <= WIDE_SHARE) attempts.push(['local', { prevX, prevY, freePersons: affected, frozen }]);
-  attempts.push(['wide', { prevX, prevY, freePersons: null }]);
+  if (!removed) {
+    if (affected.size / people <= WIDE_SHARE) attempts.push(['local', { prevX, prevY, freePersons: affected, frozen }]);
+    attempts.push(['wide', { prevX, prevY, freePersons: null }]);
+  }
   const cleanStable = []; // clean but with added readability problems: [level, layout, problems]
   for (const [level, stability] of attempts) {
     tried.push(level);

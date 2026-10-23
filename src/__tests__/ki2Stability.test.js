@@ -43,13 +43,19 @@ describe('KI-2 store level — random edit populations', () => {
     // 6 → 9 (fresh layouts themselves improved 144 → 117 off-centre couples;
     // drawn 92 → 88), sideHangDrawn 2318 → 2331 and 351 → 353 (+19 moderate
     // 5–45 px offsets, −2 above 45 px). Everything else is lower than before.
+    // 2026-10-23, clinician request: after a removal the drawing closes up
+    // (incremental.js 'compact': previous order, fresh coordinates). Removals
+    // now move people on purpose, so movedFraction / neighbourGapChanged /
+    // meanShiftRawPx were RAISED to the new measured values (random 0.3651 →
+    // 0.3987, 0.1915 → 0.1998, 21.2 → 31.9 px; ki2 0.3627 → 0.3848, 16.5 →
+    // 21.5 px); flips unchanged, unexplained flips 0; side-hang lowered.
     'random-200x12': {
-      prefix: 'stab', sequences: 200, ops: 12, parentFlips: 9, movedFraction: 0.3651, neighbourGapChanged: 0.1915, meanShiftRawPx: 21.2,
-      editsWorseThanFresh: { offCenter: 9, crossings: 3, longUnions: 2 }, sideHangDrawn: 2331,
+      prefix: 'stab', sequences: 200, ops: 12, parentFlips: 9, movedFraction: 0.3987, neighbourGapChanged: 0.1998, meanShiftRawPx: 31.9,
+      editsWorseThanFresh: { offCenter: 9, crossings: 3, longUnions: 2 }, sideHangDrawn: 2238,
     },
     'ki2-40x10': {
-      prefix: 'ki2-', sequences: 40, ops: 10, parentFlips: 1, movedFraction: 0.3627, neighbourGapChanged: 0.192, meanShiftRawPx: 16.5,
-      editsWorseThanFresh: { offCenter: 0, crossings: 0, longUnions: 0 }, sideHangDrawn: 353,
+      prefix: 'ki2-', sequences: 40, ops: 10, parentFlips: 1, movedFraction: 0.3848, neighbourGapChanged: 0.1956, meanShiftRawPx: 21.5,
+      editsWorseThanFresh: { offCenter: 0, crossings: 0, longUnions: 0 }, sideHangDrawn: 342,
     },
   };
   for (const [name, c] of Object.entries(CEILINGS)) {
