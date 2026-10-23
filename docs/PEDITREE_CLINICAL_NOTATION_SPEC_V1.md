@@ -33,8 +33,8 @@ Her bağlantı çizgisi sahibini taşır (`unionId`, çocuk çizgisinde `childId
 |---|---|---|---|
 | R1 | Biyolojik ebeveyn–çocuk ilişkisi **düz** iniş çizgisiyle gösterilir. | **Uygun.** Biyolojik bağ (`parentChildRelationships`) her zaman düz çizilir. | `PedigreeCanvas.jsx` `drawStroke` (kesikli yalnız `descentKind` varsa); `src/layout/pcl/index.js` `markSocialDescent` |
 | R2 | Evlat edinen ebeveyn–çocuk ilişkisi **kesikli** iniş çizgisiyle gösterilir. | **Uygun** (evlat edinme için). Not: koruyucu aile / üvey / vasi bağları da şu an kesikli çiziliyor — bu, onaylı kuralın ötesinde (bkz. K4). | CB-07 `III-3`: kesikli çocuk çizgisi |
-| R3 | Evlat edinilmiş bireyin sembolü uygun **köşeli parantez** notasyonuyla gösterilir. | **Uygun değil.** Çizicide köşeli parantez yok. | `reports/notation-audit/CB-07-III-3-adoption.svg` |
-| R4 | Pedigri numaraları ve diğer etiketler bağlantı çizgileriyle **çakışmaz**. | **Uygun değil.** İniş çizgisi olan herkesin numarası çizgiyle kesişiyor (§5). | 21 klinik fixture'da ölçüldü |
+| R3 | Evlat edinilmiş bireyin sembolü uygun **köşeli parantez** notasyonuyla gösterilir. | **Uygun (2026-10-23).** İçeri evlat edinilen çocuğun sembolü köşeli parantez içinde. | `reports/notation-audit/CB-07-III-3-adoption.svg` |
+| R4 | Pedigri numaraları ve diğer etiketler bağlantı çizgileriyle **çakışmaz**. | **Uygun (2026-10-23).** Numara sembolün sol üst köşesinde (çizgi geçiyorsa sağ üst); 21 fixture'da çizgi / sembol / etiket çakışması 0. Önceki durum §5'te. | 21 klinik fixture'da ölçüldü |
 | R5 | Hiçbir çizgi yanlış ebeveynlik, partnerlik veya kardeşlik ilişkisi **ima edemez**. | **Büyük ölçüde uygun.** Sahiplik / değişmez / bağlantı okunabilirliği ihlali 0; kalan riskler §4.6, §4.7 ve K2'de. | `clinicalBenchmark.test.js`, `ki8PartnerSide.test.js`, `connectorReadability` |
 | R6 | Yerleşim optimizasyonu klinik ilişki **anlamını değiştiremez**. | **Uygun (mimari).** Yerleşim yalnız sıra ve koordinat üretir; doğum sırası kesin kural; KI-8 alternatifleri yalnız eşin tarafını değiştirir. | `structure.js`, `layoutInvariants`, `ki2Stability.test.js` |
 

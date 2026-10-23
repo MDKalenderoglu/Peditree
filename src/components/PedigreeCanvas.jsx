@@ -200,6 +200,21 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // node; recomputes automatically on every render, so a birth-order
     // reorder (which changes x) renumbers correctly with no extra wiring.
     const pedigreeIds = computePedigreeIds(nodes);
+    // Adopted-in children (only a social, adoptive link): NSGC brackets
+    // around the symbol (notation spec R3). Read from the layout's edges —
+    // their line of descent is the dashed, adoptive one.
+    // Pedigree-number corner: upper-left unless a connector crosses there
+    // (e.g. a relationship line rising beside the symbol), then upper-right.
+    const LABEL_CHAR_W = 6, LABEL_H = 11;
+    const segments = edges.filter(e => [e.x1, e.y1, e.x2, e.y2].every(Number.isFinite));
+    const boxFree = (x0, y0, w, h) => !segments.some(e => {
+      const lo = Math.min(e.x1, e.x2) - 2, hi = Math.max(e.x1, e.x2) + 2;
+      const top = Math.min(e.y1, e.y2) - 2, bot = Math.max(e.y1, e.y2) + 2;
+      return hi > x0 && lo < x0 + w && bot > y0 && top < y0 + h;
+    });
+    const adoptedIn = new Set(edges
+      .filter(e => e.type === 'childStem' && e.descentKind === 'adoptive')
+      .map(e => e.childId));
 
     const nodeGroups = g.selectAll('.node-group')
       .data(nodes)
@@ -234,12 +249,27 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       // this is the identifier a clinician should read, never the internal
       // graph ID (d.id, e.g. "mat_uncle_0"), which is not rendered anywhere
       // on canvas.
+      // Placed at the upper-left corner, beside — never on — the line of
+      // descent, which enters the symbol at its top centre (notation spec R4).
+      const adopted = adoptedIn.has(d.id);
       const pedigreeId = pedigreeIds.get(d.id);
       if (pedigreeId) {
+        const gap = adopted ? 12 : 6; // clear of the brackets / deceased slash
+        const w = pedigreeId.displayId.length * LABEL_CHAR_W;
+        const top = d.y - (sz + 6) - LABEL_H + 2;
+        const left = boxFree(d.x - (sz + gap) - w, top, w, LABEL_H);
+        const right = !left && boxFree(d.x + sz + gap, top, w, LABEL_H);
         el.append('text')
-          .attr('y', -(sz + 8)).attr('text-anchor', 'middle')
+          .attr('x', right ? sz + gap : -(sz + gap)).attr('y', -(sz + 6)).attr('text-anchor', right ? 'start' : 'end')
           .attr('font-size', '10px').attr('fill', '#64748b')
           .text(pedigreeId.displayId);
+      }
+      if (adopted) {
+        const b = sz + 7;
+        el.append('path')
+          .attr('class', 'adoption-brackets')
+          .attr('d', `M${-b + 6},${-b} L${-b},${-b} L${-b},${b} L${-b + 6},${b} M${b - 6},${-b} L${b},${-b} L${b},${b} L${b - 6},${b}`)
+          .attr('fill', 'none').attr('stroke', NODE_STROKE).attr('stroke-width', 2);
       }
 
       let shape;

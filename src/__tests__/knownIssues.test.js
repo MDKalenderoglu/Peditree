@@ -141,10 +141,19 @@ describe('KI-3 (fixed, P0) — extra random robustness (not the original graphs;
   }
 });
 
-describe('KI-4 (open, P2) — pedigree number drawn on the line of descent', () => {
-  it.fails('target: the "II-3" label is not centred on the symbol axis where the stem enters', () => {
+// Fixed 2026-10-23 (notation spec R4): the number stands at the upper-left
+// corner, or upper-right when a connector crosses there. Measured in the
+// browser on 21 fixtures: 0 numbers on a line, symbol or other label.
+describe('KI-4 (fixed, P2) — pedigree number drawn on the line of descent', () => {
+  it('the "II-3" label is not centred on the symbol axis where the stem enters', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
     expect(src).not.toMatch(/\.attr\('y', -\(sz \+ 8\)\)\.attr\('text-anchor', 'middle'\)/);
+    expect(src).toMatch(/text-anchor', right \? 'start' : 'end'/);
+  });
+  it('adopted-in children get brackets (notation spec R3)', () => {
+    const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
+    expect(src).toMatch(/descentKind === 'adoptive'/);
+    expect(src).toMatch(/adoption-brackets/);
   });
 });
 
