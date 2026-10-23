@@ -287,5 +287,6 @@ Onay sonrası her kural için:
 | 2026-10-19 | R1–R6 ve temel ilke | onaylandı | kullanıcı (klinisyen) |
 | 2026-10-23 | K1 — bilinen doğum sırası | akraba evliliğindeki eş, partnerinin yanında durmak için kardeşliğinin ucuna (yaşa aykırı da olsa) çizilebilir; kullanıcının açıkça girdiği doğum sırası değişmez | kullanıcı (klinisyen) |
 | 2026-10-23 | K5 — taşıyıcı | yarım dolgu korunur (mevcut gösterim) | kullanıcı (klinisyen) |
-| | K2–K4, K6–K13 | bekliyor | |
+| 2026-10-23 | K10 — proband | proband okuna "P" eklenir (uygulandı); ayrı danışan alanı bekliyor | kullanıcı (klinisyen) |
+| | K2–K4, K6–K9, K11–K13 | bekliyor | |
 | | §4 "Standart" özetleri (orijinal yayına karşı) | bekliyor | |

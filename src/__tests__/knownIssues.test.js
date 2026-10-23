@@ -150,6 +150,10 @@ describe('KI-4 (fixed, P2) — pedigree number drawn on the line of descent', ()
     expect(src).not.toMatch(/\.attr\('y', -\(sz \+ 8\)\)\.attr\('text-anchor', 'middle'\)/);
     expect(src).toMatch(/text-anchor', right \? 'start' : 'end'/);
   });
+  it('the proband arrow carries "P" (notation spec K10)', () => {
+    const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
+    expect(src).toMatch(/proband-p[\s\S]{0,400}\.text\('P'\)/);
+  });
   it('adopted-in children get brackets (notation spec R3)', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
     expect(src).toMatch(/descentKind === 'adoptive'/);

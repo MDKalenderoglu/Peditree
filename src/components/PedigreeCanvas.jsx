@@ -325,6 +325,13 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           .attr('fill', 'none')
           .attr('stroke', NODE_STROKE)
           .attr('stroke-width', 2);
+        // NSGC: the proband's arrow carries "P" (an arrow alone marks a
+        // consultand) — clinician decision K10, 2026-10-23
+        el.append('text')
+          .attr('class', 'proband-p')
+          .attr('x', -(arrOff + 17)).attr('y', arrOff + 26).attr('text-anchor', 'end')
+          .attr('font-size', '12px').attr('font-weight', '700').attr('fill', NODE_STROKE)
+          .text('P');
       }
 
       // --- Annotations below node ---
