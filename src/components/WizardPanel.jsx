@@ -333,10 +333,9 @@ export default function WizardPanel() {
             <div key={u.id} style={{ border: '1px solid #e2e8f0', padding: '8px', borderRadius: '4px', marginBottom: '6px', background: '#fff' }}>
               <div className="form-group-row" style={{ marginBottom: '6px' }}>
                 <span className="form-label" style={{ fontSize: '0.75rem' }}>Durum</span>
-                <select value={u.status} onChange={e => updateOtherUnion(parentType, idx, 'status', e.target.value)} className="form-input" style={{ width: '110px', fontSize: '0.8rem' }}>
+                <select value={u.status === 'separated' ? 'divorced' : u.status} onChange={e => updateOtherUnion(parentType, idx, 'status', e.target.value)} className="form-input" style={{ width: '150px', fontSize: '0.8rem' }}>
                   <option value="together">Birlikte</option>
-                  <option value="separated">Ayrı</option>
-                  <option value="divorced">Boşanmış</option>
+                  <option value="divorced">Boşanmış/Ayrılmış</option>
                   <option value="unknown">Bilinmiyor</option>
                 </select>
               </div>
@@ -542,10 +541,9 @@ export default function WizardPanel() {
         <div style={{ margin: '8px 0', borderTop: '1px solid #e2e8f0' }} />
         <div className="form-group-row">
           <span className="form-label">İlişki Durumu</span>
-          <select value={wd.parents.relationshipStatus} onChange={e => updateWizardData('parents', 'relationshipStatus', e.target.value)} className="form-input" style={{ fontSize: '0.8rem' }}>
+          <select value={wd.parents.relationshipStatus === 'separated' ? 'divorced' : wd.parents.relationshipStatus} onChange={e => updateWizardData('parents', 'relationshipStatus', e.target.value)} className="form-input" style={{ fontSize: '0.8rem' }}>
             <option value="together">Birlikte</option>
-            <option value="separated">Ayrı</option>
-            <option value="divorced">Boşanmış</option>
+            <option value="divorced">Boşanmış/Ayrılmış</option>
             <option value="unknown">Bilinmiyor</option>
           </select>
         </div>
