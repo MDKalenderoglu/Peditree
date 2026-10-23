@@ -474,18 +474,12 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const zoom = svg.node()?.__zoom_ref;
     if (zoom) svg.call(zoom.transform, d3.zoomIdentity);
   };
-  const zoomBtn = {
-    background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer',
-    minWidth: '32px', height: '30px', fontSize: '1rem', lineHeight: 1, color: '#1e293b',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-  };
-
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <div className="zoom-controls" style={{ position: 'absolute', left: 10, top: 10, zIndex: 10, display: 'flex', gap: '4px' }}>
-        <button onClick={() => zoomBy(1.25)} style={zoomBtn} title="Yakınlaştır" aria-label="Yakınlaştır">+</button>
-        <button onClick={() => zoomBy(0.8)} style={zoomBtn} title="Uzaklaştır" aria-label="Uzaklaştır">−</button>
-        <button onClick={fitZoom} style={{ ...zoomBtn, fontSize: '0.8rem', padding: '0 10px' }} title="Tüm pedigriyi ekrana sığdır">Sığdır</button>
+      <div className="zoom-controls" style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 10 }}>
+        <button onClick={() => zoomBy(1.25)} title="Yakınlaştır" aria-label="Yakınlaştır">+</button>
+        <button onClick={() => zoomBy(0.8)} title="Uzaklaştır" aria-label="Uzaklaştır">−</button>
+        <button onClick={fitZoom} title="Tüm pedigriyi ekrana sığdır">Sığdır</button>
       </div>
       <svg
         id="pedigree-svg"

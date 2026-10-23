@@ -1,290 +1,142 @@
+/**
+ * WizardPanel.jsx — left panel: build the family by counts (the wizard is an
+ * input adapter over the graph; every control calls the same store
+ * operations as before). Redesign 2026-10-23: four groups instead of ten
+ * numbered boxes, compact counters, plain Turkish, no internal ids. Editing
+ * or deleting one person happens in the right panel.
+ */
 import { useState } from 'react';
-import { usePedigreeStore, computeDeletionPlan } from '../state/usePedigreeStore';
-import { ChevronDown, ChevronRight, Trash2, X } from 'lucide-react';
+import { usePedigreeStore } from '../state/usePedigreeStore';
+import { ChevronRight, User, Users, Heart, GitFork, Network, Link2, Layers, Baby } from 'lucide-react';
 import ChildOrderEditor from './ChildOrderEditor';
 import { sanitizeAgeValue } from '../utils/ageValidation';
 import { RELATIONSHIP_BACKGROUND_OPTIONS } from '../utils/relationshipBackground';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { deriveSiblingCounts } from '../utils/siblingCounts';
 
-/**
- * Left-panel selected-person identity + quick-action card (v0.3a.1).
- * The left panel used to stay generic/unrelated to canvas selection — this
- * surfaces who is selected and offers the one destructive action (delete)
- * right where the user is already looking, instead of requiring them to
- * find it buried in the right-hand editor.
- */
-function SelectedPersonCard({ wizardData, pedigreeData, selectedId, selectedId2, onDeleteIndividual, onClearSelection }) {
-  if (!selectedId && !selectedId2) return null;
+/* ── building blocks ── */
 
-  const ind = pedigreeData.individuals.find(i => i.id === selectedId);
-  const ind2 = selectedId2 ? pedigreeData.individuals.find(i => i.id === selectedId2) : null;
-  if (!ind && !ind2) return null;
-
-  // v0.3a.4: show clinician-facing pedigree IDs (II-3) and human labels,
-  // never internal graph IDs (mat_uncle_0, U_PARENTS) in this card or its
-  // delete confirmation.
-  const pedigreeIds = computePedigreeIds(pedigreeData.nodes || []);
-  const displayNameFor = (id) => {
-    const person = pedigreeData.individuals.find(i => i.id === id);
-    const pid = pedigreeIds.get(id)?.displayId;
-    const label = person?.displayLabel || person?.label;
-    if (pid && label) return `${pid} (${label})`;
-    return pid || label || 'birey';
-  };
-
-  const renderIdentity = (person) => {
-    if (!person) return null;
-    const flags = [];
-    if (person.proband) flags.push('Proband');
-    if (person.affected) flags.push('Etkilenmiş');
-    if (person.carrier) flags.push('Taşıyıcı');
-    if (person.deceased) flags.push('Ölü');
-    if (person.pregnancyLoss) flags.push('Düşük/Kayıp');
-    if (person.stillbirth) flags.push('Ölü Doğum');
-    const pid = pedigreeIds.get(person.id)?.displayId;
-    return (
-      <div style={{ fontSize: '0.78rem', color: '#1e293b', lineHeight: 1.5 }}>
-        <strong>{pid || person.displayLabel || person.label}</strong>
-        {person.displayLabel || person.label ? <span style={{ color: '#64748b' }}> — {person.displayLabel || person.label}</span> : null}
-        {' '}({person.sex === 'male' ? 'Erkek' : person.sex === 'female' ? 'Kadın' : 'Bilinmiyor'})
-        {flags.length > 0 && (
-          <div style={{ marginTop: '2px', color: '#64748b' }}>{flags.join(' · ')}</div>
-        )}
-      </div>
-    );
-  };
-
-  const plan = ind ? computeDeletionPlan(wizardData, pedigreeData, ind.id) : null;
-
+/** −  n  +  (no upper limit) */
+function Counter({ value, onMinus, onPlus, label }) {
   return (
-    <div style={{
-      marginBottom: '14px', padding: '10px', background: '#eef2ff',
-      border: '1px solid #c7d2fe', borderRadius: '6px',
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-        <span style={{ fontWeight: 700, fontSize: '0.8rem', color: '#3730a3' }}>Seçili Kişi</span>
-        <button
-          onClick={onClearSelection}
-          title="Seçimi temizle"
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6366f1', display: 'flex' }}
-        >
-          <X size={14} />
-        </button>
-      </div>
-
-      {renderIdentity(ind)}
-      {ind2 && (
-        <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed #c7d2fe' }}>
-          <div style={{ fontSize: '0.68rem', color: '#6366f1', marginBottom: '2px' }}>+ 2. seçim:</div>
-          {renderIdentity(ind2)}
-        </div>
-      )}
-
-      {ind && !ind2 && (
-        <div style={{ marginTop: '8px' }}>
-          <button
-            onClick={() => {
-              if (!plan.ok) {
-                window.alert(plan.reason);
-                return;
-              }
-              // v0.3a.2 — preview exactly what this deletion affects before
-              // confirming: the person themselves, any partner union(s)
-              // (removed entirely), and any children affected (they are
-              // NOT deleted — they lose the link to the removed union and
-              // become parent-less, same as any other orphaned individual).
-              const parts = [`"${displayNameFor(ind.id)}" silinsin mi?`];
-              // v0.3a.4: describe unions by count (union IDs are internal
-              // and meaningless to a clinician), and children by their
-              // pedigree IDs.
-              if (plan.affectedUnionIds.length > 0) {
-                parts.push(`\n\n${plan.affectedUnionIds.length} eş birliği tamamen kaldırılacak.`);
-              }
-              if (plan.affectedChildIds.length > 0) {
-                parts.push(`\nEtkilenen çocuk(lar): ${plan.affectedChildIds.map(displayNameFor).join(', ')} (silinmeyecek, sadece bu ebeveyn bağlantısı kaldırılacak).`);
-              }
-              if (window.confirm(parts.join(''))) {
-                onDeleteIndividual(ind.id);
-              }
-            }}
-            className="btn"
-            style={{
-              display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem',
-              padding: '4px 8px', background: plan.ok ? '#fee2e2' : '#f1f5f9',
-              border: plan.ok ? '1px solid #fca5a5' : '1px solid #cbd5e1',
-              color: plan.ok ? '#dc2626' : '#94a3b8',
-            }}
-            title={plan.ok ? 'Bu bireyi sil' : plan.reason}
-          >
-            <Trash2 size={12} /> Seçili Bireyi Sil
-          </button>
-          {!plan.ok && (
-            <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: '3px' }}>{plan.reason}</div>
-          )}
-        </div>
-      )}
+    <div className="counter" role="group" aria-label={label}>
+      <button onClick={onMinus} disabled={value <= 0} aria-label={`${label} azalt`}>−</button>
+      <span className="counter-val">{value}</span>
+      <button onClick={onPlus} aria-label={`${label} artır`}>+</button>
     </div>
   );
 }
 
-/* ── Custom consanguinity person picker ── */
-function CustomConsanguinityAdder({ individuals, onAdd, nameOf }) {
-  const [p1, setP1] = useState('');
-  const [p2, setP2] = useState('');
-
-  // v0.3a.2 reset-audit fix: this local selection used to survive a full
-  // pedigree reset (or a deletion of the selected individual) since this
-  // component never unmounts — the dropdown would silently show a blank
-  // value once the referenced individual disappeared, but the stale ID
-  // stayed in local state and could resurface confusingly if a
-  // newly-created individual happened to reuse it. Clear both slots
-  // whenever either no longer refers to a real individual in the current
-  // graph, so stale selection never survives a reset or a deletion.
-  const individualIds = individuals.map(i => i.id);
-  if (p1 && !individualIds.includes(p1)) setP1('');
-  if (p2 && !individualIds.includes(p2)) setP2('');
-
-  const handleAdd = () => {
-    if (p1 && p2 && p1 !== p2) {
-      onAdd(p1, p2);
-      setP1('');
-      setP2('');
-    }
-  };
-
-  // Filter: no pregnancy losses/stillbirths, no proband
-  const options = individuals
-    .filter(i => !i.pregnancyLoss && !i.stillbirth && !i.proband)
-    .map(i => ({ id: i.id, label: nameOf(i.id), generation: i.generation }));
-
-  // When p1 is selected, filter p2 to same generation only
-  const p1Ind = options.find(o => o.id === p1);
-  const p2Options = p1
-    ? options.filter(o => o.id !== p1 && o.generation === p1Ind?.generation)
-    : options;
-
+/** A labelled counter whose value is set absolutely (onChange(n)). */
+function Count({ label, value, onChange }) {
   return (
-    <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-end', flexWrap: 'wrap', marginTop: '6px' }}>
-      <div style={{ flex: 1, minWidth: '80px' }}>
-        <div style={{ fontSize: '0.65rem', color: '#64748b' }}>Kişi 1</div>
-        <select value={p1} onChange={e => { setP1(e.target.value); setP2(''); }}
-          className="form-input" style={{ fontSize: '0.72rem', padding: '2px' }}>
-          <option value="">Seç...</option>
-          {options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-        </select>
-      </div>
-      <div style={{ flex: 1, minWidth: '80px' }}>
-        <div style={{ fontSize: '0.65rem', color: '#64748b' }}>Kişi 2 {p1 && p2Options.length === 0 && <span style={{color:'#ef4444'}}>(aynı kuşak yok)</span>}</div>
-        <select value={p2} onChange={e => setP2(e.target.value)}
-          className="form-input" style={{ fontSize: '0.72rem', padding: '2px' }}>
-          <option value="">Seç...</option>
-          {p2Options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-        </select>
-      </div>
-      <button onClick={handleAdd} disabled={!p1 || !p2 || p1 === p2}
-        className="btn btn-primary"
-        style={{ padding: '3px 8px', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
-        + Kardeş Yap
+    <div className="count">
+      <span className="count-label">{label}</span>
+      <Counter label={label} value={value} onMinus={() => onChange(Math.max(0, value - 1))} onPlus={() => onChange(value + 1)} />
+    </div>
+  );
+}
+
+function Section({ id, icon: Icon, title, summary, openId, onToggle, children }) {
+  const open = openId === id;
+  return (
+    <div className={`sec${open ? ' open' : ''}`}>
+      <button className="sec-head" onClick={() => onToggle(open ? null : id)} aria-expanded={open}>
+        <span className="sec-icon"><Icon size={15} /></span>
+        <span className="sec-title">{title}</span>
+        {summary && <span className="sec-summary">{summary}</span>}
+        <ChevronRight size={15} className="sec-chevron" />
       </button>
+      {open && <div className="sec-body">{children}</div>}
     </div>
   );
 }
 
-/* ── Reusable compact stepper ── */
-const Stepper = ({ label, value, onChange, min = 0, max = Infinity }) => (
-  <div className="form-group-row">
-    <span className="form-label">{label}</span>
-    <div className="stepper">
-      <button className="stepper-btn" onClick={() => onChange(Math.max(min, value - 1))}>−</button>
-      <div className="stepper-val">{value}</div>
-      <button className="stepper-btn" onClick={() => onChange(Math.min(max, value + 1))}>+</button>
-    </div>
-  </div>
-);
-
-/**
- * v0.4.1 — unlike the generic Stepper above, this one does NOT compute
- * "new absolute count" from its own displayed value: the Kardesler counts
- * are derived from the built graph (deriveSiblingCounts), which can be
- * larger than any single underlying wizard array's length (a sibling added
- * via the selected-person editor lives in `graphEdits`, not `siblings.*`).
- * +/- must always add or remove exactly one, regardless of which mechanism
- * produced the individual being removed — see removeLastSibling's docblock
- * in usePedigreeStore.js.
- */
-const SiblingStepper = ({ label, value, onIncrement, onDecrement, max = Infinity }) => (
-  <div className="form-group-row">
-    <span className="form-label">{label}</span>
-    <div className="stepper">
-      <button className="stepper-btn" onClick={onDecrement} disabled={value <= 0}>−</button>
-      <div className="stepper-val">{value}</div>
-      <button className="stepper-btn" onClick={onIncrement} disabled={value >= max}>+</button>
-    </div>
-  </div>
-);
-
-/**
- * v0.3a.2 — lightweight progressive-disclosure grouping. Purely a visual
- * divider between existing Accordion sections (no restructuring of the
- * underlying sections/state) so the left panel reads as a small number of
- * clear layers instead of one flat list of ~10 equally-weighted sections.
- */
-const LayerHeader = ({ label }) => (
-  <div style={{
-    marginTop: '16px', marginBottom: '6px', paddingBottom: '3px',
-    borderBottom: '2px solid #c7d2fe', fontSize: '0.68rem', fontWeight: 700,
-    color: '#4338ca', textTransform: 'uppercase', letterSpacing: '0.03em',
-  }}>
-    {label}
-  </div>
-);
-
-/**
- * v0.3a.3 — true single-open accordion. `open` and `onToggle` are lifted
- * to the store's `openSectionId`/`setOpenSection` (see usePedigreeStore.js)
- * rather than local per-instance state, so opening any one section
- * automatically closes every other one — there is only ever one
- * `openSectionId` in the whole panel.
- */
-const Accordion = ({ id, title, summary, open, onToggle, children }) => {
+function AgeField({ label, value, onChange }) {
   return (
-    <div className="wizard-section">
-      <div className="wizard-section-header" onClick={() => onToggle(id)}>
-        <div>
-          <div>{title}</div>
-          {summary && <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 'normal', marginTop: '2px' }}>{summary}</div>}
-        </div>
-        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-      </div>
-      {open && <div className="wizard-section-content">{children}</div>}
+    <label className="field">
+      <span className="field-label">{label}</span>
+      <input type="number" min="0" className="input input-age" value={value ?? ''} placeholder="—"
+        onChange={e => onChange(sanitizeAgeValue(e.target.value))} />
+    </label>
+  );
+}
+
+function SexSwitch({ value, onChange }) {
+  const opts = [['male', 'Erkek'], ['female', 'Kadın'], ['unknown', 'Bilinmiyor']];
+  return (
+    <div className="segmented" role="radiogroup" aria-label="Cinsiyet">
+      {opts.map(([v, t]) => (
+        <button key={v} className={value === v ? 'on' : undefined} onClick={() => onChange(v)} role="radio" aria-checked={value === v}>{t}</button>
+      ))}
     </div>
   );
-};
+}
 
-// ── Child-order items ──
-// v2 (graph-first): items are the REAL child ids of a union, in the order
-// the graph draws them, labelled for the clinician. Ids are permanent, so a
-// label like "E 2" is only a position hint, never an identity.
+const STATUS_OPTIONS = [['together', 'Birlikte'], ['divorced', 'Boşanmış/Ayrılmış'], ['unknown', 'Bilinmiyor']];
+// an older 'separated' value is shown as the combined option
+const shownStatus = (s) => (s === 'separated' ? 'divorced' : s);
+
+// ── child-order items (real child ids, drawing order) ──
 function childItems(pedigreeData, unionId, childIds, anchorId) {
   const byId = new Map((pedigreeData.individuals || []).map(i => [i.id, i]));
   const counters = {};
   const tag = (p) => {
     if (p.id === anchorId) return 'Proband';
     if (p.pregnancyLoss) return 'Düşük';
-    if (p.stillbirth) return 'Ölü D.';
-    return p.sex === 'male' ? 'E' : p.sex === 'female' ? 'K' : 'Bil.';
+    if (p.stillbirth) return 'Ölü doğum';
+    return p.sex === 'male' ? 'Erkek' : p.sex === 'female' ? 'Kız' : 'Bilinmeyen';
   };
   return (childIds || []).map(id => byId.get(id)).filter(Boolean).map(p => {
     const t = tag(p);
     counters[t] = (counters[t] || 0) + 1;
     const n = t === 'Proband' ? '' : ` ${counters[t]}`;
-    return { token: p.id, label: `${t}${n}${p.age ? ` (${p.age})` : ''}` };
+    return { token: p.id, label: `${t}${n}${p.age ? ` · ${p.age} yaş` : ''}` };
   });
 }
 
-function childIdsOf(pedigreeData, unionId) {
-  return ((pedigreeData.parentChildRelationships || []).find(r => r.unionId === unionId) || {}).children || [];
+const childIdsOf = (pedigreeData, unionId) =>
+  ((pedigreeData.parentChildRelationships || []).find(r => r.unionId === unionId) || {}).children || [];
+
+const KIDS = [['male', 'Erkek'], ['female', 'Kız'], ['unknown', 'Bilinmeyen'], ['pregnancyLoss', 'Düşük'], ['stillbirth', 'Ölü doğum']];
+const kidTotal = (c) => KIDS.reduce((n, [k]) => n + (c[k] || 0), 0);
+const kidSummary = (c) => {
+  const parts = [];
+  if (c.male) parts.push(`${c.male}E`);
+  if (c.female) parts.push(`${c.female}K`);
+  if (c.unknown) parts.push(`${c.unknown}B`);
+  const loss = (c.pregnancyLoss || 0) + (c.stillbirth || 0) + (c.deceased || 0);
+  if (loss) parts.push(`${loss} kayıp`);
+  return parts.join(' · ');
+};
+
+/* ── custom sibling link (two people → siblings) ── */
+function SiblingLinker({ individuals, onAdd, nameOf }) {
+  const [p1, setP1] = useState('');
+  const [p2, setP2] = useState('');
+  const ids = individuals.map(i => i.id);
+  if (p1 && !ids.includes(p1)) setP1('');
+  if (p2 && !ids.includes(p2)) setP2('');
+  const options = individuals
+    .filter(i => !i.pregnancyLoss && !i.stillbirth && !i.proband)
+    .map(i => ({ id: i.id, label: nameOf(i.id), generation: i.generation }));
+  const g1 = options.find(o => o.id === p1)?.generation;
+  const p2Options = p1 ? options.filter(o => o.id !== p1 && o.generation === g1) : options;
+  return (
+    <div className="field-col">
+      <div className="field-hint">Şablonda olmayan bir kardeşlik: iki kişiyi seçin, ortak ebeveynleri otomatik oluşturulur.</div>
+      <select className="select input-wide" value={p1} onChange={e => { setP1(e.target.value); setP2(''); }} aria-label="Birinci kişi">
+        <option value="">Birinci kişi…</option>
+        {options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+      </select>
+      <select className="select input-wide" value={p2} onChange={e => setP2(e.target.value)} aria-label="İkinci kişi">
+        <option value="">{p1 && p2Options.length === 0 ? 'Aynı kuşakta kimse yok' : 'İkinci kişi…'}</option>
+        {p2Options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+      </select>
+      <button className="ui-btn ui-btn-sm" disabled={!p1 || !p2 || p1 === p2}
+        onClick={() => { onAdd(p1, p2); setP1(''); setP2(''); }}>Kardeş yap</button>
+    </div>
+  );
 }
 
 export default function WizardPanel() {
@@ -301,427 +153,291 @@ export default function WizardPanel() {
     addCustomConsanguinity, removeCustomConsanguinity,
     setUnionRelationshipBackground,
     pedigreeData,
-    selectedId, selectedId2, deleteIndividual, clearSelection,
     openSectionId, setOpenSection,
   } = usePedigreeStore();
 
-  // Clinician-facing name for a person (pedigree id + label), never the internal id.
-  const pedigreeIdsForNames = computePedigreeIds(pedigreeData.nodes || []);
+  const pids = computePedigreeIds(pedigreeData.nodes || []);
   const nameOf = (id) => {
     const p = (pedigreeData.individuals || []).find(i => i.id === id);
-    const pid = pedigreeIdsForNames.get(id)?.displayId;
+    const pid = pids.get(id)?.displayId;
     const label = p?.displayLabel || p?.label;
-    return pid ? (label ? `${pid} (${label})` : pid) : (label || 'birey');
+    return pid ? (label ? `${pid} · ${label}` : pid) : (label || 'birey');
+  };
+  const sec = { openId: openSectionId, onToggle: setOpenSection };
+
+  /* extra partners of a parent */
+  const otherUnions = (parentType) => {
+    const list = wd.parents[parentType === 'mother' ? 'motherOtherUnions' : 'fatherOtherUnions'];
+    return (
+      <>
+        {list.map((u, idx) => (
+          <div className="sub" key={u.id}>
+            <div className="sub-head">
+              <span>{parentType === 'mother' ? 'Annenin' : 'Babanın'} diğer eşi {list.length > 1 ? idx + 1 : ''}</span>
+              <button className="ui-btn ui-btn-sm ui-btn-ghost" onClick={() => removeOtherUnion(parentType, idx)}>Kaldır</button>
+            </div>
+            <label className="field-col">
+              <span className="field-label">İlişki</span>
+              <select className="select input-wide" value={shownStatus(u.status)} onChange={e => updateOtherUnion(parentType, idx, 'status', e.target.value)}>
+                {STATUS_OPTIONS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+              </select>
+            </label>
+            <div className="counts">
+              {KIDS.map(([k, t]) => <Count key={k} label={t} value={u.children[k] || 0} onChange={v => updateOtherUnion(parentType, idx, k, v)} />)}
+            </div>
+            {kidTotal(u.children) >= 2 && u.unionId && (
+              <ChildOrderEditor items={childItems(pedigreeData, u.unionId, u.childIds)} getOrder={() => getChildOrder(u.unionId)}
+                setOrder={(order) => setChildOrder(u.unionId, order)} label="Çocukların sırası" />
+            )}
+          </div>
+        ))}
+        <button className="ui-btn ui-btn-sm" onClick={() => addOtherUnion(parentType)}>
+          + {parentType === 'mother' ? 'Annenin' : 'Babanın'} başka bir eşi
+        </button>
+      </>
+    );
   };
 
-  /* ── Other-union mini-panel ── */
-  const renderOtherUnions = (parentType) => {
-    const key = parentType === 'mother' ? 'motherOtherUnions' : 'fatherOtherUnions';
-    const list = wd.parents[key];
-    return (
-      <div style={{ marginTop: '6px', padding: '8px', background: '#f8fafc', borderRadius: '5px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-          <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>Ek Partner ({list.length})</span>
-          <button className="btn btn-primary" onClick={() => addOtherUnion(parentType)} style={{ padding: '2px 8px', fontSize: '0.7rem' }}>+ Ekle</button>
+  /* uncles / aunts of one side (or of a grandparent) */
+  const relatives = (id, icon, title, side, uncleLabel, auntLabel) => {
+    const rel = wd[side] || { uncles: [], aunts: [] };
+    const uncles = rel.uncles || [], aunts = rel.aunts || [];
+    const summary = [uncles.length && `${uncles.length} ${uncleLabel}`, aunts.length && `${aunts.length} ${auntLabel}`].filter(Boolean).join(' · ') || 'yok';
+    const people = (type, label) => (rel[type] || []).map((r, idx) => (
+      <div className="sub" key={r.id}>
+        <div className="sub-head">
+          <span>{label} {idx + 1} — çocukları</span>
+          <span className="muted small">{kidSummary(r.children)}</span>
         </div>
-        {list.map((u, idx) => {
-          const unionId = u.unionId;
-          const hSibItems = childItems(pedigreeData, unionId, u.childIds);
-          const totalKids = (u.children.male || 0) + (u.children.female || 0) + (u.children.unknown || 0) + (u.children.pregnancyLoss || 0) + (u.children.stillbirth || 0);
-
-          return (
-            <div key={u.id} style={{ border: '1px solid #e2e8f0', padding: '8px', borderRadius: '4px', marginBottom: '6px', background: '#fff' }}>
-              <div className="form-group-row" style={{ marginBottom: '6px' }}>
-                <span className="form-label" style={{ fontSize: '0.75rem' }}>Durum</span>
-                <select value={u.status === 'separated' ? 'divorced' : u.status} onChange={e => updateOtherUnion(parentType, idx, 'status', e.target.value)} className="form-input" style={{ width: '150px', fontSize: '0.8rem' }}>
-                  <option value="together">Birlikte</option>
-                  <option value="divorced">Boşanmış/Ayrılmış</option>
-                  <option value="unknown">Bilinmiyor</option>
-                </select>
-              </div>
-              <Stepper label="Erkek" value={u.children.male} onChange={v => updateOtherUnion(parentType, idx, 'male', v)} />
-              <Stepper label="Kız" value={u.children.female} onChange={v => updateOtherUnion(parentType, idx, 'female', v)} />
-              <Stepper label="Bil." value={u.children.unknown} onChange={v => updateOtherUnion(parentType, idx, 'unknown', v)} />
-              <Stepper label="Düşük" value={u.children.pregnancyLoss || 0} onChange={v => updateOtherUnion(parentType, idx, 'pregnancyLoss', v)} />
-              <Stepper label="Ölü Doğum" value={u.children.stillbirth || 0} onChange={v => updateOtherUnion(parentType, idx, 'stillbirth', v)} />
-              {totalKids >= 2 && unionId && (
-                <ChildOrderEditor
-                  unionId={unionId}
-                  items={hSibItems}
-                  getOrder={() => getChildOrder(unionId)}
-                  setOrder={(order) => setChildOrder(unionId, order)}
-                  label="Çocuk Sırası"
-                />
-              )}
-              <button onClick={() => removeOtherUnion(parentType, idx)} style={{ marginTop: '6px', width: '100%', padding: '3px', fontSize: '0.7rem', background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '3px', cursor: 'pointer' }}>Kaldır</button>
-            </div>
-          );
-        })}
+        <div className="counts">
+          {KIDS.map(([k, t]) => <Count key={k} label={t} value={r.children[k] || 0} onChange={v => updateRelativeChildren(side, type, idx, k, v)} />)}
+        </div>
+        {kidTotal(r.children) >= 2 && r.unionId && (
+          <ChildOrderEditor items={childItems(pedigreeData, r.unionId, r.childIds)} getOrder={() => getChildOrder(r.unionId)}
+            setOrder={(order) => setChildOrder(r.unionId, order)} label="Çocukların sırası" />
+        )}
       </div>
-    );
-  };
-
-  /* ── Relative section (maternal or paternal, parent or GP level) ── */
-  const renderRelatives = (side, title, uncleLabel, auntLabel) => {
-    const uncleKey = 'uncles';
-    const auntKey = 'aunts';
-    const relatives = wd[side] || { uncles: [], aunts: [] };
-    const uncles = relatives[uncleKey] || [];
-    const aunts = relatives[auntKey] || [];
-    const summary = `${uncles.length} ${uncleLabel}, ${aunts.length} ${auntLabel}`;
-
+    ));
     return (
-      <Accordion id={side} title={title} summary={summary} open={openSectionId === side} onToggle={setOpenSection}>
-        {/* No count caps (clinician request 2026-10-23): clinical sibships
-            can be large; the layout, not a stepper limit, guards readability. */}
-        <Stepper label={`${uncleLabel} Sayısı`} value={uncles.length} onChange={v => updateRelativeCount(side, uncleKey, v)} />
-        {uncles.map((rel, idx) => {
-          const unionId = rel.unionId;
-          const cousinItems = childItems(pedigreeData, unionId, rel.childIds);
-          const totalKids = (rel.children.male || 0) + (rel.children.female || 0) +
-            (rel.children.unknown || 0) + (rel.children.pregnancyLoss || 0) + (rel.children.stillbirth || 0);
-
-          return (
-            <div key={rel.id} style={{ padding: '6px', background: '#f8fafc', borderRadius: '4px', marginTop: '4px' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '4px' }}>{uncleLabel} {idx + 1} Cocuklari</div>
-              <Stepper label="E" value={rel.children.male} onChange={v => updateRelativeChildren(side, uncleKey, idx, 'male', v)} />
-              <Stepper label="K" value={rel.children.female} onChange={v => updateRelativeChildren(side, uncleKey, idx, 'female', v)} />
-              <Stepper label="B" value={rel.children.unknown} onChange={v => updateRelativeChildren(side, uncleKey, idx, 'unknown', v)} />
-              <Stepper label="Düşük" value={rel.children.pregnancyLoss || 0} onChange={v => updateRelativeChildren(side, uncleKey, idx, 'pregnancyLoss', v)} />
-              <Stepper label="Ölü Doğum" value={rel.children.stillbirth || 0} onChange={v => updateRelativeChildren(side, uncleKey, idx, 'stillbirth', v)} />
-              {totalKids >= 2 && unionId && (
-                <ChildOrderEditor
-                  unionId={unionId}
-                  items={cousinItems}
-                  getOrder={() => getChildOrder(unionId)}
-                  setOrder={(order) => setChildOrder(unionId, order)}
-                  label="Çocuk Sırası"
-                />
-              )}
-            </div>
-          );
-        })}
-
-        <div style={{ marginTop: '10px' }}>
-          <Stepper label={`${auntLabel} Sayısı`} value={aunts.length} onChange={v => updateRelativeCount(side, auntKey, v)} />
-          {aunts.map((rel, idx) => {
-            const unionId = rel.unionId;
-            const cousinItems = childItems(pedigreeData, unionId, rel.childIds);
-            const totalKids = (rel.children.male || 0) + (rel.children.female || 0) +
-              (rel.children.unknown || 0) + (rel.children.pregnancyLoss || 0) + (rel.children.stillbirth || 0);
-
-            return (
-              <div key={rel.id} style={{ padding: '6px', background: '#f8fafc', borderRadius: '4px', marginTop: '4px' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '4px' }}>{auntLabel} {idx + 1} Cocuklari</div>
-                <Stepper label="E" value={rel.children.male} onChange={v => updateRelativeChildren(side, auntKey, idx, 'male', v)} />
-                <Stepper label="K" value={rel.children.female} onChange={v => updateRelativeChildren(side, auntKey, idx, 'female', v)} />
-                <Stepper label="B" value={rel.children.unknown} onChange={v => updateRelativeChildren(side, auntKey, idx, 'unknown', v)} />
-                <Stepper label="Düşük" value={rel.children.pregnancyLoss || 0} onChange={v => updateRelativeChildren(side, auntKey, idx, 'pregnancyLoss', v)} />
-                <Stepper label="Ölü Doğum" value={rel.children.stillbirth || 0} onChange={v => updateRelativeChildren(side, auntKey, idx, 'stillbirth', v)} />
-                {totalKids >= 2 && unionId && (
-                  <ChildOrderEditor
-                    unionId={unionId}
-                    items={cousinItems}
-                    getOrder={() => getChildOrder(unionId)}
-                    setOrder={(order) => setChildOrder(unionId, order)}
-                    label="Çocuk Sırası"
-                  />
-                )}
-              </div>
-            );
-          })}
+      <Section id={id} icon={icon} title={title} summary={summary} {...sec}>
+        <div className="counts">
+          <Count label={uncleLabel} value={uncles.length} onChange={v => updateRelativeCount(side, 'uncles', v)} />
+          <Count label={auntLabel} value={aunts.length} onChange={v => updateRelativeCount(side, 'aunts', v)} />
         </div>
-      </Accordion>
+        {people('uncles', uncleLabel)}
+        {people('aunts', auntLabel)}
+      </Section>
     );
   };
 
-  // Proband's sibship (real ids, drawing order) for ChildOrderEditor
+  // proband's sibship
+  const sc = deriveSiblingCounts(pedigreeData);
   const parentsUnionId = wd.parents.unionId;
   const probandItems = parentsUnionId ? childItems(pedigreeData, parentsUnionId, childIdsOf(pedigreeData, parentsUnionId), wd.proband.id) : [];
-  const totalProbandSibs = probandItems.length; // includes proband
+  const sibSummary = kidSummary({ male: sc.male, female: sc.female, unknown: sc.unknown, pregnancyLoss: sc.pregnancyLoss, deceased: sc.deceased }) || 'yok';
+  const sibAges = [
+    ...wd.siblings.male.map((s, i) => ['male', i, `Erkek kardeş ${i + 1}`, s]),
+    ...wd.siblings.female.map((s, i) => ['female', i, `Kız kardeş ${i + 1}`, s]),
+    ...wd.siblings.unknown.map((s, i) => ['unknown', i, `Kardeş ${i + 1}`, s]),
+  ];
+  const sexWord = { male: 'erkek', female: 'kadın', unknown: 'cinsiyet bilinmiyor' }[wd.proband.sex];
+  const ggCount = Object.values(wd.greatGrandparents || {}).filter(Boolean).length;
+  const consSummary = wd.parents.consanguineous
+    ? ({ first_cousin: '1. kuzen', second_cousin: '2. kuzen', unknown: 'derece bilinmiyor' }[wd.parents.consanguinityDegree] || 'var')
+    : 'yok';
 
   return (
-    <div className="panel wizard-panel">
-      <h2 style={{ marginBottom: '12px', color: '#1e293b', fontSize: '1.1rem' }}>Klinik Pedigri</h2>
-
-      <SelectedPersonCard
-        wizardData={wd}
-        pedigreeData={pedigreeData}
-        selectedId={selectedId}
-        selectedId2={selectedId2}
-        onDeleteIndividual={deleteIndividual}
-        onClearSelection={clearSelection}
-      />
-
-      <LayerHeader label="Temel Bilgiler" />
-      {/* ── 1. PROBAND ── */}
-      <Accordion id="proband" title="1. Proband" open={openSectionId === 'proband'} onToggle={setOpenSection}>
-        <div className="form-group-row">
-          <span className="form-label">Cinsiyet</span>
-          <select value={wd.proband.sex} onChange={e => updateWizardData('proband', 'sex', e.target.value)} className="form-input">
-            <option value="male">Erkek</option>
-            <option value="female">Kadın</option>
-            <option value="unknown">Bilinmiyor</option>
-          </select>
+    <aside className="side side-left wizard-panel">
+      <div className="side-header">
+        <div className="brand">
+          <span className="brand-name">Peditree</span>
+          <span className="brand-sub">Klinik pedigri</span>
         </div>
-        <div className="form-group-row">
-          <span className="form-label">Yaş</span>
-          <input type="number" min="0" value={wd.proband.age} onChange={e => updateWizardData('proband', 'age', sanitizeAgeValue(e.target.value))} className="form-input" placeholder="..." style={{ width: '70px' }} />
-        </div>
-      </Accordion>
+      </div>
 
-      {/* ── 2. KARDESLER ──
-          v0.4.1: counts are derived from the built graph (pedigreeData), not
-          from wd.siblings.*.length alone — a sibling added from the selected-
-          person editor lives in wd.graphEdits, a separate mechanism the old
-          length-based counters couldn't see. See deriveSiblingCounts /
-          removeLastSibling for why. */}
-      {(() => {
-        const sc = deriveSiblingCounts(pedigreeData);
-        return (
-          <Accordion id="siblings" title="2. Kardeşler" summary={`${sc.male}E ${sc.female}K ${sc.unknown}B`} open={openSectionId === 'siblings'} onToggle={setOpenSection}>
-            <SiblingStepper label="Erkek Kardeş" value={sc.male} onIncrement={() => addSiblingOfCategory('male')} onDecrement={() => removeLastSibling('male')} />
-            {wd.siblings.male.map((s, i) => (
-              <div key={s.id} className="form-group-row" style={{ paddingLeft: 14 }}>
-                <span className="form-label" style={{ fontSize: '0.72rem' }}>E.K. {i + 1} Yas:</span>
-                <input type="number" min="0" value={s.age} onChange={e => updateSiblingAge('male', i, sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '55px', padding: '3px' }} placeholder="..." />
-              </div>
-            ))}
+      <div className="side-body">
+        <div className="group-label">Çekirdek aile</div>
 
-            <SiblingStepper label="Kız Kardeş" value={sc.female} onIncrement={() => addSiblingOfCategory('female')} onDecrement={() => removeLastSibling('female')} />
-            {wd.siblings.female.map((s, i) => (
-              <div key={s.id} className="form-group-row" style={{ paddingLeft: 14 }}>
-                <span className="form-label" style={{ fontSize: '0.72rem' }}>K.K. {i + 1} Yas:</span>
-                <input type="number" min="0" value={s.age} onChange={e => updateSiblingAge('female', i, sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '55px', padding: '3px' }} placeholder="..." />
-              </div>
-            ))}
-
-            <SiblingStepper label="Bilinmeyen" value={sc.unknown} onIncrement={() => addSiblingOfCategory('unknown')} onDecrement={() => removeLastSibling('unknown')} />
-            {wd.siblings.unknown.map((s, i) => (
-              <div key={s.id} className="form-group-row" style={{ paddingLeft: 14 }}>
-                <span className="form-label" style={{ fontSize: '0.72rem' }}>B. {i + 1} Yas:</span>
-                <input type="number" min="0" value={s.age} onChange={e => updateSiblingAge('unknown', i, sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '55px', padding: '3px' }} placeholder="..." />
-              </div>
-            ))}
-
-            <SiblingStepper label="Düşük/Kayıp" value={sc.pregnancyLoss} onIncrement={() => addSiblingOfCategory('pregnancyLoss')} onDecrement={() => removeLastSibling('pregnancyLoss')} />
-            <SiblingStepper label="Ölü Doğum" value={sc.deceased} onIncrement={() => addSiblingOfCategory('deceased')} onDecrement={() => removeLastSibling('deceased')} />
-
-            {totalProbandSibs >= 2 && parentsUnionId && (
-              <ChildOrderEditor
-                unionId={parentsUnionId}
-                items={probandItems}
-                getOrder={() => getChildOrder(parentsUnionId)}
-                setOrder={(order) => setChildOrder(parentsUnionId, order)}
-                label="Kardeş Sırası"
-              />
-            )}
-          </Accordion>
-        );
-      })()}
-
-      <LayerHeader label="Ebeveynler ve Akrabalık" />
-      {/* ── 3. ANNE-BABA ── */}
-      <Accordion id="parents" title="3. Anne - Baba" open={openSectionId === 'parents'} onToggle={setOpenSection}>
-        <label className="checkbox-label"><input type="checkbox" checked={wd.parents.motherExists} onChange={e => updateWizardData('parents', 'motherExists', e.target.checked)} /> Anne Var</label>
-        {wd.parents.motherExists && (
-          <div style={{ marginLeft: 16 }}>
-            <div className="form-group-row"><span className="form-label">Yaş:</span><input type="number" min="0" value={wd.parents.motherAge} onChange={e => updateWizardData('parents', 'motherAge', sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '70px' }} placeholder="..." /></div>
-            {renderOtherUnions('mother')}
+        <Section id="proband" icon={User} title="Proband" summary={`${sexWord}${wd.proband.age ? `, ${wd.proband.age} yaş` : ''}`} {...sec}>
+          <div className="field-col">
+            <span className="field-label">Cinsiyet</span>
+            <SexSwitch value={wd.proband.sex} onChange={v => updateWizardData('proband', 'sex', v)} />
           </div>
-        )}
-        <div style={{ margin: '8px 0', borderTop: '1px solid #e2e8f0' }} />
-        <label className="checkbox-label"><input type="checkbox" checked={wd.parents.fatherExists} onChange={e => updateWizardData('parents', 'fatherExists', e.target.checked)} /> Baba Var</label>
-        {wd.parents.fatherExists && (
-          <div style={{ marginLeft: 16 }}>
-            <div className="form-group-row"><span className="form-label">Yaş:</span><input type="number" min="0" value={wd.parents.fatherAge} onChange={e => updateWizardData('parents', 'fatherAge', sanitizeAgeValue(e.target.value))} className="form-input" style={{ width: '70px' }} placeholder="..." /></div>
-            {renderOtherUnions('father')}
+          <AgeField label="Yaş" value={wd.proband.age} onChange={v => updateWizardData('proband', 'age', v)} />
+        </Section>
+
+        <Section id="siblings" icon={Users} title="Kardeşler" summary={sibSummary} {...sec}>
+          <div className="counts">
+            <div className="count"><span className="count-label">Erkek</span>
+              <Counter label="Erkek kardeş" value={sc.male} onMinus={() => removeLastSibling('male')} onPlus={() => addSiblingOfCategory('male')} /></div>
+            <div className="count"><span className="count-label">Kız</span>
+              <Counter label="Kız kardeş" value={sc.female} onMinus={() => removeLastSibling('female')} onPlus={() => addSiblingOfCategory('female')} /></div>
+            <div className="count"><span className="count-label">Bilinmeyen</span>
+              <Counter label="Cinsiyeti bilinmeyen kardeş" value={sc.unknown} onMinus={() => removeLastSibling('unknown')} onPlus={() => addSiblingOfCategory('unknown')} /></div>
+            <div className="count"><span className="count-label">Düşük</span>
+              <Counter label="Düşük" value={sc.pregnancyLoss} onMinus={() => removeLastSibling('pregnancyLoss')} onPlus={() => addSiblingOfCategory('pregnancyLoss')} /></div>
+            <div className="count"><span className="count-label">Ölü doğum</span>
+              <Counter label="Ölü doğum" value={sc.deceased} onMinus={() => removeLastSibling('deceased')} onPlus={() => addSiblingOfCategory('deceased')} /></div>
           </div>
-        )}
-        <div style={{ margin: '8px 0', borderTop: '1px solid #e2e8f0' }} />
-        <div className="form-group-row">
-          <span className="form-label">İlişki Durumu</span>
-          <select value={wd.parents.relationshipStatus === 'separated' ? 'divorced' : wd.parents.relationshipStatus} onChange={e => updateWizardData('parents', 'relationshipStatus', e.target.value)} className="form-input" style={{ fontSize: '0.8rem' }}>
-            <option value="together">Birlikte</option>
-            <option value="divorced">Boşanmış/Ayrılmış</option>
-            <option value="unknown">Bilinmiyor</option>
-          </select>
-        </div>
-      </Accordion>
-
-      {/* ── 4. AKRABALIK ── */}
-      <Accordion id="consanguinity" title="4. Akrabalık" summary={wd.parents.consanguineous ? wd.parents.consanguinityDegree : 'Yok'} open={openSectionId === 'consanguinity'} onToggle={setOpenSection}>
-        <label className="checkbox-label"><input type="checkbox" checked={wd.parents.consanguineous} onChange={e => updateWizardData('parents', 'consanguineous', e.target.checked)} /> Akraba Evliliği Var</label>
-
-        {wd.parents.consanguineous && (
-          <div style={{ marginLeft: 16, marginTop: 8 }}>
-            <div className="form-group">
-              <label className="form-label">Derece</label>
-              <select value={wd.parents.consanguinityDegree} onChange={e => updateWizardData('parents', 'consanguinityDegree', e.target.value)} className="form-input">
-                <option value="unknown">Bilinmiyor</option>
-                <option value="first_cousin">1. Kuzen</option>
-                <option value="second_cousin">2. Kuzen</option>
-                <option value="first_cousin_once_removed">1. Kuzen - bir kez uzaklaştırılmış</option>
-                <option value="second_cousin_once_removed">2. Kuzen - bir kez uzaklaştırılmış</option>
-                <option value="double_first_cousin">Çift 1. kuzen</option>
-                <option value="multiple_relationship">Birden fazla akrabalık hattı</option>
-                <option value="other">Diğer</option>
-              </select>
+          {sibAges.length > 0 && (
+            <div className="field-col">
+              <div className="order-title">Yaşlar</div>
+              {sibAges.map(([type, i, label, s]) => (
+                <AgeField key={s.id} label={label} value={s.age} onChange={v => updateSiblingAge(type, i, v)} />
+              ))}
             </div>
+          )}
+          {probandItems.length >= 2 && parentsUnionId && (
+            <ChildOrderEditor items={probandItems} getOrder={() => getChildOrder(parentsUnionId)}
+              setOrder={(order) => setChildOrder(parentsUnionId, order)} label="Doğum sırası" />
+          )}
+        </Section>
 
-            {wd.parents.consanguinityDegree === 'first_cousin' && (
-              <div className="form-group" style={{ marginTop: 8 }}>
-                <label className="form-label">Akrabalık Yolu</label>
-                <select value={wd.parents.consanguinityPath} onChange={e => updateWizardData('parents', 'consanguinityPath', e.target.value)} className="form-input" style={{ fontSize: '0.8rem' }}>
-                  <option value="unknown">Bilinmiyor</option>
-                  <optgroup label="Paralel kuzen">
-                    <option value="mothers_paternal_is_fathers_paternal">Dede (Anne) - Dede (Baba) kardeş</option>
-                    <option value="mothers_maternal_is_fathers_maternal">Anneanne - Babaanne kardeş</option>
-                  </optgroup>
-                  <optgroup label="Çapraz kuzen">
-                    <option value="cross_cousin_1">Anneanne - Dede (Baba) kardeş</option>
-                    <option value="cross_cousin_2">Dede (Anne) - Babaanne kardeş</option>
-                  </optgroup>
-                </select>
-                {wd.parents.consanguinityPath === 'unknown' && (
-                  <div style={{ fontSize: '0.7rem', color: '#ef4444', marginTop: 4 }}>* Yol bilinmediğinden üst soy bağlantısı çizilmeyecek.</div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </Accordion>
-
-      {/* ── 4b. CUSTOM CONSANGUINITY ── */}
-      <Accordion id="customConsanguinity" title="4b. Özel Akrabalık Bağları"
-        summary={`${(wd.customConsanguinity || []).length} bağlantı`}
-        open={openSectionId === 'customConsanguinity'} onToggle={setOpenSection}>
-        <div style={{ fontSize: '0.75rem', color: '#475569', marginBottom: '8px' }}>
-          Şablonda olmayan akrabalık bağlarını tanımlayın. İki birey seçip "kardeş" olarak işaretleyin — ortak ebeveyn otomatik oluşturulur.
-        </div>
-
-        {(wd.customConsanguinity || []).map((link, idx) => (
-          <div key={link.id} style={{
-            display: 'flex', alignItems: 'center', gap: '4px',
-            padding: '4px 6px', background: '#f8fafc', borderRadius: '4px',
-            marginBottom: '4px', fontSize: '0.75rem',
-          }}>
-            <span style={{ flex: 1 }}>{nameOf(link.person1)} ↔ {nameOf(link.person2)}</span>
-            <button onClick={() => removeCustomConsanguinity(idx)}
-              style={{ padding: '1px 6px', fontSize: '0.65rem', background: '#fee2e2',
-                color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '3px', cursor: 'pointer' }}>
-              X
-            </button>
-          </div>
-        ))}
-
-        <CustomConsanguinityAdder
-          individuals={pedigreeData?.individuals || []}
-          onAdd={(p1, p2) => addCustomConsanguinity(p1, p2)}
-          nameOf={nameOf}
-        />
-
-        {/* Union relationship background (v0.3a.2) — replaces the old
-            single consanguinity checkbox with the full model: not asked /
-            no consanguinity reported / consanguinity reported / same
-            village-origin / unknown. See relationshipBackground.js. */}
-        {pedigreeData?.unions?.length > 0 && (
-          <div style={{ marginTop: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '8px' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
-              Birliklerin Akrabalık / İlişki Geçmişi
-            </div>
-            {pedigreeData.unions.map(u => (
-              <div key={u.id} style={{ marginBottom: '6px' }}>
-                <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{nameOf(u.partners[0])} — {nameOf(u.partners[1])}</div>
-                <select
-                  value={u.relationshipBackground || 'not_asked'}
-                  disabled={u.id === wd.parents.unionId && wd.parents.consanguineous}
-                  onChange={e => setUnionRelationshipBackground(u.id, e.target.value)}
-                  className="form-input"
-                  style={{ fontSize: '0.7rem', padding: '3px' }}
-                >
-                  {RELATIONSHIP_BACKGROUND_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-            ))}
-          </div>
-        )}
-      </Accordion>
-
-      <LayerHeader label="Genişletilmiş Aile" />
-      {/* ── 5-6. MATERNAL / PATERNAL ── */}
-      {renderRelatives('maternalRelatives', '5. Anne Tarafı', 'Dayı', 'Teyze')}
-      {renderRelatives('paternalRelatives', '6. Baba Tarafı', 'Amca', 'Hala')}
-
-      {/* ── 7-8. GRANDPARENT SIBLINGS ── */}
-      {renderRelatives('maternalGPRelatives', '7. Dede/Nine Kardeşler (Anne)', 'B.Dayı', 'B.Teyze')}
-      {renderRelatives('paternalGPRelatives', '8. Dede/Nine Kardeşler (Baba)', 'B.Amca', 'B.Hala')}
-
-      {/* ── 9. GREAT-GRANDPARENTS ── */}
-      <Accordion id="greatGrandparents" title="9. Üst Jenerasyon (B.Dede/B.Anne)"
-        summary={Object.values(wd.greatGrandparents || {}).filter(Boolean).length > 0
-          ? `${Object.values(wd.greatGrandparents || {}).filter(Boolean).length} gösteriliyor`
-          : 'Yok'}
-        open={openSectionId === 'greatGrandparents'} onToggle={setOpenSection}>
-        <div style={{ fontSize: '0.8rem', color: '#475569', marginBottom: '8px' }}>
-          Her dedenin/ninenin ebeveynlerini göstermek için işaretleyin:
-        </div>
-        {[
-          { key: 'mat_gf', label: 'Dede (Anne) Ebeveynleri' },
-          { key: 'mat_gm', label: 'Anneanne Ebeveynleri' },
-          { key: 'pat_gf', label: 'Dede (Baba) Ebeveynleri' },
-          { key: 'pat_gm', label: 'Babaanne Ebeveynleri' },
-        ].map(({ key, label }) => (
-          <label key={key} className="checkbox-label" style={{ marginBottom: '4px', fontSize: '0.8rem' }}>
-            <input
-              type="checkbox"
-              checked={!!(wd.greatGrandparents || {})[key]}
-              onChange={e => toggleGreatGrandparents(key, e.target.checked)}
-            />
-            {label}
+        <Section id="parents" icon={Heart} title="Anne ve baba"
+          summary={[wd.parents.motherExists && 'anne', wd.parents.fatherExists && 'baba'].filter(Boolean).join(' · ') || 'yok'} {...sec}>
+          <label className="check"><input type="checkbox" checked={wd.parents.motherExists}
+            onChange={e => updateWizardData('parents', 'motherExists', e.target.checked)} /> Anne çizilsin</label>
+          {wd.parents.motherExists && (
+            <>
+              <AgeField label="Annenin yaşı" value={wd.parents.motherAge} onChange={v => updateWizardData('parents', 'motherAge', v)} />
+              {otherUnions('mother')}
+            </>
+          )}
+          <div className="divider" />
+          <label className="check"><input type="checkbox" checked={wd.parents.fatherExists}
+            onChange={e => updateWizardData('parents', 'fatherExists', e.target.checked)} /> Baba çizilsin</label>
+          {wd.parents.fatherExists && (
+            <>
+              <AgeField label="Babanın yaşı" value={wd.parents.fatherAge} onChange={v => updateWizardData('parents', 'fatherAge', v)} />
+              {otherUnions('father')}
+            </>
+          )}
+          <div className="divider" />
+          <label className="field-col">
+            <span className="field-label">Anne-baba ilişkisi</span>
+            <select className="select input-wide" value={shownStatus(wd.parents.relationshipStatus)} onChange={e => updateWizardData('parents', 'relationshipStatus', e.target.value)}>
+              {STATUS_OPTIONS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+            </select>
           </label>
-        ))}
-      </Accordion>
+        </Section>
 
-      <LayerHeader label="İleri Seçenekler" />
-      {/* ── 10. GEN 4 / ILERI ── */}
-      <Accordion id="gen4" title="10. İleri Akrabalar (4. Jen.)" summary={`${wd.gen4.length} kayıt`} open={openSectionId === 'gen4'} onToggle={setOpenSection}>
-        {wd.gen4.map((g, idx) => {
-          const unionId = g.unionId;
-          const totalKids = (g.male || 0) + (g.female || 0) + (g.unknown || 0);
-          const gen4Items = childItems(pedigreeData, unionId, g.childIds);
+        <div className="group-label">Akrabalar</div>
+        {relatives('maternalRelatives', GitFork, 'Anne tarafı', 'maternalRelatives', 'Dayı', 'Teyze')}
+        {relatives('paternalRelatives', GitFork, 'Baba tarafı', 'paternalRelatives', 'Amca', 'Hala')}
+        {relatives('maternalGPRelatives', Network, 'Anneanne / dede kardeşleri', 'maternalGPRelatives', 'Büyük dayı', 'Büyük teyze')}
+        {relatives('paternalGPRelatives', Network, 'Babaanne / dede kardeşleri', 'paternalGPRelatives', 'Büyük amca', 'Büyük hala')}
+        <Section id="greatGrandparents" icon={Layers} title="Büyük dede ve nineler" summary={ggCount ? `${ggCount} çift` : 'yok'} {...sec}>
+          <div className="field-hint">Ebeveynleri çizilecek büyükanne / büyükbabayı seçin.</div>
+          {[
+            ['mat_gf', 'Anne tarafı dedenin ebeveynleri'],
+            ['mat_gm', 'Anneannenin ebeveynleri'],
+            ['pat_gf', 'Baba tarafı dedenin ebeveynleri'],
+            ['pat_gm', 'Babaannenin ebeveynleri'],
+          ].map(([key, label]) => (
+            <label className="check" key={key}>
+              <input type="checkbox" checked={!!(wd.greatGrandparents || {})[key]} onChange={e => toggleGreatGrandparents(key, e.target.checked)} />
+              {label}
+            </label>
+          ))}
+        </Section>
 
-          return (
-            <div key={g.id} style={{ border: '1px solid #e2e8f0', padding: '8px', borderRadius: '4px', marginBottom: '6px', background: '#f8fafc' }}>
-              <div className="form-group" style={{ marginBottom: 6 }}>
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>Kimin çocuğu?</label>
-                <select value={g.targetPath} onChange={e => updateGen4(idx, 'targetPath', e.target.value)} disabled={totalKids > 0} className="form-input" style={{ fontSize: '0.8rem' }}>
+        <div className="group-label">Akrabalık</div>
+        <Section id="consanguinity" icon={Link2} title="Akraba evliliği (anne-baba)" summary={consSummary} {...sec}>
+          <label className="check"><input type="checkbox" checked={wd.parents.consanguineous}
+            onChange={e => updateWizardData('parents', 'consanguineous', e.target.checked)} /> Anne ve baba akraba</label>
+          {wd.parents.consanguineous && (
+            <>
+              <label className="field-col">
+                <span className="field-label">Derece</span>
+                <select className="select input-wide" value={wd.parents.consanguinityDegree} onChange={e => updateWizardData('parents', 'consanguinityDegree', e.target.value)}>
+                  <option value="unknown">Bilinmiyor</option>
+                  <option value="first_cousin">1. derece kuzen</option>
+                  <option value="second_cousin">2. derece kuzen</option>
+                  <option value="first_cousin_once_removed">1. kuzenin çocuğu (bir kuşak fark)</option>
+                  <option value="second_cousin_once_removed">2. kuzenin çocuğu (bir kuşak fark)</option>
+                  <option value="double_first_cousin">Çift 1. derece kuzen</option>
+                  <option value="multiple_relationship">Birden fazla akrabalık yolu</option>
+                  <option value="other">Diğer</option>
+                </select>
+              </label>
+              {wd.parents.consanguinityDegree === 'first_cousin' && (
+                <label className="field-col">
+                  <span className="field-label">Ortak atalar kimin üzerinden?</span>
+                  <select className="select input-wide" value={wd.parents.consanguinityPath} onChange={e => updateWizardData('parents', 'consanguinityPath', e.target.value)}>
+                    <option value="unknown">Bilinmiyor</option>
+                    <option value="mothers_paternal_is_fathers_paternal">Annenin babası ile babanın babası kardeş</option>
+                    <option value="mothers_maternal_is_fathers_maternal">Annenin annesi ile babanın annesi kardeş</option>
+                    <option value="cross_cousin_1">Annenin annesi ile babanın babası kardeş</option>
+                    <option value="cross_cousin_2">Annenin babası ile babanın annesi kardeş</option>
+                  </select>
+                </label>
+              )}
+              {(wd.parents.consanguinityDegree === 'unknown' || (wd.parents.consanguinityDegree === 'first_cousin' && wd.parents.consanguinityPath === 'unknown')) && (
+                <div className="field-hint">Ortak atalar seçilmediği için yalnızca çift çizgi çizilir; ortak atalar gösterilmez.</div>
+              )}
+            </>
+          )}
+        </Section>
+
+        <div className="group-label">Gelişmiş</div>
+        <Section id="customConsanguinity" icon={Link2} title="Ek akrabalık bağları"
+          summary={(wd.customConsanguinity || []).length ? `${wd.customConsanguinity.length} bağ` : ''} {...sec}>
+          {(wd.customConsanguinity || []).map((link, idx) => (
+            <div className="field" key={link.id}>
+              <span className="field-label">{nameOf(link.person1)} ↔ {nameOf(link.person2)}</span>
+              <button className="ui-btn ui-btn-sm ui-btn-ghost" onClick={() => removeCustomConsanguinity(idx)} aria-label="Bağı kaldır">Kaldır</button>
+            </div>
+          ))}
+          <SiblingLinker individuals={pedigreeData?.individuals || []} onAdd={(a, b) => addCustomConsanguinity(a, b)} nameOf={nameOf} />
+          {pedigreeData?.unions?.length > 0 && (
+            <div className="field-col">
+              <div className="divider" />
+              <div className="order-title">Çiftlerin akrabalık geçmişi</div>
+              {pedigreeData.unions.map(u => (
+                <label className="field-col" key={u.id}>
+                  <span className="field-hint">{nameOf(u.partners[0])} — {nameOf(u.partners[1])}</span>
+                  <select className="select input-wide" value={u.relationshipBackground || 'not_asked'}
+                    disabled={u.id === wd.parents.unionId && wd.parents.consanguineous}
+                    onChange={e => setUnionRelationshipBackground(u.id, e.target.value)}>
+                    {RELATIONSHIP_BACKGROUND_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                  </select>
+                </label>
+              ))}
+            </div>
+          )}
+        </Section>
+
+        <Section id="gen4" icon={Baby} title="Probandın / kardeşlerin çocukları" summary={wd.gen4.length ? `${wd.gen4.length} aile` : ''} {...sec}>
+          {wd.gen4.map((g, idx) => (
+            <div className="sub" key={g.id}>
+              <div className="sub-head">
+                <span>Aile {idx + 1}</span>
+                <button className="ui-btn ui-btn-sm ui-btn-ghost" onClick={() => removeGen4(idx)}>Kaldır</button>
+              </div>
+              <label className="field-col">
+                <span className="field-label">Kimin çocukları?</span>
+                <select className="select input-wide" value={g.targetPath} disabled={(g.male || 0) + (g.female || 0) + (g.unknown || 0) > 0}
+                  onChange={e => updateGen4(idx, 'targetPath', e.target.value)}>
                   <option value={wd.proband.id}>Proband</option>
-                  {wd.siblings.male.map((sib, i) => <option key={sib.id} value={sib.id}>E. Kardeş {i + 1}</option>)}
-                  {wd.siblings.female.map((sib, i) => <option key={sib.id} value={sib.id}>K. Kardeş {i + 1}</option>)}
+                  {wd.siblings.male.map((sib, i) => <option key={sib.id} value={sib.id}>Erkek kardeş {i + 1}</option>)}
+                  {wd.siblings.female.map((sib, i) => <option key={sib.id} value={sib.id}>Kız kardeş {i + 1}</option>)}
                   {wd.siblings.unknown.map((sib, i) => <option key={sib.id} value={sib.id}>Kardeş {i + 1}</option>)}
                 </select>
+              </label>
+              <div className="counts">
+                <Count label="Erkek" value={g.male || 0} onChange={v => updateGen4(idx, 'male', v)} />
+                <Count label="Kız" value={g.female || 0} onChange={v => updateGen4(idx, 'female', v)} />
+                <Count label="Bilinmeyen" value={g.unknown || 0} onChange={v => updateGen4(idx, 'unknown', v)} />
               </div>
-              <Stepper label="Erkek" value={g.male} onChange={v => updateGen4(idx, 'male', v)} />
-              <Stepper label="Kız" value={g.female} onChange={v => updateGen4(idx, 'female', v)} />
-              <Stepper label="Bil." value={g.unknown} onChange={v => updateGen4(idx, 'unknown', v)} />
-              {totalKids >= 2 && unionId && (
-                <ChildOrderEditor
-                  unionId={unionId}
-                  items={gen4Items}
-                  getOrder={() => getChildOrder(unionId)}
-                  setOrder={(order) => setChildOrder(unionId, order)}
-                  label="Çocuk Sırası"
-                />
+              {(g.male || 0) + (g.female || 0) + (g.unknown || 0) >= 2 && g.unionId && (
+                <ChildOrderEditor items={childItems(pedigreeData, g.unionId, g.childIds)} getOrder={() => getChildOrder(g.unionId)}
+                  setOrder={(order) => setChildOrder(g.unionId, order)} label="Çocukların sırası" />
               )}
-              <button onClick={() => removeGen4(idx)} style={{ marginTop: 6, width: '100%', padding: '3px', fontSize: '0.7rem', background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '3px', cursor: 'pointer' }}>Kaldır</button>
             </div>
-          );
-        })}
-        <button className="btn btn-primary" onClick={() => addGen4(wd.proband.id)} style={{ fontSize: '0.8rem', padding: '6px 10px', width: '100%' }}>+ 4. Kuşak Ekle</button>
-      </Accordion>
-    </div>
+          ))}
+          <button className="ui-btn ui-btn-sm" onClick={() => addGen4(wd.proband.id)}>+ Çocuk ailesi ekle</button>
+        </Section>
+      </div>
+    </aside>
   );
 }

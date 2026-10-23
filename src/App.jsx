@@ -10,6 +10,7 @@ import IndividualEditor from './components/IndividualEditor';
 import WizardPanel from './components/WizardPanel';
 import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid } from 'lucide-react';
 import './styles/app.css';
+import './styles/ui.css';
 
 function App() {
   const {
@@ -160,51 +161,33 @@ function App() {
   };
 
   return (
-    <>
+    <div className={`app-shell${selectedNode || selectedNode2 ? ' has-editor' : ''}`}>
       <WizardPanel />
 
       <div className="canvas-container">
         {/* KI-5/KI-6: toolbar and notices sit in normal flow ABOVE the canvas —
             they can no longer cover pedigree symbols, and the toolbar wraps on
             narrow windows instead of overlapping the canvas controls. */}
-        <div className="canvas-toolbar">
-          <button className="btn" onClick={handleNewPedigree} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title="Kaydedilmiş pedigriyi sil ve yeniden başla">
-            <FilePlus2 size={16} /> Yeni Pedigri
-          </button>
-          <button
-            className="btn"
-            onClick={handleUndo}
-            disabled={!_history || _history.length === 0}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: (!_history || _history.length === 0) ? 0.5 : 1 }}
-            title={_history && _history.length > 0 ? `Geri al (${_history.length} adım mevcut)` : 'Geri alınacak adım yok'}
-          >
-            <Undo2 size={16} /> Geri Al
-          </button>
-          <button
-            className="btn"
-            onClick={handleRedo}
-            disabled={!_future || _future.length === 0}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: (!_future || _future.length === 0) ? 0.5 : 1 }}
-            title={_future && _future.length > 0 ? `Yinele (${_future.length} adım mevcut)` : 'Yinelenecek adım yok'}
-          >
-            <Redo2 size={16} /> Yinele
-          </button>
-          <button className="btn" onClick={relayout} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title="Çizimi baştan düzenle: düzenlemelerden sonra korunan yerleşim yerine tüm pedigriyi yeniden yerleştirir (geri alınabilir)">
-            <LayoutGrid size={16} /> Yeniden Düzenle
-          </button>
-          <button className="btn" onClick={handleSaveProject} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title="Pedigriyi proje dosyası olarak kaydet (.peditree.json)">
-            <Save size={16} /> Kaydet
-          </button>
-          <button className="btn" onClick={() => fileInputRef.current && fileInputRef.current.click()} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title="Proje dosyası aç (.peditree.json; eski biçim de açılır)">
-            <FolderOpen size={16} /> Aç
-          </button>
-          <input ref={fileInputRef} type="file" accept=".json,application/json" onChange={handleOpenProject} style={{ display: 'none' }} aria-label="Proje dosyası seç" />
-          <button className="btn btn-primary" onClick={handleExportSVG} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Download size={16} /> SVG
-          </button>
-          <button className="btn btn-primary" onClick={handleExportPNG} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <ImageIcon size={16} /> PNG
-          </button>
+        <div className="canvas-toolbar toolbar">
+          <div className="toolbar-group">
+            <button className="ui-btn" onClick={handleNewPedigree} title="Kaydedilmiş pedigriyi sil ve yeniden başla"><FilePlus2 size={15} /> Yeni</button>
+            <button className="ui-btn" onClick={() => fileInputRef.current && fileInputRef.current.click()} title="Proje dosyası aç (.peditree.json; eski biçim de açılır)"><FolderOpen size={15} /> Aç</button>
+            <button className="ui-btn" onClick={handleSaveProject} title="Pedigriyi proje dosyası olarak kaydet (.peditree.json)"><Save size={15} /> Kaydet</button>
+            <input ref={fileInputRef} type="file" accept=".json,application/json" onChange={handleOpenProject} style={{ display: 'none' }} aria-label="Proje dosyası seç" />
+          </div>
+          <div className="toolbar-sep" />
+          <div className="toolbar-group">
+            <button className="ui-btn ui-btn-icon" onClick={handleUndo} disabled={!_history || _history.length === 0}
+              title={_history && _history.length > 0 ? `Geri al (${_history.length} adım)` : 'Geri alınacak adım yok'} aria-label="Geri al"><Undo2 size={15} /></button>
+            <button className="ui-btn ui-btn-icon" onClick={handleRedo} disabled={!_future || _future.length === 0}
+              title={_future && _future.length > 0 ? `Yinele (${_future.length} adım)` : 'Yinelenecek adım yok'} aria-label="Yinele"><Redo2 size={15} /></button>
+            <button className="ui-btn" onClick={relayout} title="Çizimi baştan düzenle: tüm pedigriyi yeniden yerleştirir (geri alınabilir)"><LayoutGrid size={15} /> Yeniden Düzenle</button>
+          </div>
+          <div className="toolbar-spacer" />
+          <div className="toolbar-group">
+            <button className="ui-btn" onClick={handleExportSVG} title="SVG olarak indir"><Download size={15} /> SVG</button>
+            <button className="ui-btn ui-btn-primary" onClick={handleExportPNG} title="PNG olarak indir"><ImageIcon size={15} /> PNG</button>
+          </div>
         </div>
 
         <div className="canvas-notices">
@@ -271,7 +254,7 @@ function App() {
         </div>
       </div>
 
-      <div className="panel editor-panel">
+      <aside className="side side-right editor-panel">
         <IndividualEditor
           node={selectedNode}
           node2={selectedNode2}
@@ -296,19 +279,8 @@ function App() {
           onAddParents={addParentsTo}
           onAddSibling={addSiblingTo}
         />
-
-        {/* v0.3a.4: the raw graph dump exposes internal IDs (mother, father,
-            U_PARENTS, ...) which must NOT appear in normal clinical UI. It
-            is now a collapsed developer/debug affordance — hidden by
-            default, opened deliberately via the disclosure triangle. */}
-        <details style={{ marginTop: '30px', padding: '10px', background: '#f8fafc', borderRadius: '6px', fontSize: '11px', color: '#94a3b8', wordWrap: 'break-word' }}>
-          <summary style={{ cursor: 'pointer', color: '#94a3b8' }}>Geliştirici: ham grafik verisi (teknik ID’ler)</summary>
-          <pre style={{ overflow: 'auto', maxHeight: '300px' }}>
-            {JSON.stringify({ individuals: pedigreeData.individuals, unions: pedigreeData.unions }, null, 2)}
-          </pre>
-        </details>
-      </div>
-    </>
+      </aside>
+    </div>
   );
 }
 

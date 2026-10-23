@@ -33,105 +33,23 @@ export default function ChildOrderEditor({ items, getOrder, setOrder, label }) {
     orderedItems = [...items];
   }
 
-  const moveUp = (index) => {
-    if (index <= 0) return;
+  const move = (index, delta) => {
+    const j = index + delta;
+    if (j < 0 || j >= orderedItems.length) return;
     const tokens = orderedItems.map(it => it.token);
-    [tokens[index - 1], tokens[index]] = [tokens[index], tokens[index - 1]];
-    setOrder(tokens);
-  };
-
-  const moveDown = (index) => {
-    if (index >= orderedItems.length - 1) return;
-    const tokens = orderedItems.map(it => it.token);
-    [tokens[index], tokens[index + 1]] = [tokens[index + 1], tokens[index]];
+    [tokens[index], tokens[j]] = [tokens[j], tokens[index]];
     setOrder(tokens);
   };
 
   return (
-    <div style={{
-      marginTop: '6px',
-      padding: '6px',
-      background: '#f1f5f9',
-      borderRadius: '4px',
-      border: '1px solid #e2e8f0',
-    }}>
-      {label && (
-        <div style={{
-          fontSize: '0.7rem',
-          fontWeight: 600,
-          color: '#475569',
-          marginBottom: '4px',
-        }}>
-          {label}
-        </div>
-      )}
+    <div className="order-list">
+      {label && <div className="order-title">{label} <span className="muted">(soldan sağa)</span></div>}
       {orderedItems.map((item, idx) => (
-        <div
-          key={item.token}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '3px 4px',
-            marginBottom: idx < orderedItems.length - 1 ? '2px' : 0,
-            background: '#fff',
-            borderRadius: '3px',
-            border: '1px solid #e2e8f0',
-            fontSize: '0.72rem',
-          }}
-        >
-          <span style={{
-            flex: 1,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            color: '#334155',
-          }}>
-            {item.label}
-          </span>
-          <div style={{ display: 'flex', gap: '2px', marginLeft: '4px' }}>
-            <button
-              onClick={() => moveUp(idx)}
-              disabled={idx === 0}
-              aria-label={`${item.label} yukari tasi`}
-              style={{
-                width: '20px',
-                height: '20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px solid #cbd5e1',
-                borderRadius: '2px',
-                background: idx === 0 ? '#f1f5f9' : '#fff',
-                color: idx === 0 ? '#94a3b8' : '#334155',
-                cursor: idx === 0 ? 'default' : 'pointer',
-                fontSize: '0.7rem',
-                padding: 0,
-              }}
-            >
-              {'▲'}
-            </button>
-            <button
-              onClick={() => moveDown(idx)}
-              disabled={idx === orderedItems.length - 1}
-              aria-label={`${item.label} asagi tasi`}
-              style={{
-                width: '20px',
-                height: '20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px solid #cbd5e1',
-                borderRadius: '2px',
-                background: idx === orderedItems.length - 1 ? '#f1f5f9' : '#fff',
-                color: idx === orderedItems.length - 1 ? '#94a3b8' : '#334155',
-                cursor: idx === orderedItems.length - 1 ? 'default' : 'pointer',
-                fontSize: '0.7rem',
-                padding: 0,
-              }}
-            >
-              {'▼'}
-            </button>
+        <div key={item.token} className="order-item">
+          <span>{idx + 1}. {item.label}</span>
+          <div style={{ display: 'flex', gap: '2px' }}>
+            <button onClick={() => move(idx, -1)} disabled={idx === 0} aria-label={`${item.label} yukarı taşı`}>▲</button>
+            <button onClick={() => move(idx, 1)} disabled={idx === orderedItems.length - 1} aria-label={`${item.label} aşağı taşı`}>▼</button>
           </div>
         </div>
       ))}
