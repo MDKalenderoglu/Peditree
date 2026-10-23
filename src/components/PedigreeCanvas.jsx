@@ -21,7 +21,7 @@
  *   stillbirth → small shape + X cross
  */
 
-import { useEffect, useRef, forwardRef } from 'react';
+import { useEffect, useRef, useState, useCallback, forwardRef } from 'react';
 import * as d3 from 'd3';
 import { fillFor, regionAngles } from '../graph/conditionKey';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
@@ -105,10 +105,24 @@ function drawStroke(g, edge, dx = 0, dy = 0) {
 // belt-and-suspenders fallback for exportUtils.js and for tests/tools
 // that query the DOM directly.
 const PedigreeCanvas = forwardRef(function PedigreeCanvas(
-  { nodes, edges, selectedNodeId, selectedNodeId2, onNodeSelect, onUnionSelect, conditionKey = [] },
+  { nodes, edges, selectedNodeId, selectedNodeId2, onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar },
   forwardedRef
 ) {
   const svgRef = useRef(null);
+  const boxRef = useRef(null);
+  // where the quick-add bar sits: under the single selected person's symbol
+  const [anchor, setAnchor] = useState(null);
+  const barRef = useRef(null);
+  const [barHalf, setBarHalf] = useState(240);
+  useEffect(() => {
+    if (barRef.current) setBarHalf(barRef.current.offsetWidth / 2);
+  }, [anchor]);
+  const placeQuickBar = useCallback(() => {
+    const shape = svgRef.current && svgRef.current.querySelector('.node-selected .pedigree-shape');
+    if (!shape || !boxRef.current || selectedNodeId2) { setAnchor(null); return; }
+    const r = shape.getBoundingClientRect(), box = boxRef.current.getBoundingClientRect();
+    setAnchor({ x: r.left + r.width / 2 - box.left, y: r.bottom - box.top, width: box.width });
+  }, [selectedNodeId2]);
 
   const attachSvgRef = (node) => {
     svgRef.current = node;
@@ -496,14 +510,17 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // --- Zoom/Pan ---
     const zoom = d3.zoom()
       .scaleExtent([0.1, 4])
-      .on('zoom', (event) => { g.attr('transform', event.transform); });
+      .on('zoom', (event) => { g.attr('transform', event.transform); placeQuickBar(); });
     svg.call(zoom);
-    svg.call(zoom.transform, d3.zoomIdentity);
+    // keep the clinician's zoom/pan across edits (it used to jump back after
+    // every change); "Sığdır" resets it
+    svg.call(zoom.transform, d3.zoomTransform(svg.node()));
+    placeQuickBar();
 
     // Store for external reset
     svg.node().__zoom_ref = zoom;
 
-  }, [nodes, edges, selectedNodeId, selectedNodeId2, onNodeSelect, onUnionSelect, conditionKey]);
+  }, [nodes, edges, selectedNodeId, selectedNodeId2, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar]);
 
   const zoomBy = (k) => {
     const svg = d3.select(svgRef.current);
@@ -517,7 +534,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     if (zoom) svg.call(zoom.transform, d3.zoomIdentity);
   };
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div ref={boxRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
       <div className="zoom-controls" style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 10 }}>
         <button onClick={() => zoomBy(1.25)} title="Yakınlaştır" aria-label="Yakınlaştır">+</button>
         <button onClick={() => zoomBy(0.8)} title="Uzaklaştır" aria-label="Uzaklaştır">−</button>
@@ -531,6 +548,13 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         style={{ cursor: 'grab', background: '#f8fafc' }}
         onClick={() => onNodeSelect(null)}
       />
+      {anchor && renderQuickBar && (
+        <div className="quick-bar" ref={barRef}
+          style={{ left: Math.min(Math.max(anchor.x, barHalf + 8), anchor.width - barHalf - 8), top: anchor.y + 52 }}
+          onClick={e => e.stopPropagation()}>
+          {renderQuickBar()}
+        </div>
+      )}
     </div>
   );
 });

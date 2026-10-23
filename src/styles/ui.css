@@ -212,3 +212,25 @@ textarea.input { height: auto; min-height: 56px; padding: 6px 8px; resize: verti
 }
 .order-item button:hover:not(:disabled) { background: var(--sunken); color: var(--ink); }
 .order-item button:disabled { color: #d1d5db; cursor: default; }
+
+/* quick-add bar under the selected symbol (QuickAddBar.jsx) */
+.quick-bar {
+  position: absolute; z-index: 12; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 4px; padding: 4px 6px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12); white-space: nowrap;
+}
+.quick-group { display: flex; align-items: center; gap: 1px; }
+.quick-label { font-size: 11px; font-weight: 600; color: var(--muted); margin: 0 4px 0 2px; }
+.quick-btn {
+  width: 26px; height: 26px; display: grid; place-items: center; padding: 0;
+  border: none; border-radius: 6px; background: none; color: var(--ink); cursor: pointer;
+}
+.quick-btn:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
+.quick-btn:disabled, .quick-text:disabled { opacity: 0.35; cursor: default; }
+.quick-sep { width: 1px; height: 18px; background: var(--line); margin: 0 3px; }
+.quick-text {
+  font: inherit; font-size: 12px; font-weight: 500; height: 26px; padding: 0 8px;
+  border: none; border-radius: 6px; background: none; color: var(--ink-2); cursor: pointer;
+}
+.quick-text:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }

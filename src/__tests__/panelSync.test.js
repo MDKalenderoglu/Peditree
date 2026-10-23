@@ -7,6 +7,8 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { usePedigreeStore } from '../state/usePedigreeStore';
 import { kinshipOf } from '../graph/kinship';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
 beforeEach(() => S().resetPedigree());
@@ -149,5 +151,36 @@ describe('right panel quick adds (clinician feedback 2026-10-24)', () => {
     expect(wd().parents.fatherOtherUnions).toHaveLength(1);
     S().setUnionStatus(wd().parents.fatherOtherUnions[0].unionId, 'divorced');
     expect(wd().parents.fatherOtherUnions[0].status).toBe('divorced');
+  });
+});
+
+describe('quick-add bar on the drawing (2026-10-24)', () => {
+  it('a sibling for someone without drawn parents brings a mother and a father — one undo step', () => {
+    S().addSpouseTo('proband', 'female');
+    const spouse = S().doc.graph.unions.find(u => u.partners.includes('proband') && u.id !== wd().parents.unionId)
+      .partners.find(p => p !== 'proband');
+    const steps = S()._history.length;
+    S().addSiblingTo(spouse, 'male', { createParents: true });
+    expect(S()._history.length).toBe(steps + 1);
+    const pu = S().doc.graph.parentChildRelationships.find(r => r.children.includes(spouse));
+    expect(pu.children).toHaveLength(2);
+    expect(errors()).toEqual([]);
+    S().undo();
+    expect(S().doc.graph.parentChildRelationships.some(r => r.children.includes(spouse))).toBe(false);
+  });
+
+  it('without createParents the old refusal stands', () => {
+    S().addSpouseTo('proband', 'female');
+    const before = S().doc;
+    const spouse = S().doc.graph.unions.find(u => u.partners.includes('proband') && u.id !== wd().parents.unionId)
+      .partners.find(p => p !== 'proband');
+    S().addSiblingTo(spouse, 'male');
+    expect(S().doc).toBe(before);
+  });
+
+  it('the canvas keeps the zoom across edits and shows the bar for one selected person only', () => {
+    const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
+    expect(src).toMatch(/svg\.call\(zoom\.transform, d3\.zoomTransform\(svg\.node\(\)\)\)/);
+    expect(src).toMatch(/selectedNodeId2\) \{ setAnchor\(null\)/);
   });
 });

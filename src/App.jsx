@@ -8,6 +8,7 @@ import { clinicalNotices } from './utils/clinicalNotices';
 import PedigreeCanvas from './components/PedigreeCanvas';
 import IndividualEditor from './components/IndividualEditor';
 import WizardPanel from './components/WizardPanel';
+import QuickAddBar from './components/QuickAddBar';
 import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
@@ -252,6 +253,11 @@ function App() {
           onNodeSelect={handleNodeSelect}
           onUnionSelect={selectUnion}
           conditionKey={pedigreeData.conditionKey || []}
+          renderQuickBar={() => (
+            <QuickAddBar node={selectedNode} pedigreeData={pedigreeData}
+              onAddSibling={addSiblingTo} onAddSpouse={addSpouseTo} onAddParents={addParentsTo}
+              onAddChild={(unionId, sex, targetId, extra) => (unionId ? addChildToUnion(unionId, sex, extra) : addChildTo(targetId, sex, extra))} />
+          )}
         />
         </div>
       </div>

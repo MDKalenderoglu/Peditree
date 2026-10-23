@@ -311,11 +311,21 @@ export function addParents(doc, childId, opts = {}) {
   });
 }
 
-/** Add a sibling (a new child of the person's existing parent union). */
+/**
+ * Add a sibling (a new child of the person's parent union). With
+ * `createParents`, a person without drawn parents first gets a mother and a
+ * father — one operation, one undo step.
+ */
 export function addSibling(doc, personId, opts = {}) {
+  const { createParents, ...childOpts } = opts;
   const plan = computeAddSiblingPlan(graphView(doc), personId);
-  if (!plan.ok) return { ok: false, doc, reason: plan.reason };
-  return addChild(doc, plan.unionId, opts);
+  if (plan.ok) return addChild(doc, plan.unionId, childOpts);
+  if (!createParents || computeAddParentsPlan(graphView(doc), personId).ok !== true) return { ok: false, doc, reason: plan.reason };
+  const r1 = addParents(doc, personId, {});
+  if (!r1.ok) return r1;
+  const r2 = addChild(r1.doc, r1.created.unionId, childOpts);
+  if (!r2.ok) return { ...r2, doc };
+  return { ...r2, created: { ...r1.created, ...r2.created } };
 }
 
 /** "Make siblings": attach to an existing parent union or create shared parents. */
