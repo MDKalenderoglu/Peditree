@@ -7,6 +7,8 @@
  *   unions                    — exactly two partners
  *   parentChildRelationships  — BIOLOGICAL parenthood, ≤ 1 per child
  *   socialParentLinks         — social parenthood (adoptive, foster, …), any number
+ *   conditionKey              — the legend: [{ id, label }], derived from the
+ *                               people's conditions (conditionKey.js)
  */
 
 export const SCHEMA_VERSION = 2;
@@ -44,7 +46,7 @@ export function makePerson(props) {
 }
 
 export function emptyGraph() {
-  return { individuals: [], unions: [], parentChildRelationships: [], socialParentLinks: [] };
+  return { individuals: [], unions: [], parentChildRelationships: [], socialParentLinks: [], conditionKey: [] };
 }
 
 /** Deep copy (plain JSON data only). */
@@ -54,6 +56,7 @@ export function cloneGraph(graph) {
     unions: graph.unions || [],
     parentChildRelationships: graph.parentChildRelationships || [],
     socialParentLinks: graph.socialParentLinks || [],
+    conditionKey: graph.conditionKey || [],
   }));
 }
 

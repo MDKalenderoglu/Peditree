@@ -35,7 +35,9 @@ const withoutPolicy = (g) => ({ ...g, parentChildRelationships: g.parentChildRel
 // be structurally supported; the rest of the graph must equal what v1 showed.
 const withV1Consanguinity = (v1, v2, derived) => {
   for (const id of derived) expect(v2.unions.find((u) => u.id === id).consanguinityStatus).toBe('known_supported');
-  return { ...v2, unions: v2.unions.map((u) => (derived.includes(u.id) ? v1.unions.find((x) => x.id === u.id) || u : u)) };
+  // the legend (conditionKey) is derived from the people's conditions, which are compared
+  const { conditionKey, ...rest } = v2; // eslint-disable-line no-unused-vars
+  return { ...rest, unions: v2.unions.map((u) => (derived.includes(u.id) ? v1.unions.find((x) => x.id === u.id) || u : u)) };
 };
 const person = (doc, id) => doc.graph.individuals.find(i => i.id === id);
 

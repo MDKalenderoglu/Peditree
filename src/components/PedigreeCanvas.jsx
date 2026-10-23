@@ -23,7 +23,7 @@
 
 import { useEffect, useRef, forwardRef } from 'react';
 import * as d3 from 'd3';
-import { buildConditionRegistry, hasAnyConditions, hasAffectedCondition } from '../utils/conditionRegistry';
+import { fillFor, regionAngles } from '../graph/conditionKey';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 
 const EDGE_COLOR = '#64748b';
@@ -54,6 +54,40 @@ function connectorPath(x1, y1, x2, y2, bridges) {
   return `${d}L${xb},${y1}`;
 }
 
+/** Pie sector from the centre over [a0, a1] degrees (clipped to the symbol by the caller). */
+function sectorPath(a0, a1, r) {
+  const p = (a) => [r * Math.cos((a * Math.PI) / 180), r * Math.sin((a * Math.PI) / 180)];
+  const [x0, y0] = p(a0), [x1, y1] = p(a1);
+  return `M0,0L${x0},${y0}A${r},${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1},${y1}Z`;
+}
+
+/**
+ * Fill the given regions of a symbol (NSGC: one region per condition, see
+ * graph/conditionKey.js): sectors clipped to the symbol's outline, a thin
+ * white gap between neighbouring filled regions; a carrier of a condition
+ * gets a dot in its region.
+ */
+function drawRegions(el, defs, clipId, outline, { count, filled, carriers }, sz) {
+  const clip = defs.append('clipPath').attr('id', clipId);
+  clip.node().appendChild(outline.node().cloneNode());
+  const regions = el.append('g').attr('class', 'condition-regions').attr('clip-path', `url(#${clipId})`);
+  for (const i of filled) {
+    const [a0, a1] = regionAngles(i, count);
+    regions.append('path').attr('d', sectorPath(a0, a1, sz * 1.8))
+      .attr('fill', NODE_STROKE).attr('stroke', NODE_FILL).attr('stroke-width', 1.5);
+  }
+  for (const i of carriers) {
+    if (filled.includes(i)) continue;
+    const [a0, a1] = regionAngles(i, count);
+    const mid = ((a0 + a1) / 2) * Math.PI / 180;
+    regions.append('circle').attr('cx', sz * 0.5 * Math.cos(mid)).attr('cy', sz * 0.5 * Math.sin(mid))
+      .attr('r', Math.max(2, sz * 0.14)).attr('fill', NODE_STROKE);
+  }
+  // outline on top, so the regions never thin the symbol's border
+  el.node().appendChild(outline.node().cloneNode());
+  el.select(':scope > :last-child').attr('fill', 'none').attr('class', 'pedigree-shape-outline');
+}
+
 /** One stroke of a connector, optionally offset (dx, dy) — used for double lines. */
 function drawStroke(g, edge, dx = 0, dy = 0) {
   const path = g.append('path')
@@ -72,7 +106,7 @@ function drawStroke(g, edge, dx = 0, dy = 0) {
 // belt-and-suspenders fallback for exportUtils.js and for tests/tools
 // that query the DOM directly.
 const PedigreeCanvas = forwardRef(function PedigreeCanvas(
-  { nodes, edges, selectedNodeId, selectedNodeId2, onNodeSelect, onUnionSelect },
+  { nodes, edges, selectedNodeId, selectedNodeId2, onNodeSelect, onUnionSelect, conditionKey = [] },
   forwardedRef
 ) {
   const svgRef = useRef(null);
@@ -101,12 +135,25 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       return;
     }
 
+    // --- Legends (below the drawing, inside the SVG so they are exported) ---
+    // condition key: only conditions someone is affected by or carries
+    const shownKey = conditionKey
+      .map((entry, i) => ({ ...entry, i }))
+      .filter(entry => nodes.some(n => (n.conditions || []).some(c =>
+        c && c.label && (c.status === 'affected' || c.status === 'carrier')
+        && c.label.trim().toLocaleLowerCase('tr') === entry.label.trim().toLocaleLowerCase('tr'))));
+    const notedNodes = nodes.filter(n => n.notes || n.condition || (n.deceased && n.causeOfDeath));
+    const KEY_ROW = 20, NOTE_ROW = 14;
+    const keyBlock = shownKey.length ? 18 + shownKey.length * KEY_ROW + 10 : 0;
+    const notesBlock = notedNodes.length ? 18 + notedNodes.length * NOTE_ROW + 10 : 0;
+
     // --- ViewBox ---
     const pad = 100;
     const minX = d3.min(nodes, d => d.x) - pad;
     const maxX = d3.max(nodes, d => d.x) + pad;
     const minY = d3.min(nodes, d => d.y) - pad;
-    const maxY = d3.max(nodes, d => d.y) + pad;
+    const legendTop = d3.max(nodes, d => d.y) + 70; // clear of the age / label lines
+    const maxY = Math.max(d3.max(nodes, d => d.y) + pad, legendTop + keyBlock + notesBlock + 10);
     const vw = Math.max(600, maxX - minX);
     const vh = Math.max(400, maxY - minY);
     svg.attr('viewBox', `${minX} ${minY} ${vw} ${vh}`)
@@ -251,7 +298,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         onNodeSelect(d.id, { additive: event.metaKey || event.ctrlKey });
       });
 
-    nodeGroups.each(function (d) {
+    nodeGroups.each(function (d, nodeIndex) {
       const el = d3.select(this);
       const isSmall = d.pregnancyLoss || d.stillbirth;
       const sz = isSmall ? LOSS_SIZE : HALF;
@@ -308,11 +355,15 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       // correction yet (that's v0.3c). A structured condition with
       // status: 'affected' renders the same solid fill as the legacy
       // `affected` boolean; carrier rendering is untouched.
+      // Several conditions in the pedigree: each condition fills its own
+      // region of the symbol, defined in the legend (graph/conditionKey.js).
+      const filling = fillFor(d, conditionKey);
       let fill = NODE_FILL;
-      if (d.affected || hasAffectedCondition(d)) fill = NODE_STROKE;
-      else if (d.carrier) fill = 'url(#carrier-half)';
+      if (filling.mode === 'full') fill = NODE_STROKE;
+      else if (filling.mode === 'none' && d.carrier) fill = 'url(#carrier-half)';
       shape.attr('class', 'pedigree-shape')
         .attr('fill', fill).attr('stroke', NODE_STROKE).attr('stroke-width', 2);
+      if (filling.mode === 'segments') drawRegions(el, defs, `regions-${nodeIndex}`, shape, filling, sz);
       // Selection highlight (primary blue / secondary violet) comes from the
       // node-group classes above via app.css — see EX-1 note there.
 
@@ -377,9 +428,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         lineY += LINE_H;
       }
 
-      // Numeric annotation key (for notes legend)
-      if (d.notes) {
-        const noteIdx = nodes.filter(n => n.notes).indexOf(d);
+      // Numeric annotation key: the same numbering as the notes legend
+      {
+        const noteIdx = notedNodes.indexOf(d);
         if (noteIdx >= 0) {
           el.append('text')
             .attr('y', lineY).attr('text-anchor', 'middle')
@@ -390,80 +441,57 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       }
     });
 
-    // --- Clinical Notes Legend (bottom-left, outside zoom) ---
-    const notedNodes = nodes.filter(n => n.notes || n.condition || (n.deceased && n.causeOfDeath));
-    if (notedNodes.length > 0) {
-      const legendG = svg.append('g')
-        .attr('class', 'notes-legend');
-      const legendX = minX + 10;
-      let legendY = maxY - 10;
+    // --- Condition key (NSGC legend): which region is which condition ---
+    const legendX = minX + 10;
+    let legendY = legendTop;
+    if (shownKey.length) {
+      const keyG = svg.append('g').attr('class', 'condition-legend');
+      keyG.append('text')
+        .attr('x', legendX).attr('y', legendY + 10)
+        .attr('font-size', '11px').attr('font-weight', '700').attr('fill', '#1e293b')
+        .text('Açıklama');
+      legendY += 18;
+      const segmented = conditionKey.length >= 2;
+      shownKey.forEach((entry, row) => {
+        const s = 7;
+        const cell = keyG.append('g').attr('transform', `translate(${legendX + s},${legendY + s})`);
+        const box = cell.append('rect').attr('x', -s).attr('y', -s).attr('width', 2 * s).attr('height', 2 * s)
+          .attr('fill', segmented ? NODE_FILL : NODE_STROKE).attr('stroke', NODE_STROKE).attr('stroke-width', 1.5);
+        if (segmented) drawRegions(cell, defs, `key-region-${row}`, box, { count: Math.max(4, conditionKey.length), filled: [entry.i], carriers: [] }, s);
+        keyG.append('text')
+          .attr('x', legendX + 2 * s + 8).attr('y', legendY + s + 4)
+          .attr('font-size', '11px').attr('fill', '#334155')
+          .text(entry.label.length > 50 ? entry.label.substring(0, 49) + '…' : entry.label);
+        legendY += KEY_ROW;
+      });
+      legendY += 10;
+    }
 
-      // Build legend entries bottom-up
-      const entries = [];
+    // --- Clinical notes legend ---
+    if (notedNodes.length > 0) {
+      const legendG = svg.append('g').attr('class', 'notes-legend');
+      legendG.append('text')
+        .attr('x', legendX).attr('y', legendY + 10)
+        .attr('font-size', '11px').attr('font-weight', '700').attr('fill', '#1e293b')
+        .text('Klinik Notlar');
+      legendY += 18;
       notedNodes.forEach((n, i) => {
         const parts = [];
         if (n.condition) parts.push(n.condition);
-        if (n.deceased && n.causeOfDeath) parts.push(`Olum: ${n.causeOfDeath}`);
+        if (n.deceased && n.causeOfDeath) parts.push(`Ölüm: ${n.causeOfDeath}`);
         if (n.notes) parts.push(n.notes);
-        const text = parts.join(' | ');
         // Clinician-facing identity: pedigree number (e.g. "IV-7") plus the
-        // label when there is one — never the internal graph id, which used
-        // to appear here (and in exports) for unlabelled people.
+        // label when there is one — never the internal graph id.
         const pid = pedigreeIds.get(n.id)?.displayId;
         const name = n.displayLabel || n.label;
         const label = pid ? (name ? `${pid} (${name})` : pid) : (name || 'birey');
-        entries.push(`[${i + 1}] ${label}: ${text}`);
-      });
-
-      // Title
-      legendG.append('text')
-        .attr('x', legendX).attr('y', legendY - entries.length * 14 - 4)
-        .attr('font-size', '11px').attr('font-weight', '700')
-        .attr('fill', '#1e293b')
-        .text('Klinik Notlar');
-
-      entries.forEach((entry, i) => {
+        const entry = `[${i + 1}] ${label}: ${parts.join(' | ')}`;
         legendG.append('text')
-          .attr('x', legendX).attr('y', legendY - (entries.length - 1 - i) * 14)
+          .attr('x', legendX).attr('y', legendY + 10)
           .attr('font-size', '10px').attr('fill', '#475569')
           .text(entry.length > 80 ? entry.substring(0, 79) + '...' : entry);
+        legendY += NOTE_ROW;
       });
-    }
-
-    // --- Condition Legend (top-left, inside the same <svg> so it is
-    //     captured by SVG/PNG export like the notes legend below — never an
-    //     HTML-only overlay). v0.3a: solid grayscale swatches only, no
-    //     per-condition patterns (those are v0.3b). Triggers strictly on the
-    //     structured `conditions[]` field so pre-existing sessions that only
-    //     use the legacy free-text `condition` field don't gain a second,
-    //     redundant legend. ---
-    if (hasAnyConditions(nodes)) {
-      const structuredNodes = nodes.filter(n => Array.isArray(n.conditions) && n.conditions.length > 0);
-      const conditionRegistry = buildConditionRegistry(structuredNodes);
-      if (conditionRegistry.length > 0) {
-        const condLegendG = svg.append('g').attr('class', 'condition-legend');
-        const legendX = minX + 10;
-        let legendY = minY + 24;
-
-        condLegendG.append('text')
-          .attr('x', legendX).attr('y', legendY)
-          .attr('font-size', '11px').attr('font-weight', '700')
-          .attr('fill', '#1e293b')
-          .text('Durum / Tanı Kayıtları');
-        legendY += 16;
-
-        conditionRegistry.forEach(entry => {
-          condLegendG.append('rect')
-            .attr('x', legendX).attr('y', legendY - 9)
-            .attr('width', 10).attr('height', 10)
-            .attr('fill', NODE_STROKE).attr('stroke', NODE_STROKE);
-          condLegendG.append('text')
-            .attr('x', legendX + 16).attr('y', legendY)
-            .attr('font-size', '10px').attr('fill', '#475569')
-            .text(entry.label.length > 40 ? entry.label.substring(0, 39) + '...' : entry.label);
-          legendY += 14;
-        });
-      }
     }
 
     // --- Zoom/Pan ---
@@ -476,7 +504,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // Store for external reset
     svg.node().__zoom_ref = zoom;
 
-  }, [nodes, edges, selectedNodeId, selectedNodeId2, onNodeSelect, onUnionSelect]);
+  }, [nodes, edges, selectedNodeId, selectedNodeId2, onNodeSelect, onUnionSelect, conditionKey]);
 
   const zoomBy = (k) => {
     const svg = d3.select(svgRef.current);

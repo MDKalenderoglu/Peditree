@@ -25,6 +25,7 @@
 import { deriveV1Graph, mergeWithDefaults } from './v1pipeline';
 import { createDocument } from './document';
 import { finalizeGraph, deriveConsanguinity } from './finalize';
+import { deriveConditionKey } from './conditionKey';
 import { cloneGraph, indexGraph } from './model';
 import { defaultChildOrder } from '../utils/childOrdering';
 
@@ -48,6 +49,7 @@ export function migrateV1ToV2(rawWizardData, { now = new Date().toISOString() } 
   }
   graph.socialParentLinks = [];
   const consanguinityDerived = deriveConsanguinity(graph);
+  deriveConditionKey(graph); // legend from the people's conditions (v1 had none stored)
 
   const editSeq = Number.isInteger(wd.editSeq) ? wd.editSeq : 0;
   const retired = [...new Set((wd.deletedIndividualIds || []).filter((id) => !idx.byId.has(id)))].sort();
@@ -92,6 +94,7 @@ export function semanticDiff(a, b) {
   cmpById('birliktelik', a.unions, b.unions, (u) => u.id, (u) => stable(u));
   cmpById('ebeveyn-çocuk', a.parentChildRelationships, b.parentChildRelationships, (r) => r.unionId,
     (r) => `${r.children.join(',')}${r.birthOrderExplicit ? ' (açık sıra)' : ''}`);
+  cmpById('lejant', a.conditionKey || [], b.conditionKey || [], (c) => c.id, (c) => c.label);
   cmpById('sosyal bağ', a.socialParentLinks || [], b.socialParentLinks || [], (l) => `${l.childId}|${l.unionId}`, (l) => l.kind);
   return out;
 }

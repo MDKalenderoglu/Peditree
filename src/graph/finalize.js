@@ -11,7 +11,9 @@
  *      graph are consanguineous, 'known_supported', with the degree the
  *      drawing shows (kinship.js; non-negotiable rule 4); a union declared
  *      consanguineous without shared ancestors is 'reported_unresolved'; its
- *      relationshipBackground follows (same rule as builder stage 10b).
+ *      relationshipBackground follows (same rule as builder stage 10b);
+ *   4. the condition key (legend) follows the people's conditions
+ *      (conditionKey.js).
  *
  * Mutates the (already cloned) graph in place and returns it.
  */
@@ -19,6 +21,7 @@ import { computeGenerations } from '../utils/graphTraversal';
 import { defaultChildOrder } from '../utils/childOrdering';
 import { indexGraph, displayParentage } from './model';
 import { kinshipOf } from './kinship';
+import { deriveConditionKey } from './conditionKey';
 
 // declared degrees richer than a partly drawn structure
 const KEEP_DECLARED = new Set(['other', 'multiple_relationship', 'double_first_cousin']);
@@ -42,6 +45,7 @@ export function finalizeGraph(graph, { anchorId = 'proband' } = {}) {
   if (anchor) computeGenerations(displayParentage(graph).graph, anchor, 3);
 
   deriveConsanguinity(graph);
+  deriveConditionKey(graph);
   return graph;
 }
 

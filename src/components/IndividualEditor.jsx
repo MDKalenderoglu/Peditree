@@ -5,6 +5,7 @@
  * the same store operations as before. The store re-validates every action
  * independently of what this panel offers.
  */
+import { useState } from 'react';
 import { X, Trash2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { computeSiblingCreationPlan, computeUnionCreationPlan } from '../state/usePedigreeStore';
 import { sanitizeAgeValue } from '../utils/ageValidation';
@@ -86,6 +87,70 @@ function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelati
         </label>
       )}
     </>
+  );
+}
+
+const norm = (x) => String(x || '').trim().toLocaleLowerCase('tr');
+const NEXT_STATE = { none: 'affected', affected: 'carrier', carrier: 'none' };
+
+/**
+ * Findings of one person, as chips from the pedigree's legend (one click:
+ * affected → carrier → none) plus a field for a new finding. Each finding
+ * fills its own region of the symbol once the pedigree has two or more
+ * (graph/conditionKey.js); the legend is drawn under the pedigree.
+ */
+function FindingsEditor({ node, conditionKey, set }) {
+  const [draft, setDraft] = useState('');
+  const conds = Array.isArray(node.conditions) ? node.conditions : [];
+  const stateOf = (label) => {
+    const c = conds.find(x => norm(x.label) === norm(label));
+    return !c ? 'none' : c.status === 'affected' ? 'affected' : c.status === 'carrier' ? 'carrier' : 'none';
+  };
+  // affected follows the findings when findings decide it; a plain
+  // "Etkilenmiş" without any finding is kept
+  const write = (next) => {
+    const drivenBefore = conds.some(c => c.status === 'affected');
+    const anyAffected = next.some(c => c.status === 'affected');
+    set({ conditions: next, affected: anyAffected || (!drivenBefore && !!node.affected) });
+  };
+  const cycle = (label) => {
+    const to = NEXT_STATE[stateOf(label)];
+    const rest = conds.filter(c => norm(c.label) !== norm(label));
+    write(to === 'none' ? rest : [...rest, { label, status: to }]);
+  };
+  const add = () => {
+    const label = draft.trim();
+    if (!label) return;
+    const rest = conds.filter(c => norm(c.label) !== norm(label));
+    write([...rest, { label, status: 'affected' }]);
+    setDraft('');
+  };
+  const legendLabels = conditionKey.map(e => e.label);
+  return (
+    <div className="field-col">
+      <span className="field-label">Bulgular / tanılar</span>
+      {legendLabels.length > 0 && (
+        <div className="chips">
+          {legendLabels.map(label => {
+            const st = stateOf(label);
+            return (
+              <button key={label} className={`chip${st === 'affected' ? ' on' : ''}${st === 'carrier' ? ' chip-carrier' : ''}`}
+                aria-pressed={st !== 'none'} title="Tıklayın: etkilenmiş → taşıyıcı → yok" onClick={() => cycle(label)}>
+                {label}{st === 'carrier' ? ' · taşıyıcı' : ''}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div className="btn-row" style={{ flexWrap: 'nowrap' }}>
+        <input type="text" className="input" style={{ flex: 1, minWidth: 0 }} value={draft} placeholder="Yeni bulgu, örn. miyop"
+          onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }} />
+        <button className="ui-btn ui-btn-sm" disabled={!draft.trim()} onClick={add}>Ekle</button>
+      </div>
+      {legendLabels.length >= 2 && (
+        <span className="field-hint">Her bulgu sembolün bir bölümünü boyar; açıklama çizimin altında.</span>
+      )}
+    </div>
   );
 }
 
@@ -174,7 +239,6 @@ export default function IndividualEditor({
   const kind = node.pregnancyLoss ? 'Düşük' : node.stillbirth ? 'Ölü doğum' : SEX_WORD[node.sex || 'unknown'];
   const sub = [kind, node.age ? `${node.age} yaş` : null, node.proband ? 'proband' : null].filter(Boolean).join(' · ');
   const set = (patch) => onUpdate(node.id, patch);
-  const setCondition = (idx, patch) => set({ conditions: (node.conditions || []).map((c, i) => (i === idx ? { ...c, ...patch } : c)) });
 
   return (
     <>
@@ -223,9 +287,13 @@ export default function IndividualEditor({
               onClick={() => (node.proband ? onClearProband() : onSetProband(node.id))}>Proband</button>
           </div>
           {!isLoss && (
+            <FindingsEditor node={node} conditionKey={pedigreeData?.conditionKey || []} set={set} />
+          )}
+          {!isLoss && node.condition && (
+            // older free-text field: still shown under the symbol, editable/clearable here
             <label className="field-col">
-              <span className="field-label">Tanı</span>
-              <input type="text" className="input input-wide" value={node.condition || ''} placeholder="örn. epilepsi"
+              <span className="field-label">Sembol altı yazı</span>
+              <input type="text" className="input input-wide" value={node.condition || ''}
                 onChange={e => set({ condition: e.target.value })} />
             </label>
           )}
@@ -242,29 +310,6 @@ export default function IndividualEditor({
                   onChange={e => set({ causeOfDeath: e.target.value })} />
               </label>
             </>
-          )}
-          {!isLoss && (
-            <div className="field-col">
-              {(node.conditions || []).length > 0 && <span className="field-label">Diğer tanılar</span>}
-              {(node.conditions || []).map((cond, idx) => (
-                <div key={idx} className="btn-row" style={{ flexWrap: 'nowrap' }}>
-                  <input type="text" className="input" style={{ flex: 1, minWidth: 0 }} value={cond.label || ''} placeholder="Tanı"
-                    onChange={e => setCondition(idx, { label: e.target.value })} />
-                  <select className="select" value={cond.status || 'unknown'} onChange={e => setCondition(idx, { status: e.target.value })}>
-                    <option value="affected">Etkilenmiş</option>
-                    <option value="carrier">Taşıyıcı</option>
-                    <option value="unknown">Bilinmiyor</option>
-                  </select>
-                  <button className="ui-btn ui-btn-ghost ui-btn-icon" aria-label="Tanıyı kaldır"
-                    onClick={() => set({ conditions: (node.conditions || []).filter((_, i) => i !== idx) })}><X size={14} /></button>
-                </div>
-              ))}
-              <div>
-                <button className="ui-btn ui-btn-sm" onClick={() => set({ conditions: [...(node.conditions || []), { label: '', status: 'unknown' }] })}>
-                  + Tanı ekle
-                </button>
-              </div>
-            </div>
           )}
         </div>
 

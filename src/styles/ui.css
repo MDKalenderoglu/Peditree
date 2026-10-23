@@ -184,6 +184,7 @@ textarea.input { height: auto; min-height: 56px; padding: 6px 8px; resize: verti
 }
 .chip:hover { background: var(--sunken); }
 .chip.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.chip.chip-carrier { border-color: var(--ink); border-style: dashed; color: var(--ink); }
 .add-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
 .add-grid .ui-btn { padding: 0 6px; }
 .muted { color: var(--muted); }

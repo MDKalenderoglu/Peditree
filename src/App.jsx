@@ -251,6 +251,7 @@ function App() {
           selectedNodeId2={selectedId2}
           onNodeSelect={handleNodeSelect}
           onUnionSelect={selectUnion}
+          conditionKey={pedigreeData.conditionKey || []}
         />
         </div>
       </div>

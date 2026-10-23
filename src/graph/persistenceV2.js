@@ -107,6 +107,7 @@ export function parseProjectFile(text) {
   if (isDocumentV2(parsed)) {
     doc = parsed;
     if (!Array.isArray(doc.graph.socialParentLinks)) doc.graph.socialParentLinks = [];
+    if (!Array.isArray(doc.graph.conditionKey)) doc.graph.conditionKey = [];
     if (!doc.ids) doc.ids = { counters: {}, retired: [] };
     if (!doc.wizardAnchorId) doc.wizardAnchorId = 'proband';
   } else {
