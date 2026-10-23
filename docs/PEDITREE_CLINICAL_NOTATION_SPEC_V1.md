@@ -289,5 +289,6 @@ Onay sonrası her kural için:
 | 2026-10-23 | K5 — taşıyıcı | yarım dolgu korunur (mevcut gösterim) | kullanıcı (klinisyen) |
 | 2026-10-23 | K10 — proband | proband okuna "P" eklenir (uygulandı); ayrı danışan alanı bekliyor | kullanıcı (klinisyen) |
 | 2026-10-23 | §4.7 — ayrılık / boşanma | ikisi de ilişki çizgisinde **tek eğik çizgi** (uygulandı) | kullanıcı (klinisyen) |
+| 2026-10-23 | §4.6 — akraba evliliği yapıdan | çizimde ortak atası olan çift (üst kuşaklar birleşiyorsa) **otomatik olarak akraba evliliği** sayılır ve çift çizgiyle çizilir; derece ortak atalardan hesaplanır (`src/graph/kinship.js`, `finalize.js`); aile "akrabalık yok" dese de çizim belirleyicidir (uygulandı) | kullanıcı (klinisyen) |
 | | K2–K4, K6–K9, K11–K13 | bekliyor | |
 | | §4 "Standart" özetleri (orijinal yayına karşı) | bekliyor | |
