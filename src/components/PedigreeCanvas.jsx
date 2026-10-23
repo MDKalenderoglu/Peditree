@@ -359,7 +359,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       const filling = fillFor(d, conditionKey);
       let fill = NODE_FILL;
       if (filling.mode === 'full') fill = NODE_STROKE;
-      else if (filling.mode === 'none' && d.carrier) fill = 'url(#carrier-half)';
+      else if (filling.mode === 'carrier' || (filling.mode === 'none' && d.carrier)) fill = 'url(#carrier-half)';
       shape.attr('class', 'pedigree-shape')
         .attr('fill', fill).attr('stroke', NODE_STROKE).attr('stroke-width', 2);
       if (filling.mode === 'segments') drawRegions(el, defs, `regions-${nodeIndex}`, shape, filling, sz);

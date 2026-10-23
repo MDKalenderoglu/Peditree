@@ -49,6 +49,8 @@ export function keyIndex(key, label) {
  *   { mode: 'full' }                       — solid (one condition in the
  *                                            pedigree, or affected with no
  *                                            condition named)
+ *   { mode: 'carrier' }                    — classic half fill (carrier of
+ *                                            the pedigree's only condition)
  *   { mode: 'segments', count, filled, carriers } — region indices
  *                                            (a carrier's region is half filled)
  */
@@ -60,6 +62,7 @@ export function fillFor(person, key = []) {
     return { mode: 'segments', count: Math.max(4, key.length), filled: [...new Set(affected)], carriers: [...new Set(carriers)] };
   }
   if (affected.length || person.affected) return { mode: 'full' };
+  if (carriers.length) return { mode: 'carrier' };
   return { mode: 'none' };
 }
 

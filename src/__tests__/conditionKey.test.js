@@ -49,6 +49,7 @@ describe('the legend follows the findings', () => {
     expect(fillFor({ conditions: affected('Miyop') }, k)).toEqual({ mode: 'full' });
     expect(fillFor({ affected: true }, [...k, { id: 'k2', label: 'X' }])).toEqual({ mode: 'full' });
     expect(fillFor({ carrier: true }, k)).toEqual({ mode: 'none' }); // person-level carrier: half fill, unchanged
+    expect(fillFor({ conditions: [{ label: 'Miyop', status: 'carrier' }] }, k)).toEqual({ mode: 'carrier' });
   });
 
   it('a carrier of one finding gets that region marked, not filled', () => {
