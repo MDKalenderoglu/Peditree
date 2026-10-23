@@ -252,12 +252,32 @@ export function buildStructure(graph) {
         cores.push([a, ...rest, b], [b, ...rest, a], [...rest, a, b], [...rest, b, a], [a, b, ...rest], [b, a, ...rest]);
       }
     }
+    // Clinician decision (2026-10-23, docs/PEDITREE_CLINICAL_NOTATION_SPEC_V1.md
+    // K1): to keep a consanguineous couple side by side, the partner may be
+    // drawn at the end of their sibship facing the other family even when
+    // known ages say otherwise. Only that sibling moves; the others keep their
+    // order. A birth order the user set explicitly ("Doğum Sırası") is never
+    // changed. The ordering cost decides whether moving helps.
+    const consangMoves = new Set();
+    if (atom.kind === 'sib' && atom.core.length >= 2 && !explicitOrder.has(atom.unionId)) {
+      const consangLink = (p) => (partnerUnions.get(p) || []).some((uid) => {
+        const q = partnerIn(uid, p);
+        return unionById.get(uid).consanguineous && personAtom.get(q) !== personAtom.get(p) && genOfId(q) === genOfId(p);
+      });
+      const without = (ids) => atom.core.filter(p => !ids.includes(p));
+      for (const l of atom.core.filter(consangLink).slice(0, 2)) {
+        for (const core of [[l, ...without([l])], [...without([l]), l]]) {
+          cores.push(core);
+          consangMoves.add(core.join('|'));
+        }
+      }
+    }
     // birth-order alternatives first (as before), then spouse-side variants
     const seen = new Set();
     const byCore = [];
     for (const core of cores) {
       const key = core.join('|');
-      if (seen.has(key) || !agesConsistent(core) && core !== atom.core) continue;
+      if (seen.has(key) || !agesConsistent(core) && core !== atom.core && !consangMoves.has(key)) continue;
       seen.add(key);
       byCore.push(sideVariants(atom, core));
     }

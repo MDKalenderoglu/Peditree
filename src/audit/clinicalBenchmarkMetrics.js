@@ -69,22 +69,28 @@ function ownership(drawnGraph, edges) {
 
 /**
  * Birth order. A violation contradicts what is known: an explicit order
- * ("Doğum Sırası") or two siblings with known ages drawn younger-left. A
- * sibship with unknown ages drawn in a different order than stored is
- * allowed (PCL may move a sibling who married into another drawn family to
- * the end) and only counted as "reordered".
+ * ("Doğum Sırası") or two siblings with known ages drawn younger-left —
+ * except a sibling in a consanguineous union moved to stand beside the
+ * partner (clinician decision K1). Permitted moves (unknown ages, or the
+ * consanguineous partner) are counted as "reordered".
  */
 function birthOrder(drawnGraph, nodes) {
   const x = new Map(nodes.map((n) => [n.id, n.x]));
   const person = new Map(drawnGraph.individuals.map((i) => [i.id, i]));
   const age = (id) => { const a = parseInt((person.get(id) || {}).age, 10); return Number.isFinite(a) ? a : null; };
+  const consang = new Set(drawnGraph.unions.filter((u) => u.consanguineous).flatMap((u) => u.partners));
   const violations = [], reordered = [];
   for (const r of drawnGraph.parentChildRelationships) {
     const kids = r.children.filter((c) => x.has(c));
     const drawn = kids.slice().sort((a, b) => x.get(a) - x.get(b));
     if (drawn.join('|') === kids.join('|')) continue;
-    const ageClash = drawn.some((a, i) => drawn.slice(i + 1).some((b) => age(a) !== null && age(b) !== null && age(a) < age(b)));
-    (r.birthOrderExplicit || ageClash ? violations : reordered).push(r.unionId);
+    // clinician decision K1 (2026-10-23): a sibling in a consanguineous union
+    // may be drawn out of age order to stand beside the partner
+    const clash = (a, b) => age(a) !== null && age(b) !== null && age(a) < age(b);
+    const pairs = drawn.flatMap((a, i) => drawn.slice(i + 1).filter((b) => clash(a, b)).map((b) => [a, b]));
+    const forConsanguinity = pairs.length > 0 && pairs.every(([a, b]) => consang.has(a) || consang.has(b));
+    if (r.birthOrderExplicit || (pairs.length && !forConsanguinity)) violations.push(r.unionId);
+    else reordered.push(r.unionId);
   }
   return { violations, reordered };
 }

@@ -35,7 +35,7 @@ SocialParentLink         { childId, unionId, kind: 'adoptive' | 'foster' | 'step
 
 The persisted unit is the schema v2 document (`src/graph/document.js`): `{ schemaVersion: 2, graph: { individuals, unions, parentChildRelationships, socialParentLinks }, ids: { counters, retired }, wizardAnchorId, wizardMeta?, provenance }`. Clinical data lives on the person (no overlay). `placeholder: true` marks an "unspecified parent" created when a parent is deleted.
 
-Birth order: `birthOrderExplicit: true` (user set "Doğum Sırası") is a hard rule for the layout; otherwise `orderPolicy: 'byAge'` sorts by known ages (oldest left) and `'insertion'` keeps stored order. Without explicit order, PCL may move a sibling who married into another drawn family to the end of the sibship, but never contradicts known ages.
+Birth order: `birthOrderExplicit: true` (user set "Doğum Sırası") is a hard rule for the layout; otherwise `orderPolicy: 'byAge'` sorts by known ages (oldest left) and `'insertion'` keeps stored order. Without explicit order, PCL may move a sibling who married into another drawn family to the end of the sibship, but never contradicts known ages — except (clinician decision 2026-10-23) a sibling in a consanguineous union, who may be drawn at the sibship end beside the partner even against known ages. An explicit order is never changed.
 
 **ID scheme is deterministic and symbolic** — `mother`, `mat_gf`, `mat_uncle_0`, `sib_f_2`, `U_MAT_GP`. Do not switch to UUID for wizard-built nodes. The parser uses UUID; that is intentional and isolated. IDs are permanent (Faz 2b): once assigned, an ID never moves to another person and is never reused (`ids.retired`, `src/graph/ids.js`); a re-added person gets a new ID.
 

@@ -1,0 +1,696 @@
+{
+  "label": "consang",
+  "commit": "2f35650 (+ uncommitted src changes)",
+  "node": "v24.18.0",
+  "generatedAt": "2026-10-23T18:23:17.203Z",
+  "engine": "pcl",
+  "cases": [
+    {
+      "id": "CB-01",
+      "band": "10–20",
+      "name": "Rutin üç kuşak (etkilenmiş erkek çocuk, düşük)",
+      "layoutMs": 1.1,
+      "people": 14,
+      "generations": 3,
+      "semantics": {
+        "documentErrors": [],
+        "integrityErrors": [],
+        "unsupportedConsanguinity": [],
+        "appWarnings": []
+      },
+      "geometry": {
+        "invariants": [],
+        "connectorViolations": [],
+        "wrongOwner": [],
+        "missingStem": []
+      },
+      "birthOrderViolations": [],
+      "siblingsReordered": [],
+      "centring": {
+        "offCenter": 0,
+        "maxCentreOffset": 3,
+        "couplesWithChildren": 4,
+        "meanOffsetPx": 1.4,
+        "offsetUnder10": 4,
+        "offset10to45": 0,
+        "offsetOver45": 0,
+        "sideHangOver5": 0,
+        "offCentreCouples": []
+      },
+      "lines": {
+        "longUnions": 0,
+        "maxUnionSpan": 72,
+        "sideHang": 1,
+        "crossings": 0,
+        "unmarkedCrossings": 0,
+        "stackedBuses": 0,
+        "lineOverOwnPartner": 0
+      },
+      "legibility": {
+        "widthPx": 670,
+        "heightPx": 520,
+        "a4SymbolMm": 14.6,
+        "a4LabelPt": 10.4,
+        "a4SmallestTextPt": 9.3,
+        "screenSymbolPx": 53.8,
+        "screenLabelPx": 13.5
+      },
+      "edits": [
+        {
+          "name": "yenidoğan kardeş",
+          "level": "local",
+          "ms": 3,
+          "moved": 12,
+          "people": 14,
+          "movedOutsideBlock": 6,
+          "outsideBlock": 6,
+          "maxShiftPx": 58,
+          "parentFlip": false,
+          "birthOrderViolationsAdded": 0,
+          "violationsAfter": 0,
+          "offCenterAfter": 0,
+          "sideHangAfter": 1
+        },
+        {
+          "name": "teyzeye ikinci çocuk",
+          "level": "local",
+          "ms": 1,
+          "moved": 4,
+          "people": 14,
+          "movedOutsideBlock": 2,
+          "outsideBlock": 10,
+          "maxShiftPx": 52,
+          "parentFlip": false,
+          "birthOrderViolationsAdded": 0,
+          "violationsAfter": 0,
+          "offCenterAfter": 0,
+          "sideHangAfter": 0
+        }
+      ]
+    },
+    {
+      "id": "CB-02",
+      "band": "21–50",
+      "name": "Birinci derece kuzen evliliği (OR, iki etkilenmiş kardeş)",
+      "layoutMs": 1.5,
+      "people": 24,
+      "generations": 4,
+      "semantics": {
+        "documentErrors": [],
+        "integrityErrors": [],
+        "unsupportedConsanguinity": [],
+        "appWarnings": []
+      },
+      "geometry": {
+        "invariants": [],
+        "connectorViolations": [],
+        "wrongOwner": [],
+        "missingStem": []
+      },
+      "birthOrderViolations": [],
+      "siblingsReordered": [
+        "U_hY_Y"
+      ],
+      "centring": {
+        "offCenter": 0,
+        "maxCentreOffset": 6,
+        "couplesWithChildren": 8,
+        "meanOffsetPx": 2.6,
+        "offsetUnder10": 8,
+        "offset10to45": 0,
+        "offsetOver45": 0,
+        "sideHangOver5": 1,
+        "offCentreCouples": []
+      },
+      "lines": {
+        "longUnions": 0,
+        "maxUnionSpan": 77,
+        "sideHang": 2,
+        "crossings": 0,
+        "unmarkedCrossings": 0,
+        "stackedBuses": 0,
+        "lineOverOwnPartner": 0
+      },
+      "legibility": {
+        "widthPx": 1122,
+        "heightPx": 680,
+        "a4SymbolMm": 9.9,
+        "a4LabelPt": 7,
+        "a4SmallestTextPt": 6.3,
+        "screenSymbolPx": 41.2,
+        "screenLabelPx": 10.3
+      },
+      "edits": [
+        {
+          "name": "yenidoğan kardeş",
+          "level": "local",
+          "ms": 1,
+          "moved": 22,
+          "people": 24,
+          "movedOutsideBlock": 14,
+          "outsideBlock": 16,
+          "maxShiftPx": 63,
+          "parentFlip": false,
+          "birthOrderViolationsAdded": 0,
+          "violationsAfter": 0,
+          "offCenterAfter": 0,
+          "sideHangAfter": 2
+        },
+        {
+          "name": "amcaya üçüncü çocuk",
+          "level": "local",
+          "ms": 1,
+          "moved": 8,
+          "people": 24,
+          "movedOutsideBlock": 4,
+          "outsideBlock": 19,
+          "maxShiftPx": 100,
+          "parentFlip": false,
+          "birthOrderViolationsAdded": 0,
+          "violationsAfter": 0,
+          "offCenterAfter": 0,
+          "sideHangAfter": 2
+        }
+      ]
+    },
+    {
+      "id": "CB-03",
+      "band": "21–50",
+      "name": "Birden fazla akraba evliliği döngüsü",
+      "layoutMs": 2.5,
+      "people": 30,
+      "generations": 5,
+      "semantics": {
+        "documentErrors": [],
+        "integrityErrors": [],
+        "unsupportedConsanguinity": [],
+        "appWarnings": []
+      },
+      "geometry": {
+        "invariants": [],
+        "connectorViolations": [],
+        "wrongOwner": [],
+        "missingStem": []
+      },
+      "birthOrderViolations": [],
+      "siblingsReordered": [
+        "U_P1_P2",
+        "U_a_wa",
+        "U_g_h"
+      ],
+      "centring": {
+        "offCenter": 0,
+        "maxCentreOffset": 6,
+        "couplesWithChildren": 11,
+        "meanOffsetPx": 2,
+        "offsetUnder10": 11,
+        "offset10to45": 0,
+        "offsetOver45": 0,
+        "sideHangOver5": 0,
+        "offCentreCouples": []
+      },
+      "lines": {
+        "longUnions": 0,
+        "maxUnionSpan": 74,
+        "sideHang": 3,
+        "crossings": 0,
+        "unmarkedCrossings": 0,
+        "stackedBuses": 0,
+        "lineOverOwnPartner": 0
+      },
+      "legibility": {
+        "widthPx": 1097,
+        "heightPx": 840,
+        "a4SymbolMm": 9,
+        "a4LabelPt": 6.4,
+        "a4SmallestTextPt": 5.8,
+        "screenSymbolPx": 33.3,
+        "screenLabelPx": 8.3
+      },
+      "edits": [
+        {
+          "name": "yenidoğan kardeş",
+          "level": "local",
+          "ms": 1,
+          "moved": 30,
+          "people": 30,
+          "movedOutsideBlock": 23,
+          "outsideBlock": 23,
+          "maxShiftPx": 61,
+          "parentFlip": false,
+          "birthOrderViolationsAdded": 0,
+          "violationsAfter": 0,
+          "offCenterAfter": 0,
+          "sideHangAfter": 3
+        },
+        {
+          "name": "dayı çocuğuna eş",
+          "level": "local",
+          "ms": 2,
+          "moved": 21,
+          "people": 30,
+          "movedOutsideBlock": 20,
+          "outsideBlock": 29,
+          "maxShiftPx": 66,
+          "parentFlip": false,
+          "birthOrderViolationsAdded": 0,
+          "violationsAfter": 0,
+          "offCenterAfter": 0,
+          "sideHangAfter": 3
+        }
+      ]
+    },
+    {
+      "id": "CB-04",
+      "band": "21–50",
+      "name": "Birden fazla partner ve yarım kardeşler",
+      "layoutMs": 1.1,
+      "people": 18,
+      "generations": 3,
+      "semantics": {
+        "documentErrors": [],
+        "integrityErrors": [],
+        "unsupportedConsanguinity": [],
+        "appWarnings": []
+      },
+      "geometry": {
+        "invariants": [],
+        "connectorViolations": [],
+        "wrongOwner": [],
+        "missingStem": []
+      },
+      "birthOrderViolations": [],
+      "siblingsReordered": [],
+      "centring": {
+        "offCenter": 4,
+        "maxCentreOffset": 68,
+        "couplesWithChildren": 7,
+        "meanOffsetPx": 45,
+        "offsetUnder10": 1,
+        "offset10to45": 2,
+        "offsetOver45": 4,
+        "sideHangOver5": 4,
+        "offCentreCouples": [
+          "U_mgf_mgm 66px",
+          "U_mgm_h2_mgm 68px",
+          "U_m_ex_mother 55px",
+          "U_father_f_ex 53px"
+        ]
+      },
+      "lines": {
+        "longUnions": 0,
+        "maxUnionSpan": 208,
+        "sideHang": 5,
+        "crossings": 0,
+        "unmarkedCrossings": 0,
+        "stackedBuses": 0,
+        "lineOverOwnPartner": 0
+      },
+      "legibility": {
+        "widthPx": 897,
+        "heightPx": 520,
+        "a4SymbolMm": 12.4,
+        "a4LabelPt": 8.8,
+        "a4SmallestTextPt": 7.9,
+        "screenSymbolPx": 53.5,
+        "screenLabelPx": 13.4
+      },
+      "edits": [
+        {
+          "name": "yenidoğan kardeş",
+          "level": "local",
+          "ms": 1,
+          "moved": 17,
+          "people": 18,
+          "movedOutsideBlock": 10,
+          "outsideBlock": 11,
+          "maxShiftPx": 65,
+          "parentFlip": false,
+          "birthOrderViolationsAdded": 0,
+          "violationsAfter": 0,
+          "offCenterAfter": 4,
+          "sideHangAfter": 5
+        },
+        {
+          "name": "annenin üvey kardeşine ikinci çocuk",
+          "level": "local",
+          "ms": 1,
+          "moved": 13,
+          "people": 18,
+          "movedOutsideBlock": 10,
+          "outsideBlock": 15,
+          "maxShiftPx": 86,
+          "parentFlip": false,
+          "birthOrderViolationsAdded": 0,
+          "violationsAfter": 0,
+          "offCenterAfter": 3,
+          "sideHangAfter": 3
+        }
+      ]
+    },
+    {
+      "id": "CB-05",
+      "band": "21–50",
+      "name": "Farklı kollarda etkilenmiş bireyler (X-bağlı)",
+      "layoutMs": 0.9,
+      "people": 25,
+      "generations": 4,
+      "semantics": {
+        "documentErrors": [],
+        "integrityErrors": [],
+        "unsupportedConsanguinity": [],
+        "appWarnings": []
+      },
+      "geometry": {
+        "invariants": [],
+        "connectorViolations": [],
+        "wrongOwner": [],
+        "missingStem": []
+      },
+      "birthOrderViolations": [],
+      "siblingsReordered": [
+        "U_ggf_ggm",
+        "U_mgf_mgm"
+      ],
+      "centring": {
+        "offCenter": 0,
+        "maxCentreOffset": 3,
+        "couplesWithChildren": 7,
+        "meanOffsetPx": 1,
+        "offsetUnder10": 7,
+        "offset10to45": 0,
+        "offsetOver45": 0,
+        "sideHangOver5": 0,
+        "offCentreCouples": []
+      },
+      "lines": {
+        "longUnions": 0,
+        "maxUnionSpan": 73,
+        "sideHang": 0,
+        "crossings": 0,
+        "unmarkedCrossings": 0,
+        "stackedBuses": 0,
+        "lineOverOwnPartner": 0
+      },
+      "legibility": {
+        "widthPx": 1059,
+        "heightPx": 680,
+        "a4SymbolMm": 10.5,
+        "a4LabelPt": 7.4,
+        "a4SmallestTextPt": 6.7,
+        "screenSymbolPx": 41.2,
+        "screenLabelPx": 10.3
+      },
+      "edits": [
+        {
+          "name": "yenidoğan kardeş",
+          "level": "local",
+          "ms": 2,
+          "moved": 18,
+          "people": 25,
+          "movedOutsideBlock": 12,
+          "outsideBlock": 17,
+          "maxShiftPx": 97,
+          "parentFlip": false,
+          "birthOrderViolationsAdded": 0,
+          "violationsAfter": 0,
+          "offCenterAfter": 0,
+          "sideHangAfter": 1
+        },
+        {
+          "name": "teyze kızına eş + çocuk",
+          "level": "local",
+          "ms": 2,
+          "moved": 18,
+          "people": 25,
+          "movedOutsideBlock": 15,
+          "outsideBlock": 22,
+          "maxShiftPx": 68,
+          "parentFlip": false,
+          "birthOrderViolationsAdded": 0,
+          "violationsAfter": 0,
+          "offCenterAfter": 0,
+          "sideHangAfter": 1
+        }
+      ]
+    },
+    {
+      "id": "CB-06",
+      "band": "21–50",
+      "name": "Kuşaklar boyu tekrar eden akraba evliliği",
+      "layoutMs": 3,
+      "people": 40,
+      "generations": 6,
+      "semantics": {
+        "documentErrors": [],
+        "integrityErrors": [],
+        "unsupportedConsanguinity": [],
+        "appWarnings": []
+      },
+      "geometry": {
+        "invariants": [],
+        "connectorViolations": [],
+        "wrongOwner": [],
+        "missingStem": []
+      },
+      "birthOrderViolations": [],
+      "siblingsReordered": [
+        "U_s1_s1w",
+        "U_pgf_pgm"
+      ],
+      "centring": {
+        "offCenter": 0,
+        "maxCentreOffset": 14,
+        "couplesWithChildren": 14,
+        "meanOffsetPx": 5.1,
+        "offsetUnder10": 12,
+        "offset10to45": 2,
+        "offsetOver45": 0,
+        "sideHangOver5": 2,
+        "offCentreCouples": []
+      },
+      "lines": {
+        "longUnions": 0,
+        "maxUnionSpan": 78,
+        "sideHang": 4,
+        "crossings": 0,
+        "unmarkedCrossings": 0,
+        "stackedBuses": 0,
+        "lineOverOwnPartner": 0
+      },
+      "legibility": {
+        "widthPx": 1346,
+        "heightPx": 1000,
+        "a4SymbolMm": 7.6,
+        "a4LabelPt": 5.4,
+        "a4SmallestTextPt": 4.8,
+        "screenSymbolPx": 28,
+        "screenLabelPx": 7
+      },
+      "edits": [
+        {
+          "name": "yenidoğan kardeş",
+          "level": "local",
+          "ms": 2,
+          "moved": 40,
+          "people": 40,
+          "movedOutsideBlock": 32,
+          "outsideBlock": 32,
+          "maxShiftPx": 77,
+          "parentFlip": false,
+          "birthOrderViolationsAdded": 0,
+          "violationsAfter": 0,
+          "offCenterAfter": 0,
+          "sideHangAfter": 4
+        },
+        {
+          "name": "halanın çocuğuna eş",
+          "level": "local",
+          "ms": 1,
+          "moved": 4,
+          "people": 40,
+          "movedOutsideBlock": 3,
+          "outsideBlock": 39,
+          "maxShiftPx": 3,
+          "parentFlip": false,
+          "birthOrderViolationsAdded": 0,
+          "violationsAfter": 0,
+          "offCenterAfter": 0,
+          "sideHangAfter": 4
+        }
+      ]
+    },
+    {
+      "id": "CB-07",
+      "band": "10–20",
+      "name": "Evlat edinme ve sosyal ebeveynlik",
+      "layoutMs": 0.4,
+      "people": 14,
+      "generations": 3,
+      "semantics": {
+        "documentErrors": [],
+        "integrityErrors": [],
+        "unsupportedConsanguinity": [],
+        "appWarnings": []
+      },
+      "geometry": {
+        "invariants": [],
+        "connectorViolations": [],
+        "wrongOwner": [],
+        "missingStem": []
+      },
+      "birthOrderViolations": [],
+      "siblingsReordered": [],
+      "centring": {
+        "offCenter": 0,
+        "maxCentreOffset": 38,
+        "couplesWithChildren": 5,
+        "meanOffsetPx": 15.1,
+        "offsetUnder10": 3,
+        "offset10to45": 2,
+        "offsetOver45": 0,
+        "sideHangOver5": 1,
+        "offCentreCouples": []
+      },
+      "lines": {
+        "longUnions": 0,
+        "maxUnionSpan": 108,
+        "sideHang": 1,
+        "crossings": 0,
+        "unmarkedCrossings": 0,
+        "stackedBuses": 0,
+        "lineOverOwnPartner": 0
+      },
+      "legibility": {
+        "widthPx": 676,
+        "heightPx": 520,
+        "a4SymbolMm": 14.6,
+        "a4LabelPt": 10.4,
+        "a4SmallestTextPt": 9.3,
+        "screenSymbolPx": 53.8,
+        "screenLabelPx": 13.5
+      },
+      "edits": [
+        {
+          "name": "yenidoğan biyolojik kardeş",
+          "level": "wide",
+          "ms": 1,
+          "moved": 14,
+          "people": 14,
+          "movedOutsideBlock": 9,
+          "outsideBlock": 9,
+          "maxShiftPx": 57,
+          "parentFlip": false,
+          "birthOrderViolationsAdded": 0,
+          "violationsAfter": 0,
+          "offCenterAfter": 1,
+          "sideHangAfter": 2
+        },
+        {
+          "name": "teyzeye üçüncü çocuk",
+          "level": "local",
+          "ms": 0,
+          "moved": 4,
+          "people": 14,
+          "movedOutsideBlock": 2,
+          "outsideBlock": 9,
+          "maxShiftPx": 51,
+          "parentFlip": false,
+          "birthOrderViolationsAdded": 0,
+          "violationsAfter": 0,
+          "offCenterAfter": 0,
+          "sideHangAfter": 1
+        }
+      ]
+    },
+    {
+      "id": "CB-08",
+      "band": "51–100",
+      "name": "Geniş kırsal aile (sekizer kardeş, bir kuzen evliliği)",
+      "layoutMs": 4.4,
+      "people": 66,
+      "generations": 4,
+      "semantics": {
+        "documentErrors": [],
+        "integrityErrors": [],
+        "unsupportedConsanguinity": [],
+        "appWarnings": []
+      },
+      "geometry": {
+        "invariants": [],
+        "connectorViolations": [],
+        "wrongOwner": [],
+        "missingStem": []
+      },
+      "birthOrderViolations": [],
+      "siblingsReordered": [
+        "U_ms0_ms0_sp",
+        "U_ms1_sp_ms1"
+      ],
+      "centring": {
+        "offCenter": 2,
+        "maxCentreOffset": 80,
+        "couplesWithChildren": 18,
+        "meanOffsetPx": 14.6,
+        "offsetUnder10": 12,
+        "offset10to45": 4,
+        "offsetOver45": 2,
+        "sideHangOver5": 1,
+        "offCentreCouples": [
+          "U_ps6_sp_ps6 80px",
+          "U_father_mother 74px"
+        ]
+      },
+      "lines": {
+        "longUnions": 1,
+        "maxUnionSpan": 1903,
+        "sideHang": 1,
+        "crossings": 7,
+        "unmarkedCrossings": 0,
+        "stackedBuses": 0,
+        "lineOverOwnPartner": 0
+      },
+      "legibility": {
+        "widthPx": 3599,
+        "heightPx": 680,
+        "a4SymbolMm": 3.1,
+        "a4LabelPt": 2.2,
+        "a4SmallestTextPt": 2,
+        "screenSymbolPx": 13.3,
+        "screenLabelPx": 3.3
+      },
+      "edits": [
+        {
+          "name": "yenidoğan kardeş",
+          "level": "local",
+          "ms": 5,
+          "moved": 31,
+          "people": 66,
+          "movedOutsideBlock": 20,
+          "outsideBlock": 47,
+          "maxShiftPx": 165,
+          "parentFlip": false,
+          "birthOrderViolationsAdded": 0,
+          "violationsAfter": 0,
+          "offCenterAfter": 2,
+          "sideHangAfter": 1
+        },
+        {
+          "name": "dayıya üçüncü çocuk",
+          "level": "local",
+          "ms": 3,
+          "moved": 5,
+          "people": 66,
+          "movedOutsideBlock": 2,
+          "outsideBlock": 55,
+          "maxShiftPx": 100,
+          "parentFlip": false,
+          "birthOrderViolationsAdded": 0,
+          "violationsAfter": 0,
+          "offCenterAfter": 2,
+          "sideHangAfter": 1
+        }
+      ]
+    }
+  ]
+}

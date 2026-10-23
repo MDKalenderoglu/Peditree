@@ -42,7 +42,7 @@ it('clinical usability benchmark', () => {
     `Commit: \`${report.commit}\` · Node ${report.node} · ${report.generatedAt} · motor: PCL`, '',
     'Vakalar: `src/audit/clinicalBenchmark.js` (elle tanımlı, deterministik). Ölçümler: `src/audit/clinicalBenchmarkMetrics.js`.', '',
     '## 1. Semantik ve geometrik güvenlik', '',
-    '| vaka | kişi / kuşak | belge hatası | bütünlük hatası | uyarı paneli (Hata/Uyarı) | ortak atasız akraba evliliği | geometri değişmezi | bağlantı ihlali | yanlış sahipli çocuk çizgisi | çizgisiz çocuk | doğum sırası ihlali (açık sıra / bilinen yaş) | yaşı bilinmeyen kardeşlikte yeniden sıralama (izinli) |',
+    '| vaka | kişi / kuşak | belge hatası | bütünlük hatası | uyarı paneli (Hata/Uyarı) | ortak atasız akraba evliliği | geometri değişmezi | bağlantı ihlali | yanlış sahipli çocuk çizgisi | çizgisiz çocuk | doğum sırası ihlali (açık sıra / bilinen yaş) | izinli yeniden sıralama (yaş bilinmiyor / akraba evliliğindeki eş) |',
     '|---|---|---|---|---|---|---|---|---|---|---|---|'];
   for (const c of cases) {
     L.push(`| ${c.id} ${c.name} | ${c.people} / ${c.generations} | ${yes(c.semantics.documentErrors)} | ${yes(c.semantics.integrityErrors)} | ${yes(c.semantics.appWarnings)} | ${yes(c.semantics.unsupportedConsanguinity)} | ${yes(c.geometry.invariants)} | ${yes(c.geometry.connectorViolations)} | ${yes(c.geometry.wrongOwner)} | ${yes(c.geometry.missingStem)} | ${yes(c.birthOrderViolations)} | ${c.siblingsReordered.length ? c.siblingsReordered.length + ' (' + c.siblingsReordered.join(', ') + ')' : '0'} |`);
