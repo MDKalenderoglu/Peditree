@@ -9,7 +9,7 @@
  *   "sibship"             — thin gray horizontal rail
  *   "parentChildDrop"     — vertical line (union center → sibship rail)
  *   "childStem"           — vertical line (sibship rail → child node)
- *   "divorceSlash"        — 1 or 2 diagonal slashes at (x,y)
+ *   "divorceSlash"        — one diagonal slash at (x,y) (separated or divorced)
  *   "childlessDrop"       — short vertical from union center (no children)
  *   "childlessBar"        — horizontal bar at end of childlessDrop (inverted T)
  *
@@ -173,18 +173,14 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           break;
 
         case 'divorceSlash': {
-          const { x, y, status } = edge;
-          // Single slash for separated, double for divorced
+          // Separated and divorced: one slash on the relationship line
+          // (clinician decision 2026-10-23, notation spec §4.7)
+          const { x, y } = edge;
           g.append('line')
+            .attr('class', 'relationship-ended')
             .attr('x1', x - 6).attr('y1', y + 8)
             .attr('x2', x + 6).attr('y2', y - 8)
             .attr('stroke', NODE_STROKE).attr('stroke-width', 2);
-          if (status === 'divorced') {
-            g.append('line')
-              .attr('x1', x - 2).attr('y1', y + 8)
-              .attr('x2', x + 10).attr('y2', y - 8)
-              .attr('stroke', NODE_STROKE).attr('stroke-width', 2);
-          }
           break;
         }
         default:

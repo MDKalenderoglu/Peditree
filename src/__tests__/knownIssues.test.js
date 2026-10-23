@@ -154,6 +154,12 @@ describe('KI-4 (fixed, P2) — pedigree number drawn on the line of descent', ()
     const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
     expect(src).toMatch(/proband-p[\s\S]{0,400}\.text\('P'\)/);
   });
+  it('separated and divorced are both drawn with one slash (clinician decision 2026-10-23)', () => {
+    const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
+    const block = src.slice(src.indexOf("case 'divorceSlash'"), src.indexOf('break;', src.indexOf("case 'divorceSlash'")));
+    expect(block.match(/append\('line'\)/g)).toHaveLength(1);
+    expect(block).not.toMatch(/'divorced'/);
+  });
   it('adopted-in children get brackets (notation spec R3)', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
     expect(src).toMatch(/descentKind === 'adoptive'/);
