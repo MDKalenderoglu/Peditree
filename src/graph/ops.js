@@ -17,7 +17,7 @@
  */
 import { cloneGraph, indexGraph, makePerson, SOCIAL_LINK_KINDS } from './model';
 import { allocateEditNumber, retire } from './ids';
-import { finalizeGraph } from './finalize';
+import { finalizeGraph, ageOrder } from './finalize';
 import { validateDocument, errorsOf } from './validate';
 import {
   computeDeletionPlanFor, computeUnionCreationPlan, computeSiblingCreationPlan,
@@ -49,6 +49,7 @@ export function commit(doc, mutate) {
     if (e instanceof Blocked) return { ok: false, doc, reason: e.message };
     throw e;
   }
+  followAges(doc.graph, draft.graph);
   finalizeGraph(draft.graph, { anchorId: draft.wizardAnchorId });
   // An operation that changed nothing returns the ORIGINAL document, so
   // callers see a no-op (no undo step, no autosave, same object identity).
@@ -62,6 +63,25 @@ export function commit(doc, mutate) {
     return { ok: false, doc, reason: `İşlem grafiği tutarsız hâle getireceği için uygulanmadı: ${introduced[0].message}`, issues: introduced };
   }
   return { ok: true, doc: draft, created: {}, ...extra };
+}
+
+/**
+ * Entering or changing someone's age puts their sibship in age order
+ * (clinician request 2026-10-25), also a group that kept the order it was
+ * drawn in ('insertion'). In a hand-set order ("Doğum sırası") the latest
+ * action wins: the siblings with a known age are sorted among the places
+ * they hold, the others stay where the clinician put them.
+ */
+function followAges(prev, graph) {
+  const before = new Map(prev.individuals.map((i) => [i.id, String(i.age ?? '').trim()]));
+  const byId = new Map(graph.individuals.map((i) => [i.id, i]));
+  for (const p of graph.individuals) {
+    if (!before.has(p.id) || before.get(p.id) === String(p.age ?? '').trim()) continue;
+    const rel = graph.parentChildRelationships.find((r) => r.children.includes(p.id));
+    if (!rel) continue;
+    if (rel.birthOrderExplicit) rel.children = ageOrder(rel.children.map((id) => byId.get(id)).filter(Boolean), { inPlace: true });
+    else rel.orderPolicy = 'byAge';
+  }
 }
 
 // ── draft primitives (used inside commit; never on a stored document) ──

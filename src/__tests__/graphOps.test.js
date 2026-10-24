@@ -195,7 +195,7 @@ describe('graph operations', () => {
     expect(doc.graph.individuals.filter(i => i.proband).map(i => i.id)).toEqual(['mother']);
   });
 
-  it('children without an explicit order follow age (oldest first); explicit order wins', () => {
+  it('children follow age (oldest first); a hand-set order is kept until an age is entered', () => {
     let doc = starterDoc(s => { s.siblings.male = [{ id: 'a', age: '' }, { id: 'b', age: '' }]; });
     // the policy v1 applied to the proband's sibship (set by migrateV1ToV2)
     doc.graph.parentChildRelationships.find(r => r.unionId === 'U_PARENTS').orderPolicy = 'byAge';
@@ -203,8 +203,13 @@ describe('graph operations', () => {
     expect(kidsOf(doc, 'U_PARENTS')[0]).toBe('sib_m_1');
     doc = ok(ops.setChildOrder(doc, 'U_PARENTS', ['proband', 'sib_m_0', 'sib_m_1'])).doc;
     expect(kidsOf(doc, 'U_PARENTS')).toEqual(['proband', 'sib_m_0', 'sib_m_1']);
-    doc = ok(ops.updatePerson(doc, 'sib_m_0', { age: '50' })).doc;
+    // other edits leave the hand-set order alone
+    doc = ok(ops.updatePerson(doc, 'sib_m_0', { label: 'Ağabey' })).doc;
     expect(kidsOf(doc, 'U_PARENTS')).toEqual(['proband', 'sib_m_0', 'sib_m_1']);
+    // entering an age sorts the aged siblings (clinician request 2026-10-25)
+    doc = ok(ops.updatePerson(doc, 'sib_m_0', { age: '50' })).doc;
+    expect(kidsOf(doc, 'U_PARENTS')).toEqual(['sib_m_0', 'sib_m_1', 'proband']);
+    expect(doc.graph.parentChildRelationships.find(r => r.unionId === 'U_PARENTS').birthOrderExplicit).toBe(true);
   });
 
   it('social parenthood is separate from biological parenthood', () => {
