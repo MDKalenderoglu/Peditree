@@ -1,14 +1,14 @@
 import React from 'react';
 import * as d3 from 'd3';
 import { usePedigreeStore } from './state/usePedigreeStore';
-import { exportSVG, exportPNG } from './utils/exportUtils';
+import { exportSVG, exportPNG, exportFileName } from './utils/exportUtils';
 import { assessExportReadiness } from './utils/exportReadiness';
 import { withStableIdsExcludingDismissed } from './utils/warningIds';
 import { clinicalNotices } from './utils/clinicalNotices';
 import PedigreeCanvas from './components/PedigreeCanvas';
 import IndividualEditor from './components/IndividualEditor';
 import RadialAddMenu from './components/RadialAddMenu';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid } from 'lucide-react';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
 
@@ -27,7 +27,7 @@ function App() {
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
     actionNotice, dismissActionNotice,
-    exportProjectFile, openProjectFile, relayout,
+    exportProjectFile, openProjectFile, relayout, doc, setPatientName,
   } = usePedigreeStore();
   const [exportError, setExportError] = React.useState(null);
   const [exportNotice, setExportNotice] = React.useState(null);
@@ -92,7 +92,7 @@ function App() {
     const assessment = gateExport();
     if (!assessment) return;
     try {
-      exportSVG(svgRef.current);
+      exportSVG(svgRef.current, exportFileName(doc.patientName, 'svg'));
       setExportError(null);
       setExportNotice(assessment.warnings.length > 0
         ? `Export tamamlandı — dikkat edilmesi gerekenler:\n${assessment.warnings.join('\n')}`
@@ -107,7 +107,7 @@ function App() {
     const assessment = gateExport();
     if (!assessment) return;
     try {
-      await exportPNG(svgRef.current);
+      await exportPNG(svgRef.current, exportFileName(doc.patientName, 'png'));
       setExportError(null);
       setExportNotice(assessment.warnings.length > 0
         ? `Export tamamlandı — dikkat edilmesi gerekenler:\n${assessment.warnings.join('\n')}`
@@ -146,7 +146,7 @@ function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `pedigri-${new Date().toISOString().slice(0, 10)}.peditree.json`;
+    a.download = exportFileName(doc.patientName, 'peditree.json');
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -159,6 +159,37 @@ function App() {
     if (_history && _history.length > 0 && !window.confirm('Açık pedigrinin yerine dosyadaki pedigri yüklensin mi? (Geri Al ile dönebilirsiniz.)')) return;
     file.text().then(text => openProjectFile(text));
   };
+
+  // Keyboard shortcuts (clinician request 2026-10-25); never while typing
+  const keyRef = React.useRef(null);
+  React.useEffect(() => { keyRef.current = { undo, redo, handleSaveProject, clearSelection, deleteIndividual, selectedNodes }; });
+  React.useEffect(() => {
+    const onKey = (e) => {
+      const t = e.target;
+      const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+      const k = keyRef.current;
+      if (!k) return;
+      const mod = e.metaKey || e.ctrlKey;
+      const key = e.key.toLowerCase();
+      if (mod && key === 's') { e.preventDefault(); k.handleSaveProject(); return; }
+      if (typing) { if (e.key === 'Escape') t.blur(); return; }
+      if (mod && key === 'z') { e.preventDefault(); if (e.shiftKey) k.redo(); else k.undo(); return; }
+      if (mod && key === 'y') { e.preventDefault(); k.redo(); return; }
+      if (mod || e.altKey) return;
+      if (e.key === 'Escape') { k.clearSelection(); return; }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        const [only] = k.selectedNodes;
+        if (k.selectedNodes.length !== 1 || only.proband || only.placeholder) return;
+        e.preventDefault();
+        if (window.confirm('Seçili kişi silinsin mi?\n\nÇocukları silinmez ve diğer ebeveynle bağlı kalır. "Geri Al" (Cmd/Ctrl+Z) ile geri alınabilir.')) k.deleteIndividual(only.id);
+        return;
+      }
+      const zoom = { '+': 'Yakınlaştır', '=': 'Yakınlaştır', '-': 'Uzaklaştır', '0': 'Sığdır' }[e.key];
+      if (zoom) document.querySelector(`.zoom-controls button[aria-label="${zoom}"]`)?.click();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const handleNodeSelect = (id, opts) => {
     selectIndividual(id, opts);
@@ -177,6 +208,9 @@ function App() {
             <span className="brand-sub">Klinik pedigri</span>
           </div>
           <div className="toolbar-sep" />
+          <input className="input patient-name" value={doc.patientName || ''} placeholder="Hasta adı soyadı"
+            aria-label="Hasta adı soyadı" onChange={e => setPatientName(e.target.value)} />
+          <div className="toolbar-sep" />
           <div className="toolbar-group">
             <button className="ui-btn" onClick={handleNewPedigree} title="Kaydedilmiş pedigriyi sil ve yeniden başla"><FilePlus2 size={15} /> Yeni</button>
             <button className="ui-btn" onClick={() => fileInputRef.current && fileInputRef.current.click()} title="Proje dosyası aç (.peditree.json; eski biçim de açılır)"><FolderOpen size={15} /> Aç</button>
@@ -192,6 +226,10 @@ function App() {
             <button className="ui-btn" onClick={relayout} title="Çizimi baştan düzenle: tüm pedigriyi yeniden yerleştirir (geri alınabilir)"><LayoutGrid size={15} /> Yeniden Düzenle</button>
           </div>
           <div className="toolbar-spacer" />
+          <button className="ui-btn ui-btn-icon ui-btn-ghost" aria-label="Klavye kısayolları"
+            title={'Klavye kısayolları\nCmd/Ctrl+Z  geri al\nCmd/Ctrl+Shift+Z  yinele\nCmd/Ctrl+S  kaydet\nDelete  seçili kişiyi sil\nEsc  seçimi kapat\n+ / −  yakınlaştır / uzaklaştır\n0  sığdır\nCmd/Ctrl+tık  birden çok kişi seç'}>
+            <Keyboard size={15} />
+          </button>
           <div className="toolbar-group">
             <button className="ui-btn" onClick={handleExportSVG} title="SVG olarak indir"><Download size={15} /> SVG</button>
             <button className="ui-btn ui-btn-primary" onClick={handleExportPNG} title="PNG olarak indir"><ImageIcon size={15} /> PNG</button>
@@ -261,6 +299,7 @@ function App() {
           onNodeSelect={handleNodeSelect}
           onUnionSelect={selectUnion}
           conditionKey={pedigreeData.conditionKey || []}
+          patientName={doc.patientName || ''}
           renderQuickBar={(anchor) => (
             <RadialAddMenu anchor={anchor} node={selectedNode} pedigreeData={pedigreeData}
               onAddSibling={addSiblingTo} onAddSpouse={addSpouseTo} onAddParents={addParentsTo} onAddTwin={addMultipleSibling}
