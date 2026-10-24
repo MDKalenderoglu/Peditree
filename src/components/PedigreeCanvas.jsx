@@ -111,17 +111,13 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
   const svgRef = useRef(null);
   const boxRef = useRef(null);
   // where the quick-add bar sits: under the single selected person's symbol
+  // where the add menu sits: around the single selected person's symbol
   const [anchor, setAnchor] = useState(null);
-  const barRef = useRef(null);
-  const [barHalf, setBarHalf] = useState(240);
-  useEffect(() => {
-    if (barRef.current) setBarHalf(barRef.current.offsetWidth / 2);
-  }, [anchor]);
   const placeQuickBar = useCallback(() => {
     const shape = svgRef.current && svgRef.current.querySelector('.node-selected .pedigree-shape');
     if (!shape || !boxRef.current || selectedNodeId2) { setAnchor(null); return; }
     const r = shape.getBoundingClientRect(), box = boxRef.current.getBoundingClientRect();
-    setAnchor({ x: r.left + r.width / 2 - box.left, y: r.bottom - box.top, width: box.width });
+    setAnchor({ x: r.left + r.width / 2 - box.left, y: r.top + r.height / 2 - box.top, size: Math.max(r.width, r.height) });
   }, [selectedNodeId2]);
 
   const attachSvgRef = (node) => {
@@ -548,13 +544,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         style={{ cursor: 'grab', background: '#f8fafc' }}
         onClick={() => onNodeSelect(null)}
       />
-      {anchor && renderQuickBar && (
-        <div className="quick-bar" ref={barRef}
-          style={{ left: Math.min(Math.max(anchor.x, barHalf + 8), anchor.width - barHalf - 8), top: anchor.y + 52 }}
-          onClick={e => e.stopPropagation()}>
-          {renderQuickBar()}
-        </div>
-      )}
+      {anchor && renderQuickBar && renderQuickBar(anchor)}
     </div>
   );
 });
