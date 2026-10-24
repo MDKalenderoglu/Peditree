@@ -5,15 +5,12 @@
  * the same store operations as before. The store re-validates every action
  * independently of what this panel offers.
  */
-import { useState } from 'react';
 import { X, Trash2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { computeSiblingCreationPlan, computeUnionCreationPlan } from '../state/usePedigreeStore';
 import { sanitizeAgeValue } from '../utils/ageValidation';
-import { RELATIONSHIP_BACKGROUND_OPTIONS } from '../utils/relationshipBackground';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { degreeLabel } from '../graph/kinship';
 import { groupOf, multipleName, zygosityLabel, ZYGOSITY } from '../graph/multiples';
-import FindingsPalette from './FindingsPalette';
 
 const SEX_WORD = { male: 'Erkek', female: 'Kadın', unknown: 'Cinsiyet bilinmiyor' };
 // same options and wording as the wizard; an older 'separated' shows as the combined one
@@ -51,7 +48,6 @@ function AddButtons({ onAdd, title }) {
   );
 }
 
-/** One partnership: children, status (divorce/separation), consanguinity. */
 const PATH_TEXT = {
   mothers_paternal_is_fathers_paternal: 'Annenin babası ile babanın babası kardeş',
   mothers_maternal_is_fathers_maternal: 'Annenin annesi ile babanın annesi kardeş',
@@ -65,51 +61,76 @@ const DEGREE_OPTIONS = [
 ];
 
 /**
- * The proband's parents: consanguinity by degree and path — the shared
- * ancestors are drawn from the choice (wizard template, wizardAdapter.js);
- * once the drawing itself shows them (drawn by hand), it decides and this is
- * read-only. Moved here from the former left panel (2026-10-24).
+ * Consanguinity of a couple, three answers (clinician request 2026-10-25):
+ * Var / Yok / Aynı köy (nothing chosen = not asked). When the drawing itself
+ * shows shared ancestors, it decides (read-only). For the proband's parents,
+ * "Var" offers degree and path, and the shared ancestors are drawn from the
+ * choice (wizard template, wizardAdapter.js).
  */
-function ParentsConsanguinity({ parents, onSet, nameOf }) {
-  const kin = parents.kinship;
-  if (kin && !kin.fromTemplate) {
+function RelationshipChoice({ u, onSetBackground, parentsCons }) {
+  const isParents = parentsCons && parentsCons.parents.unionId === u.id;
+  const parents = isParents ? parentsCons.parents : null;
+  const kin = parents ? parents.kinship : null;
+  const drawn = isParents ? kin && !kin.fromTemplate : u.consanguinityStatus === 'known_supported';
+  if (drawn) {
+    const nameOf = parentsCons ? parentsCons.nameOf : (x) => x;
     return (
       <div className="field-col">
-        <span className="field-label">Akraba evliliği</span>
-        <span className="field-hint">Çizime göre: {degreeLabel(kin.degree)}{PATH_TEXT[parents.consanguinityPath] ? ` — ${PATH_TEXT[parents.consanguinityPath]}` : ''}.</span>
-        <span className="field-hint">Ortak atalar: {kin.ancestors.map(nameOf).join(', ')}</span>
+        <span className="field-label">Akrabalık: var</span>
+        <span className="field-hint">
+          Çizime göre: {degreeLabel(isParents ? kin.degree : u.consanguinityDegree) || 'akraba'}
+          {isParents && PATH_TEXT[parents.consanguinityPath] ? ` — ${PATH_TEXT[parents.consanguinityPath]}` : ''}.
+        </span>
+        {isParents && <span className="field-hint">Ortak atalar: {kin.ancestors.map(nameOf).join(', ')}</span>}
       </div>
     );
   }
+  const value = u.consanguineous ? 'yes' : u.relationshipBackground === 'no_consanguinity_reported' ? 'no'
+    : u.relationshipBackground === 'same_village_or_same_origin' ? 'village' : null;
+  const BACKGROUND = { yes: 'consanguinity_reported', no: 'no_consanguinity_reported', village: 'same_village_or_same_origin' };
+  const choose = (v) => {
+    const next = v === value ? null : v;
+    if (isParents) {
+      if (next === 'yes') { parentsCons.onSet('consanguineous', true); return; }
+      if (u.consanguineous) parentsCons.onSet('consanguineous', false);
+    }
+    onSetBackground(u.id, next ? BACKGROUND[next] : 'not_asked');
+  };
   return (
     <div className="field-col">
-      <label className="check"><input type="checkbox" checked={parents.consanguineous}
-        onChange={e => onSet('consanguineous', e.target.checked)} /> Anne ve baba akraba</label>
-      {parents.consanguineous && (
+      <span className="field-label">Akrabalık</span>
+      <div className="segmented" role="radiogroup" aria-label="Akrabalık">
+        {[['yes', 'Var'], ['no', 'Yok'], ['village', 'Aynı köy']].map(([v, t]) => (
+          <button key={v} className={value === v ? 'on' : undefined} role="radio" aria-checked={value === v} onClick={() => choose(v)}>{t}</button>
+        ))}
+      </div>
+      {value === 'village' && <span className="field-hint">Aynı köy / bölge: akrabalık değildir, tek çizgi kalır.</span>}
+      {isParents && value === 'yes' && (
         <>
           <select className="select input-wide" value={parents.consanguinityDegree} aria-label="Akrabalık derecesi"
-            onChange={e => onSet('consanguinityDegree', e.target.value)}>
+            onChange={e => parentsCons.onSet('consanguinityDegree', e.target.value)}>
             {DEGREE_OPTIONS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
           </select>
           {parents.consanguinityDegree === 'first_cousin' && (
             <select className="select input-wide" value={parents.consanguinityPath} aria-label="Ortak atalar kimin üzerinden"
-              onChange={e => onSet('consanguinityPath', e.target.value)}>
+              onChange={e => parentsCons.onSet('consanguinityPath', e.target.value)}>
               <option value="unknown">Ortak atalar kimin üzerinden? (bilinmiyor)</option>
               {Object.entries(PATH_TEXT).map(([v, t]) => <option key={v} value={v}>{t}</option>)}
             </select>
           )}
           {kin
-            ? <span className="field-hint">Ortak atalar çizildi: {kin.ancestors.map(nameOf).join(', ')}</span>
+            ? <span className="field-hint">Ortak atalar çizildi: {kin.ancestors.map(parentsCons.nameOf).join(', ')}</span>
             : <span className="field-hint">Derece (1. kuzende yol da) seçilince ortak atalar otomatik çizilir; seçilmezse yalnız çift çizgi.</span>}
         </>
       )}
+      {!isParents && value === 'yes' && <span className="field-hint">Ortak atalar çizimde yok; çift çizgi bildirime dayanır.</span>}
     </div>
   );
 }
 
-function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground, parentsCons }) {
+/** One partnership: status (divorce/separation), consanguinity, children (couple card). */
+function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground, parentsCons, withChildren = true }) {
   const children = pcrs.find(r => r.unionId === u.id)?.children || [];
-  const isParents = parentsCons && parentsCons.parents.unionId === u.id;
   return (
     <>
       {onSetUnionStatus && (
@@ -121,29 +142,14 @@ function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelati
           </select>
         </label>
       )}
-      <div className="field-col">
-        <span className="field-label">Çocuk ekle{children.length > 0 ? ` (şu an ${children.length})` : ''}</span>
-        <AddButtons onAdd={(sex, extra) => onAddChild(u.id, sex, null, extra)} />
-      </div>
-      {isParents && <ParentsConsanguinity {...parentsCons} />}
-      {isParents && u.consanguineous ? null : u.consanguinityStatus === 'known_supported' ? (
-        // drawn shared ancestors decide it (finalize.js); nothing to choose here
+      {onSetUnionRelationshipBackground && (
+        <RelationshipChoice u={u} onSetBackground={onSetUnionRelationshipBackground} parentsCons={parentsCons} />
+      )}
+      {withChildren && (
         <div className="field-col">
-          <span className="field-label">Akraba evliliği</span>
-          <span className="field-hint">Çizime göre: {degreeLabel(u.consanguinityDegree) || 'akraba'} — ortak atalar çizimde.</span>
+          <span className="field-label">Çocuk ekle{children.length > 0 ? ` (şu an ${children.length})` : ''}</span>
+          <AddButtons onAdd={(sex, extra) => onAddChild(u.id, sex, null, extra)} />
         </div>
-      ) : onSetUnionRelationshipBackground && (
-        <label className="field-col">
-          <span className="field-label">Akrabalık geçmişi</span>
-          <select className="select input-wide" value={u.relationshipBackground || 'not_asked'}
-            onChange={e => onSetUnionRelationshipBackground(u.id, e.target.value)}>
-            {RELATIONSHIP_BACKGROUND_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-          </select>
-          {/* metadata only: consanguinity is always the standard double line */}
-          {u.relationshipBackground === 'consanguinity_reported' && (
-            <span className="field-hint">Ortak atalar çizimde yok; çift çizgi bildirime dayanır.</span>
-          )}
-        </label>
       )}
     </>
   );
@@ -151,35 +157,12 @@ function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelati
 
 /** Twins / multiple births of this person: zygosity, one more, leave the group. */
 function MultiplesCard({ node, pedigreeData, displayNameFor, onAddMultiple, onSetZygosity, onLeaveMultiple }) {
-  const [z, setZ] = useState('unknown');
   const found = groupOf(pedigreeData, node.id);
   const hasParents = (pedigreeData.parentChildRelationships || []).some(r => r.children.includes(node.id));
   if (!hasParents || !onAddMultiple) return null;
   const sexes = [['male', 'Erkek'], ['female', 'Kız'], ['unknown', 'Bilinmeyen']];
-  if (!found) {
-    return (
-      <div className="card">
-        <div className="card-title">İkiz / üçüz</div>
-        <label className="field">
-          <span className="field-label">Zigosite</span>
-          <select className="select" value={z} onChange={e => setZ(e.target.value)}>
-            {ZYGOSITY.map(v => <option key={v} value={v}>{zygosityLabel(v, 2)}</option>)}
-          </select>
-        </label>
-        <div className="field-col">
-          <span className="field-label">İkizini ekle</span>
-          {z === 'monozygotic' ? (
-            <button className="ui-btn ui-btn-sm" onClick={() => onAddMultiple(node.id, { zygosity: z })}>İkizini ekle (aynı cinsiyet)</button>
-          ) : (
-            <div className="add-grid">
-              {sexes.map(([v, t]) => <button key={v} className="ui-btn ui-btn-sm" onClick={() => onAddMultiple(node.id, { sex: v, zygosity: z })}>{t}</button>)}
-            </div>
-          )}
-        </div>
-        <span className="field-hint">Var olan bir kardeşle ikiz yapmak için ikisini Cmd/Ctrl ile seçin.</span>
-      </div>
-    );
-  }
+  // a new twin is added from the ring (İkiz); here only an existing group
+  if (!found) return null;
   const { group } = found;
   const n = group.children.length;
   return (
@@ -273,12 +256,10 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
 }
 
 export default function IndividualEditor({
-  node, node2, pedigreeData, onUpdate, onAddSpouse, onAddChild, onSetProband, onClearProband,
+  node, node2, pedigreeData, onUpdate, onAddChild,
   onDeleteIndividual, onCreateUnion, onMakeSiblings,
   onClearSelection, onReorderChild, onSetUnionRelationshipBackground, onSetUnionStatus,
-  onAddParents, onAddSibling,
   onSetMultipleBirth, onAddMultiple, onSetZygosity, onLeaveMultiple,
-  onAddFinding, onSetFindingStatus, onSetFindingStyle,
   wizardParents, onSetParentsField,
 }) {
   const ids = computePedigreeIds(pedigreeData?.nodes || []);
@@ -310,7 +291,6 @@ export default function IndividualEditor({
 
   const unions = pedigreeData?.unions || [];
   const existingUnions = unions.filter(u => u.partners.includes(node.id));
-  const hasUnion = existingUnions.length > 0;
   const pcrs = pedigreeData?.parentChildRelationships || [];
   const ownParentRel = pcrs.find(r => r.children.includes(node.id));
   const siblingOrder = ownParentRel ? ownParentRel.children : null;
@@ -329,16 +309,12 @@ export default function IndividualEditor({
         )}
 
         {!node.placeholder && (
+          <div className="field-hint editor-tip">Eklemek, bulgu, durum, ikiz ve not için sembolün etrafındaki halkayı kullanın.</div>
+        )}
+
+        {!node.placeholder && (
           <div className="card">
-            <div className="card-title">Kişi</div>
-            {/* sex is editable for everyone; the store refuses a change that
-                would contradict an existing partnership and says why */}
-            <div className="segmented" role="radiogroup" aria-label="Cinsiyet">
-              {[['male', 'Erkek'], ['female', 'Kadın'], ['unknown', 'Bilinmiyor']].map(([v, t]) => (
-                <button key={v} className={(node.sex || 'unknown') === v ? 'on' : undefined} role="radio"
-                  aria-checked={(node.sex || 'unknown') === v} onClick={() => set({ sex: v })}>{t}</button>
-              ))}
-            </div>
+            <div className="card-title">Bilgiler</div>
             <label className="field-col">
               <span className="field-label">Etiket (çizimde görünür)</span>
               <input type="text" className="input input-wide" value={node.displayLabel || ''} placeholder="Boşsa gösterilmez"
@@ -351,85 +327,27 @@ export default function IndividualEditor({
                   onChange={e => set({ age: sanitizeAgeValue(e.target.value) })} />
               </label>
             )}
-          </div>
-        )}
-
-        <div className="card">
-          <div className="card-title">Klinik durum</div>
-          {/* proband is a single-holder flag; marking it never touches affected */}
-          <div className="chips">
-            <button className={`chip${node.affected ? ' on' : ''}`} aria-pressed={!!node.affected} onClick={() => set({ affected: !node.affected })}>Etkilenmiş</button>
-            <button className={`chip${node.carrier ? ' on' : ''}`} aria-pressed={!!node.carrier} onClick={() => set({ carrier: !node.carrier })}>Taşıyıcı</button>
-            {!isLoss && (
-              <button className={`chip${node.deceased ? ' on' : ''}`} aria-pressed={!!node.deceased} onClick={() => set({ deceased: !node.deceased })}>Vefat</button>
+            {!!node.deceased && !isLoss && (
+              <>
+                <label className="field">
+                  <span className="field-label">Ölüm yaşı</span>
+                  <input type="number" min="0" className="input input-age" value={node.ageAtDeath || ''} placeholder="—"
+                    onChange={e => set({ ageAtDeath: sanitizeAgeValue(e.target.value) })} />
+                </label>
+                <label className="field-col">
+                  <span className="field-label">Ölüm nedeni</span>
+                  <input type="text" className="input input-wide" value={node.causeOfDeath || ''}
+                    onChange={e => set({ causeOfDeath: e.target.value })} />
+                </label>
+              </>
             )}
-            <button className={`chip${node.proband ? ' on' : ''}`} aria-pressed={!!node.proband}
-              onClick={() => (node.proband ? onClearProband() : onSetProband(node.id))}>Proband</button>
-          </div>
-          {!isLoss && onAddFinding && (
-            <div className="field-col">
-              <span className="field-label">Bulgular / tanılar</span>
-              <FindingsPalette node={node} conditionKey={pedigreeData?.conditionKey || []}
-                onSetStatus={onSetFindingStatus} onAdd={onAddFinding} onSetStyle={onSetFindingStyle} />
-            </div>
-          )}
-          {!isLoss && node.condition && (
-            // older free-text field: still shown under the symbol, editable/clearable here
-            <label className="field-col">
-              <span className="field-label">Sembol altı yazı</span>
-              <input type="text" className="input input-wide" value={node.condition || ''}
-                onChange={e => set({ condition: e.target.value })} />
-            </label>
-          )}
-          {!!node.deceased && !isLoss && (
-            <>
-              <label className="field">
-                <span className="field-label">Ölüm yaşı</span>
-                <input type="number" min="0" className="input input-age" value={node.ageAtDeath || ''} placeholder="—"
-                  onChange={e => set({ ageAtDeath: sanitizeAgeValue(e.target.value) })} />
-              </label>
+            {node.condition && (
+              // older free-text field: still shown under the symbol, editable/clearable here
               <label className="field-col">
-                <span className="field-label">Ölüm nedeni</span>
-                <input type="text" className="input input-wide" value={node.causeOfDeath || ''}
-                  onChange={e => set({ causeOfDeath: e.target.value })} />
+                <span className="field-label">Sembol altı yazı</span>
+                <input type="text" className="input input-wide" value={node.condition || ''}
+                  onChange={e => set({ condition: e.target.value })} />
               </label>
-            </>
-          )}
-        </div>
-
-        {!isLoss && !node.placeholder && (
-          <div className="card">
-            <div className="card-title">Aileye ekle</div>
-            {/* parents only when there is no parent union (never duplicates);
-                siblings only when there is one (never fabricates parents) */}
-            {onAddParents && !ownParentRel && (
-              <button className="ui-btn ui-btn-sm" onClick={() => onAddParents(node.id, {})}>Anne ve baba ekle</button>
-            )}
-            {onAddSibling && ownParentRel && (
-              <div className="field-col">
-                <span className="field-label">Kardeş</span>
-                <AddButtons onAdd={(sex, extra) => onAddSibling(node.id, sex, extra)} />
-              </div>
-            )}
-            {/* a union is woman + man only: offer the opposite sex, nothing for unknown */}
-            {!hasUnion && (
-              <div className="field-col">
-                <span className="field-label">Eş ve çocuk</span>
-                {node.sex === 'unknown' ? (
-                  <div className="field-hint">Eş ya da çocuk eklemek için önce cinsiyeti seçin.</div>
-                ) : (
-                  <>
-                    <button className="ui-btn ui-btn-sm" onClick={() => onAddSpouse(node.id, node.sex === 'female' ? 'male' : 'female')}>Eş ekle</button>
-                    <span className="field-hint">Çocuk ekle (eş otomatik eklenir):</span>
-                    <AddButtons onAdd={(sex, extra) => onAddChild(null, sex, node.id, extra)} />
-                  </>
-                )}
-              </div>
-            )}
-            {hasUnion && (node.sex === 'male' || node.sex === 'female') && (
-              <button className="ui-btn ui-btn-sm" onClick={() => onAddSpouse(node.id, node.sex === 'female' ? 'male' : 'female')}>
-                Başka bir eş ekle
-              </button>
             )}
           </div>
         )}
@@ -442,7 +360,7 @@ export default function IndividualEditor({
         {!isLoss && !node.placeholder && existingUnions.map(u => (
           <div className="card" key={u.id}>
             <div className="card-title">Eş: {displayNameFor(u.partners.find(p => p !== node.id))}</div>
-            <UnionControls u={u} pcrs={pcrs} onAddChild={onAddChild} onSetUnionStatus={onSetUnionStatus}
+            <UnionControls u={u} pcrs={pcrs} onSetUnionStatus={onSetUnionStatus} withChildren={false}
               onSetUnionRelationshipBackground={onSetUnionRelationshipBackground} parentsCons={parentsCons} />
           </div>
         ))}
@@ -460,12 +378,6 @@ export default function IndividualEditor({
             </div>
           </div>
         )}
-
-        <div className="card">
-          <div className="card-title">Not</div>
-          <textarea className="input input-wide" value={node.notes || ''} placeholder="Klinik notlar"
-            onChange={e => set({ notes: e.target.value })} />
-        </div>
 
         {/* anyone but the proband can be deleted; children stay with the other parent */}
         {onDeleteIndividual && !node.placeholder && (
