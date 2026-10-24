@@ -53,6 +53,12 @@ export {
 
 const MAX_UNDO_HISTORY = 50;
 
+/**
+ * Selection: any number of people (Cmd/Ctrl-click adds/removes). The first
+ * two are mirrored in selectedId / selectedId2 (pair actions, couple card).
+ */
+const sel = (ids) => ({ selectedIds: ids, selectedId: ids[0] || null, selectedId2: ids[1] || null });
+
 function tagIssues(issues, source) {
   return issues.map(issue => ({ ...issue, source }));
 }
@@ -230,26 +236,23 @@ export const usePedigreeStore = create((zSet, get) => {
     // brings back exactly the drawing the clinician saw
     _viewHistory: [],
     _viewFuture: [],
-    selectedId: null,
-    selectedId2: null,
+    ...sel([]),
     dismissedWarningIds: [],
     openSectionId: 'proband',
 
     // ── UI state (not undoable) ──
     selectIndividual: (id, opts = {}) => zSet((state) => {
-      const additive = !!opts.additive;
-      if (!additive) return { selectedId: id, selectedId2: null };
-      if (id === state.selectedId) return {};
-      if (id === state.selectedId2) return { selectedId2: null };
-      if (!state.selectedId) return { selectedId: id, selectedId2: null };
-      return { selectedId2: id };
+      if (!id) return sel([]);
+      if (!opts.additive) return sel([id]);
+      const ids = state.selectedIds || [];
+      return sel(ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]);
     }),
     dismissActionNotice: () => zSet(() => ({ actionNotice: null })),
-    clearSelection: () => zSet(() => ({ selectedId: null, selectedId2: null })),
+    clearSelection: () => zSet(() => sel([])),
     // clicking a relationship line selects the couple (pair panel: status, children)
     selectUnion: (unionId) => zSet((state) => {
       const u = state.doc.graph.unions.find(x => x.id === unionId);
-      return u ? { selectedId: u.partners[0], selectedId2: u.partners[1] } : {};
+      return u ? sel([u.partners[0], u.partners[1]]) : {};
     }),
     dismissWarning: (warningId) => zSet((state) => ({
       dismissedWarningIds: [...new Set([...(state.dismissedWarningIds || []), warningId])],
@@ -307,6 +310,13 @@ export const usePedigreeStore = create((zSet, get) => {
     setUnionRelationshipBackground: (unionId, value) => apply(ops.setRelationshipBackground(get().doc, unionId, value)),
     setUnionStatus: (unionId, status) => apply(ops.setUnionStatus(get().doc, unionId, status)),
 
+    // ── several people at once (one undo step each) ──
+    updateMany: (ids, patch) => apply(chain(get().doc, ids.map(id => (d) => ops.updatePerson(d, id, patch)))),
+    setFindingStatusMany: (ids, label, status) => apply(chain(get().doc, ids.map(id => (d) => findings.setFindingStatus(d, id, label, status)))),
+    addFindingMany: (ids, label, style) => apply(chain(get().doc, ids.map((id, k) => (d) => (k === 0
+      ? findings.addFinding(d, id, label, style)
+      : findings.setFindingStatus(d, id, label, 'affected'))))),
+
     // ── findings (legend regions) ──
     addFinding: (personId, label, style) => apply(findings.addFinding(get().doc, personId, label, style)),
     setFindingStatus: (personId, label, status) => apply(findings.setFindingStatus(get().doc, personId, label, status)),
@@ -358,10 +368,7 @@ export const usePedigreeStore = create((zSet, get) => {
 
     deleteIndividual: (id) => {
       const state = get();
-      return apply(ops.removePerson(state.doc, id), {
-        selectedId: state.selectedId === id ? null : state.selectedId,
-        selectedId2: state.selectedId2 === id ? null : state.selectedId2,
-      });
+      return apply(ops.removePerson(state.doc, id), sel((state.selectedIds || []).filter(x => x !== id)));
     },
 
     // ── documents ──
@@ -372,7 +379,7 @@ export const usePedigreeStore = create((zSet, get) => {
       return {
         doc: fresh, ui,
         _history: [], _future: [], _viewHistory: [], _viewFuture: [],
-        selectedId: null, selectedId2: null,
+        ...sel([]),
         dismissedWarningIds: [], openSectionId: 'proband', actionNotice: null,
         // a new pedigree opens with straight lines of descent
         ...deriveAll(fresh, ui, { straightStart: true }),
@@ -400,7 +407,7 @@ export const usePedigreeStore = create((zSet, get) => {
       const prevNodes = nodesFromHints(parsed.doc.layoutHints);
       const doc = withoutHints(parsed.doc);
       const derived = deriveAll(doc, get().ui, prevNodes ? { prevNodes, frozen: true } : null);
-      const result = apply({ ok: true, doc }, { selectedId: null, selectedId2: null }, derived);
+      const result = apply({ ok: true, doc }, sel([]), derived);
       if (parsed.migrated) zSet({ actionNotice: { message: 'Eski biçimdeki dosya yeni veri biçimine taşınarak açıldı.', at: Date.now() } });
       return { ...result, migrated: parsed.migrated };
     },

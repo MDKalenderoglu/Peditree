@@ -44,7 +44,7 @@ export function FindingGlyph({ region = 'q1', fill = 'solid', carrier = false, s
   );
 }
 
-function StylePicker({ value, onChange, isTaken }) {
+export function StylePicker({ value, onChange, isTaken }) {
   return (
     <div className="style-picker">
       <div className="style-row">

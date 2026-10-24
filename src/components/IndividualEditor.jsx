@@ -11,6 +11,7 @@ import { sanitizeAgeValue } from '../utils/ageValidation';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { degreeLabel } from '../graph/kinship';
 import { groupOf, multipleName, zygosityLabel, ZYGOSITY } from '../graph/multiples';
+import BulkEditor from './BulkEditor';
 
 const SEX_WORD = { male: 'Erkek', female: 'Kadın', unknown: 'Cinsiyet bilinmiyor' };
 // same options and wording as the wizard; an older 'separated' shows as the combined one
@@ -194,7 +195,7 @@ function MultiplesCard({ node, pedigreeData, displayNameFor, onAddMultiple, onSe
  * Two individuals selected (Cmd/Ctrl-click, or a click on their relationship
  * line): an existing couple gets its relationship card, others the pair actions.
  */
-function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSiblings, onClearSelection, unionProps, onSetMultipleBirth }) {
+function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSiblings, onClearSelection, unionProps, onSetMultipleBirth, bulk }) {
   // Authoritative safety checks (self/duplicate, pregnancy loss, siblings,
   // cross-generation; two different parent unions cannot be merged).
   const unionPlan = computeUnionCreationPlan(pedigreeData, node.id, node2.id);
@@ -249,7 +250,8 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
           {siblingBlocked && <div className="field-hint">{siblingPlan.reason}</div>}
         </div>
         )}
-        <div className="field-hint">İpucu: Cmd/Ctrl ile tıklayarak iki kişi seçilir; bir ilişki çizgisine tıklamak o çifti seçer.</div>
+        {bulk}
+        <div className="field-hint">İpucu: Cmd/Ctrl ile tıklayarak birden çok kişi seçilir; bir ilişki çizgisine tıklamak o çifti seçer.</div>
       </div>
     </>
   );
@@ -261,6 +263,7 @@ export default function IndividualEditor({
   onClearSelection, onReorderChild, onSetUnionRelationshipBackground, onSetUnionStatus,
   onSetMultipleBirth, onAddMultiple, onSetZygosity, onLeaveMultiple,
   wizardParents, onSetParentsField,
+  selectedNodes = [], onUpdateMany, onSetFindingStatusMany, onAddFindingMany,
 }) {
   const ids = computePedigreeIds(pedigreeData?.nodes || []);
   const nameOfId = (id) => {
@@ -270,11 +273,27 @@ export default function IndividualEditor({
     return pid ? (label ? `${pid} (${label})` : pid) : (label || 'birey');
   };
   const parentsCons = wizardParents && onSetParentsField ? { parents: wizardParents, onSet: onSetParentsField, nameOf: nameOfId } : null;
+  const bulk = onUpdateMany && selectedNodes.length >= 2 ? (
+    <BulkEditor nodes={selectedNodes} conditionKey={pedigreeData?.conditionKey || []}
+      onUpdateMany={onUpdateMany} onSetFindingStatusMany={onSetFindingStatusMany} onAddFindingMany={onAddFindingMany} />
+  ) : null;
+  if (selectedNodes.length >= 3) {
+    return (
+      <>
+        <Header title={`${selectedNodes.length} kişi seçili`} sub={selectedNodes.map(n => ids.get(n.id)?.displayId || '—').join(', ')} onClose={onClearSelection} />
+        <div className="editor-body">
+          {bulk}
+          <div className="field-hint">Cmd/Ctrl ile tıklayarak kişi ekleyip çıkarabilirsiniz.</div>
+        </div>
+      </>
+    );
+  }
   if (node && node2) {
     return (
       <TwoPersonActions node={node} node2={node2} pedigreeData={pedigreeData}
         onCreateUnion={onCreateUnion} onMakeSiblings={onMakeSiblings} onClearSelection={onClearSelection}
-        unionProps={{ onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground, parentsCons }} onSetMultipleBirth={onSetMultipleBirth} />
+        unionProps={{ onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground, parentsCons }} onSetMultipleBirth={onSetMultipleBirth}
+        bulk={bulk} />
     );
   }
   if (!node) return null;

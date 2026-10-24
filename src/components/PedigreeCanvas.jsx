@@ -123,7 +123,7 @@ function drawStroke(g, edge, dx = 0, dy = 0) {
 // belt-and-suspenders fallback for exportUtils.js and for tests/tools
 // that query the DOM directly.
 const PedigreeCanvas = forwardRef(function PedigreeCanvas(
-  { nodes, edges, selectedNodeId, selectedNodeId2, onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar },
+  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar },
   forwardedRef
 ) {
   const svgRef = useRef(null);
@@ -133,10 +133,10 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
   const [anchor, setAnchor] = useState(null);
   const placeQuickBar = useCallback(() => {
     const shape = svgRef.current && svgRef.current.querySelector('.node-selected .pedigree-shape');
-    if (!shape || !boxRef.current || selectedNodeId2) { setAnchor(null); return; }
+    if (!shape || !boxRef.current || selectedNodeId2 || selectedIds.length > 1) { setAnchor(null); return; }
     const r = shape.getBoundingClientRect(), box = boxRef.current.getBoundingClientRect();
     setAnchor({ x: r.left + r.width / 2 - box.left, y: r.top + r.height / 2 - box.top, size: Math.max(r.width, r.height), boxW: box.width, boxH: box.height });
-  }, [selectedNodeId2]);
+  }, [selectedNodeId2, selectedIds.length]);
 
   const attachSvgRef = (node) => {
     svgRef.current = node;
@@ -332,7 +332,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         // (v0.5 Faz 2a, EX-1).
         let cls = 'node-group';
         if (d.id === selectedNodeId) cls += ' node-selected';
-        else if (d.id === selectedNodeId2) cls += ' node-selected-secondary';
+        else if (d.id === selectedNodeId2 || selectedIds.includes(d.id)) cls += ' node-selected-secondary';
         return cls;
       })
       .attr('transform', d => `translate(${d.x},${d.y})`)
@@ -557,7 +557,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // Store for external reset
     svg.node().__zoom_ref = zoom;
 
-  }, [nodes, edges, selectedNodeId, selectedNodeId2, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar]);
+  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar]);
 
   const zoomBy = (k) => {
     const svg = d3.select(svgRef.current);

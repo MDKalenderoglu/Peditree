@@ -157,12 +157,17 @@ describe('v0.3a.1 — store: selection', () => {
     expect(usePedigreeStore.getState().selectedId2).toBeNull();
   });
 
-  it('a third additive click replaces the secondary, never grows past two', () => {
+  // 2026-10-24, clinician request: several people can be edited at once —
+  // the selection is no longer capped at two
+  it('a third additive click adds a third person; another additive click on one removes them', () => {
     usePedigreeStore.getState().selectIndividual('mother');
     usePedigreeStore.getState().selectIndividual('father', { additive: true });
     usePedigreeStore.getState().selectIndividual('proband', { additive: true });
+    expect(usePedigreeStore.getState().selectedIds).toEqual(['mother', 'father', 'proband']);
     expect(usePedigreeStore.getState().selectedId).toBe('mother');
-    expect(usePedigreeStore.getState().selectedId2).toBe('proband');
+    expect(usePedigreeStore.getState().selectedId2).toBe('father');
+    usePedigreeStore.getState().selectIndividual('father', { additive: true });
+    expect(usePedigreeStore.getState().selectedIds).toEqual(['mother', 'proband']);
   });
 
   it('clearSelection clears both slots', () => {

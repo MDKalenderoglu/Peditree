@@ -17,7 +17,8 @@ function App() {
     pedigreeData, warnings, integrityIssues,
     updateIndividual, addSpouseTo, addChildTo, addChildToUnion,
     setProband, clearProband, resetPedigree,
-    selectedId, selectedId2, selectIndividual, clearSelection, selectUnion,
+    selectedId, selectedId2, selectedIds, selectIndividual, clearSelection, selectUnion,
+    updateMany, setFindingStatusMany, addFindingMany,
     deleteIndividual, createUnionBetween, addCustomConsanguinity,
     reorderChild, setUnionRelationshipBackground, setUnionStatus,
     setMultipleBirth, addMultipleSibling, setMultipleZygosity, leaveMultipleBirth,
@@ -34,6 +35,7 @@ function App() {
 
   const selectedNode = pedigreeData.individuals.find(i => i.id === selectedId);
   const selectedNode2 = pedigreeData.individuals.find(i => i.id === selectedId2);
+  const selectedNodes = (selectedIds || []).map(id => pedigreeData.individuals.find(i => i.id === id)).filter(Boolean);
 
   const errorIssues = (integrityIssues || []).filter(i => i.severity === 'error');
   const warningIssues = (integrityIssues || []).filter(i => i.severity === 'warning');
@@ -255,6 +257,7 @@ function App() {
           edges={pedigreeData.edges || []}
           selectedNodeId={selectedId}
           selectedNodeId2={selectedId2}
+          selectedIds={selectedIds || []}
           onNodeSelect={handleNodeSelect}
           onUnionSelect={selectUnion}
           conditionKey={pedigreeData.conditionKey || []}
@@ -299,6 +302,10 @@ function App() {
           onAddFinding={addFinding}
           onSetFindingStatus={setFindingStatus}
           onSetFindingStyle={setFindingStyle}
+          selectedNodes={selectedNodes}
+          onUpdateMany={updateMany}
+          onSetFindingStatusMany={setFindingStatusMany}
+          onAddFindingMany={addFindingMany}
           wizardParents={wizardData.parents}
           onSetParentsField={(field, value) => updateWizardData('parents', field, value)}
           onAddParents={addParentsTo}

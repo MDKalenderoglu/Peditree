@@ -181,6 +181,37 @@ describe('quick-add bar on the drawing (2026-10-24)', () => {
   it('the canvas keeps the zoom across edits and shows the bar for one selected person only', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
     expect(src).toMatch(/svg\.call\(zoom\.transform, d3\.zoomTransform\(svg\.node\(\)\)\)/);
-    expect(src).toMatch(/selectedNodeId2\) \{ setAnchor\(null\)/);
+    expect(src).toMatch(/selectedNodeId2 \|\| selectedIds\.length > 1\) \{ setAnchor\(null\)/);
+  });
+});
+
+describe('several people at once (clinician request 2026-10-24)', () => {
+  const ppl = ['mother', 'father', 'proband'];
+  const get = (id) => S().doc.graph.individuals.find(i => i.id === id);
+
+  it('Cmd/Ctrl-click selects any number of people', () => {
+    S().selectIndividual('mother');
+    S().selectIndividual('father', { additive: true });
+    S().selectIndividual('proband', { additive: true });
+    S().selectIndividual('mat_gf', { additive: true });
+    expect(S().selectedIds).toEqual(['mother', 'father', 'proband', 'mat_gf']);
+  });
+
+  it('affected / deceased for everyone selected — one undo step', () => {
+    const steps = S()._history.length;
+    S().updateMany(ppl, { affected: true });
+    expect(ppl.every(id => get(id).affected)).toBe(true);
+    expect(S()._history.length).toBe(steps + 1);
+    S().undo();
+    expect(ppl.some(id => get(id).affected)).toBe(false);
+  });
+
+  it('a new finding for everyone selected keeps one signature; it can be removed from all at once', () => {
+    S().addFindingMany(ppl, 'Miyop', { region: 'q2', fill: 'hatch' });
+    expect(ppl.every(id => (get(id).conditions || []).some(c => c.label === 'Miyop' && c.status === 'affected'))).toBe(true);
+    expect(S().doc.graph.conditionKey).toEqual([expect.objectContaining({ label: 'Miyop', region: 'q2', fill: 'hatch' })]);
+    S().setFindingStatusMany(ppl, 'Miyop', 'none');
+    expect(S().doc.graph.conditionKey).toEqual([]);
+    expect(errors()).toEqual([]);
   });
 });
