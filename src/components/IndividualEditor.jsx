@@ -12,6 +12,7 @@ import { sanitizeAgeValue } from '../utils/ageValidation';
 import { RELATIONSHIP_BACKGROUND_OPTIONS } from '../utils/relationshipBackground';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { degreeLabel } from '../graph/kinship';
+import { groupOf, multipleName, zygosityLabel, ZYGOSITY } from '../graph/multiples';
 
 const SEX_WORD = { male: 'Erkek', female: 'Kadın', unknown: 'Cinsiyet bilinmiyor' };
 // same options and wording as the wizard; an older 'separated' shows as the combined one
@@ -154,17 +155,78 @@ function FindingsEditor({ node, conditionKey, set }) {
   );
 }
 
+/** Twins / multiple births of this person: zygosity, one more, leave the group. */
+function MultiplesCard({ node, pedigreeData, displayNameFor, onAddMultiple, onSetZygosity, onLeaveMultiple }) {
+  const [z, setZ] = useState('unknown');
+  const found = groupOf(pedigreeData, node.id);
+  const hasParents = (pedigreeData.parentChildRelationships || []).some(r => r.children.includes(node.id));
+  if (!hasParents || !onAddMultiple) return null;
+  const sexes = [['male', 'Erkek'], ['female', 'Kız'], ['unknown', 'Bilinmeyen']];
+  if (!found) {
+    return (
+      <div className="card">
+        <div className="card-title">İkiz / üçüz</div>
+        <label className="field">
+          <span className="field-label">Zigosite</span>
+          <select className="select" value={z} onChange={e => setZ(e.target.value)}>
+            {ZYGOSITY.map(v => <option key={v} value={v}>{zygosityLabel(v, 2)}</option>)}
+          </select>
+        </label>
+        <div className="field-col">
+          <span className="field-label">İkizini ekle</span>
+          {z === 'monozygotic' ? (
+            <button className="ui-btn ui-btn-sm" onClick={() => onAddMultiple(node.id, { zygosity: z })}>İkizini ekle (aynı cinsiyet)</button>
+          ) : (
+            <div className="add-grid">
+              {sexes.map(([v, t]) => <button key={v} className="ui-btn ui-btn-sm" onClick={() => onAddMultiple(node.id, { sex: v, zygosity: z })}>{t}</button>)}
+            </div>
+          )}
+        </div>
+        <span className="field-hint">Var olan bir kardeşle ikiz yapmak için ikisini Cmd/Ctrl ile seçin.</span>
+      </div>
+    );
+  }
+  const { group } = found;
+  const n = group.children.length;
+  return (
+    <div className="card">
+      <div className="card-title">{multipleName(n)}</div>
+      <span className="field-hint">{group.children.map(displayNameFor).join(', ')}</span>
+      <label className="field-col">
+        <span className="field-label">Zigosite</span>
+        <select className="select input-wide" value={group.zygosity} onChange={e => onSetZygosity(node.id, e.target.value)}>
+          {ZYGOSITY.map(v => <option key={v} value={v}>{zygosityLabel(v, n)}</option>)}
+        </select>
+      </label>
+      <div className="field-col">
+        <span className="field-label">{multipleName(n + 1)} yap: bir kardeş daha</span>
+        {group.zygosity === 'monozygotic' ? (
+          <button className="ui-btn ui-btn-sm" onClick={() => onAddMultiple(node.id, {})}>Ekle (aynı cinsiyet)</button>
+        ) : (
+          <div className="add-grid">
+            {sexes.map(([v, t]) => <button key={v} className="ui-btn ui-btn-sm" onClick={() => onAddMultiple(node.id, { sex: v })}>{t}</button>)}
+          </div>
+        )}
+      </div>
+      <button className="ui-btn ui-btn-sm ui-btn-ghost" onClick={() => onLeaveMultiple(node.id)}>Bu kişiyi gruptan çıkar</button>
+    </div>
+  );
+}
+
 /**
  * Two individuals selected (Cmd/Ctrl-click, or a click on their relationship
  * line): an existing couple gets its relationship card, others the pair actions.
  */
-function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSiblings, onClearSelection, unionProps }) {
+function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSiblings, onClearSelection, unionProps, onSetMultipleBirth }) {
   // Authoritative safety checks (self/duplicate, pregnancy loss, siblings,
   // cross-generation; two different parent unions cannot be merged).
   const unionPlan = computeUnionCreationPlan(pedigreeData, node.id, node2.id);
   const siblingPlan = computeSiblingCreationPlan(pedigreeData, node.id, node2.id);
   const siblingBlocked = !siblingPlan.ok || siblingPlan.action === 'noop';
   const couple = (pedigreeData.unions || []).find(u => u.partners.includes(node.id) && u.partners.includes(node2.id));
+  const parentRel = (id) => (pedigreeData.parentChildRelationships || []).find(r => r.children.includes(id));
+  const siblings = !!parentRel(node.id) && parentRel(node.id) === parentRel(node2.id)
+    && !node.placeholder && !node2.placeholder;
 
   const pedigreeIds = computePedigreeIds(pedigreeData?.nodes || []);
   const label = (p) => {
@@ -181,6 +243,19 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
           <div className="card">
             <div className="card-title">Bu çift</div>
             <UnionControls u={couple} pcrs={pedigreeData.parentChildRelationships || []} {...unionProps} />
+          </div>
+        )}
+        {siblings && onSetMultipleBirth && (
+          <div className="card">
+            <div className="card-title">İkiz yap</div>
+            <div className="btn-row">
+              {ZYGOSITY.map(v => (
+                <button key={v} className="ui-btn ui-btn-sm" onClick={() => onSetMultipleBirth([node.id, node2.id], v)}>
+                  {{ monozygotic: 'Tek yumurta', dizygotic: 'Çift yumurta', unknown: 'Bilinmiyor' }[v]}
+                </button>
+              ))}
+            </div>
+            <span className="field-hint">Biri zaten ikizse diğeri gruba katılır (üçüz olur).</span>
           </div>
         )}
         {!couple && (
@@ -208,12 +283,13 @@ export default function IndividualEditor({
   onDeleteIndividual, onCreateUnion, onMakeSiblings,
   onClearSelection, onReorderChild, onSetUnionRelationshipBackground, onSetUnionStatus,
   onAddParents, onAddSibling,
+  onSetMultipleBirth, onAddMultiple, onSetZygosity, onLeaveMultiple,
 }) {
   if (node && node2) {
     return (
       <TwoPersonActions node={node} node2={node2} pedigreeData={pedigreeData}
         onCreateUnion={onCreateUnion} onMakeSiblings={onMakeSiblings} onClearSelection={onClearSelection}
-        unionProps={{ onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground }} />
+        unionProps={{ onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground }} onSetMultipleBirth={onSetMultipleBirth} />
     );
   }
   if (!node) return null;
@@ -348,6 +424,11 @@ export default function IndividualEditor({
               </button>
             )}
           </div>
+        )}
+
+        {!node.placeholder && (
+          <MultiplesCard node={node} pedigreeData={pedigreeData} displayNameFor={displayNameFor}
+            onAddMultiple={onAddMultiple} onSetZygosity={onSetZygosity} onLeaveMultiple={onLeaveMultiple} />
         )}
 
         {!isLoss && !node.placeholder && existingUnions.map(u => (

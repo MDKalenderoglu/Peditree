@@ -21,6 +21,7 @@ function App() {
     selectedId, selectedId2, selectIndividual, clearSelection, selectUnion,
     deleteIndividual, createUnionBetween, addCustomConsanguinity,
     reorderChild, setUnionRelationshipBackground, setUnionStatus,
+    setMultipleBirth, addMultipleSibling, setMultipleZygosity, leaveMultipleBirth,
     addParentsTo, addSiblingTo,
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
@@ -255,7 +256,7 @@ function App() {
           conditionKey={pedigreeData.conditionKey || []}
           renderQuickBar={(anchor) => (
             <RadialAddMenu anchor={anchor} node={selectedNode} pedigreeData={pedigreeData}
-              onAddSibling={addSiblingTo} onAddSpouse={addSpouseTo} onAddParents={addParentsTo}
+              onAddSibling={addSiblingTo} onAddSpouse={addSpouseTo} onAddParents={addParentsTo} onAddTwin={addMultipleSibling}
               onAddChild={(unionId, sex, targetId, extra) => (unionId ? addChildToUnion(unionId, sex, extra) : addChildTo(targetId, sex, extra))} />
           )}
         />
@@ -285,6 +286,10 @@ function App() {
           onReorderChild={reorderChild}
           onSetUnionRelationshipBackground={setUnionRelationshipBackground}
           onSetUnionStatus={setUnionStatus}
+          onSetMultipleBirth={setMultipleBirth}
+          onAddMultiple={addMultipleSibling}
+          onSetZygosity={setMultipleZygosity}
+          onLeaveMultiple={leaveMultipleBirth}
           onAddParents={addParentsTo}
           onAddSibling={addSiblingTo}
         />

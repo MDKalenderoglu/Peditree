@@ -53,7 +53,7 @@ function sectorPath(a0, a1, r, R) {
   return `M${x0},${y0} A${R},${R} 0 0 1 ${x1},${y1} L${x2},${y2} A${r},${r} 0 0 0 ${x3},${y3} Z`;
 }
 
-export default function RadialAddMenu({ anchor, node, pedigreeData, onAddSibling, onAddChild, onAddSpouse, onAddParents }) {
+export default function RadialAddMenu({ anchor, node, pedigreeData, onAddSibling, onAddChild, onAddSpouse, onAddParents, onAddTwin }) {
   const [active, setActive] = useState(null);
   const closeTimer = useRef(null);
   if (!node || node.placeholder || node.pregnancyLoss || node.stillbirth) return null;
@@ -75,7 +75,11 @@ export default function RadialAddMenu({ anchor, node, pedigreeData, onAddSibling
     top: [['Anne ve baba ekle', null, () => onAddParents(node.id, {})]],
     right: [[unions.length ? 'Başka bir eş ekle' : 'Eş ekle', node.sex === 'female' ? 'male' : 'female',
       () => onAddSpouse(node.id, node.sex === 'female' ? 'male' : 'female')]],
-    left: KINDS.map(([g, t, sex, extra]) => [`Kardeş: ${t}`, g, () => onAddSibling(node.id, sex, { ...extra, createParents: true })]),
+    left: [
+      ...KINDS.map(([g, t, sex, extra]) => [`Kardeş: ${t}`, g, () => onAddSibling(node.id, sex, { ...extra, createParents: true })]),
+      // a twin (zygosity set in the right panel); needs the parents drawn
+      ...(hasParents && onAddTwin ? [['İkiz', null, () => onAddTwin(node.id, { sex: node.sex })]] : []),
+    ],
     bottom: KINDS.map(([g, t, sex, extra]) => [`Çocuk: ${t}`, g,
       () => (lastUnion ? onAddChild(lastUnion.id, sex, null, extra) : onAddChild(null, sex, node.id, extra))]),
   };

@@ -31,6 +31,9 @@ ParentChildRelationship  { unionId, children: string[],      // BIOLOGICAL, ≤ 
                            birthOrderExplicit?, orderPolicy: 'byAge' | 'insertion' }
 
 SocialParentLink         { childId, unionId, kind: 'adoptive' | 'foster' | 'step' | 'guardian' }
+
+ParentChildRelationship.multiples?  [{ id, children (≥ 2, side by side), zygosity: 'monozygotic' | 'dizygotic' | 'unknown' }]
+                         // twins / triplets — src/graph/multiples.js; drawn from one point of the sibship line
 ```
 
 The persisted unit is the schema v2 document (`src/graph/document.js`): `{ schemaVersion: 2, graph: { individuals, unions, parentChildRelationships, socialParentLinks }, ids: { counters, retired }, wizardAnchorId, wizardMeta?, provenance }`. Clinical data lives on the person (no overlay). `placeholder: true` marks an "unspecified parent" created when a parent is deleted.
