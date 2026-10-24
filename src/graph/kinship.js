@@ -35,6 +35,7 @@ const DEGREE_LABEL = {
   first_cousin_once_removed: '1. kuzenin çocuğu (bir kuşak fark)',
   second_cousin_once_removed: '2. kuzenin çocuğu (bir kuşak fark)',
   double_first_cousin: 'Çift 1. derece kuzen',
+  avuncular: 'Amca/dayı/hala/teyze – yeğen',
   multiple_relationship: 'Birden fazla akrabalık yolu',
   other: 'Diğer akrabalık',
 };
@@ -43,6 +44,7 @@ export const degreeLabel = (degree) => DEGREE_LABEL[degree] || null;
 function degreeFor(m, n, half) {
   const lo = Math.min(m, n), hi = Math.max(m, n);
   if (half) return 'other';
+  if (lo === 1 && hi === 2) return 'avuncular'; // e.g. uncle and niece (cross-generation partners)
   if (lo === 2 && hi === 2) return 'first_cousin';
   if (lo === 3 && hi === 3) return 'second_cousin';
   if (lo === 2 && hi === 3) return 'first_cousin_once_removed';

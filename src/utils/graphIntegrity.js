@@ -172,7 +172,8 @@ export function auditPedigreeGraph(graph) {
   // ──────────────────────────────────────
   for (const u of unions) {
     const partners = u.partners || [];
-    if (partners.length === 2) {
+    // a cross-generation partnership is allowed to differ (clinician decision 2026-10-24)
+    if (partners.length === 2 && !u.crossGeneration) {
       const p1 = indById.get(partners[0]);
       const p2 = indById.get(partners[1]);
       if (p1 && p2 && p1.generation !== p2.generation) {

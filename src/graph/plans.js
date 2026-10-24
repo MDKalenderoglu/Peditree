@@ -90,7 +90,7 @@ export function computeDeletionPlanFor(pedigreeData, targetId) {
  * partners via a new union (v0.3a.1 multi-select "make partners" action).
  * Exported for direct unit testing.
  *
- * @returns {{ ok: boolean, reason?: string, requiresConsanguineousFlag?: boolean }}
+ * @returns {{ ok: boolean, reason?: string, requiresConsanguineousFlag?: boolean, crossGeneration?: boolean }}
  */
 export function computeUnionCreationPlan(pedigreeData, id1, id2) {
   const individuals = pedigreeData.individuals || [];
@@ -146,18 +146,32 @@ export function computeUnionCreationPlan(pedigreeData, id1, id2) {
     };
   }
 
-  // v0.3a.4: block cross-generation partnering by default. Two individuals
-  // at different generations cannot be readably drawn as a couple (a union
-  // line is horizontal, connecting same-Y partners), and allowing it is the
-  // main source of the tangled, unreadable layouts seen in clinical QA. An
-  // exceptional cross-generation consanguineous notation may be added later
-  // behind an explicit expert override; for now this is a hard block.
+  // Partners from different generations (e.g. uncle and niece) are allowed
+  // (clinician decision 2026-10-24): each stays on their own generation row
+  // and the relationship line steps down between the rows. For now one
+  // generation apart at most — further apart the line would have to cross
+  // the rows in between. Never between an ancestor and a descendant.
+  let crossGeneration = false;
   if (typeof ind1.generation === 'number' && typeof ind2.generation === 'number' &&
       ind1.generation !== ind2.generation) {
-    return {
-      ok: false,
-      reason: 'Farklı kuşaktaki iki kişi arasında eş bağı henüz çizilemiyor.',
+    if (Math.abs(ind1.generation - ind2.generation) > 1) {
+      return { ok: false, reason: 'Şimdilik en fazla bir kuşak farklı iki kişi eş yapılabilir.' };
+    }
+    const ancestors = (id) => {
+      const out = new Set();
+      const stack = [id];
+      while (stack.length) {
+        const cur = stack.pop();
+        const rel = pcrs.find(r => r.children.includes(cur));
+        const u = rel && unions.find(x => x.id === rel.unionId);
+        for (const p of (u ? u.partners : [])) if (!out.has(p)) { out.add(p); stack.push(p); }
+      }
+      return out;
     };
+    if (ancestors(id1).has(id2) || ancestors(id2).has(id1)) {
+      return { ok: false, reason: 'Bu iki kişi arasında doğrudan soy bağı var (dede–torun gibi); eş yapılamaz.' };
+    }
+    crossGeneration = true;
   }
 
   const alreadyPartnered = unions.some(u => u.partners.includes(id1) && u.partners.includes(id2));
@@ -177,7 +191,7 @@ export function computeUnionCreationPlan(pedigreeData, id1, id2) {
     };
   }
 
-  return { ok: true };
+  return crossGeneration ? { ok: true, crossGeneration } : { ok: true };
 }
 
 /**

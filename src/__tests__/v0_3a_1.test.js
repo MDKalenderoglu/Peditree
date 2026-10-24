@@ -424,7 +424,7 @@ describe('v0.3a.1 — store: computeUnionCreationPlan / createUnionBetween', () 
     // parent-child test below, which now covers the proband+mother case).
     const plan = computeUnionCreationPlan(state.pedigreeData, 'proband', 'mat_gm');
     expect(plan.ok).toBe(false);
-    expect(plan.reason).toMatch(/farklı kuşak/i);
+    expect(plan.reason).toMatch(/kuşak/i);
   });
 
   it('v0.3a.4: allows a same-generation, opposite-sex, cross-branch pairing at the plan level (mat_gf + pat_gm, both gen 1)', () => {

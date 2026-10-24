@@ -244,6 +244,7 @@ export function linkPartners(doc, a, b, opts = {}) {
     draftAddUnion(d, unionId, a, b, {
       status: opts.status || 'together',
       consanguineous: !!opts.markConsanguineous,
+      ...(plan.crossGeneration ? { crossGeneration: true } : {}),
     });
     return { created: { unionId } };
   });

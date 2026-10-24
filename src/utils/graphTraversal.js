@@ -8,6 +8,12 @@
  * Mutates individual.generation in place for every reachable node.
  * Unreachable nodes keep their constructor-assigned generation.
  *
+ * A union marked `crossGeneration` (partners from different generations,
+ * clinician decision 2026-10-24) does not force its partners onto one
+ * generation; its children are one generation below the LOWER partner.
+ * Such a union is used only after the rest of the graph has been walked:
+ * a partner reachable no other way gets the other partner's generation.
+ *
  * @param {{ individuals: Array, unions: Array, parentChildRelationships: Array }} graph
  * @param {string} anchorId - Individual to anchor BFS from (typically 'proband')
  * @param {number} anchorGeneration - Generation value for the anchor (typically 3)
@@ -50,6 +56,8 @@ export function computeGenerations(graph, anchorId = 'proband', anchorGeneration
     }
   }
 
+  const crossGen = new Set(unions.filter(u => u.crossGeneration).map(u => u.id));
+
   // ── BFS ──
 
   const derived = new Map();   // id → generation (first-derived value wins)
@@ -72,7 +80,7 @@ export function computeGenerations(graph, anchorId = 'proband', anchorGeneration
   visited.add(anchorId);
   queue.push({ id: anchorId, gen: anchorGeneration });
 
-  while (queue.length > 0) {
+  const drain = () => { while (queue.length > 0) {
     const { id, gen } = queue.shift();
 
     // ── 1. UP: if this person is a child in a union, parents get gen - 1 ──
@@ -97,6 +105,7 @@ export function computeGenerations(graph, anchorId = 'proband', anchorGeneration
     // ── 2. DOWN + 3. LATERAL: iterate unions where this person is a partner ──
     const partnerUnions = indToPartnerUnions.get(id) || [];
     for (const unionId of partnerUnions) {
+      if (crossGen.has(unionId)) continue; // settled below, once both partners are known
 
       // 2. DOWN: children get gen + 1
       const children = unionToChildren.get(unionId) || [];
@@ -129,6 +138,42 @@ export function computeGenerations(graph, anchorId = 'proband', anchorGeneration
             ids: [partnerId, id, unionId],
           });
         }
+      }
+    }
+  } };
+  drain();
+
+  // Cross-generation unions: children one below the lower partner; a partner
+  // with no other link takes the other partner's generation.
+  const seed = (id, gen) => { derived.set(id, gen); visited.add(id); queue.push({ id, gen }); };
+  for (let progress = true; progress;) {
+    progress = false;
+    for (const unionId of crossGen) {
+      const [a, b] = unionToPartners.get(unionId) || [];
+      if (derived.has(a) !== derived.has(b)) {
+        const [known, other] = derived.has(a) ? [a, b] : [b, a];
+        seed(other, derived.get(known));
+        progress = true;
+      }
+      if (!derived.has(a) || !derived.has(b)) continue;
+      const childGen = Math.max(derived.get(a), derived.get(b)) + 1;
+      for (const childId of unionToChildren.get(unionId) || []) {
+        if (!visited.has(childId)) { seed(childId, childGen); progress = true; }
+      }
+    }
+    drain();
+  }
+  for (const unionId of crossGen) {
+    const [a, b] = unionToPartners.get(unionId) || [];
+    if (!derived.has(a) || !derived.has(b)) continue;
+    const childGen = Math.max(derived.get(a), derived.get(b)) + 1;
+    for (const childId of unionToChildren.get(unionId) || []) {
+      if (derived.has(childId) && derived.get(childId) !== childGen) {
+        warnings.push({
+          code: 'GENERATION_INCONSISTENT',
+          message: `Individual '${childId}' derived as gen ${derived.get(childId)} but cross-generation union '${unionId}' gives gen ${childGen}`,
+          ids: [childId, unionId],
+        });
       }
     }
   }
