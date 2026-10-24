@@ -13,6 +13,7 @@ import { RELATIONSHIP_BACKGROUND_OPTIONS } from '../utils/relationshipBackground
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { degreeLabel } from '../graph/kinship';
 import { groupOf, multipleName, zygosityLabel, ZYGOSITY } from '../graph/multiples';
+import FindingsPalette from './FindingsPalette';
 
 const SEX_WORD = { male: 'Erkek', female: 'Kadın', unknown: 'Cinsiyet bilinmiyor' };
 // same options and wording as the wizard; an older 'separated' shows as the combined one
@@ -88,70 +89,6 @@ function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelati
         </label>
       )}
     </>
-  );
-}
-
-const norm = (x) => String(x || '').trim().toLocaleLowerCase('tr');
-const NEXT_STATE = { none: 'affected', affected: 'carrier', carrier: 'none' };
-
-/**
- * Findings of one person, as chips from the pedigree's legend (one click:
- * affected → carrier → none) plus a field for a new finding. Each finding
- * fills its own region of the symbol once the pedigree has two or more
- * (graph/conditionKey.js); the legend is drawn under the pedigree.
- */
-function FindingsEditor({ node, conditionKey, set }) {
-  const [draft, setDraft] = useState('');
-  const conds = Array.isArray(node.conditions) ? node.conditions : [];
-  const stateOf = (label) => {
-    const c = conds.find(x => norm(x.label) === norm(label));
-    return !c ? 'none' : c.status === 'affected' ? 'affected' : c.status === 'carrier' ? 'carrier' : 'none';
-  };
-  // affected follows the findings when findings decide it; a plain
-  // "Etkilenmiş" without any finding is kept
-  const write = (next) => {
-    const drivenBefore = conds.some(c => c.status === 'affected');
-    const anyAffected = next.some(c => c.status === 'affected');
-    set({ conditions: next, affected: anyAffected || (!drivenBefore && !!node.affected) });
-  };
-  const cycle = (label) => {
-    const to = NEXT_STATE[stateOf(label)];
-    const rest = conds.filter(c => norm(c.label) !== norm(label));
-    write(to === 'none' ? rest : [...rest, { label, status: to }]);
-  };
-  const add = () => {
-    const label = draft.trim();
-    if (!label) return;
-    const rest = conds.filter(c => norm(c.label) !== norm(label));
-    write([...rest, { label, status: 'affected' }]);
-    setDraft('');
-  };
-  const legendLabels = conditionKey.map(e => e.label);
-  return (
-    <div className="field-col">
-      <span className="field-label">Bulgular / tanılar</span>
-      {legendLabels.length > 0 && (
-        <div className="chips">
-          {legendLabels.map(label => {
-            const st = stateOf(label);
-            return (
-              <button key={label} className={`chip${st === 'affected' ? ' on' : ''}${st === 'carrier' ? ' chip-carrier' : ''}`}
-                aria-pressed={st !== 'none'} title="Tıklayın: etkilenmiş → taşıyıcı → yok" onClick={() => cycle(label)}>
-                {label}{st === 'carrier' ? ' · taşıyıcı' : ''}
-              </button>
-            );
-          })}
-        </div>
-      )}
-      <div className="btn-row" style={{ flexWrap: 'nowrap' }}>
-        <input type="text" className="input" style={{ flex: 1, minWidth: 0 }} value={draft} placeholder="Yeni bulgu, örn. miyop"
-          onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }} />
-        <button className="ui-btn ui-btn-sm" disabled={!draft.trim()} onClick={add}>Ekle</button>
-      </div>
-      {legendLabels.length >= 2 && (
-        <span className="field-hint">Her bulgu sembolün bir bölümünü boyar; açıklama çizimin altında.</span>
-      )}
-    </div>
   );
 }
 
@@ -284,6 +221,7 @@ export default function IndividualEditor({
   onClearSelection, onReorderChild, onSetUnionRelationshipBackground, onSetUnionStatus,
   onAddParents, onAddSibling,
   onSetMultipleBirth, onAddMultiple, onSetZygosity, onLeaveMultiple,
+  onAddFinding, onSetFindingStatus, onSetFindingStyle,
 }) {
   if (node && node2) {
     return (
@@ -362,8 +300,12 @@ export default function IndividualEditor({
             <button className={`chip${node.proband ? ' on' : ''}`} aria-pressed={!!node.proband}
               onClick={() => (node.proband ? onClearProband() : onSetProband(node.id))}>Proband</button>
           </div>
-          {!isLoss && (
-            <FindingsEditor node={node} conditionKey={pedigreeData?.conditionKey || []} set={set} />
+          {!isLoss && onAddFinding && (
+            <div className="field-col">
+              <span className="field-label">Bulgular / tanılar</span>
+              <FindingsPalette node={node} conditionKey={pedigreeData?.conditionKey || []}
+                onSetStatus={onSetFindingStatus} onAdd={onAddFinding} onSetStyle={onSetFindingStyle} />
+            </div>
           )}
           {!isLoss && node.condition && (
             // older free-text field: still shown under the symbol, editable/clearable here

@@ -1,12 +1,17 @@
 /**
- * RadialAddMenu.jsx — a ring around the selected symbol (clinician request
- * 2026-10-24): top = parents, left = sibling, right = spouse, bottom = child.
- * Pointing at a sector opens its choices (symbols); a click adds the person.
- * The hole in the middle leaves the symbol itself visible and clickable.
- * The same store operations as the right panel; the store refuses (with a
- * reason) anything the graph rules do not allow.
+ * RadialAddMenu.jsx — a ring around the selected symbol (clinician requests
+ * 2026-10-24). The ring adds relatives: top = parents, left = sibling,
+ * right = spouse, bottom = child (pointing at a sector opens its choices, a
+ * click adds). Four buttons on the diagonals work on the person while the
+ * history is taken: findings (with their legend marks), status (affected,
+ * carrier, deceased, proband), twins, note. The hole in the middle leaves the
+ * symbol visible and clickable. The same store operations as the right
+ * panel; the store refuses (with a reason) anything the graph rules forbid.
  */
 import { useRef, useState } from 'react';
+import { Stethoscope, HeartPulse, Users, StickyNote } from 'lucide-react';
+import FindingsPalette from './FindingsPalette';
+import { groupOf, multipleName } from '../graph/multiples';
 
 const S = 9; // glyph half-size
 
@@ -37,26 +42,38 @@ const KINDS = [
   ['stillbirth', 'Ölü doğum', 'unknown', { stillbirth: true }],
 ];
 
-// sector → angle range (degrees, screen: 0 = east, clockwise) and flyout side
+// ring sectors (degrees, screen: 0 = east, clockwise)
 const SECTORS = {
   top: { a0: -135, a1: -45, label: 'Ebeveyn' },
   right: { a0: -45, a1: 45, label: 'Eş' },
   bottom: { a0: 45, a1: 135, label: 'Çocuk' },
   left: { a0: 135, a1: 225, label: 'Kardeş' },
 };
+// buttons on the diagonals
+const SATELLITES = [
+  { key: 'findings', angle: -45, label: 'Bulgu', Icon: Stethoscope },
+  { key: 'status', angle: -135, label: 'Durum', Icon: HeartPulse },
+  { key: 'twins', angle: 135, label: 'İkiz', Icon: Users },
+  { key: 'note', angle: 45, label: 'Not', Icon: StickyNote },
+];
 
 function sectorPath(a0, a1, r, R) {
   const p = (a, rad) => [rad * Math.cos((a * Math.PI) / 180), rad * Math.sin((a * Math.PI) / 180)];
-  const gap = 2; // degrees between sectors
+  const gap = 3; // degrees between sectors
   const [b0, b1] = [a0 + gap, a1 - gap];
   const [x0, y0] = p(b0, R), [x1, y1] = p(b1, R), [x2, y2] = p(b1, r), [x3, y3] = p(b0, r);
   return `M${x0},${y0} A${R},${R} 0 0 1 ${x1},${y1} L${x2},${y2} A${r},${r} 0 0 0 ${x3},${y3} Z`;
 }
 
-export default function RadialAddMenu({ anchor, node, pedigreeData, onAddSibling, onAddChild, onAddSpouse, onAddParents, onAddTwin }) {
-  const [active, setActive] = useState(null);
+export default function RadialAddMenu({
+  anchor, node, pedigreeData, onAddSibling, onAddChild, onAddSpouse, onAddParents, onAddTwin,
+  onUpdate, onSetProband, onClearProband, onAddFinding, onSetFindingStatus, onSetFindingStyle,
+}) {
+  const [active, setActive] = useState(null);   // sector under the pointer
+  const [panel, setPanel] = useState(null);     // satellite panel (stays open)
   const closeTimer = useRef(null);
-  if (!node || node.placeholder || node.pregnancyLoss || node.stillbirth) return null;
+  if (!node || node.placeholder) return null;
+  const isLoss = node.pregnancyLoss || node.stillbirth;
 
   const pcrs = pedigreeData.parentChildRelationships || [];
   const unions = (pedigreeData.unions || []).filter(u => u.partners.includes(node.id));
@@ -64,37 +81,86 @@ export default function RadialAddMenu({ anchor, node, pedigreeData, onAddSibling
   const sexKnown = node.sex === 'male' || node.sex === 'female';
   // children go to the most recent partnership; the right panel has every one
   const lastUnion = unions[unions.length - 1];
+  const twinGroup = groupOf(pedigreeData, node.id);
 
   const disabled = {
-    top: hasParents ? 'Anne-baba zaten çizili.' : null,
-    right: sexKnown ? null : 'Eş eklemek için önce cinsiyeti seçin (sağ panel).',
-    bottom: !lastUnion && !sexKnown ? 'Çocuk eklemek için önce cinsiyeti seçin (sağ panel).' : null,
-    left: null,
+    top: isLoss ? 'Düşük / ölü doğuma ebeveyn eklenmez.' : hasParents ? 'Anne-baba zaten çizili.' : null,
+    right: isLoss ? 'Düşük / ölü doğuma eş eklenmez.' : sexKnown ? null : 'Eş eklemek için önce cinsiyeti seçin (Durum).',
+    bottom: isLoss ? 'Düşük / ölü doğuma çocuk eklenmez.' : !lastUnion && !sexKnown ? 'Çocuk eklemek için önce cinsiyeti seçin.' : null,
+    left: isLoss ? 'Düşük / ölü doğuma kardeş buradan eklenmez.' : null,
   };
   const choices = {
     top: [['Anne ve baba ekle', null, () => onAddParents(node.id, {})]],
     right: [[unions.length ? 'Başka bir eş ekle' : 'Eş ekle', node.sex === 'female' ? 'male' : 'female',
       () => onAddSpouse(node.id, node.sex === 'female' ? 'male' : 'female')]],
-    left: [
-      ...KINDS.map(([g, t, sex, extra]) => [`Kardeş: ${t}`, g, () => onAddSibling(node.id, sex, { ...extra, createParents: true })]),
-      // a twin (zygosity set in the right panel); needs the parents drawn
-      ...(hasParents && onAddTwin ? [['İkiz', null, () => onAddTwin(node.id, { sex: node.sex })]] : []),
-    ],
+    left: KINDS.map(([g, t, sex, extra]) => [`Kardeş: ${t}`, g, () => onAddSibling(node.id, sex, { ...extra, createParents: true })]),
     bottom: KINDS.map(([g, t, sex, extra]) => [`Çocuk: ${t}`, g,
       () => (lastUnion ? onAddChild(lastUnion.id, sex, null, extra) : onAddChild(null, sex, node.id, extra))]),
   };
 
-  const r = Math.max(26, anchor.size / 2 + 8);
-  const R = r + 40;
+  const r = Math.max(24, anchor.size / 2 + 8);
+  const R = r + 34;
   const box = R + 2;
-  const open = (k) => { clearTimeout(closeTimer.current); setActive(k); };
-  const leave = () => { clearTimeout(closeTimer.current); closeTimer.current = setTimeout(() => setActive(null), 180); };
+  const sat = R + 20; // satellite distance from the centre
+  const open = (k) => { clearTimeout(closeTimer.current); setActive(k); setPanel(null); };
+  const leave = () => { clearTimeout(closeTimer.current); closeTimer.current = setTimeout(() => setActive(null), 200); };
   const flyoutStyle = (k) => ({
-    top: { left: 0, top: -R - 8, transform: 'translate(-50%, -100%)' },
-    bottom: { left: 0, top: R + 8, transform: 'translate(-50%, 0)' },
-    left: { left: -R - 8, top: 0, transform: 'translate(-100%, -50%)' },
-    right: { left: R + 8, top: 0, transform: 'translate(0, -50%)' },
+    top: { left: 0, top: -R - 10, transform: 'translate(-50%, -100%)' },
+    bottom: { left: 0, top: R + 10, transform: 'translate(-50%, 0)' },
+    left: { left: -R - 10, top: 0, transform: 'translate(-100%, -50%)' },
+    right: { left: R + 10, top: 0, transform: 'translate(0, -50%)' },
   }[k]);
+  const satPos = (angle) => [sat * Math.cos((angle * Math.PI) / 180), sat * Math.sin((angle * Math.PI) / 180)];
+  const panelStyle = (s) => {
+    const [x, y] = satPos(s.angle);
+    return x > 0
+      ? { left: x + 22, top: y, transform: 'translate(0, -50%)' }
+      : { left: x - 22, top: y, transform: 'translate(-100%, -50%)' };
+  };
+  const chip = (on, label, onClick, title) => (
+    <button className={`chip${on ? ' on' : ''}`} aria-pressed={on} onClick={onClick} title={title}>{label}</button>
+  );
+
+  const panels = {
+    findings: isLoss ? <span className="radial-hint">Düşük / ölü doğum için bulgu sağ panelden girilir.</span> : (
+      <FindingsPalette node={node} conditionKey={pedigreeData.conditionKey || []} compact
+        onSetStatus={onSetFindingStatus} onAdd={onAddFinding} onSetStyle={onSetFindingStyle} />
+    ),
+    status: (
+      <div className="radial-panel-col">
+        {!isLoss && (
+          <div className="segmented" role="radiogroup" aria-label="Cinsiyet">
+            {[['male', 'Erkek'], ['female', 'Kadın'], ['unknown', 'Bilinmiyor']].map(([v, t]) => (
+              <button key={v} className={(node.sex || 'unknown') === v ? 'on' : undefined} role="radio"
+                aria-checked={(node.sex || 'unknown') === v} onClick={() => onUpdate(node.id, { sex: v })}>{t}</button>
+            ))}
+          </div>
+        )}
+        <div className="chips">
+          {chip(!!node.affected, 'Etkilenmiş', () => onUpdate(node.id, { affected: !node.affected }), 'Bulgu belirtmeden etkilenmiş (tam dolgu)')}
+          {chip(!!node.carrier, 'Taşıyıcı', () => onUpdate(node.id, { carrier: !node.carrier }))}
+          {!isLoss && chip(!!node.deceased, 'Vefat', () => onUpdate(node.id, { deceased: !node.deceased }))}
+          {chip(!!node.proband, 'Proband', () => (node.proband ? onClearProband() : onSetProband(node.id)))}
+        </div>
+      </div>
+    ),
+    twins: !hasParents || isLoss || !onAddTwin ? (
+      <span className="radial-hint">İkiz eklemek için anne ve baba çizili olmalı.</span>
+    ) : (
+      <div className="radial-panel-col">
+        <span className="radial-hint">{twinGroup ? `${multipleName(twinGroup.group.children.length + 1)} yap — bir kardeş daha:` : 'İkizini ekle:'}</span>
+        <div className="btn-row">
+          {[['monozygotic', 'Tek yumurta'], ['dizygotic', 'Çift yumurta'], ['unknown', 'Bilinmiyor']].map(([z, t]) => (
+            <button key={z} className="ui-btn ui-btn-sm" onClick={() => onAddTwin(node.id, { sex: node.sex, zygosity: z })}>{t}</button>
+          ))}
+        </div>
+      </div>
+    ),
+    note: (
+      <textarea className="input radial-note" value={node.notes || ''} placeholder="Klinik not"
+        onChange={e => onUpdate(node.id, { notes: e.target.value })} autoFocus />
+    ),
+  };
 
   return (
     <div className="radial-menu" style={{ left: anchor.x, top: anchor.y }} onClick={e => e.stopPropagation()}>
@@ -115,6 +181,17 @@ export default function RadialAddMenu({ anchor, node, pedigreeData, onAddSibling
           );
         })}
       </svg>
+      {SATELLITES.map((s) => {
+        const [x, y] = satPos(s.angle);
+        const { Icon } = s;
+        return (
+          <button key={s.key} className={`radial-sat${panel === s.key ? ' on' : ''}`} style={{ left: x, top: y }}
+            title={s.label} aria-label={s.label} aria-expanded={panel === s.key}
+            onClick={() => { setActive(null); setPanel(panel === s.key ? null : s.key); }}>
+            <Icon size={15} />
+          </button>
+        );
+      })}
       {active && (
         <div className="radial-flyout" style={flyoutStyle(active)} onMouseEnter={() => open(active)} onMouseLeave={leave}>
           {disabled[active] ? (
@@ -124,6 +201,12 @@ export default function RadialAddMenu({ anchor, node, pedigreeData, onAddSibling
               ? <button key={title} className="quick-btn" title={title} aria-label={title} onClick={() => { run(); setActive(null); }}><Glyph kind={glyph} /></button>
               : <button key={title} className="quick-text" onClick={() => { run(); setActive(null); }}>{title}</button>
           ))}
+        </div>
+      )}
+      {panel && (
+        <div className="radial-panel" style={panelStyle(SATELLITES.find(s => s.key === panel))}>
+          <div className="radial-panel-title">{SATELLITES.find(s => s.key === panel).label}</div>
+          {panels[panel]}
         </div>
       )}
     </div>

@@ -22,6 +22,7 @@ function App() {
     deleteIndividual, createUnionBetween, addCustomConsanguinity,
     reorderChild, setUnionRelationshipBackground, setUnionStatus,
     setMultipleBirth, addMultipleSibling, setMultipleZygosity, leaveMultipleBirth,
+    addFinding, setFindingStatus, setFindingStyle,
     addParentsTo, addSiblingTo,
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
@@ -257,6 +258,8 @@ function App() {
           renderQuickBar={(anchor) => (
             <RadialAddMenu anchor={anchor} node={selectedNode} pedigreeData={pedigreeData}
               onAddSibling={addSiblingTo} onAddSpouse={addSpouseTo} onAddParents={addParentsTo} onAddTwin={addMultipleSibling}
+              onUpdate={updateIndividual} onSetProband={setProband} onClearProband={clearProband}
+              onAddFinding={addFinding} onSetFindingStatus={setFindingStatus} onSetFindingStyle={setFindingStyle}
               onAddChild={(unionId, sex, targetId, extra) => (unionId ? addChildToUnion(unionId, sex, extra) : addChildTo(targetId, sex, extra))} />
           )}
         />
@@ -290,6 +293,9 @@ function App() {
           onAddMultiple={addMultipleSibling}
           onSetZygosity={setMultipleZygosity}
           onLeaveMultiple={leaveMultipleBirth}
+          onAddFinding={addFinding}
+          onSetFindingStatus={setFindingStatus}
+          onSetFindingStyle={setFindingStyle}
           onAddParents={addParentsTo}
           onAddSibling={addSiblingTo}
         />

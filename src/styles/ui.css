@@ -215,21 +215,50 @@ textarea.input { height: auto; min-height: 56px; padding: 6px 8px; resize: verti
 
 /* add menu: a ring around the selected symbol (RadialAddMenu.jsx) */
 .radial-menu { position: absolute; width: 0; height: 0; z-index: 12; pointer-events: none; }
-.radial-ring { position: absolute; overflow: visible; filter: drop-shadow(0 3px 8px rgba(15, 23, 42, 0.16)); }
+.radial-ring { position: absolute; overflow: visible; filter: drop-shadow(0 4px 14px rgba(15, 23, 42, 0.14)); }
 .radial-sector { pointer-events: auto; cursor: pointer; }
-.radial-sector path { fill: rgba(255, 255, 255, 0.94); stroke: var(--line); stroke-width: 1; transition: fill 0.1s; }
-.radial-sector text { font: 600 10.5px/1 system-ui, sans-serif; fill: var(--ink-2); pointer-events: none; user-select: none; }
-.radial-sector:hover path, .radial-sector.on path { fill: var(--accent); stroke: var(--accent); }
-.radial-sector:hover text, .radial-sector.on text { fill: #fff; }
-.radial-sector.off path { fill: rgba(247, 248, 250, 0.94); }
-.radial-sector.off text { fill: var(--faint); }
-.radial-sector.off:hover path, .radial-sector.off.on path { fill: var(--sunken); stroke: var(--line); }
+.radial-sector path { fill: rgba(255, 255, 255, 0.97); stroke: rgba(15, 23, 42, 0.08); stroke-width: 1; transition: fill 0.12s, stroke 0.12s; }
+.radial-sector text { font: 600 10.5px/1 system-ui, -apple-system, sans-serif; letter-spacing: 0.01em; fill: var(--ink-2); pointer-events: none; user-select: none; transition: fill 0.12s; }
+.radial-sector:hover path, .radial-sector.on path { fill: var(--accent-soft); stroke: rgba(37, 99, 235, 0.35); }
+.radial-sector:hover text, .radial-sector.on text { fill: var(--accent-ink); }
+.radial-sector.off path { fill: rgba(248, 249, 251, 0.96); }
+.radial-sector.off text { fill: #b6bec9; }
+.radial-sector.off:hover path, .radial-sector.off.on path { fill: var(--sunken); stroke: rgba(15, 23, 42, 0.08); }
 .radial-sector.off:hover text, .radial-sector.off.on text { fill: var(--muted); }
-.radial-flyout {
-  position: absolute; pointer-events: auto; display: flex; align-items: center; gap: 2px; padding: 4px;
-  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14); white-space: nowrap;
+.radial-sat {
+  position: absolute; pointer-events: auto; transform: translate(-50%, -50%);
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; padding: 0;
+  background: var(--surface); color: var(--ink-2); border: 1px solid rgba(15, 23, 42, 0.1);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.14); cursor: pointer; transition: background 0.12s, color 0.12s;
 }
+.radial-sat:hover { background: var(--accent-soft); color: var(--accent-ink); }
+.radial-sat.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.radial-flyout, .radial-panel {
+  position: absolute; pointer-events: auto; background: var(--surface);
+  border: 1px solid rgba(15, 23, 42, 0.1); border-radius: 12px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+}
+.radial-flyout { display: flex; align-items: center; gap: 2px; padding: 4px; white-space: nowrap; }
+.radial-panel { padding: 10px 12px; width: 300px; display: flex; flex-direction: column; gap: 8px; }
+.radial-panel-title { font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--faint); }
+.radial-panel-col { display: flex; flex-direction: column; gap: 8px; }
+.radial-note { width: 100%; box-sizing: border-box; min-height: 70px; }
+
+/* findings palette (FindingsPalette.jsx) */
+.findings { display: flex; flex-direction: column; gap: 6px; }
+.findings-list { display: flex; flex-direction: column; gap: 4px; }
+.finding-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px; }
+.finding-row .style-picker { grid-column: 1 / -1; }
+.finding-glyph { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 1px solid transparent; border-radius: 6px; background: none; cursor: pointer; }
+.finding-glyph:hover { border-color: var(--line); background: var(--sunken); }
+.finding-name { font-size: 12.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.finding-state button { padding: 2px 7px; font-size: 11.5px; }
+.finding-new { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px; }
+.finding-new .input { min-width: 0; }
+.style-picker { display: flex; flex-direction: column; gap: 4px; padding: 6px; background: var(--sunken); border-radius: 8px; }
+.style-row { display: flex; gap: 4px; }
+.style-opt { width: 30px; height: 28px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); cursor: pointer; }
+.style-opt.on { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18); }
+.style-opt:disabled { opacity: 0.3; cursor: default; }
 .radial-hint { font-size: 11.5px; color: var(--muted); padding: 2px 6px; }
 .quick-btn {
   width: 26px; height: 26px; display: grid; place-items: center; padding: 0;
