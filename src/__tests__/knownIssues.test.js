@@ -148,7 +148,14 @@ describe('KI-4 (fixed, P2) — pedigree number drawn on the line of descent', ()
   it('the "II-3" label is not centred on the symbol axis where the stem enters', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
     expect(src).not.toMatch(/\.attr\('y', -\(sz \+ 8\)\)\.attr\('text-anchor', 'middle'\)/);
-    expect(src).toMatch(/text-anchor', right \? 'start' : 'end'/);
+    // every candidate corner is beside the symbol (upper-left / upper-right,
+    // or a little higher), never centred over it; numbers never overlap each
+    // other (clinician report 2026-10-25)
+    const block = src.slice(src.indexOf('const labelAt = new Map();'), src.indexOf('labelAt.set(n.id, pick);'));
+    expect(block).toMatch(/anchor: 'end'/);
+    expect(block).toMatch(/anchor: 'start'/);
+    expect(block).not.toMatch(/anchor: 'middle'/);
+    expect(block).toMatch(/!hitsPlaced\(o\.box\)/);
   });
   it('the proband arrow carries "P" (notation spec K10)', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
