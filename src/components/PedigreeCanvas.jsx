@@ -26,7 +26,7 @@
 
 import { useEffect, useRef, useState, useCallback, forwardRef } from 'react';
 import * as d3 from 'd3';
-import { fillFor, regionAngles } from '../graph/conditionKey';
+import { fillFor, REGION_ANGLES } from '../graph/conditionKey';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 
 const EDGE_COLOR = '#64748b';
@@ -64,26 +64,34 @@ function sectorPath(a0, a1, r) {
   return `M0,0L${x0},${y0}A${r},${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1},${y1}Z`;
 }
 
+const FILL_PAINT = { solid: NODE_STROKE, grey: '#9ca3af', hatch: 'url(#fill-hatch)', dots: 'url(#fill-dots)' };
+
+/** Patterns for findings drawn in a region (graph/conditionKey.js FILLS). */
+function addFindingPatterns(defs) {
+  const hatch = defs.append('pattern').attr('id', 'fill-hatch').attr('patternUnits', 'userSpaceOnUse')
+    .attr('width', 5).attr('height', 5).attr('patternTransform', 'rotate(45)');
+  hatch.append('rect').attr('width', 5).attr('height', 5).attr('fill', NODE_FILL);
+  hatch.append('line').attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 5).attr('stroke', NODE_STROKE).attr('stroke-width', 1.6);
+  const dots = defs.append('pattern').attr('id', 'fill-dots').attr('patternUnits', 'userSpaceOnUse')
+    .attr('width', 5).attr('height', 5);
+  dots.append('rect').attr('width', 5).attr('height', 5).attr('fill', NODE_FILL);
+  dots.append('circle').attr('cx', 2.5).attr('cy', 2.5).attr('r', 1.1).attr('fill', NODE_STROKE);
+}
+
 /**
- * Fill the given regions of a symbol (NSGC: one region per condition, see
- * graph/conditionKey.js): sectors clipped to the symbol's outline, a thin
- * white gap between neighbouring filled regions; a carrier of a condition
- * gets half of its region filled (clinician decision 2026-10-24).
+ * Mark a symbol's regions (NSGC: one region per finding, defined in the
+ * legend; graph/conditionKey.js): sectors in the finding's fill, clipped to
+ * the symbol's outline, a thin white gap between neighbours; a carrier's
+ * part is half of the region (clinician decision 2026-10-24).
  */
-function drawRegions(el, defs, clipId, outline, { count, filled, carriers }, sz) {
+function drawRegions(el, defs, clipId, outline, parts, sz) {
   const clip = defs.append('clipPath').attr('id', clipId);
   clip.node().appendChild(outline.node().cloneNode());
   const regions = el.append('g').attr('class', 'condition-regions').attr('clip-path', `url(#${clipId})`);
-  for (const i of filled) {
-    const [a0, a1] = regionAngles(i, count);
-    regions.append('path').attr('d', sectorPath(a0, a1, sz * 1.8))
-      .attr('fill', NODE_STROKE).attr('stroke', NODE_FILL).attr('stroke-width', 1.5);
-  }
-  for (const i of carriers) {
-    if (filled.includes(i)) continue;
-    const [a0, a1] = regionAngles(i, count);
-    regions.append('path').attr('class', 'condition-carrier').attr('d', sectorPath(a0, (a0 + a1) / 2, sz * 1.8))
-      .attr('fill', NODE_STROKE).attr('stroke', NODE_FILL).attr('stroke-width', 1.5);
+  for (const p of parts) {
+    regions.append('path').attr('class', p.carrier ? 'condition-carrier' : 'condition-region')
+      .attr('d', sectorPath(p.a0, p.a1, sz * 1.8))
+      .attr('fill', FILL_PAINT[p.fill] || NODE_STROKE).attr('stroke', NODE_FILL).attr('stroke-width', 1.5);
   }
   // outline on top, so the regions never thin the symbol's border
   el.node().appendChild(outline.node().cloneNode());
@@ -147,8 +155,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       return;
     }
 
-    // --- Legends (below the drawing, inside the SVG so they are exported) ---
-    // condition key: only conditions someone is affected by or carries
+    // --- Legends (inside the SVG so they are exported): findings key at the
+    // top right (clinician choice 2026-10-24), clinical notes at the bottom ---
+    // findings key: only findings someone is affected by or carries
     const shownKey = conditionKey
       .map((entry, i) => ({ ...entry, i }))
       .filter(entry => nodes.some(n => (n.conditions || []).some(c =>
@@ -163,9 +172,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const pad = 100;
     const minX = d3.min(nodes, d => d.x) - pad;
     const maxX = d3.max(nodes, d => d.x) + pad;
-    const minY = d3.min(nodes, d => d.y) - pad;
+    const minY = d3.min(nodes, d => d.y) - pad - keyBlock;
     const legendTop = d3.max(nodes, d => d.y) + 70; // clear of the age / label lines
-    const maxY = Math.max(d3.max(nodes, d => d.y) + pad, legendTop + keyBlock + notesBlock + 10);
+    const maxY = Math.max(d3.max(nodes, d => d.y) + pad, legendTop + notesBlock + 10);
     const vw = Math.max(600, maxX - minX);
     const vh = Math.max(400, maxY - minY);
     svg.attr('viewBox', `${minX} ${minY} ${vw} ${vh}`)
@@ -180,6 +189,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       .attr('patternContentUnits', 'objectBoundingBox');
     cp.append('rect').attr('x', 0).attr('y', 0).attr('width', 0.5).attr('height', 1).attr('fill', NODE_STROKE);
     cp.append('rect').attr('x', 0.5).attr('y', 0).attr('width', 0.5).attr('height', 1).attr('fill', NODE_FILL);
+    addFindingPatterns(defs);
 
     // The zoom/pan transform is applied to this group only; export resets it
     // so the file always contains the whole pedigree (exportUtils.js).
@@ -387,10 +397,10 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       const filling = fillFor(d, conditionKey);
       let fill = NODE_FILL;
       if (filling.mode === 'full') fill = NODE_STROKE;
-      else if (filling.mode === 'carrier' || (filling.mode === 'none' && d.carrier)) fill = 'url(#carrier-half)';
+      else if (filling.mode === 'none' && d.carrier) fill = 'url(#carrier-half)';
       shape.attr('class', 'pedigree-shape')
         .attr('fill', fill).attr('stroke', NODE_STROKE).attr('stroke-width', 2);
-      if (filling.mode === 'segments') drawRegions(el, defs, `regions-${nodeIndex}`, shape, filling, sz);
+      if (filling.mode === 'regions') drawRegions(el, defs, `regions-${nodeIndex}`, shape, filling.parts, sz);
       // Selection highlight (primary blue / secondary violet) comes from the
       // node-group classes above via app.css — see EX-1 note there.
 
@@ -468,31 +478,34 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       }
     });
 
-    // --- Condition key (NSGC legend): which region is which condition ---
-    const legendX = minX + 10;
-    let legendY = legendTop;
+    // --- Findings key (NSGC legend), top right: which mark is which finding ---
     if (shownKey.length) {
       const keyG = svg.append('g').attr('class', 'condition-legend');
+      const s = 7;
+      const labelOf = (e) => (e.label.length > 50 ? e.label.substring(0, 49) + '…' : e.label);
+      const width = 2 * s + 8 + Math.max(60, ...shownKey.map(e => labelOf(e).length * 6.2));
+      const kx = Math.max(minX + 10, maxX - width - 10);
+      let ky = minY + 10;
       keyG.append('text')
-        .attr('x', legendX).attr('y', legendY + 10)
+        .attr('x', kx).attr('y', ky + 10)
         .attr('font-size', '11px').attr('font-weight', '700').attr('fill', '#1e293b')
         .text('Açıklama');
-      legendY += 18;
-      const segmented = conditionKey.length >= 2;
+      ky += 18;
       shownKey.forEach((entry, row) => {
-        const s = 7;
-        const cell = keyG.append('g').attr('transform', `translate(${legendX + s},${legendY + s})`);
+        const cell = keyG.append('g').attr('transform', `translate(${kx + s},${ky + s})`);
         const box = cell.append('rect').attr('x', -s).attr('y', -s).attr('width', 2 * s).attr('height', 2 * s)
-          .attr('fill', segmented ? NODE_FILL : NODE_STROKE).attr('stroke', NODE_STROKE).attr('stroke-width', 1.5);
-        if (segmented) drawRegions(cell, defs, `key-region-${row}`, box, { count: Math.max(4, conditionKey.length), filled: [entry.i], carriers: [] }, s);
+          .attr('fill', NODE_FILL).attr('stroke', NODE_STROKE).attr('stroke-width', 1.5);
+        const [a0, a1] = REGION_ANGLES[entry.region] || REGION_ANGLES.q1;
+        drawRegions(cell, defs, `key-region-${row}`, box, [{ fill: entry.fill, a0, a1 }], s);
         keyG.append('text')
-          .attr('x', legendX + 2 * s + 8).attr('y', legendY + s + 4)
+          .attr('x', kx + 2 * s + 8).attr('y', ky + s + 4)
           .attr('font-size', '11px').attr('fill', '#334155')
-          .text(entry.label.length > 50 ? entry.label.substring(0, 49) + '…' : entry.label);
-        legendY += KEY_ROW;
+          .text(labelOf(entry));
+        ky += KEY_ROW;
       });
-      legendY += 10;
     }
+    const legendX = minX + 10;
+    let legendY = legendTop;
 
     // --- Clinical notes legend ---
     if (notedNodes.length > 0) {
