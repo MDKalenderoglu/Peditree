@@ -35,7 +35,10 @@ export function FindingGlyph({ region = 'q1', fill = 'solid', carrier = false, s
         <clipPath id={`c${uid}`}>{outline}</clipPath>
       </defs>
       <g fill="#fff">{outline}</g>
-      <path clipPath={`url(#c${uid})`} d={`M0,0L${x0},${y0}A14,14 0 0 1 ${x1},${y1}Z`} fill={paint} stroke="#fff" strokeWidth="1" />
+      <g clipPath={`url(#c${uid})`}>
+        <path d="M0,-14V14M-14,0H14" stroke={INK} strokeWidth="0.7" />
+        <path d={`M0,0L${x0},${y0}A14,14 0 0 1 ${x1},${y1}Z`} fill={paint} stroke="#fff" strokeWidth="1" />
+      </g>
       <g fill="none" stroke={INK} strokeWidth="1.4">{outline}</g>
     </svg>
   );

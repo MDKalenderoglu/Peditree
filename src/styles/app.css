@@ -245,6 +245,13 @@ body {
   stroke-width: 2px;
 }
 
+/* finding regions keep their white separating gap (set on the elements, so
+   the export has it too) — the generic rule above would paint it dark */
+.node-group .condition-regions path {
+  stroke: #ffffff;
+  stroke-width: 2.4px;
+}
+
 .node-affected rect,
 .node-affected circle,
 .node-affected path {

@@ -111,6 +111,12 @@ describe('renderer contract', () => {
     expect(src).toMatch(/fillFor\(d, conditionKey\)/);
     expect(src).toMatch(/svg\.append\('g'\)\.attr\('class', 'condition-legend'\)/);
   });
+  it('two findings never read as one: quadrant lines and a white gap the page style cannot paint over', () => {
+    expect(src).toMatch(/region-divider/);
+    expect(src).toMatch(/attr\('stroke', NODE_FILL\)/);
+    const css = readFileSync(join(process.cwd(), 'src/styles/app.css'), 'utf8');
+    expect(css).toMatch(/\.node-group \.condition-regions path \{\s*stroke: #ffffff;/);
+  });
   it('note markers under symbols use the notes legend numbering', () => {
     expect(src).toMatch(/notedNodes\.indexOf\(d\)/);
   });

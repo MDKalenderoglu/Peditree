@@ -80,18 +80,25 @@ function addFindingPatterns(defs) {
 
 /**
  * Mark a symbol's regions (NSGC: one region per finding, defined in the
- * legend; graph/conditionKey.js): sectors in the finding's fill, clipped to
- * the symbol's outline, a thin white gap between neighbours; a carrier's
- * part is half of the region (clinician decision 2026-10-24).
+ * legend; graph/conditionKey.js): thin quadrant lines divide the symbol
+ * (as in the clinic's reference sheet), each finding's sector in its fill,
+ * clipped to the outline, with a white gap to its neighbours so two
+ * findings never read as one (clinician feedback 2026-10-24); a carrier's
+ * part is half of the region.
  */
 function drawRegions(el, defs, clipId, outline, parts, sz) {
   const clip = defs.append('clipPath').attr('id', clipId);
   clip.node().appendChild(outline.node().cloneNode());
   const regions = el.append('g').attr('class', 'condition-regions').attr('clip-path', `url(#${clipId})`);
+  const R = sz * 1.8;
+  regions.append('line').attr('class', 'region-divider').attr('x1', 0).attr('y1', -R).attr('x2', 0).attr('y2', R)
+    .attr('stroke', NODE_STROKE).attr('stroke-width', 1);
+  regions.append('line').attr('class', 'region-divider').attr('x1', -R).attr('y1', 0).attr('x2', R).attr('y2', 0)
+    .attr('stroke', NODE_STROKE).attr('stroke-width', 1);
   for (const p of parts) {
     regions.append('path').attr('class', p.carrier ? 'condition-carrier' : 'condition-region')
-      .attr('d', sectorPath(p.a0, p.a1, sz * 1.8))
-      .attr('fill', FILL_PAINT[p.fill] || NODE_STROKE).attr('stroke', NODE_FILL).attr('stroke-width', 1.5);
+      .attr('d', sectorPath(p.a0, p.a1, R))
+      .attr('fill', FILL_PAINT[p.fill] || NODE_STROKE).attr('stroke', NODE_FILL).attr('stroke-width', Math.max(1.2, sz * 0.12));
   }
   // outline on top, so the regions never thin the symbol's border
   el.node().appendChild(outline.node().cloneNode());
