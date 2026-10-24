@@ -8,7 +8,7 @@
  * symbol visible and clickable. The same store operations as the right
  * panel; the store refuses (with a reason) anything the graph rules forbid.
  */
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Stethoscope, HeartPulse, Users, StickyNote } from 'lucide-react';
 import FindingsPalette from './FindingsPalette';
 import { groupOf, multipleName } from '../graph/multiples';
@@ -72,6 +72,22 @@ export default function RadialAddMenu({
   const [active, setActive] = useState(null);   // sector under the pointer
   const [panel, setPanel] = useState(null);     // satellite panel (stays open)
   const closeTimer = useRef(null);
+  const popRef = useRef(null);
+  // a popup must stay inside the drawing area (never under the side panels):
+  // shift it back by however much it sticks out
+  const [nudge, setNudge] = useState({ x: 0, y: 0 });
+  useLayoutEffect(() => {
+    const el = popRef.current;
+    if (!el) { setNudge({ x: 0, y: 0 }); return; }
+    el.style.translate = '0px 0px';
+    const r = el.getBoundingClientRect(), host = el.closest('.canvas-stage') || document.body;
+    const h = host.getBoundingClientRect();
+    const m = 8;
+    const dx = r.left < h.left + m ? h.left + m - r.left : r.right > h.right - m ? h.right - m - r.right : 0;
+    const dy = r.top < h.top + m ? h.top + m - r.top : r.bottom > h.bottom - m ? h.bottom - m - r.bottom : 0;
+    el.style.translate = `${dx}px ${dy}px`;
+    setNudge((old) => (old.x === dx && old.y === dy ? old : { x: dx, y: dy }));
+  }, [active, panel, anchor.x, anchor.y]);
   if (!node || node.placeholder) return null;
   const isLoss = node.pregnancyLoss || node.stillbirth;
 
@@ -89,10 +105,13 @@ export default function RadialAddMenu({
     bottom: isLoss ? 'Düşük / ölü doğuma çocuk eklenmez.' : !lastUnion && !sexKnown ? 'Çocuk eklemek için önce cinsiyeti seçin.' : null,
     left: isLoss ? 'Düşük / ölü doğuma kardeş buradan eklenmez.' : null,
   };
+  // one click: parents = a mother and a father; spouse = the opposite sex
+  // (clinician decision 2026-10-24) — no choices to open
+  const direct = {
+    top: () => onAddParents(node.id, {}),
+    right: () => onAddSpouse(node.id, node.sex === 'female' ? 'male' : 'female'),
+  };
   const choices = {
-    top: [['Anne ve baba ekle', null, () => onAddParents(node.id, {})]],
-    right: [[unions.length ? 'Başka bir eş ekle' : 'Eş ekle', node.sex === 'female' ? 'male' : 'female',
-      () => onAddSpouse(node.id, node.sex === 'female' ? 'male' : 'female')]],
     left: KINDS.map(([g, t, sex, extra]) => [`Kardeş: ${t}`, g, () => onAddSibling(node.id, sex, { ...extra, createParents: true })]),
     bottom: KINDS.map(([g, t, sex, extra]) => [`Çocuk: ${t}`, g,
       () => (lastUnion ? onAddChild(lastUnion.id, sex, null, extra) : onAddChild(null, sex, node.id, extra))]),
@@ -102,7 +121,7 @@ export default function RadialAddMenu({
   const R = r + 34;
   const box = R + 2;
   const sat = R + 20; // satellite distance from the centre
-  const open = (k) => { clearTimeout(closeTimer.current); setActive(k); setPanel(null); };
+  const open = (k) => { clearTimeout(closeTimer.current); setActive(direct[k] && !disabled[k] ? null : k); if (!direct[k]) setPanel(null); };
   const leave = () => { clearTimeout(closeTimer.current); closeTimer.current = setTimeout(() => setActive(null), 200); };
   const flyoutStyle = (k) => ({
     top: { left: 0, top: -R - 10, transform: 'translate(-50%, -100%)' },
@@ -111,9 +130,14 @@ export default function RadialAddMenu({
     right: { left: R + 10, top: 0, transform: 'translate(0, -50%)' },
   }[k]);
   const satPos = (angle) => [sat * Math.cos((angle * Math.PI) / 180), sat * Math.sin((angle * Math.PI) / 180)];
+  const PANEL_W = 300;
   const panelStyle = (s) => {
     const [x, y] = satPos(s.angle);
-    return x > 0
+    // open towards the side with room in the drawing area
+    const roomRight = (anchor.boxW ?? Infinity) - (anchor.x + x + 22);
+    const roomLeft = anchor.x + x - 22;
+    const right = x > 0 ? roomRight >= PANEL_W || roomRight >= roomLeft : roomLeft < PANEL_W && roomRight > roomLeft;
+    return right
       ? { left: x + 22, top: y, transform: 'translate(0, -50%)' }
       : { left: x - 22, top: y, transform: 'translate(-100%, -50%)' };
   };
@@ -172,9 +196,12 @@ export default function RadialAddMenu({
           return (
             <g key={k} className={`radial-sector${active === k ? ' on' : ''}${disabled[k] ? ' off' : ''}`}
               onMouseEnter={() => open(k)} onMouseLeave={leave}
-              onClick={() => (active === k ? setActive(null) : open(k))}
+              onClick={() => {
+                if (direct[k]) { if (!disabled[k]) direct[k](); else open(k); return; }
+                if (active === k) setActive(null); else open(k);
+              }}
               role="button" aria-label={label} aria-disabled={!!disabled[k]}>
-              <title>{disabled[k] || label}</title>
+              <title>{disabled[k] || (k === 'top' ? 'Anne ve baba ekle' : k === 'right' ? (unions.length ? 'Başka bir eş ekle' : 'Eş ekle') : label)}</title>
               <path d={sectorPath(a0, a1, r, R)} />
               <text x={tr * Math.cos(mid)} y={tr * Math.sin(mid)} textAnchor="middle" dominantBaseline="central">{label}</text>
             </g>
@@ -193,7 +220,7 @@ export default function RadialAddMenu({
         );
       })}
       {active && (
-        <div className="radial-flyout" style={flyoutStyle(active)} onMouseEnter={() => open(active)} onMouseLeave={leave}>
+        <div className="radial-flyout" ref={popRef} style={{ ...flyoutStyle(active), translate: `${nudge.x}px ${nudge.y}px` }} onMouseEnter={() => open(active)} onMouseLeave={leave}>
           {disabled[active] ? (
             <span className="radial-hint">{disabled[active]}</span>
           ) : choices[active].map(([title, glyph, run]) => (
@@ -204,7 +231,7 @@ export default function RadialAddMenu({
         </div>
       )}
       {panel && (
-        <div className="radial-panel" style={panelStyle(SATELLITES.find(s => s.key === panel))}>
+        <div className="radial-panel" ref={popRef} style={{ ...panelStyle(SATELLITES.find(s => s.key === panel)), translate: `${nudge.x}px ${nudge.y}px` }}>
           <div className="radial-panel-title">{SATELLITES.find(s => s.key === panel).label}</div>
           {panels[panel]}
         </div>
