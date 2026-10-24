@@ -228,13 +228,13 @@ textarea.input { height: auto; min-height: 56px; padding: 6px 8px; resize: verti
 .radial-sector.off text { fill: #b6bec9; }
 .radial-sector.off:hover path, .radial-sector.off.on path { fill: var(--sunken); stroke: rgba(15, 23, 42, 0.08); }
 .radial-sector.off:hover text, .radial-sector.off.on text { fill: var(--muted); }
-.radial-arcs { pointer-events: none; }
+.radial-arcs { pointer-events: none; filter: drop-shadow(0 4px 14px rgba(15, 23, 42, 0.14)); }
 .radial-arc { pointer-events: auto; cursor: pointer; }
-.radial-arc path { fill: rgba(255, 255, 255, 0.97); stroke: rgba(15, 23, 42, 0.1); stroke-width: 1; transition: fill 0.12s; }
+.radial-arc path { fill: rgba(255, 255, 255, 0.97); stroke: rgba(15, 23, 42, 0.08); stroke-width: 1; transition: fill 0.12s, stroke 0.12s; }
 .radial-arc text { font: 600 10.5px/1 system-ui, -apple-system, sans-serif; fill: var(--ink-2); pointer-events: none; user-select: none; }
-.radial-arc:hover path { fill: var(--accent-soft); }
+.radial-arc:hover path { fill: var(--accent-soft); stroke: rgba(37, 99, 235, 0.35); }
 .radial-arc:hover text { fill: var(--accent-ink); }
-.radial-arc.on path { fill: var(--ink); stroke: var(--ink); }
+.radial-arc.on path { fill: var(--accent); stroke: var(--accent); }
 .radial-arc.on text { fill: #fff; }
 .radial-sat {
   position: absolute; pointer-events: auto; transform: translate(-50%, -50%);

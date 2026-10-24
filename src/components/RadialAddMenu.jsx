@@ -58,14 +58,13 @@ const SATELLITES = [
 ];
 
 /** One button of a rainbow band: an annular segment with a (two-line) label. */
-function ArcButton({ a0, a1, r, R, label, on, disabled, onClick, title }) {
+function ArcButton({ a0, a1, r, R, label, on, disabled, onClick, title, flip = 0 }) {
   const mid = ((a0 + a1) / 2) * Math.PI / 180;
   const tr = (r + R) / 2;
   const lines = String(label).split('\n');
-  // text runs along the band (like a rainbow), never upside down
-  let rot = (a0 + a1) / 2 + 90;
-  while (rot > 90) rot -= 180;
-  while (rot <= -90) rot += 180;
+  // text runs along the band (like a rainbow); the whole band reads one way
+  // (`flip` is chosen per band, so no label turns round on its own)
+  const rot = (a0 + a1) / 2 + 90 + flip;
   const cx = tr * Math.cos(mid), cy = tr * Math.sin(mid);
   return (
     <g className={`radial-arc${on ? ' on' : ''}${disabled ? ' off' : ''}`} role="button" aria-label={label.replace('\n', ' ')}
@@ -93,6 +92,7 @@ export default function RadialAddMenu({
   const [active, setActive] = useState(null);   // sector under the pointer
   const [panel, setPanel] = useState(null);     // satellite panel (stays open)
   const closeTimer = useRef(null);
+  const panelTimer = useRef(null);
   const popRef = useRef(null);
   // a popup must stay inside the drawing area (never under the side panels):
   // shift it back by however much it sticks out
@@ -142,7 +142,19 @@ export default function RadialAddMenu({
   const R = r + 34;
   const box = R + 2;
   const sat = R + 20; // satellite distance from the centre
-  const open = (k) => { clearTimeout(closeTimer.current); setActive(direct[k] && !disabled[k] ? null : k); if (!direct[k]) setPanel(null); };
+  const open = (k) => { clearTimeout(closeTimer.current); clearTimeout(panelTimer.current); setActive(direct[k] && !disabled[k] ? null : k); if (!direct[k]) setPanel(null); };
+  // satellites open on hover (clinician request 2026-10-25); a panel stays
+  // while the pointer is on it or a field inside it has the focus
+  const openPanel = (key) => { clearTimeout(panelTimer.current); clearTimeout(closeTimer.current); setActive(null); setPanel(key); };
+  const keepPanel = () => clearTimeout(panelTimer.current);
+  const leavePanel = () => {
+    clearTimeout(panelTimer.current);
+    panelTimer.current = setTimeout(() => {
+      const el = popRef.current;
+      if (el && el.contains(document.activeElement)) return;
+      setPanel(null);
+    }, 300);
+  };
   const leave = () => { clearTimeout(closeTimer.current); closeTimer.current = setTimeout(() => setActive(null), 200); };
   const flyoutStyle = (k) => ({
     top: { left: 0, top: -R - 10, transform: 'translate(-50%, -100%)' },
@@ -164,9 +176,15 @@ export default function RadialAddMenu({
   };
 
   // rainbow bands around the ring for short choices (clinician request 2026-10-25)
-  const band = (centre, items, r1, r2, per) => {
+  const T = R - r; // one thickness for the ring and every band
+  const B1 = [R + 40, R + 40 + T], B2 = [R + 44 + T, R + 44 + 2 * T];
+  const band = (centre, items, [r1, r2], per) => {
     const start = centre - (items.length * per) / 2;
-    return items.map((it, k) => <ArcButton key={it.label} a0={start + k * per} a1={start + (k + 1) * per} r={r1} R={r2} {...it} />);
+    let base = centre + 90, norm = base;
+    while (norm > 90) norm -= 180;
+    while (norm <= -90) norm += 180;
+    const flip = norm - base;
+    return items.map((it, k) => <ArcButton key={it.label} a0={start + k * per} a1={start + (k + 1) * per} r={r1} R={r2} flip={flip} {...it} />);
   };
   const arcs = {
     status: () => {
@@ -179,17 +197,17 @@ export default function RadialAddMenu({
         ...(isLoss ? [] : [{ label: 'Vefat', on: !!node.deceased, onClick: () => onUpdate(node.id, { deceased: !node.deceased }) }]),
         { label: 'Proband', on: !!node.proband, onClick: () => (node.proband ? onClearProband() : onSetProband(node.id)) },
       ];
-      return [...band(-135, inner, R + 38, R + 70, 40), ...band(-135, outer, R + 74, R + 110, 36)];
+      return [...band(-135, inner, B1, 40), ...band(-135, outer, B2, 33)];
     },
     twins: () => band(135, [['monozygotic', 'Tek\nyumurta'], ['dizygotic', 'Çift\nyumurta'], ['unknown', 'Bilinmiyor']].map(([z, t]) => ({
       label: t, title: `${twinGroup ? `${multipleName(twinGroup.group.children.length + 1)} yap` : 'İkizini ekle'}: ${t.replace('\n', ' ')}`,
       on: twinGroup?.group.zygosity === z,
       onClick: () => { onAddTwin(node.id, { sex: node.sex, zygosity: z }); setPanel(null); },
-    })), R + 38, R + 76, 40),
+    })), B1, 42),
   };
   const twinsUsable = hasParents && !isLoss && !!onAddTwin;
   const arcPanel = panel === 'status' || (panel === 'twins' && twinsUsable);
-  const outerBox = R + 114;
+  const outerBox = B2[1] + 4;
 
   const panels = {
     findings: (
@@ -242,6 +260,7 @@ export default function RadialAddMenu({
         return (
           <button key={s.key} className={`radial-sat${panel === s.key ? ' on' : ''}`} style={{ left: x, top: y }}
             title={s.label} aria-label={s.label} aria-expanded={panel === s.key}
+            onMouseEnter={() => openPanel(s.key)} onMouseLeave={leavePanel}
             onClick={() => { setActive(null); setPanel(panel === s.key ? null : s.key); }}>
             <Icon size={15} />
           </button>
@@ -261,11 +280,12 @@ export default function RadialAddMenu({
       {arcPanel && (
         <svg className="radial-ring radial-arcs" width={2 * outerBox} height={2 * outerBox}
           viewBox={`${-outerBox} ${-outerBox} ${2 * outerBox} ${2 * outerBox}`} style={{ left: -outerBox, top: -outerBox }}>
-          {arcs[panel]()}
+          <g onMouseEnter={keepPanel} onMouseLeave={leavePanel}>{arcs[panel]()}</g>
         </svg>
       )}
       {panel && !arcPanel && (
-        <div className="radial-panel" ref={popRef} style={{ ...panelStyle(SATELLITES.find(s => s.key === panel)), translate: `${nudge.x}px ${nudge.y}px` }}>
+        <div className="radial-panel" ref={popRef} style={{ ...panelStyle(SATELLITES.find(s => s.key === panel)), translate: `${nudge.x}px ${nudge.y}px` }}
+          onMouseEnter={keepPanel} onMouseLeave={leavePanel}>
           <div className="radial-panel-title">{SATELLITES.find(s => s.key === panel).label}</div>
           {panels[panel]}
         </div>
