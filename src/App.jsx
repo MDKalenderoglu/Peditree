@@ -93,6 +93,7 @@ function App() {
     if (!assessment) return;
     try {
       exportSVG(svgRef.current, exportFileName(doc.patientName, 'svg'));
+      markDownloaded();
       setExportError(null);
       setExportNotice(assessment.warnings.length > 0
         ? `Export tamamlandı — dikkat edilmesi gerekenler:\n${assessment.warnings.join('\n')}`
@@ -108,6 +109,7 @@ function App() {
     if (!assessment) return;
     try {
       await exportPNG(svgRef.current, exportFileName(doc.patientName, 'png'));
+      markDownloaded();
       setExportError(null);
       setExportNotice(assessment.warnings.length > 0
         ? `Export tamamlandı — dikkat edilmesi gerekenler:\n${assessment.warnings.join('\n')}`
@@ -119,7 +121,7 @@ function App() {
   };
 
   const handleNewPedigree = () => {
-    if (window.confirm('Yeni pedigri başlatılsın mı? Kaydedilmiş mevcut pedigri silinecek.')) {
+    if (window.confirm('Yeni pedigri başlatılsın mı?\n\nŞu anki pedigriyi indirmediyseniz (Kaydet / SVG / PNG) kaybolur.')) {
       // resetPedigree() itself clears selection and the undo stack — see
       // usePedigreeStore.js. Only export-banner state (local to App.jsx) is
       // cleared here.
@@ -147,6 +149,7 @@ function App() {
     const a = document.createElement('a');
     a.href = url;
     a.download = exportFileName(doc.patientName, 'peditree.json');
+    markDownloaded();
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -159,6 +162,21 @@ function App() {
     if (_history && _history.length > 0 && !window.confirm('Açık pedigrinin yerine dosyadaki pedigri yüklensin mi? (Geri Al ile dönebilirsiniz.)')) return;
     file.text().then(text => openProjectFile(text));
   };
+
+  // Nothing is stored once the tab closes (session autosave, clinician
+  // decision 2026-10-25): leaving with changes not downloaded asks first
+  const downloadedDoc = React.useRef(doc);
+  const markDownloaded = () => { downloadedDoc.current = usePedigreeStore.getState().doc; };
+  React.useEffect(() => {
+    const onLeave = (e) => {
+      const st = usePedigreeStore.getState();
+      if (st.doc === downloadedDoc.current || !(st._history && st._history.length)) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onLeave);
+    return () => window.removeEventListener('beforeunload', onLeave);
+  }, []);
 
   // Keyboard shortcuts (clinician request 2026-10-25); never while typing
   const keyRef = React.useRef(null);

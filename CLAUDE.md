@@ -36,7 +36,7 @@ ParentChildRelationship.multiples?  [{ id, children (≥ 2, side by side), zygos
                          // twins / triplets — src/graph/multiples.js; drawn from one point of the sibship line
 ```
 
-The persisted unit is the schema v2 document (`src/graph/document.js`): `{ schemaVersion: 2, graph: { individuals, unions, parentChildRelationships, socialParentLinks }, ids: { counters, retired }, wizardAnchorId, wizardMeta?, provenance }`. Clinical data lives on the person (no overlay). `placeholder: true` marks an "unspecified parent" created when a parent is deleted.
+The persisted unit is the schema v2 document (`src/graph/document.js`): `{ schemaVersion: 2, graph: { individuals, unions, parentChildRelationships, socialParentLinks }, ids: { counters, retired }, wizardAnchorId, wizardMeta?, provenance }`. Clinical data lives on the person (no overlay). `placeholder: true` marks an "unspecified parent" created when a parent is deleted. Autosave is session-only (`sessionStorage`, clinician decision 2026-10-25): it survives a reload, nothing is kept once the tab closes (leaving with changes not downloaded asks first); never write patient data to `localStorage` or any server — the clinician downloads what they keep.
 
 Birth order: `birthOrderExplicit: true` (user set "Doğum Sırası") is a hard rule for the layout; otherwise `orderPolicy: 'byAge'` sorts by known ages (oldest left) and `'insertion'` keeps stored order. Without explicit order, PCL may move a sibling who married into another drawn family to the end of the sibship, but never contradicts known ages — except (clinician decision 2026-10-23) a sibling in a consanguineous union, who may be drawn at the sibship end beside the partner even against known ages. An explicit order is never changed.
 

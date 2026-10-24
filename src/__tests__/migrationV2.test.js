@@ -140,16 +140,30 @@ describe('migrateV1ToV2', () => {
 });
 
 describe('v2 persistence', () => {
-  let store;
+  // autosave lives in the session (clinician decision 2026-10-25); `local`
+  // is what an earlier version may have left in localStorage
+  let store, local;
+  const fake = (m) => ({
+    getItem: (k) => (m.has(k) ? m.get(k) : null),
+    setItem: (k, v) => { m.set(k, String(v)); },
+    removeItem: (k) => { m.delete(k); },
+  });
   beforeEach(() => {
     store = new Map();
-    globalThis.window = {
-      localStorage: {
-        getItem: (k) => (store.has(k) ? store.get(k) : null),
-        setItem: (k, v) => { store.set(k, String(v)); },
-        removeItem: (k) => { store.delete(k); },
-      },
-    };
+    local = new Map();
+    globalThis.window = { sessionStorage: fake(store), localStorage: fake(local) };
+  });
+
+  it('nothing is kept in localStorage: an earlier saved pedigree is moved into the session once', () => {
+    const doc0 = migrateV1ToV2(richV1Session()).doc;
+    local.set(STORAGE_KEY_V2, JSON.stringify(doc0));
+    local.set(V1_BACKUP_KEY, 'old');
+    const r = loadDocument();
+    expect(r.source).toBe('v2');
+    expect(local.size).toBe(0);
+    expect(store.get(V1_BACKUP_KEY)).toBe('old');
+    expect(saveDocument(r.doc)).toBe(true);
+    expect(local.size).toBe(0);
   });
   afterEach(() => { delete globalThis.window; });
 
@@ -185,10 +199,12 @@ describe('v2 persistence', () => {
     expect(store.has(STORAGE_KEY_V2)).toBe(false);
   });
 
-  it('"new pedigree" clears every saved version', () => {
+  it('"new pedigree" clears every saved version (session and any earlier localStorage)', () => {
     store.set(STORAGE_KEY_V2, '{}'); store.set(V1_KEY, '{}'); store.set(V1_BACKUP_KEY, '{}');
+    local.set(STORAGE_KEY_V2, '{}');
     clearAllSessions();
     expect(store.size).toBe(0);
+    expect(local.size).toBe(0);
   });
 
   it('save → load → edit → save → load keeps every relationship (project file)', () => {

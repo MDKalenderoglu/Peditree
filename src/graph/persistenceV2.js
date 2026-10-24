@@ -1,7 +1,12 @@
 /**
  * persistenceV2.js — schema v2 storage (docs/PEDITREE_DATA_MODEL_V2.md §2.4).
  *
- * Autosave: the whole graph document under `clinical_pedigree_app.session.v2`.
+ * Autosave: the whole graph document under `clinical_pedigree_app.session.v2`
+ * in the browser's SESSION storage (clinician decision 2026-10-25): it
+ * survives a reload, and nothing is kept once the tab is closed — what the
+ * clinician does not download is not stored anywhere. Data an earlier version
+ * left in the persistent localStorage is moved into the session once and
+ * removed from localStorage.
  *
  * First start after the upgrade: when only a v1 session exists it is
  * migrated (migrate.js); the v2 document is written and the original v1
@@ -24,7 +29,25 @@ export const STORAGE_KEY_V2 = 'clinical_pedigree_app.session.v2';
 export const V1_BACKUP_KEY = 'clinical_pedigree_app.session.v1.backup';
 export const PROJECT_FILE_EXTENSION = '.peditree.json';
 
-const storage = () => (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
+const storage = () => (typeof window !== 'undefined' && window.sessionStorage) ? window.sessionStorage : null;
+const legacyStorage = () => (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
+
+/** Move anything an earlier version kept in localStorage into this session, then remove it there. */
+function adoptLegacy(ss) {
+  const ls = legacyStorage();
+  if (!ls || ls === ss) return;
+  for (const k of [STORAGE_KEY_V2, V1_KEY, V1_BACKUP_KEY]) {
+    let v;
+    try { v = ls.getItem(k); } catch { v = null; }
+    if (v === null) continue;
+    try {
+      if (ss.getItem(k) === null) ss.setItem(k, v);
+      ls.removeItem(k);
+    } catch (err) {
+      console.warn('[persistenceV2] Could not move an earlier saved pedigree into the session:', err);
+    }
+  }
+}
 
 export function saveDocument(doc) {
   const ls = storage();
@@ -44,6 +67,7 @@ export function saveDocument(doc) {
 export function loadDocument() {
   const ls = storage();
   if (!ls) return { doc: null, source: null };
+  adoptLegacy(ls);
 
   let raw;
   try { raw = ls.getItem(STORAGE_KEY_V2); } catch { raw = null; }
@@ -83,10 +107,11 @@ export function loadDocument() {
 
 /** "New pedigree": the user explicitly deletes the saved pedigree (all versions). */
 export function clearAllSessions() {
-  const ls = storage();
-  if (!ls) return;
-  for (const k of [STORAGE_KEY_V2, V1_KEY, V1_BACKUP_KEY]) {
-    try { ls.removeItem(k); } catch { /* ignore */ }
+  for (const st of [storage(), legacyStorage()]) {
+    if (!st) continue;
+    for (const k of [STORAGE_KEY_V2, V1_KEY, V1_BACKUP_KEY]) {
+      try { st.removeItem(k); } catch { /* ignore */ }
+    }
   }
 }
 
