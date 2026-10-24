@@ -158,7 +158,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         .attr('text-anchor', 'middle')
         .attr('fill', '#94a3b8')
         .attr('font-size', '16px')
-        .text('Sol panelden veri girin — pedigri otomatik çizilir.');
+        .text('Yeni bir pedigri başlatmak için üstteki "Yeni" düğmesine basın.');
       return;
     }
 
@@ -215,7 +215,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           // text. Non-consanguinity relationship backgrounds (same
           // village/origin, no consanguinity reported, unknown) are purely
           // a normal single line here — any metadata about them belongs in
-          // the side panel (IndividualEditor.jsx/WizardPanel.jsx), never
+          // the side panel (IndividualEditor.jsx), never
           // drawn on the connector itself. See relationshipBackground.js.
           drawStroke(g, edge);
           break;

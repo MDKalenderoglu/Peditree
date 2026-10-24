@@ -52,8 +52,64 @@ function AddButtons({ onAdd, title }) {
 }
 
 /** One partnership: children, status (divorce/separation), consanguinity. */
-function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground }) {
+const PATH_TEXT = {
+  mothers_paternal_is_fathers_paternal: 'Annenin babası ile babanın babası kardeş',
+  mothers_maternal_is_fathers_maternal: 'Annenin annesi ile babanın annesi kardeş',
+  cross_cousin_1: 'Annenin annesi ile babanın babası kardeş',
+  cross_cousin_2: 'Annenin babası ile babanın annesi kardeş',
+};
+const DEGREE_OPTIONS = [
+  ['unknown', 'Bilinmiyor'], ['first_cousin', '1. derece kuzen'], ['second_cousin', '2. derece kuzen'],
+  ['first_cousin_once_removed', '1. kuzenin çocuğu (bir kuşak fark)'], ['second_cousin_once_removed', '2. kuzenin çocuğu (bir kuşak fark)'],
+  ['double_first_cousin', 'Çift 1. derece kuzen'], ['multiple_relationship', 'Birden fazla akrabalık yolu'], ['other', 'Diğer'],
+];
+
+/**
+ * The proband's parents: consanguinity by degree and path — the shared
+ * ancestors are drawn from the choice (wizard template, wizardAdapter.js);
+ * once the drawing itself shows them (drawn by hand), it decides and this is
+ * read-only. Moved here from the former left panel (2026-10-24).
+ */
+function ParentsConsanguinity({ parents, onSet, nameOf }) {
+  const kin = parents.kinship;
+  if (kin && !kin.fromTemplate) {
+    return (
+      <div className="field-col">
+        <span className="field-label">Akraba evliliği</span>
+        <span className="field-hint">Çizime göre: {degreeLabel(kin.degree)}{PATH_TEXT[parents.consanguinityPath] ? ` — ${PATH_TEXT[parents.consanguinityPath]}` : ''}.</span>
+        <span className="field-hint">Ortak atalar: {kin.ancestors.map(nameOf).join(', ')}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="field-col">
+      <label className="check"><input type="checkbox" checked={parents.consanguineous}
+        onChange={e => onSet('consanguineous', e.target.checked)} /> Anne ve baba akraba</label>
+      {parents.consanguineous && (
+        <>
+          <select className="select input-wide" value={parents.consanguinityDegree} aria-label="Akrabalık derecesi"
+            onChange={e => onSet('consanguinityDegree', e.target.value)}>
+            {DEGREE_OPTIONS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+          </select>
+          {parents.consanguinityDegree === 'first_cousin' && (
+            <select className="select input-wide" value={parents.consanguinityPath} aria-label="Ortak atalar kimin üzerinden"
+              onChange={e => onSet('consanguinityPath', e.target.value)}>
+              <option value="unknown">Ortak atalar kimin üzerinden? (bilinmiyor)</option>
+              {Object.entries(PATH_TEXT).map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+            </select>
+          )}
+          {kin
+            ? <span className="field-hint">Ortak atalar çizildi: {kin.ancestors.map(nameOf).join(', ')}</span>
+            : <span className="field-hint">Derece (1. kuzende yol da) seçilince ortak atalar otomatik çizilir; seçilmezse yalnız çift çizgi.</span>}
+        </>
+      )}
+    </div>
+  );
+}
+
+function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground, parentsCons }) {
   const children = pcrs.find(r => r.unionId === u.id)?.children || [];
+  const isParents = parentsCons && parentsCons.parents.unionId === u.id;
   return (
     <>
       {onSetUnionStatus && (
@@ -69,7 +125,8 @@ function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelati
         <span className="field-label">Çocuk ekle{children.length > 0 ? ` (şu an ${children.length})` : ''}</span>
         <AddButtons onAdd={(sex, extra) => onAddChild(u.id, sex, null, extra)} />
       </div>
-      {u.consanguinityStatus === 'known_supported' ? (
+      {isParents && <ParentsConsanguinity {...parentsCons} />}
+      {isParents && u.consanguineous ? null : u.consanguinityStatus === 'known_supported' ? (
         // drawn shared ancestors decide it (finalize.js); nothing to choose here
         <div className="field-col">
           <span className="field-label">Akraba evliliği</span>
@@ -222,12 +279,21 @@ export default function IndividualEditor({
   onAddParents, onAddSibling,
   onSetMultipleBirth, onAddMultiple, onSetZygosity, onLeaveMultiple,
   onAddFinding, onSetFindingStatus, onSetFindingStyle,
+  wizardParents, onSetParentsField,
 }) {
+  const ids = computePedigreeIds(pedigreeData?.nodes || []);
+  const nameOfId = (id) => {
+    const p = pedigreeData?.individuals?.find(i => i.id === id);
+    const pid = ids.get(id)?.displayId;
+    const label = p?.displayLabel || p?.label;
+    return pid ? (label ? `${pid} (${label})` : pid) : (label || 'birey');
+  };
+  const parentsCons = wizardParents && onSetParentsField ? { parents: wizardParents, onSet: onSetParentsField, nameOf: nameOfId } : null;
   if (node && node2) {
     return (
       <TwoPersonActions node={node} node2={node2} pedigreeData={pedigreeData}
         onCreateUnion={onCreateUnion} onMakeSiblings={onMakeSiblings} onClearSelection={onClearSelection}
-        unionProps={{ onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground }} onSetMultipleBirth={onSetMultipleBirth} />
+        unionProps={{ onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground, parentsCons }} onSetMultipleBirth={onSetMultipleBirth} />
     );
   }
   if (!node) return null;
@@ -377,7 +443,7 @@ export default function IndividualEditor({
           <div className="card" key={u.id}>
             <div className="card-title">Eş: {displayNameFor(u.partners.find(p => p !== node.id))}</div>
             <UnionControls u={u} pcrs={pcrs} onAddChild={onAddChild} onSetUnionStatus={onSetUnionStatus}
-              onSetUnionRelationshipBackground={onSetUnionRelationshipBackground} />
+              onSetUnionRelationshipBackground={onSetUnionRelationshipBackground} parentsCons={parentsCons} />
           </div>
         ))}
 

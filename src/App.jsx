@@ -7,7 +7,6 @@ import { withStableIdsExcludingDismissed } from './utils/warningIds';
 import { clinicalNotices } from './utils/clinicalNotices';
 import PedigreeCanvas from './components/PedigreeCanvas';
 import IndividualEditor from './components/IndividualEditor';
-import WizardPanel from './components/WizardPanel';
 import RadialAddMenu from './components/RadialAddMenu';
 import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid } from 'lucide-react';
 import './styles/app.css';
@@ -22,7 +21,7 @@ function App() {
     deleteIndividual, createUnionBetween, addCustomConsanguinity,
     reorderChild, setUnionRelationshipBackground, setUnionStatus,
     setMultipleBirth, addMultipleSibling, setMultipleZygosity, leaveMultipleBirth,
-    addFinding, setFindingStatus, setFindingStyle,
+    addFinding, setFindingStatus, setFindingStyle, wizardData, updateWizardData,
     addParentsTo, addSiblingTo,
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
@@ -165,13 +164,17 @@ function App() {
 
   return (
     <div className={`app-shell${selectedNode || selectedNode2 ? ' has-editor' : ''}`}>
-      <WizardPanel />
 
       <div className="canvas-container">
         {/* KI-5/KI-6: toolbar and notices sit in normal flow ABOVE the canvas —
             they can no longer cover pedigree symbols, and the toolbar wraps on
             narrow windows instead of overlapping the canvas controls. */}
         <div className="canvas-toolbar toolbar">
+          <div className="brand toolbar-brand">
+            <span className="brand-name">Peditree</span>
+            <span className="brand-sub">Klinik pedigri</span>
+          </div>
+          <div className="toolbar-sep" />
           <div className="toolbar-group">
             <button className="ui-btn" onClick={handleNewPedigree} title="Kaydedilmiş pedigriyi sil ve yeniden başla"><FilePlus2 size={15} /> Yeni</button>
             <button className="ui-btn" onClick={() => fileInputRef.current && fileInputRef.current.click()} title="Proje dosyası aç (.peditree.json; eski biçim de açılır)"><FolderOpen size={15} /> Aç</button>
@@ -296,6 +299,8 @@ function App() {
           onAddFinding={addFinding}
           onSetFindingStatus={setFindingStatus}
           onSetFindingStyle={setFindingStyle}
+          wizardParents={wizardData.parents}
+          onSetParentsField={(field, value) => updateWizardData('parents', field, value)}
           onAddParents={addParentsTo}
           onAddSibling={addSiblingTo}
         />

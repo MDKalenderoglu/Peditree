@@ -31,10 +31,11 @@ body { font-size: 13px; color: var(--ink-2); background: var(--canvas); }
 #root { display: block; }
 .app-shell {
   display: grid;
-  grid-template-columns: 304px minmax(0, 1fr) 0;
+  grid-template-columns: minmax(0, 1fr) 0;
   height: 100vh;
 }
-.app-shell.has-editor { grid-template-columns: 304px minmax(0, 1fr) 312px; }
+.app-shell.has-editor { grid-template-columns: minmax(0, 1fr) 312px; }
+.toolbar-brand { margin-right: 4px; }
 .side {
   background: var(--surface);
   overflow-y: auto;

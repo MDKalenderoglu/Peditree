@@ -241,7 +241,7 @@ export function computeSiblingCreationPlan(pedigreeData, id1, id2) {
     return { ok: false, reason: 'Proband için bu yoldan kardeş bağı kurulamaz.' };
   }
   if (typeof ind1.generation === 'number' && typeof ind2.generation === 'number' && ind1.generation !== ind2.generation) {
-    // Matches the same safeguard WizardPanel.jsx's CustomConsanguinityAdder
+    // Matches the same safeguard the former wizard's sibling linker
     // already applies when picking a sibling pair from the wizard — two
     // individuals at different generations cannot be full/half siblings,
     // and attaching them under one shared parent union produces a

@@ -114,7 +114,7 @@ export function resolveDeclaredRelationshipBackground(state, unionId) {
  * is produced for any background — same_village_or_same_origin,
  * no_consanguinity_reported, and unknown are all a plain single line with
  * no annotation on the canvas; that metadata is shown only in the
- * selected-union side panel (IndividualEditor.jsx/WizardPanel.jsx).
+ * selected-union side panel (IndividualEditor.jsx).
  *
  * @param {string} relationshipBackground
  * @returns {{ edgeType: 'union'|'consanguineousUnion'|'consanguineousUnionUnresolved' }}
