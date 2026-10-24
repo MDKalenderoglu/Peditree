@@ -33,6 +33,7 @@ import { displayParentage } from '../graph/model';
 import * as ops from '../graph/ops';
 import { wizardOps, deriveWizardView } from '../graph/wizardAdapter';
 import * as multiples from '../graph/multiples';
+import * as findings from '../graph/findings';
 import { migrateV1ToV2 } from '../graph/migrate';
 import { cloneInitialState } from '../graph/v1pipeline';
 import {
@@ -305,6 +306,11 @@ export const usePedigreeStore = create((zSet, get) => {
     markUnionConsanguineous: (unionId, value) => apply(ops.setUnionConsanguineous(get().doc, unionId, value)),
     setUnionRelationshipBackground: (unionId, value) => apply(ops.setRelationshipBackground(get().doc, unionId, value)),
     setUnionStatus: (unionId, status) => apply(ops.setUnionStatus(get().doc, unionId, status)),
+
+    // ── findings (legend regions) ──
+    addFinding: (personId, label, style) => apply(findings.addFinding(get().doc, personId, label, style)),
+    setFindingStatus: (personId, label, status) => apply(findings.setFindingStatus(get().doc, personId, label, status)),
+    setFindingStyle: (label, style) => apply(findings.setFindingStyle(get().doc, label, style)),
 
     // ── twins / multiple births ──
     setMultipleBirth: (childIds, zygosity) => apply(multiples.setMultipleBirth(get().doc, childIds, zygosity)),
