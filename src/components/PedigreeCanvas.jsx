@@ -135,7 +135,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const shape = svgRef.current && svgRef.current.querySelector('.node-selected .pedigree-shape');
     if (!shape || !boxRef.current || selectedNodeId2) { setAnchor(null); return; }
     const r = shape.getBoundingClientRect(), box = boxRef.current.getBoundingClientRect();
-    setAnchor({ x: r.left + r.width / 2 - box.left, y: r.top + r.height / 2 - box.top, size: Math.max(r.width, r.height) });
+    setAnchor({ x: r.left + r.width / 2 - box.left, y: r.top + r.height / 2 - box.top, size: Math.max(r.width, r.height), boxW: box.width, boxH: box.height });
   }, [selectedNodeId2]);
 
   const attachSvgRef = (node) => {
@@ -171,9 +171,12 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         c && c.label && (c.status === 'affected' || c.status === 'carrier')
         && c.label.trim().toLocaleLowerCase('tr') === entry.label.trim().toLocaleLowerCase('tr'))));
     const notedNodes = nodes.filter(n => n.notes || n.condition || (n.deceased && n.causeOfDeath));
-    const KEY_ROW = 20, NOTE_ROW = 14;
-    const keyBlock = shownKey.length ? 18 + shownKey.length * KEY_ROW + 10 : 0;
-    const notesBlock = notedNodes.length ? 18 + notedNodes.length * NOTE_ROW + 10 : 0;
+    // legends grow with a wide pedigree, so they read at the same size once
+    // the drawing is fitted to the screen (clinician feedback 2026-10-24)
+    const LK = Math.max(1.2, (d3.max(nodes, d => d.x) - d3.min(nodes, d => d.x) + 200) / 900);
+    const KEY_ROW = 22 * LK, NOTE_ROW = 16 * LK, TITLE_ROW = 20 * LK;
+    const keyBlock = shownKey.length ? TITLE_ROW + shownKey.length * KEY_ROW + 14 * LK : 0;
+    const notesBlock = notedNodes.length ? TITLE_ROW + notedNodes.length * NOTE_ROW + 10 * LK : 0;
 
     // --- ViewBox ---
     const pad = 100;
@@ -488,16 +491,16 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // --- Findings key (NSGC legend), top right: which mark is which finding ---
     if (shownKey.length) {
       const keyG = svg.append('g').attr('class', 'condition-legend');
-      const s = 7;
+      const s = 8 * LK;
       const labelOf = (e) => (e.label.length > 50 ? e.label.substring(0, 49) + '…' : e.label);
-      const width = 2 * s + 8 + Math.max(60, ...shownKey.map(e => labelOf(e).length * 6.2));
-      const kx = Math.max(minX + 10, maxX - width - 10);
-      let ky = minY + 10;
+      const width = 2 * s + 10 * LK + Math.max(60, ...shownKey.map(e => labelOf(e).length * 7.2)) * LK;
+      const kx = Math.max(minX + 10, maxX - width - 10 * LK);
+      let ky = minY + 10 * LK;
       keyG.append('text')
-        .attr('x', kx).attr('y', ky + 10)
-        .attr('font-size', '11px').attr('font-weight', '700').attr('fill', '#1e293b')
+        .attr('x', kx).attr('y', ky + 12 * LK)
+        .attr('font-size', `${13 * LK}px`).attr('font-weight', '700').attr('fill', '#1e293b')
         .text('Açıklama');
-      ky += 18;
+      ky += TITLE_ROW;
       shownKey.forEach((entry, row) => {
         const cell = keyG.append('g').attr('transform', `translate(${kx + s},${ky + s})`);
         const box = cell.append('rect').attr('x', -s).attr('y', -s).attr('width', 2 * s).attr('height', 2 * s)
@@ -505,8 +508,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         const [a0, a1] = REGION_ANGLES[entry.region] || REGION_ANGLES.q1;
         drawRegions(cell, defs, `key-region-${row}`, box, [{ fill: entry.fill, a0, a1 }], s);
         keyG.append('text')
-          .attr('x', kx + 2 * s + 8).attr('y', ky + s + 4)
-          .attr('font-size', '11px').attr('fill', '#334155')
+          .attr('x', kx + 2 * s + 10 * LK).attr('y', ky + s + 4.5 * LK)
+          .attr('font-size', `${12.5 * LK}px`).attr('fill', '#334155')
           .text(labelOf(entry));
         ky += KEY_ROW;
       });
@@ -518,10 +521,10 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     if (notedNodes.length > 0) {
       const legendG = svg.append('g').attr('class', 'notes-legend');
       legendG.append('text')
-        .attr('x', legendX).attr('y', legendY + 10)
-        .attr('font-size', '11px').attr('font-weight', '700').attr('fill', '#1e293b')
+        .attr('x', legendX).attr('y', legendY + 12 * LK)
+        .attr('font-size', `${13 * LK}px`).attr('font-weight', '700').attr('fill', '#1e293b')
         .text('Klinik Notlar');
-      legendY += 18;
+      legendY += TITLE_ROW;
       notedNodes.forEach((n, i) => {
         const parts = [];
         if (n.condition) parts.push(n.condition);
@@ -534,8 +537,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         const label = pid ? (name ? `${pid} (${name})` : pid) : (name || 'birey');
         const entry = `[${i + 1}] ${label}: ${parts.join(' | ')}`;
         legendG.append('text')
-          .attr('x', legendX).attr('y', legendY + 10)
-          .attr('font-size', '10px').attr('fill', '#475569')
+          .attr('x', legendX).attr('y', legendY + 12 * LK)
+          .attr('font-size', `${12 * LK}px`).attr('fill', '#475569')
           .text(entry.length > 80 ? entry.substring(0, 79) + '...' : entry);
         legendY += NOTE_ROW;
       });
