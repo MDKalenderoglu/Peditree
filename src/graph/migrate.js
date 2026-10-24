@@ -93,7 +93,7 @@ export function semanticDiff(a, b) {
   cmpById('kişi', a.individuals, b.individuals, (i) => i.id, (i) => stable(i));
   cmpById('birliktelik', a.unions, b.unions, (u) => u.id, (u) => stable(u));
   cmpById('ebeveyn-çocuk', a.parentChildRelationships, b.parentChildRelationships, (r) => r.unionId,
-    (r) => `${r.children.join(',')}${r.birthOrderExplicit ? ' (açık sıra)' : ''}`);
+    (r) => `${r.children.join(',')}${r.birthOrderExplicit ? ' (açık sıra)' : ''}${(r.multiples || []).map((m) => ` [${m.zygosity}: ${m.children.join(',')}]`).join('')}`);
   cmpById('lejant', a.conditionKey || [], b.conditionKey || [], (c) => c.id, (c) => c.label);
   cmpById('sosyal bağ', a.socialParentLinks || [], b.socialParentLinks || [], (l) => `${l.childId}|${l.unionId}`, (l) => l.kind);
   return out;

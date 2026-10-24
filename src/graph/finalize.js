@@ -13,7 +13,8 @@
  *      consanguineous without shared ancestors is 'reported_unresolved'; its
  *      relationshipBackground follows (same rule as builder stage 10b);
  *   4. the condition key (legend) follows the people's conditions
- *      (conditionKey.js).
+ *      (conditionKey.js);
+ *   5. twins / multiple births stay valid and side by side (multiples.js).
  *
  * Mutates the (already cloned) graph in place and returns it.
  */
@@ -22,6 +23,7 @@ import { defaultChildOrder } from '../utils/childOrdering';
 import { indexGraph, displayParentage } from './model';
 import { kinshipOf } from './kinship';
 import { deriveConditionKey } from './conditionKey';
+import { normalizeMultiples } from './multiples';
 
 // declared degrees richer than a partly drawn structure
 const KEEP_DECLARED = new Set(['other', 'multiple_relationship', 'double_first_cousin']);
@@ -35,6 +37,8 @@ export function finalizeGraph(graph, { anchorId = 'proband' } = {}) {
     if (kids.length < 2) continue;
     rel.children = defaultChildOrder(kids);
   }
+  // twins / multiple births stand together whatever the order rule did
+  normalizeMultiples(graph);
 
   const anchor = idx0.byId.has(anchorId)
     ? anchorId

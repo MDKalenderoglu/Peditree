@@ -32,6 +32,7 @@ import { validateDocument } from '../graph/validate';
 import { displayParentage } from '../graph/model';
 import * as ops from '../graph/ops';
 import { wizardOps, deriveWizardView } from '../graph/wizardAdapter';
+import * as multiples from '../graph/multiples';
 import { migrateV1ToV2 } from '../graph/migrate';
 import { cloneInitialState } from '../graph/v1pipeline';
 import {
@@ -304,6 +305,12 @@ export const usePedigreeStore = create((zSet, get) => {
     markUnionConsanguineous: (unionId, value) => apply(ops.setUnionConsanguineous(get().doc, unionId, value)),
     setUnionRelationshipBackground: (unionId, value) => apply(ops.setRelationshipBackground(get().doc, unionId, value)),
     setUnionStatus: (unionId, status) => apply(ops.setUnionStatus(get().doc, unionId, status)),
+
+    // ── twins / multiple births ──
+    setMultipleBirth: (childIds, zygosity) => apply(multiples.setMultipleBirth(get().doc, childIds, zygosity)),
+    addMultipleSibling: (personId, opts) => apply(multiples.addMultipleSibling(get().doc, personId, opts)),
+    setMultipleZygosity: (personId, zygosity) => apply(multiples.setMultipleZygosity(get().doc, personId, zygosity)),
+    leaveMultipleBirth: (personId) => apply(multiples.leaveMultipleBirth(get().doc, personId)),
 
     // ── birth order ──
     getChildOrder: (unionId) => {

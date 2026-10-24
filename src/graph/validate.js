@@ -9,6 +9,7 @@
  */
 import { auditPedigreeGraph } from '../utils/graphIntegrity';
 import { SOCIAL_LINK_KINDS, indexGraph } from './model';
+import { multiplesWarnings } from './multiples';
 
 export function validateGraphStructure(graph, { retired = [] } = {}) {
   const out = [];
@@ -72,6 +73,7 @@ export function validateDocument(doc) {
   return [
     ...validateGraphStructure(g, { retired: doc.ids?.retired || [] }),
     ...auditPedigreeGraph(g),
+    ...multiplesWarnings(g),
   ];
 }
 
