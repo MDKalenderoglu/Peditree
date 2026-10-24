@@ -156,7 +156,7 @@ export function auditLayoutIntegrity(layout, graph) {
   for (const union of unions) {
     const p1 = nodeById.get(union.partners[0]);
     const p2 = nodeById.get(union.partners[1]);
-    if (p1 && p2) {
+    if (p1 && p2 && !union.crossGeneration) {
       if (typeof p1.y === 'number' && typeof p2.y === 'number' && p1.y !== p2.y) {
         issues.push({
           severity: 'error',
@@ -222,7 +222,8 @@ export function auditLayoutIntegrity(layout, graph) {
         : [];
       if (partnerNodes.length === 0) continue;
 
-      const unionY = partnerNodes[0].y;
+      // the couple's line is on the lower partner's row (cross-generation)
+      const unionY = Math.max(...partnerNodes.map(n => n.y));
       const childYs = childNodes.map(n => n.y).filter(v => typeof v === 'number');
       const childXs = childNodes.map(n => n.x).filter(v => typeof v === 'number');
       if (childYs.length === 0 || childXs.length === 0) continue;

@@ -24,6 +24,7 @@
  *     renderer draws as a small arc: the two lines visibly do not connect.
  */
 import { relationshipBackgroundToEdgeInfo } from '../../utils/relationshipBackground';
+import { isGhost } from './crossGeneration';
 
 const NODE_HALF = 20;
 const LOSS_HALF = 14;
@@ -49,7 +50,9 @@ export const BAND = {
 const SEP = 8;                         // horizontal clearance between parallel lanes / buses
 const CLEAR = 8;                       // min distance between a descent line and a foreign vertical
 
-const halfOf = (ind) => (ind && (ind.pregnancyLoss || ind.stillbirth)) ? LOSS_HALF : NODE_HALF;
+// a cross-generation stand-in has no symbol: the couple's line reaches its centre
+const halfOf = (ind) => (isGhost(ind) ? 0 : (ind && (ind.pregnancyLoss || ind.stillbirth)) ? LOSS_HALF : NODE_HALF);
+const XGEN_DROP_CLEAR = 14; // the couple's line of descent keeps off the stand-in's vertical
 
 function assignLevels(items, levels) {
   // greedy interval colouring, deterministic (items pre-sorted by x)
@@ -97,6 +100,13 @@ export function estimateLevelNeeds(S, rows, xPos) {
     const xs = kids.map(c => xPos[c]);
     if (!buses.has(g)) buses.set(g, []);
     buses.get(g).push([Math.min(mid, ...xs), Math.max(mid, ...xs)]);
+  }
+  // a cross-generation line runs at a bus level above the lower partner's row
+  for (const { ghost, upper } of S.crossLinks || []) {
+    if (xPos[ghost] === undefined || xPos[upper] === undefined) continue;
+    const g = S.indById.get(ghost).generation;
+    if (!buses.has(g)) buses.set(g, []);
+    buses.get(g).push([Math.min(xPos[ghost], xPos[upper]) - NODE_HALF - STUB, Math.max(xPos[ghost], xPos[upper]) + NODE_HALF + STUB]);
   }
   const out = new Map();
   for (const g of rows.keys()) {
@@ -181,7 +191,9 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
       const x1 = xPos[l] + halfOf(S.indById.get(l));
       const x2 = xPos[r] - halfOf(S.indById.get(r));
       edges.push({ type: edgeType, x1, y1: y, x2, y2: y, unionId: u.id, relationshipBackground: u.relationshipBackground });
-      unionGeom.set(u.id, { y, prefX: (xPos[l] + xPos[r]) / 2, lo: x1 + 6, hi: x2 - 6 });
+      const lo = x1 + (isGhost(S.indById.get(l)) ? XGEN_DROP_CLEAR : 6);
+      const hi = x2 - (isGhost(S.indById.get(r)) ? XGEN_DROP_CLEAR : 6);
+      unionGeom.set(u.id, { y, prefX: (xPos[l] + xPos[r]) / 2, lo, hi });
     } else {
       const g = S.indById.get(l).generation;
       if (!lanesByRow.has(g)) lanesByRow.set(g, []);
@@ -251,6 +263,42 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
     }
   }
 
+  // Cross-generation partnerships (clinician decision 2026-10-24): from the
+  // upper partner's side, down, across at a bus level above the lower row
+  // (shared with that row's sibship buses, so they never run together), and
+  // down onto the stand-in beside the lower partner — where the couple's own
+  // line continues. Each partner stays on their own generation row.
+  const crossLines = [];
+  for (const { ghost, upper } of S.crossLinks || []) {
+    if (xPos[ghost] === undefined || xPos[upper] === undefined) continue;
+    const u = S.unions.find(x => x.partners.includes(ghost));
+    if (!u) continue;
+    const { edgeType } = relationshipBackgroundToEdgeInfo(u.relationshipBackground);
+    const common = { type: edgeType, unionId: u.id, relationshipBackground: u.relationshipBackground, crossGeneration: true };
+    const gx = xPos[ghost], gy = yPos[ghost], ux = xPos[upper], uy = yPos[upper];
+    const dir = gx >= ux ? 1 : -1;
+    const h = halfOf(S.indById.get(upper));
+    const key = `${upper}|${dir}`;
+    const neighbour = rowOf(upper)[rowIndex.get(upper) + dir];
+    const sideTaken = sideUsed.has(key) || (neighbour !== undefined && S.isPartners(upper, neighbour));
+    let sx, sy;
+    if (!sideTaken) {
+      sideUsed.add(key);
+      sx = ux + dir * (h + STUB);
+      sy = uy;
+      edges.push({ ...common, x1: ux + dir * h, y1: uy, x2: sx, y2: uy });
+    } else {
+      // that side carries a partner's line: leave from the bottom, off-centre
+      const k = topRisers.get(`${upper}|bottom|${dir}`) || 0;
+      topRisers.set(`${upper}|bottom|${dir}`, k + 1);
+      sx = ux + dir * (h - 4 - k * TOP_RISER_STEP);
+      sy = uy + h;
+    }
+    const line = { common, u, ghost, gx, gy, sx, sy };
+    crossLines.push(line);
+    verticals.push({ owner: u.id, x: sx, y1: sy, y2: gy - BAND.BUS_DEFAULT });
+  }
+
   // Ended relationship marker on the relationship line.
   for (const u of S.unions) {
     const geom = unionGeom.get(u.id);
@@ -274,6 +322,10 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
     const only = xs.length === 1 && xs[0] >= geom.lo && xs[0] <= geom.hi && Math.abs(xs[0] - geom.prefX) <= SNAP_ONLY_CHILD;
     const pref = only ? xs[0] : geom.prefX;
     buses.push({ u, geom, kids, childY, kidMin: Math.min(...xs), kidMax: Math.max(...xs), dropX: pref, pref });
+  }
+  for (const line of crossLines) {
+    // a bus-like item on the lower row: its level is the band height
+    buses.push({ xline: line, u: line.u, kids: [line.ghost], childY: line.gy, kidMin: Math.min(line.sx, line.gx), kidMax: Math.max(line.sx, line.gx), dropX: line.sx, pref: line.sx });
   }
   const layoutBuses = () => {
     const byRow = new Map();
@@ -299,9 +351,10 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
     const stems = buses.flatMap(b => b.kids.map(c => ({ owner: b.u.id, x: xPos[c], y1: b.busY, y2: yPos[c] })));
     let moved = false;
     for (const b of buses) {
+      if (b.xline) continue; // fixed by the partners' positions
       const avoid = [
         ...[...verticals, ...stems].filter(v => v.owner !== b.u.id && overlapsY(v.y1, v.y2, b.geom.y, b.busY)).map(v => v.x),
-        ...buses.filter(o => o !== b && overlapsY(o.geom.y, o.busY, b.geom.y, b.busY)).map(o => o.dropX),
+        ...buses.filter(o => o !== b && !o.xline && overlapsY(o.geom.y, o.busY, b.geom.y, b.busY)).map(o => o.dropX),
       ];
       if (avoid.every(a => Math.abs(a - b.dropX) >= CLEAR)) continue;
       const x = clearPoint(b.geom.lo, b.geom.hi, b.pref, avoid);
@@ -312,6 +365,13 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
   }
 
   for (const b of buses) {
+    if (b.xline) {
+      const { common, gx, gy, sx, sy } = b.xline;
+      edges.push({ ...common, x1: sx, y1: sy, x2: sx, y2: b.busY });
+      if (Math.abs(gx - sx) > 0.5) edges.push({ ...common, x1: sx, y1: b.busY, x2: gx, y2: b.busY });
+      edges.push({ ...common, x1: gx, y1: b.busY, x2: gx, y2: gy });
+      continue;
+    }
     const { u, geom, kids, busY } = b;
     edges.push({ type: 'parentChildDrop', x1: b.dropX, y1: geom.y, x2: b.dropX, y2: busY, unionId: u.id });
     if (b.x2 > b.x1) edges.push({ type: 'sibship', x1: b.x1, y1: busY, x2: b.x2, y2: busY, unionId: u.id });

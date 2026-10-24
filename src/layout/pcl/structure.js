@@ -16,6 +16,8 @@
  * different atoms; bringing them together is the ordering step's job.
  */
 
+import { isGhost } from './crossGeneration';
+
 export function buildStructure(graph) {
   const individuals = graph.individuals || [];
   const unions = graph.unions || [];
@@ -196,9 +198,10 @@ export function buildStructure(graph) {
   // from another drawn family (a partner in a different atom on their row).
   // Such a sibling at the end of the sibship lets that other family sit
   // beside this branch instead of across it.
+  // (a partner on another row, joined through a stand-in beside p, links too)
   const directLink = (p) => (partnerUnions.get(p) || []).some(uid => {
     const q = partnerIn(uid, p);
-    return personAtom.get(q) !== personAtom.get(p) && genOfId(q) === genOfId(p);
+    return (personAtom.get(q) !== personAtom.get(p) && genOfId(q) === genOfId(p)) || isGhost(indById.get(q));
   });
   const linkMemo = new Map();
   const links = (p) => {
@@ -324,7 +327,11 @@ export function buildStructure(graph) {
 
   const gens = [...new Set(atoms.map(a => a.gen))].sort((a, b) => a - b);
 
+  // cross-generation partnerships: stand-in on the lower row → upper partner
+  const crossLinks = individuals.filter(isGhost).map(g => ({ ghost: g.id, upper: g.ghostFor }));
+
   return {
+    crossLinks,
     individuals, unions, indById, unionById, dataIndex,
     parentUnion, childrenOf, partnerUnions, partnerIn, isPartners,
     atoms, personAtom, gens, componentCount: compCount, componentOf: comp,

@@ -147,6 +147,11 @@ function summarize(rows) {
   };
 }
 
+function crossGenerationPair(graph, a, b) {
+  const gen = (id) => (graph.individuals.find((i) => i.id === id) || {}).generation;
+  return typeof gen(a) === 'number' && typeof gen(b) === 'number' && gen(a) !== gen(b);
+}
+
 export function runRandomPopulation(store, { prefix, sequences, ops }) {
   const S = () => store.getState();
   const rows = [];
@@ -159,6 +164,13 @@ export function runRandomPopulation(store, { prefix, sequences, ops }) {
       for (let r = 0; r < 6 && !op; r++) op = chooseOp(rng);
       if (!op) continue;
       const docBefore = S().doc;
+      // The KI-2 ceilings were measured (2026-10-18) while partners from
+      // different generations were refused. Such a pair still counts as
+      // refused here, so the population — and its ratchet — stay the same
+      // edits (the RNG advances exactly as before). Cross-generation
+      // partnerships (2026-10-24) are covered by the fuzz gates and
+      // crossGeneration.test.js.
+      if (op.op === 'createUnion' && crossGenerationPair(docBefore.graph, op.a, op.b)) continue;
       applyOp(op);
       if (S().doc === docBefore) continue; // refused / no-op: nothing to measure
       const next = posMapOf(S);

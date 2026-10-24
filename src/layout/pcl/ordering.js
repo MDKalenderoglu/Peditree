@@ -33,6 +33,8 @@ const W_SIDE = 1.5;        // a couple drawn woman-left-of-man (soft NSGC
                            // orientation fixed (father left ⇒ paternal side left).
 const W_LANE_SPAN = 1.5;   // per slot of a relationship lane: a line running
                            // across much of the drawing is hard to follow
+const W_XLINK = 2;         // per slot between a cross-generation partner and
+                           // their stand-in on the other row (stepped line length)
 const SWEEPS = 8;
 const MAX_STARTS = 8;
 const MAX_SIFT_PASSES = 4;
@@ -104,7 +106,11 @@ export function orderingCost(S, order) {
     } else {
       cost += W_SPAN * span;
     }
-    cost += sideCost(S, a, b, pos);
+    // the man-left convention is about drawn couples, not a stand-in
+    if (!S.indById.get(a).crossGenerationGhost && !S.indById.get(b).crossGenerationGhost) cost += sideCost(S, a, b, pos);
+  }
+  for (const { ghost, upper } of S.crossLinks || []) {
+    if (pos.has(ghost) && pos.has(upper)) cost += W_XLINK * Math.abs(pos.get(ghost) - pos.get(upper));
   }
   return cost;
 }
@@ -160,7 +166,19 @@ class CostModel {
       if (ga !== S.indById.get(b).generation || !this.unionsIn.has(ga)) continue;
       this.unionsIn.get(ga).push(u);
     }
+    // cross-generation partner ↔ stand-in pairs (they span two rows)
+    this.xlinks = (S.crossLinks || []).filter(l => inComp.has(l.ghost) && inComp.has(l.upper))
+      .map(l => ({ ...l, gGhost: S.indById.get(l.ghost).generation, gUpper: S.indById.get(l.upper).generation }));
     for (const g of gens) this.layoutRow(g);
+  }
+
+  xlinkCost(g) {
+    let cost = 0;
+    for (const l of this.xlinks) {
+      if (g !== undefined && l.gGhost !== g && l.gUpper !== g) continue;
+      cost += W_XLINK * Math.abs(this.pos.get(l.ghost) - this.pos.get(l.upper));
+    }
+    return cost;
   }
 
   setOrder(order) {
@@ -218,17 +236,17 @@ class CostModel {
       } else {
         cost += W_SPAN * span;
       }
-      cost += sideCost(S, a, b, pos);
+      if (!S.indById.get(a).crossGenerationGhost && !S.indById.get(b).crossGenerationGhost) cost += sideCost(S, a, b, pos);
     }
     return cost;
   }
 
   rowLocal(g) {
-    return this.edgeCost(g) + this.edgeCost(g + 1) + this.unionCost(g);
+    return this.edgeCost(g) + this.edgeCost(g + 1) + this.unionCost(g) + this.xlinkCost(g);
   }
 
   total() {
-    let c = 0;
+    let c = this.xlinkCost();
     for (const g of this.gens) c += this.edgeCost(g) + this.unionCost(g);
     return c;
   }
@@ -374,6 +392,11 @@ function searchFrom(S, gens, init, flexible = [], opts = {}) {
         if (S.personAtom.get(q) === aid || !pos.has(q)) continue;
         if (S.indById.get(q).generation !== S.atoms[aid].gen) continue;
         sum += pos.get(q); n++;
+      }
+      // a cross-generation partner and their stand-in pull towards each other
+      for (const { ghost, upper } of S.crossLinks || []) {
+        const other = p === ghost ? upper : p === upper ? ghost : null;
+        if (other !== null && pos.has(other)) { sum += pos.get(other); n++; }
       }
     }
     return n ? { mean: sum / n, n } : null;

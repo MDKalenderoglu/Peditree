@@ -19,6 +19,7 @@ import { orderLayers, orderLayersStable } from './ordering';
 import { solveSeparatedQP } from './qp';
 import { routeConnectors, estimateLevelNeeds, planBands } from './routing';
 import { displayParentage } from '../../graph/model';
+import { withGhosts, isGhost } from './crossGeneration';
 
 export const PCL = {
   GEN_Y_SPACING: 160,
@@ -32,6 +33,7 @@ export const PCL = {
 const W_CENTRE = 1;
 const W_SPOUSE = 0.5;
 const W_FAR_PARTNERS = 0.03;
+const W_XLINK = 0.5; // a cross-generation partner over their stand-in (short stepped line)
 const W_COMPACT_IN = 0.02;
 const W_COMPACT_OUT = 0.01;
 const W_STABLE = 0.05;
@@ -80,7 +82,9 @@ const FOOTPRINT_ROUNDS = 400;   // upper bound; only pathological graphs need mo
  */
 export function computePclLayout(inputGraph, opts = {}) {
   // social-only children (e.g. adopted-in) are drawn under their social parents
-  const { graph, socialChildren } = displayParentage(inputGraph);
+  const { graph: drawn, socialChildren } = displayParentage(inputGraph);
+  // partners on different rows: an invisible stand-in beside the lower one
+  const graph = withGhosts(drawn);
   const individuals = graph.individuals || [];
   if (individuals.length === 0) return { nodes: [], edges: [] };
 
@@ -166,6 +170,10 @@ export function computePclLayout(inputGraph, opts = {}) {
     if (first === last) { idx.push(index.get(first)); c.push(-1); }
     else { idx.push(index.get(first), index.get(last)); c.push(-0.5, -0.5); }
     terms.push({ w: W_CENTRE, idx, c, d: 0, couple: true });
+  }
+
+  for (const { ghost, upper } of S.crossLinks) {
+    if (index.has(ghost) && index.has(upper)) terms.push({ w: W_XLINK, idx: [index.get(ghost), index.get(upper)], c: [1, -1], d: 0 });
   }
 
   const pinTerms = [];
@@ -371,11 +379,13 @@ export function computePclLayout(inputGraph, opts = {}) {
   const edges = routeConnectors(S, rows, xPos, yPos, plans);
   if (socialChildren.size) markSocialDescent(edges, S, socialChildren);
   const tRouted = now();
-  const nodes = individuals.map(ind => ({ ...ind, x: xPos[ind.id] ?? 0, y: yPos[ind.id] ?? 0 }));
+  // stand-ins are never drawn
+  const nodes = individuals.filter(ind => !isGhost(ind)).map(ind => ({ ...ind, x: xPos[ind.id] ?? 0, y: yPos[ind.id] ?? 0 }));
+  const shownRows = new Map([...rows].map(([g, list]) => [g, list.filter(id => !isGhost(S.indById.get(id)))]));
   return {
     nodes, edges,
     meta: {
-      order: rows,
+      order: shownRows,
       timings: { orderMs: tOrdered - t0, solveMs: tSolved - tOrdered, routeMs: tRouted - tSolved, qpSolves, qpIterations, footprintTerms: footprintTerms.size },
     },
   };

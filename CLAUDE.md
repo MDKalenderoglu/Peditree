@@ -52,7 +52,7 @@ Consanguinity is derived from the drawing (`src/graph/kinship.js`, run in `final
 5. `pregnancyLoss` (spontaneous miscarriage), `stillbirth`, and termination of pregnancy are distinct clinical types with distinct symbols. Do not conflate them.
 6. `proband: true` must be set on exactly one individual. Zero or multiple probands is a validation error. (Product decision pending: NSGC allows no proband / a consultand — see audit report §4.)
 7. Integrity audit (`auditPedigreeGraph`) and semantic validation (`validatePedigree`) must pass after every graph mutation. Do not suppress their output.
-8. Partners must be of opposite sex (current product rule, `UNION_PARTNER_SEX_CONFLICT`). Same-sex partnership, unknown-sex partners and cross-generation unions are pending clinician decisions — do not change the rule without the user.
+8. Partners must be of opposite sex (current product rule, `UNION_PARTNER_SEX_CONFLICT`). Same-sex partnership and unknown-sex partners are pending clinician decisions — do not change the rule without the user. Cross-generation partners are allowed one generation apart, never ancestor–descendant (clinician 2026-10-24): `union.crossGeneration`, each partner on their own row, stepped relationship line through an invisible stand-in beside the lower partner (`src/layout/pcl/crossGeneration.js`); children one generation below the lower partner (`computeGenerations`).
 9. Never let a colour, highlight or styling hide or compensate for a layout error. Standard notation (solid/dashed/double lines, "//") keeps its meaning in every view.
 10. Clinical notation is governed by `docs/PEDITREE_CLINICAL_NOTATION_SPEC_V1.md`: the layout engine may only place and route, never change what a symbol or line means. Rules R1–R6 there are clinician-approved; every other symbol rule (marked "doğrulama bekliyor" / "karar gerekli") needs the clinician's approval before it is implemented.
 
@@ -60,7 +60,7 @@ Consanguinity is derived from the drawing (`src/graph/kinship.js`, run in `final
 
 ## Generation
 
-`generation` is topology-derived by `computeGenerations(graph, anchor, 3)` (`src/utils/graphTraversal.js`): in v2 it runs after EVERY graph operation (`src/graph/finalize.js`, over the drawn parentage incl. social-only children), anchored at `doc.wizardAnchorId`; the v1 builder (migration only) runs it at the end of `buildPedigreeFromWizard()`. A stored generation is kept only for people unreachable from the anchor. `GENERATION_INCONSISTENT`, `SIBLING_GENERATION_INCONSISTENT` and `PARTNER_GENERATION_INCONSISTENT` are enforced. Run `node verify-generations.mjs` after any builder change — the generation snapshot must stay identical.
+`generation` is topology-derived by `computeGenerations(graph, anchor, 3)` (`src/utils/graphTraversal.js`): in v2 it runs after EVERY graph operation (`src/graph/finalize.js`, over the drawn parentage incl. social-only children), anchored at `doc.wizardAnchorId`; the v1 builder (migration only) runs it at the end of `buildPedigreeFromWizard()`. A stored generation is kept only for people unreachable from the anchor. `GENERATION_INCONSISTENT`, `SIBLING_GENERATION_INCONSISTENT` and `PARTNER_GENERATION_INCONSISTENT` are enforced (the last skips `crossGeneration` unions). Run `node verify-generations.mjs` after any builder change — the generation snapshot must stay identical.
 
 ---
 
