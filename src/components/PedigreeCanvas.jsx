@@ -131,6 +131,18 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
   // where the quick-add bar sits: under the single selected person's symbol
   // where the add menu sits: around the single selected person's symbol
   const [anchor, setAnchor] = useState(null);
+  // Where the selected person was on screen before a redraw: a relayout
+  // (adding relatives) must not carry the person the clinician is working on
+  // to another part of the screen (clinician feedback 2026-10-25).
+  const keepRef = useRef(null); // { id, cx, cy, spu } screen centre, px per drawing unit
+  const measureSelected = () => {
+    const svgEl = svgRef.current;
+    const shape = svgEl && svgEl.querySelector('.node-selected .pedigree-shape');
+    if (!shape) return null;
+    const r = shape.getBoundingClientRect(), b = shape.getBBox(), s0 = svgEl.getBoundingClientRect();
+    if (!b.width || !r.width) return null;
+    return { cx: r.left + r.width / 2 - s0.left, cy: r.top + r.height / 2 - s0.top, spu: r.width / b.width };
+  };
   const placeQuickBar = useCallback(() => {
     const shape = svgRef.current && svgRef.current.querySelector('.node-selected .pedigree-shape');
     if (!shape || !boxRef.current || selectedNodeId2 || selectedIds.length > 1) { setAnchor(null); return; }
@@ -148,6 +160,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
   useEffect(() => {
     if (!svgRef.current) return;
     const svg = d3.select(svgRef.current);
+    // the selected person's place on screen, from the drawing about to go
+    const before = selectedNodeId && keepRef.current && keepRef.current.id === selectedNodeId ? keepRef.current : null;
     svg.selectAll('*').remove();
 
     if (nodes.length === 0) {
@@ -556,12 +570,34 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // --- Zoom/Pan ---
     const zoom = d3.zoom()
       .scaleExtent([0.1, 4])
-      .on('zoom', (event) => { g.attr('transform', event.transform); placeQuickBar(); });
+      .on('zoom', (event) => {
+        g.attr('transform', event.transform);
+        placeQuickBar();
+        const m = measureSelected();
+        keepRef.current = m && selectedNodeId ? { id: selectedNodeId, ...m } : null;
+      });
     svg.call(zoom);
     // keep the clinician's zoom/pan across edits (it used to jump back after
     // every change); "Sığdır" resets it
     svg.call(zoom.transform, d3.zoomTransform(svg.node()));
+    // same person still selected after a redraw: keep them where they were,
+    // the same size — the rest of the drawing moves around them
+    const now = before && measureSelected();
+    if (before && now) {
+      const t = d3.zoomTransform(svg.node());
+      const k = t.k * (before.spu / now.spu);
+      svg.call(zoom.transform, d3.zoomIdentity.translate(t.x, t.y).scale(k));
+      const mid = measureSelected();
+      if (mid) {
+        const unit = mid.spu / k; // screen px per transform unit at this scale
+        svg.call(zoom.transform, d3.zoomIdentity.translate(t.x + (before.cx - mid.cx) / unit, t.y + (before.cy - mid.cy) / unit).scale(k));
+      }
+    }
     placeQuickBar();
+    {
+      const m = measureSelected();
+      keepRef.current = m && selectedNodeId ? { id: selectedNodeId, ...m } : null;
+    }
 
     // Store for external reset
     svg.node().__zoom_ref = zoom;
