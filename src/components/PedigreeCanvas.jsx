@@ -12,6 +12,9 @@
  *   "divorceSlash"        — one diagonal slash at (x,y) (separated or divorced)
  *   "childlessDrop"       — short vertical from union center (no children)
  *   "childlessBar"        — horizontal bar at end of childlessDrop (inverted T)
+ *   "childStem" (twin)    — diagonal from the group's point on the bus (twins)
+ *   "twinBar"             — bar between monozygotic twins' lines
+ *   "twinUnknown"         — "?" between twins' lines (zygosity unknown)
  *
  * Node shapes:
  *   male      → square
@@ -228,6 +231,10 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           drawStroke(g, edge);
           break;
 
+        case 'twinBar':
+          drawStroke(g, edge);
+          break;
+
         case 'divorceSlash': {
           // Separated and divorced: one slash on the relationship line
           // (clinician decision 2026-10-23, notation spec §4.7)
@@ -242,6 +249,17 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         default:
           break;
       }
+    });
+
+    // Twin symbol, zygosity unknown: "?" between the twins' lines (NSGC; the
+    // clinic's reference sheet). Part of the twin symbol, not text on a
+    // relationship line — drawn apart from the connectors above.
+    edges.filter(e => e.type === 'twinUnknown').forEach(e => {
+      g.append('text')
+        .attr('class', 'twin-unknown')
+        .attr('x', e.x).attr('y', e.y).attr('text-anchor', 'middle')
+        .attr('font-size', '11px').attr('font-weight', '600').attr('fill', NODE_STROKE)
+        .text('?');
     });
 
     // Relationship lines are clickable (selects the couple). Wide transparent

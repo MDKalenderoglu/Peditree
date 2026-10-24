@@ -309,13 +309,21 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
   }
 
   // ── lines of descent, sibship buses, stems ──
+  // Twins / multiple births hang from one point of the sibship line (NSGC):
+  // where a member's line meets the bus is the middle of its group.
+  const apexX = (c, kids) => {
+    const m = S.multipleOf && S.multipleOf.get(c);
+    if (!m) return xPos[c];
+    const xs = m.members.filter(k => kids.includes(k)).map(k => xPos[k]);
+    return xs.length >= 2 ? (Math.min(...xs) + Math.max(...xs)) / 2 : xPos[c];
+  };
   const buses = [];
   for (const u of S.unions) {
     const geom = unionGeom.get(u.id);
     const kids = (S.childrenOf.get(u.id) || []).filter(c => xPos[c] !== undefined);
     if (!geom || !kids.length) continue;
     const childY = Math.min(...kids.map(c => yPos[c]));
-    const xs = kids.map(c => xPos[c]);
+    const xs = [...new Set(kids.map(c => apexX(c, kids)))];
     // An only child a few px off the couple's midpoint (solver tolerance)
     // gets a straight line of descent instead of a tiny jog, as long as the
     // drop still starts on the couple's own line.
@@ -376,7 +384,27 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
     edges.push({ type: 'parentChildDrop', x1: b.dropX, y1: geom.y, x2: b.dropX, y2: busY, unionId: u.id });
     if (b.x2 > b.x1) edges.push({ type: 'sibship', x1: b.x1, y1: busY, x2: b.x2, y2: busY, unionId: u.id });
     for (const c of kids) {
-      edges.push({ type: 'childStem', x1: xPos[c], y1: busY, x2: xPos[c], y2: yPos[c] - halfOf(S.indById.get(c)), unionId: u.id, childId: c });
+      const ax = apexX(c, kids);
+      edges.push({ type: 'childStem', x1: ax, y1: busY, x2: xPos[c], y2: yPos[c] - halfOf(S.indById.get(c)), unionId: u.id, childId: c, ...(ax !== xPos[c] || S.multipleOf?.has(c) ? { twin: true } : {}) });
+    }
+    // monozygotic: a bar between the group's outer lines; unknown zygosity: "?"
+    const done = new Set();
+    for (const c of kids) {
+      const m = S.multipleOf && S.multipleOf.get(c);
+      if (!m || done.has(m.members)) continue;
+      done.add(m.members);
+      const members = m.members.filter(k => kids.includes(k)).sort((p, q) => xPos[p] - xPos[q]);
+      if (members.length < 2) continue;
+      const ax = apexX(members[0], kids);
+      const at = (k, y) => ax + (xPos[k] - ax) * (y - busY) / ((yPos[k] - halfOf(S.indById.get(k))) - busY);
+      const top = Math.min(...members.map(k => yPos[k] - halfOf(S.indById.get(k))));
+      const yMark = busY + (top - busY) * 0.45;
+      if (m.zygosity === 'monozygotic') {
+        const first = members[0], last = members[members.length - 1];
+        edges.push({ type: 'twinBar', x1: at(first, yMark), y1: yMark, x2: at(last, yMark), y2: yMark, unionId: u.id });
+      } else if (m.zygosity === 'unknown') {
+        edges.push({ type: 'twinUnknown', x: ax, y: yMark + 4, unionId: u.id });
+      }
     }
   }
 

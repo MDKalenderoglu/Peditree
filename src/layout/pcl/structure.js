@@ -36,6 +36,24 @@ export function buildStructure(graph) {
     if (kids.length) childrenOf.set(rel.unionId, [...(childrenOf.get(rel.unionId) || []), ...kids]);
   }
 
+  // twins / multiple births: members always stand together (multiples.js)
+  const multipleOf = new Map(); // person → { members, index }
+  for (const rel of pcrs) {
+    for (const m of rel.multiples || []) {
+      const members = m.children.filter(c => indById.has(c));
+      members.forEach((c, k) => multipleOf.set(c, { members, index: k, zygosity: m.zygosity }));
+    }
+  }
+  const membersTogether = (core) => {
+    for (const [p, { members }] of multipleOf) {
+      const at = core.indexOf(p);
+      if (at < 0) continue;
+      const pos = members.map(c => core.indexOf(c)).filter(i => i >= 0).sort((a, b) => a - b);
+      if (pos.length && pos[pos.length - 1] - pos[0] !== pos.length - 1) return false;
+    }
+    return true;
+  };
+
   const partnerUnions = new Map(individuals.map(i => [i.id, []]));
   for (const u of unions) {
     if (!u.partners || u.partners.length !== 2) continue;
@@ -156,8 +174,11 @@ export function buildStructure(graph) {
       const sp = spousesOf.get(p) || [];
       const prefLeft = sexOf(p) === 'female';
       const left = [], right = [];
+      // a twin's spouses stand outside the group (never between the twins)
+      const mult = multipleOf.get(p);
+      const outward = mult && mult.index === 0 ? 'left' : mult && mult.index === mult.members.length - 1 ? 'right' : null;
       sp.forEach((s, k) => {
-        const goLeft = k % 2 === 0 ? prefLeft : !prefLeft;
+        const goLeft = outward ? outward === 'left' : (k % 2 === 0 ? prefLeft : !prefLeft);
         (goLeft ? left : right).push(s);
       });
       blockOf.set(p, [...left.reverse().flatMap(expandLeft), p, ...right.flatMap(expandRight)]);
@@ -227,7 +248,7 @@ export function buildStructure(graph) {
   const MAX_SIDE_FLEX = 4;
   const MAX_ARRANGEMENTS = 64;
   const sideVariants = (atom, core) => {
-    const flex = core.filter((p) => (spousesOf.get(p) || []).length > 0 && directLink(p)).slice(0, MAX_SIDE_FLEX);
+    const flex = core.filter((p) => (spousesOf.get(p) || []).length > 0 && directLink(p) && !multipleOf.has(p)).slice(0, MAX_SIDE_FLEX);
     const out = [];
     for (let mask = 0; mask < (1 << flex.length); mask++) {
       const mirrored = new Set(flex.filter((_, k) => mask & (1 << k)));
@@ -281,6 +302,7 @@ export function buildStructure(graph) {
     for (const core of cores) {
       const key = core.join('|');
       if (seen.has(key) || !agesConsistent(core) && core !== atom.core && !consangMoves.has(key)) continue;
+      if (core !== atom.core && !membersTogether(core)) continue; // twins stay together
       seen.add(key);
       byCore.push(sideVariants(atom, core));
     }
@@ -331,7 +353,7 @@ export function buildStructure(graph) {
   const crossLinks = individuals.filter(isGhost).map(g => ({ ghost: g.id, upper: g.ghostFor }));
 
   return {
-    crossLinks,
+    crossLinks, multipleOf,
     individuals, unions, indById, unionById, dataIndex,
     parentUnion, childrenOf, partnerUnions, partnerIn, isPartners,
     atoms, personAtom, gens, componentCount: compCount, componentOf: comp,
