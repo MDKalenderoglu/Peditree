@@ -9,7 +9,7 @@
  * and replay needs only the recorded op list.
  */
 import { makeRng, seedToInt } from './prng.js';
-import { resetModel, chooseOp, applyOp, snapshot } from './fuzzModel.js';
+import { resetModel, chooseOp, applyOp, snapshot, opErrors, resetOpErrors } from './fuzzModel.js';
 import { checkAllInvariants, INVARIANT_CODES } from './layoutInvariants.js';
 import { checkConnectorReadability, readabilityMetrics, READABILITY_CODES } from './connectorReadability.js';
 
@@ -121,6 +121,7 @@ export function shrink(opSeq, originalCodes) {
  * first N distinct-signature failures for minimal repros.
  */
 export function runSuite({ seed, cases, maxOps = 14, shrinkTop = 10 }) {
+  resetOpErrors();
   const failures = [];
   const codeCounts = {};
   let passed = 0;
@@ -172,6 +173,8 @@ export function runSuite({ seed, cases, maxOps = 14, shrinkTop = 10 }) {
     failureRate: cases > 0 ? failures.length / cases : 0,
     codeCounts,
     implementedInvariants: INVARIANT_CODES,
+    // exceptions thrown inside the store while applying ops (should be 0)
+    opExceptions: { count: opErrors.length, first: opErrors.slice(0, 5) },
     readability: {
       codes: READABILITY_CODES,
       failed: read.failed,

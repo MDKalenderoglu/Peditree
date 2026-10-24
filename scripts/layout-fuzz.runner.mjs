@@ -46,6 +46,7 @@ it('layout-fuzz baseline run (measurement, always passes)', () => {
     topFailingSeeds: result.topFailingSeeds,
     minimalRepros: result.minimalRepros,
     readability: result.readability,
+    opExceptions: result.opExceptions,
     namedScenarios: named,
   };
   writeFileSync(join(ROOT, 'reports', 'layout-fuzz-baseline.json'), JSON.stringify(json, null, 2));
@@ -95,6 +96,7 @@ it('layout-fuzz baseline run (measurement, always passes)', () => {
   lines.push('## Readability tier (connector ownership — connectorReadability.js)', '');
   lines.push('Reported separately from the 13-invariant tier above so historical baselines stay comparable.', '');
   lines.push(`- cases failing readability: **${r.failed}/${CASES}** (${pct(r.failureRate)})`);
+  lines.push(`- exceptions while applying operations: **${result.opExceptions.count}**`);
   lines.push(`- end-state metrics: off-centre couple in ${r.metrics.withOffCenter} cases (${r.metrics.offCenterUnions}/${r.metrics.unionsWithChildren} couples with children = ${pct(r.metrics.unionsWithChildren ? r.metrics.offCenterUnions / r.metrics.unionsWithChildren : 0)}), side-hanging bus in ${r.metrics.withSideHang}, long union line (>3 slots) in ${r.metrics.withLongUnion}, foreign crossings in ${r.metrics.withCrossing} cases (${r.metrics.crossings} total)`, '');
   const rc = Object.entries(r.codeCounts).sort((a, b) => b[1] - a[1]);
   if (rc.length) { lines.push('| readability code | failing cases |', '|---|---|'); rc.forEach(([c, n]) => lines.push(`| ${c} | ${n} |`)); lines.push(''); }

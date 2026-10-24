@@ -128,6 +128,10 @@ export function chooseOp(rng) {
  * Apply a recorded op through the real store. Never throws — a store action
  * that no-ops/rolls back is a valid outcome (that IS the app's behaviour).
  */
+/** Exceptions thrown while applying ops (reset with resetOpErrors). */
+export const opErrors = [];
+export function resetOpErrors() { opErrors.length = 0; }
+
 export function applyOp(o) {
   const s = store();
   try {
@@ -163,7 +167,11 @@ export function applyOp(o) {
       case 'setState': s.updateIndividual(o.id, { [o.field]: true }); break;
       default: break;
     }
-  } catch { /* a broken op is data for the report, never a crash */ }
+  } catch (err) {
+    // a broken op is data for the report, never a crash — but it is counted
+    // (opErrors), so an exception inside the store cannot pass as a no-op
+    opErrors.push({ op: o, message: String(err && err.message) });
+  }
 }
 
 /** Current built pedigree ({individuals,unions,pcrs,nodes,edges}) after ops. */
