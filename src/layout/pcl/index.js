@@ -31,6 +31,12 @@ export const PCL = {
 };
 
 const W_CENTRE = 1;
+// opts.straightStart (a new pedigree): an only child stands right under a
+// founder couple — a jog in a single line of descent reads as a staircase
+// (clinician feedback 2026-10-24); the router draws an offset of up to
+// SNAP_ONLY_CHILD px straight. Later edits start from that drawing. Not used
+// generally: on dense pedigrees it pushes other couples off centre.
+const W_CENTRE_ONLY = 8;
 const W_SPOUSE = 0.5;
 const W_FAR_PARTNERS = 0.03;
 const W_XLINK = 0.5; // a cross-generation partner over their stand-in (short stepped line)
@@ -169,7 +175,10 @@ export function computePclLayout(inputGraph, opts = {}) {
     const c = [0.5, 0.5];
     if (first === last) { idx.push(index.get(first)); c.push(-1); }
     else { idx.push(index.get(first), index.get(last)); c.push(-0.5, -0.5); }
-    terms.push({ w: W_CENTRE, idx, c, d: 0, couple: true });
+    // a founder couple (no parents drawn) over its only child: nothing above
+    // pulls it elsewhere, so it can stand right over the child
+    const founders = !S.parentUnion.has(a) && !S.parentUnion.has(b);
+    terms.push({ w: opts.straightStart && first === last && founders ? W_CENTRE_ONLY : W_CENTRE, idx, c, d: 0, couple: true });
   }
 
   for (const { ghost, upper } of S.crossLinks) {

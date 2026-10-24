@@ -49,12 +49,23 @@ describe('KI-2 store level — random edit populations', () => {
     // meanShiftRawPx were RAISED to the new measured values (random 0.3651 →
     // 0.3987, 0.1915 → 0.1998, 21.2 → 31.9 px; ki2 0.3627 → 0.3848, 16.5 →
     // 21.5 px); flips unchanged, unexplained flips 0; side-hang lowered.
+    // 2026-10-24, clinician request: a new pedigree opens with straight lines
+    // of descent (founder couples right over their only child, PCL
+    // opts.straightStart — new pedigrees only). The populations start from
+    // that drawing. Re-measured; recorded trade-off:
+    //   lower (better): random parentFlips 9 → 8, movedFraction 0.3987 → 0.3915,
+    //     sideHangDrawn 2238 → 2196;
+    //   RAISED: random neighbourGapChanged 0.1998 → 0.2047, meanShiftRawPx
+    //     31.9 → 33, editsWorseThanFresh.offCenter 9 → 10; ki2 movedFraction
+    //     0.3848 → 0.3857, neighbourGapChanged 0.1956 → 0.2016, meanShiftRawPx
+    //     21.5 → 22.2.
+    // Unexplained flips stay 0; KI-3 large-pedigree ratchets unchanged.
     'random-200x12': {
-      prefix: 'stab', sequences: 200, ops: 12, parentFlips: 9, movedFraction: 0.3987, neighbourGapChanged: 0.1998, meanShiftRawPx: 31.9,
-      editsWorseThanFresh: { offCenter: 9, crossings: 3, longUnions: 2 }, sideHangDrawn: 2238,
+      prefix: 'stab', sequences: 200, ops: 12, parentFlips: 8, movedFraction: 0.3915, neighbourGapChanged: 0.2047, meanShiftRawPx: 33,
+      editsWorseThanFresh: { offCenter: 10, crossings: 3, longUnions: 2 }, sideHangDrawn: 2196,
     },
     'ki2-40x10': {
-      prefix: 'ki2-', sequences: 40, ops: 10, parentFlips: 1, movedFraction: 0.3848, neighbourGapChanged: 0.1956, meanShiftRawPx: 21.5,
+      prefix: 'ki2-', sequences: 40, ops: 10, parentFlips: 1, movedFraction: 0.3857, neighbourGapChanged: 0.2016, meanShiftRawPx: 22.2,
       editsWorseThanFresh: { offCenter: 0, crossings: 0, longUnions: 0 }, sideHangDrawn: 342,
     },
   };

@@ -72,7 +72,7 @@ function layoutFor(graph, ctx) {
     const r = computeStableLayout(graph, ctx);
     return { nodes: r.nodes, edges: r.edges, layoutInfo: r.meta.stability };
   }
-  const l = computePedigreeLayout(graph);
+  const l = computePedigreeLayout(graph, ctx && ctx.straightStart ? { straightStart: true } : {});
   return { nodes: l.nodes, edges: l.edges, layoutInfo: { level: 'full', reason: ctx && ctx.reason ? ctx.reason : 'fresh layout' } };
 }
 
@@ -142,7 +142,7 @@ function bootstrap() {
     }
   }
   const fresh = starterDocument();
-  return { doc: fresh, ...deriveAll(fresh), actionNotice };
+  return { doc: fresh, ...deriveAll(fresh, {}, { straightStart: true }), actionNotice };
 }
 
 export const usePedigreeStore = create((zSet, get) => {
@@ -374,7 +374,8 @@ export const usePedigreeStore = create((zSet, get) => {
         _history: [], _future: [], _viewHistory: [], _viewFuture: [],
         selectedId: null, selectedId2: null,
         dismissedWarningIds: [], openSectionId: 'proband', actionNotice: null,
-        ...deriveAll(fresh, ui),
+        // a new pedigree opens with straight lines of descent
+        ...deriveAll(fresh, ui, { straightStart: true }),
       };
     }),
 

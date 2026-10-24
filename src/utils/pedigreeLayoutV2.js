@@ -37,7 +37,7 @@ const LOSS_HALF = 14;
 const ROUTE_LOCAL_THRESHOLD = 120; // partners closer than this: plain straight line (unchanged)
 const ROUTE_CORRIDOR_OFFSET = 40;  // corridor sits just above the generation row, clear of all symbol boxes
 
-export function computePedigreeLayoutV2(data) {
+export function computePedigreeLayoutV2(data, opts = {}) {
   const individuals = data.individuals || [];
   const unions = data.unions || [];
   const parentChildRelationships = data.parentChildRelationships || [];
@@ -45,7 +45,7 @@ export function computePedigreeLayoutV2(data) {
   if (individuals.length === 0) return { nodes: [], edges: [] };
 
   if (selectedPacker() === 'pcl') {
-    const { nodes, edges } = computePclLayout(data);
+    const { nodes, edges } = computePclLayout(data, opts.straightStart ? { straightStart: true } : {});
     return { nodes, edges };
   }
 
