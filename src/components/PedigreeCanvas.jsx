@@ -178,10 +178,11 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
 
     // --- Legends (inside the SVG so they are exported): findings key at the
     // top right (clinician choice 2026-10-24), clinical notes at the bottom ---
-    // findings key: only findings someone is affected by or carries
+    // findings key: only findings a relative is affected by or carries (the
+    // proband is drawn fully filled; their findings stand in the first line)
     const shownKey = conditionKey
       .map((entry, i) => ({ ...entry, i }))
-      .filter(entry => nodes.some(n => (n.conditions || []).some(c =>
+      .filter(entry => nodes.some(n => !n.proband && (n.conditions || []).some(c =>
         c && c.label && (c.status === 'affected' || c.status === 'carrier')
         && c.label.trim().toLocaleLowerCase('tr') === entry.label.trim().toLocaleLowerCase('tr'))));
     const notedNodes = nodes.filter(n => n.notes || n.condition || (n.deceased && n.causeOfDeath));
@@ -189,7 +190,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // the drawing is fitted to the screen (clinician feedback 2026-10-24)
     const LK = Math.max(1.2, (d3.max(nodes, d => d.x) - d3.min(nodes, d => d.x) + 200) / 900);
     const KEY_ROW = 22 * LK, NOTE_ROW = 16 * LK, TITLE_ROW = 20 * LK;
-    const keyBlock = shownKey.length ? TITLE_ROW + shownKey.length * KEY_ROW + 14 * LK : 0;
+    const keyBlock = shownKey.length ? shownKey.length * KEY_ROW + 14 * LK : 0;
     const notesBlock = notedNodes.length ? TITLE_ROW + notedNodes.length * NOTE_ROW + 10 * LK : 0;
 
     // --- ViewBox ---
@@ -547,23 +548,24 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       const s = 8 * LK;
       const labelOf = (e) => (e.label.length > 50 ? e.label.substring(0, 49) + '…' : e.label);
       const findingsText = probandFindings.join(', ');
-      const nameW = name.length * 8.4 * LK;
-      const headW = headBlock ? (name ? nameW + 12 * LK : 0) + 2 * s + 12 * LK + findingsText.length * 7.2 * LK : 0;
-      const rowsW = shownKey.length ? 2 * s + 10 * LK + Math.max(60, ...shownKey.map(e => labelOf(e).length * 7.2)) * LK : 0;
-      const width = Math.max(headW, rowsW);
+      const nameW = headBlock && name ? name.length * 8.4 * LK + 12 * LK : 0;
+      // columns: [name] [symbols] [texts] — the rows below line up with the
+      // proband's symbol and findings (clinician request 2026-10-25)
+      const textsW = Math.max(findingsText.length * 7.2 * LK, ...shownKey.map(e => labelOf(e).length * 7.2 * LK), 40);
+      const width = nameW + 2 * s + 12 * LK + textsW;
       const kx = Math.max(minX + 10, maxX - width - 10 * LK);
+      const symX = kx + nameW;              // symbol column
+      const textX = symX + 2 * s + 12 * LK; // text column
       let ky = minY + 10 * LK;
       if (headBlock) {
-        let x = kx;
         if (name) {
           keyG.append('text').attr('class', 'patient-header')
-            .attr('x', x).attr('y', ky + s + 5 * LK)
+            .attr('x', kx).attr('y', ky + s + 5 * LK)
             .attr('font-size', `${15 * LK}px`).attr('font-weight', '700').attr('fill', '#0f172a')
             .text(name);
-          x += nameW + 12 * LK;
         }
-        // the proband's symbol as drawn (sex shape, findings marked)
-        const cell = keyG.append('g').attr('class', 'legend-proband').attr('transform', `translate(${x + s},${ky + s})`);
+        // the proband's symbol as drawn (sex shape, fully filled when affected)
+        const cell = keyG.append('g').attr('class', 'legend-proband').attr('transform', `translate(${symX + s},${ky + s})`);
         const sex = probandNode.sex;
         const shape = sex === 'male'
           ? cell.append('rect').attr('x', -s).attr('y', -s).attr('width', 2 * s).attr('height', 2 * s)
@@ -574,34 +576,26 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         shape.attr('stroke', NODE_STROKE).attr('stroke-width', 1.5)
           .attr('fill', f.mode === 'full' ? NODE_STROKE : f.mode === 'none' && probandNode.carrier ? 'url(#carrier-half)' : NODE_FILL);
         if (f.mode === 'regions') drawRegions(cell, defs, 'legend-proband-regions', shape, f.parts, s);
-        x += 2 * s + 12 * LK;
         if (findingsText) {
           keyG.append('text')
-            .attr('x', x).attr('y', ky + s + 5 * LK)
+            .attr('x', textX).attr('y', ky + s + 5 * LK)
             .attr('font-size', `${13 * LK}px`).attr('fill', '#1e293b')
             .text(findingsText);
         }
         ky += headBlock;
       }
-      if (shownKey.length) {
+      shownKey.forEach((entry, row) => {
+        const cell = keyG.append('g').attr('transform', `translate(${symX + s},${ky + s})`);
+        const box = cell.append('rect').attr('x', -s).attr('y', -s).attr('width', 2 * s).attr('height', 2 * s)
+          .attr('fill', NODE_FILL).attr('stroke', NODE_STROKE).attr('stroke-width', 1.5);
+        const [a0, a1] = REGION_ANGLES[entry.region] || REGION_ANGLES.q1;
+        drawRegions(cell, defs, `key-region-${row}`, box, [{ fill: entry.fill, a0, a1 }], s);
         keyG.append('text')
-          .attr('x', kx).attr('y', ky + 12 * LK)
-          .attr('font-size', `${12 * LK}px`).attr('font-weight', '700').attr('fill', '#64748b')
-          .text('Açıklama');
-        ky += TITLE_ROW;
-        shownKey.forEach((entry, row) => {
-          const cell = keyG.append('g').attr('transform', `translate(${kx + s},${ky + s})`);
-          const box = cell.append('rect').attr('x', -s).attr('y', -s).attr('width', 2 * s).attr('height', 2 * s)
-            .attr('fill', NODE_FILL).attr('stroke', NODE_STROKE).attr('stroke-width', 1.5);
-          const [a0, a1] = REGION_ANGLES[entry.region] || REGION_ANGLES.q1;
-          drawRegions(cell, defs, `key-region-${row}`, box, [{ fill: entry.fill, a0, a1 }], s);
-          keyG.append('text')
-            .attr('x', kx + 2 * s + 10 * LK).attr('y', ky + s + 4.5 * LK)
-            .attr('font-size', `${12.5 * LK}px`).attr('fill', '#334155')
-            .text(labelOf(entry));
-          ky += KEY_ROW;
-        });
-      }
+          .attr('x', textX).attr('y', ky + s + 4.5 * LK)
+          .attr('font-size', `${12.5 * LK}px`).attr('fill', '#334155')
+          .text(labelOf(entry));
+        ky += KEY_ROW;
+      });
     }
     const legendX = minX + 10;
     let legendY = legendTop;

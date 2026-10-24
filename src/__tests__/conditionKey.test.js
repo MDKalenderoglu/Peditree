@@ -30,27 +30,31 @@ describe('the legend follows the findings', () => {
     const sister = S().wizardData.siblings.female[0].id;
     S().addFinding(sister, 'miyop '); // same finding, other spelling
     expect(labels()).toEqual(['Miyop', 'Uzun boy', 'Araknodaktili']);
-    expect(regionsOf('proband')).toEqual(['q1:solid', 'q2:solid', 'q3:solid']);
+    // the proband stays fully filled (clinician decision 2026-10-25); the
+    // findings' regions mark the relatives
+    expect(fillFor(person('proband'), key())).toEqual({ mode: 'full' });
     expect(regionsOf(sister)).toEqual(['q1:solid']);
     expect(fillFor(person('mother'), key())).toEqual({ mode: 'none' });
     expect(person('proband').affected).toBe(true);
     expect(S().pedigreeData.conditionKey).toEqual(key()); // the renderer gets the same key
   });
 
-  it('a single finding marks its region too (the clinician paints a quarter)', () => {
-    S().addFinding('proband', 'Miyop', { region: 'q2', fill: 'solid' });
-    expect(regionsOf('proband')).toEqual(['q2:solid']);
+  it('a single finding marks its region on a relative (the clinician paints a quarter); the proband stays full', () => {
+    S().addFinding('mother', 'Miyop', { region: 'q2', fill: 'solid' });
+    expect(regionsOf('mother')).toEqual(['q2:solid']);
+    S().addFinding('proband', 'Miyop');
+    expect(fillFor(person('proband'), key())).toEqual({ mode: 'full' });
   });
 
   it('the clinician chooses region and fill; a taken signature is refused; style can change later', () => {
-    S().addFinding('proband', 'A', { region: 'q3', fill: 'hatch' });
+    S().addFinding('father', 'A', { region: 'q3', fill: 'hatch' });
     expect(keyEntry(key(), 'A')).toMatchObject({ region: 'q3', fill: 'hatch' });
     const before = S().doc;
     S().addFinding('mother', 'B', { region: 'q3', fill: 'hatch' });
     expect(S().doc).toBe(before);
     expect(S().actionNotice.message).toMatch(/başka bir bulguda/);
     S().setFindingStyle('A', { region: 'q1', fill: 'dots' });
-    expect(regionsOf('proband')).toEqual(['q1:dots']);
+    expect(regionsOf('father')).toEqual(['q1:dots']);
   });
 
   it('suggestion: four quadrants in solid first, then other fills', () => {

@@ -83,7 +83,10 @@ export function keyIndex(key, label) {
  *   { mode: 'full' }   — solid: affected with no finding named
  *   { mode: 'regions', parts: [{ region, fill, a0, a1, carrier }] }
  * Each finding the person is affected by fills its region; a carrier of a
- * finding gets half of the region (clinician decision 2026-10-24). Two
+ * finding gets half of the region (clinician decision 2026-10-24). The
+ * proband with findings is drawn fully filled — their findings are written
+ * beside the symbol in the key; regions mark relatives (clinician decision
+ * 2026-10-25). Two
  * findings of one person sharing a region (more than four findings in the
  * pedigree) split that region between them.
  */
@@ -96,6 +99,7 @@ export function fillFor(person, key = []) {
     if (!e || !validStyle(e) || marks.some((m) => m.label === e.label)) continue;
     marks.push({ label: e.label, region: e.region, fill: e.fill, carrier: c.status === 'carrier' });
   }
+  if (person.proband && marks.some((m) => !m.carrier)) return { mode: 'full' };
   if (marks.length) {
     const parts = [];
     for (const region of REGIONS) {
