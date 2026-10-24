@@ -26,6 +26,7 @@ import { validatePedigree } from '../utils/validators';
 import { computePedigreeLayoutV2 as computePedigreeLayout } from '../utils/pedigreeLayoutV2';
 import { selectedPacker } from '../utils/layoutPacking';
 import { computeStableLayout } from '../layout/pcl/incremental';
+import { computeTidyLayout } from '../layout/pcl/tidy';
 import { auditLayoutIntegrity } from '../utils/layoutIntegrity';
 import { assessRelationshipMutation } from '../utils/relationshipSafety';
 import { validateDocument } from '../graph/validate';
@@ -81,6 +82,11 @@ function layoutFor(graph, ctx) {
   if (ctx && ctx.prevNodes && ctx.prevNodes.length && selectedPacker() === 'pcl') {
     const r = computeStableLayout(graph, ctx);
     return { nodes: r.nodes, edges: r.edges, layoutInfo: r.meta.stability };
+  }
+  if (ctx && ctx.tidy && selectedPacker() === 'pcl') {
+    // "Yeniden Düzenle": the layout with the fewest bends (tidy.js)
+    const t = computeTidyLayout(graph);
+    return { nodes: t.nodes, edges: t.edges, layoutInfo: { level: 'full', reason: `Yeniden Düzenle (en az kırılma: ${t.variant})` } };
   }
   const l = computePedigreeLayout(graph, ctx && ctx.straightStart ? { straightStart: true } : {});
   return { nodes: l.nodes, edges: l.edges, layoutInfo: { level: 'full', reason: ctx && ctx.reason ? ctx.reason : 'fresh layout' } };
@@ -406,7 +412,7 @@ export const usePedigreeStore = create((zSet, get) => {
       _history: [...(state._history || []), state.doc].slice(-MAX_UNDO_HISTORY),
       _viewHistory: [...(state._viewHistory || []), viewOf(state)].slice(-MAX_UNDO_HISTORY),
       _future: [], _viewFuture: [],
-      ...deriveAll(state.doc, state.ui, { reason: 'Yeniden Düzenle' }),
+      ...deriveAll(state.doc, state.ui, { reason: 'Yeniden Düzenle', tidy: true }),
     })),
 
     /** Open a project file (v2, or v1 which is migrated). Undoable. */

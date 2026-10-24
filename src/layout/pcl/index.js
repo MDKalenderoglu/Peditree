@@ -178,7 +178,14 @@ export function computePclLayout(inputGraph, opts = {}) {
     // a founder couple (no parents drawn) over its only child: nothing above
     // pulls it elsewhere, so it can stand right over the child
     const founders = !S.parentUnion.has(a) && !S.parentUnion.has(b);
-    terms.push({ w: opts.straightStart && first === last && founders ? W_CENTRE_ONLY : W_CENTRE, idx, c, d: 0, couple: true });
+    // opts.straight (Yeniden Düzenle tries these, tidy.js): 'founders' (=
+    // straightStart), 'only' (every only child under the couple), 'strong'
+    // (every couple firmly over its children)
+    const straight = opts.straight || (opts.straightStart ? 'founders' : null);
+    let w = W_CENTRE;
+    if (first === last && (straight === 'only' || straight === 'strong' || (straight === 'founders' && founders))) w = W_CENTRE_ONLY;
+    else if (straight === 'strong') w = W_CENTRE * 4;
+    terms.push({ w, idx, c, d: 0, couple: true });
   }
 
   for (const { ghost, upper } of S.crossLinks) {
