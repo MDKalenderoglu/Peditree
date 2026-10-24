@@ -419,10 +419,36 @@ export function clearChildOrder(doc, unionId) {
   });
 }
 
+/**
+ * Move a child one place left / right in the birth order. Twins / a
+ * multiple birth count as one unit (they always stand together): a sibling
+ * next to the group moves past the whole group; a twin moves within the
+ * group, and at the group's edge the whole group moves.
+ */
 export function moveChild(doc, unionId, childId, direction) {
   const rel = doc.graph.parentChildRelationships.find((r) => r.unionId === unionId);
   if (!rel) return { ok: false, doc, reason: 'Bu birlikteliğin çocuğu yok.' };
-  return setChildOrder(doc, unionId, moveChildInOrder([...rel.children], childId, direction));
+  const groups = rel.multiples || [];
+  if (!groups.length) return setChildOrder(doc, unionId, moveChildInOrder([...rel.children], childId, direction));
+  // units: a group (members in order) or a single child
+  const units = [];
+  for (const c of rel.children) {
+    const g = groups.find((m) => m.children.includes(c));
+    if (g && units.some((u) => u.group === g)) continue;
+    units.push(g ? { group: g, ids: rel.children.filter((x) => g.children.includes(x)) } : { ids: [c] });
+  }
+  const step = direction === 'left' ? -1 : 1;
+  const ui = units.findIndex((u) => u.ids.includes(childId));
+  const unit = units[ui];
+  const within = unit.ids.indexOf(childId);
+  if (unit.ids.length > 1 && within + step >= 0 && within + step < unit.ids.length) {
+    [unit.ids[within], unit.ids[within + step]] = [unit.ids[within + step], unit.ids[within]];
+  } else {
+    const to = ui + step;
+    if (to < 0 || to >= units.length) return { ok: true, doc, created: {} };
+    [units[ui], units[to]] = [units[to], units[ui]];
+  }
+  return setChildOrder(doc, unionId, units.flatMap((u) => u.ids));
 }
 
 /** Social (non-biological) parenthood: adoptive, foster, step, guardian. */

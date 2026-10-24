@@ -51,6 +51,26 @@ describe('model', () => {
     expect(Math.abs(after.indexOf('proband') - after.indexOf(f))).toBe(1);
   });
 
+  it('birth order moves treat twins as one unit (clinician report: moving next to twins did nothing)', () => {
+    S().addSiblingOfCategory('female');
+    S().addMultipleSibling('proband', { zygosity: 'monozygotic' });
+    S().addSiblingOfCategory('male');
+    const twin = group().children[1];
+    const kids = rel().children.slice();
+    const next = kids[kids.indexOf(twin) + 1];
+    S().reorderChild(rel().unionId, next, 'left'); // past the whole group
+    let k = rel().children;
+    expect(k.indexOf(next)).toBe(kids.indexOf('proband'));
+    expect(Math.abs(k.indexOf('proband') - k.indexOf(twin))).toBe(1);
+    S().reorderChild(rel().unionId, twin, 'left'); // within the group
+    k = rel().children;
+    expect(k.indexOf(twin)).toBeLessThan(k.indexOf('proband'));
+    S().reorderChild(rel().unionId, twin, 'left'); // at the group's edge: the group moves
+    k = rel().children;
+    expect(k.indexOf(next)).toBeGreaterThan(k.indexOf('proband'));
+    expect(Math.abs(k.indexOf('proband') - k.indexOf(twin))).toBe(1);
+  });
+
   it('leaving or deleting dissolves a group of two; zygosity can change', () => {
     S().addMultipleSibling('proband', {});
     const twin = group().children[1];
