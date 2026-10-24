@@ -65,7 +65,11 @@ function tagIssues(issues, source) {
 
 /** A fresh pedigree: exactly the v1 starter (3 generations), as a v2 document. */
 export function starterDocument() {
-  return migrateV1ToV2(cloneInitialState()).doc;
+  const doc = migrateV1ToV2(cloneInitialState()).doc;
+  // the proband opens marked affected (clinician request 2026-10-25)
+  const p = doc.graph.individuals.find((i) => i.id === doc.wizardAnchorId);
+  if (p) p.affected = true;
+  return doc;
 }
 
 /**

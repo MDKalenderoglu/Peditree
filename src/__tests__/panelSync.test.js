@@ -199,11 +199,12 @@ describe('several people at once (clinician request 2026-10-24)', () => {
 
   it('affected / deceased for everyone selected — one undo step', () => {
     const steps = S()._history.length;
+    const before = ppl.map(id => !!get(id).affected); // the proband opens affected
     S().updateMany(ppl, { affected: true });
     expect(ppl.every(id => get(id).affected)).toBe(true);
     expect(S()._history.length).toBe(steps + 1);
     S().undo();
-    expect(ppl.some(id => get(id).affected)).toBe(false);
+    expect(ppl.map(id => !!get(id).affected)).toEqual(before);
   });
 
   it('a new finding for everyone selected keeps one signature; it can be removed from all at once', () => {
