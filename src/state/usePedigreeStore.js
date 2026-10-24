@@ -329,6 +329,7 @@ export const usePedigreeStore = create((zSet, get) => {
     addFinding: (personId, label, style) => apply(findings.addFinding(get().doc, personId, label, style)),
     setFindingStatus: (personId, label, status) => apply(findings.setFindingStatus(get().doc, personId, label, status)),
     setFindingStyle: (label, style) => apply(findings.setFindingStyle(get().doc, label, style)),
+    renameFinding: (oldLabel, newLabel) => apply(findings.renameFinding(get().doc, oldLabel, newLabel)),
 
     // ── twins / multiple births ──
     setMultipleBirth: (childIds, zygosity) => apply(multiples.setMultipleBirth(get().doc, childIds, zygosity)),

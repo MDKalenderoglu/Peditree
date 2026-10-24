@@ -123,12 +123,30 @@ function drawStroke(g, edge, dx = 0, dy = 0) {
 // belt-and-suspenders fallback for exportUtils.js and for tests/tools
 // that query the DOM directly.
 const PedigreeCanvas = forwardRef(function PedigreeCanvas(
-  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar, patientName = '' },
+  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar, patientName = '', onEditText },
   forwardedRef
 ) {
   const svgRef = useRef(null);
   const boxRef = useRef(null);
   // where the quick-add bar sits: under the single selected person's symbol
+  // Every text on the page can be corrected where it stands (clinician
+  // request 2026-10-25): a click opens a field over it; the change goes to
+  // its source (the person, the finding for everyone, the patient's name).
+  const [editing, setEditing] = useState(null);
+  const committed = useRef(false);
+  const startEdit = useCallback((kind, target, value, el) => {
+    if (!boxRef.current) return;
+    const r = el.getBoundingClientRect(), b = boxRef.current.getBoundingClientRect();
+    committed.current = false;
+    setEditing({ kind, target, value: value ?? '', x: r.left - b.left, y: r.top - b.top, w: r.width, h: r.height });
+  }, []);
+  const finishEdit = (value) => {
+    if (!editing || committed.current) return;
+    committed.current = true;
+    if (onEditText && value !== editing.value) onEditText(editing.kind, editing.target, value);
+    setEditing(null);
+  };
+
   // where the add menu sits: around the single selected person's symbol
   const [anchor, setAnchor] = useState(null);
   // Where the selected person was on screen before a redraw: a relayout
@@ -163,6 +181,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // the selected person's place on screen, from the drawing about to go
     const before = selectedNodeId && keepRef.current && keepRef.current.id === selectedNodeId ? keepRef.current : null;
     svg.selectAll('*').remove();
+    const editable = (sel, kind, target, value) => sel.classed('editable', true).style('cursor', 'text')
+      .on('click', (event) => { event.stopPropagation(); startEdit(kind, target, value, event.currentTarget); });
 
     if (nodes.length === 0) {
       // Draw a placeholder message
@@ -502,29 +522,30 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
 
       // Age (always shown for liveborn if set)
       if (d.age && !d.pregnancyLoss && !d.stillbirth) {
-        el.append('text')
+        const deathAge = d.deceased && d.ageAtDeath;
+        editable(el.append('text')
           .attr('y', lineY).attr('text-anchor', 'middle')
           .attr('font-size', '11px').attr('fill', '#475569')
-          .text(d.deceased && d.ageAtDeath ? `d.${d.ageAtDeath}` : d.age);
+          .text(deathAge ? `d.${d.ageAtDeath}` : d.age), deathAge ? 'ageAtDeath' : 'age', d.id, deathAge ? d.ageAtDeath : d.age);
         lineY += LINE_H;
       }
 
       // Display label
       if (d.displayLabel) {
-        el.append('text')
+        editable(el.append('text')
           .attr('y', lineY).attr('text-anchor', 'middle')
           .attr('font-size', '11px').attr('fill', '#475569')
-          .text(d.displayLabel);
+          .text(d.displayLabel), 'displayLabel', d.id, d.displayLabel);
         lineY += LINE_H;
       }
 
       // Condition
       if (d.condition) {
-        el.append('text')
+        editable(el.append('text')
           .attr('y', lineY).attr('text-anchor', 'middle')
           .attr('font-size', '10px').attr('fill', '#6366f1')
           .attr('font-style', 'italic')
-          .text(d.condition.length > 15 ? d.condition.substring(0, 14) + '...' : d.condition);
+          .text(d.condition.length > 15 ? d.condition.substring(0, 14) + '...' : d.condition), 'condition', d.id, d.condition);
         lineY += LINE_H;
       }
 
@@ -559,10 +580,10 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       let ky = minY + 10 * LK;
       if (headBlock) {
         if (name) {
-          keyG.append('text').attr('class', 'patient-header')
+          editable(keyG.append('text').attr('class', 'patient-header')
             .attr('x', kx).attr('y', ky + s + 5 * LK)
             .attr('font-size', `${15 * LK}px`).attr('font-weight', '700').attr('fill', '#0f172a')
-            .text(name);
+            .text(name), 'patientName', null, name);
         }
         // the proband's symbol as drawn (sex shape, fully filled when affected)
         const cell = keyG.append('g').attr('class', 'legend-proband').attr('transform', `translate(${symX + s},${ky + s})`);
@@ -577,10 +598,13 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           .attr('fill', f.mode === 'full' ? NODE_STROKE : f.mode === 'none' && probandNode.carrier ? 'url(#carrier-half)' : NODE_FILL);
         if (f.mode === 'regions') drawRegions(cell, defs, 'legend-proband-regions', shape, f.parts, s);
         if (findingsText) {
-          keyG.append('text')
+          const t = keyG.append('text')
             .attr('x', textX).attr('y', ky + s + 5 * LK)
-            .attr('font-size', `${13 * LK}px`).attr('fill', '#1e293b')
-            .text(findingsText);
+            .attr('font-size', `${13 * LK}px`).attr('fill', '#1e293b');
+          probandFindings.forEach((label, k) => {
+            if (k) t.append('tspan').text(', ');
+            editable(t.append('tspan').text(label), 'finding', label, label);
+          });
         }
         ky += headBlock;
       }
@@ -590,39 +614,41 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           .attr('fill', NODE_FILL).attr('stroke', NODE_STROKE).attr('stroke-width', 1.5);
         const [a0, a1] = REGION_ANGLES[entry.region] || REGION_ANGLES.q1;
         drawRegions(cell, defs, `key-region-${row}`, box, [{ fill: entry.fill, a0, a1 }], s);
-        keyG.append('text')
+        editable(keyG.append('text')
           .attr('x', textX).attr('y', ky + s + 4.5 * LK)
           .attr('font-size', `${12.5 * LK}px`).attr('fill', '#334155')
-          .text(labelOf(entry));
+          .text(labelOf(entry)), 'finding', entry.label, entry.label);
         ky += KEY_ROW;
       });
     }
     const legendX = minX + 10;
     let legendY = legendTop;
 
-    // --- Clinical notes legend ---
+    // --- Notes legend (each part editable where it stands) ---
     if (notedNodes.length > 0) {
       const legendG = svg.append('g').attr('class', 'notes-legend');
       legendG.append('text')
         .attr('x', legendX).attr('y', legendY + 12 * LK)
         .attr('font-size', `${13 * LK}px`).attr('font-weight', '700').attr('fill', '#1e293b')
-        .text('Klinik Notlar');
+        .text('Notlar');
       legendY += TITLE_ROW;
+      const clip = (t) => (t.length > 100 ? t.substring(0, 99) + '…' : t);
       notedNodes.forEach((n, i) => {
-        const parts = [];
-        if (n.condition) parts.push(n.condition);
-        if (n.deceased && n.causeOfDeath) parts.push(`Ölüm: ${n.causeOfDeath}`);
-        if (n.notes) parts.push(n.notes);
-        // Clinician-facing identity: pedigree number (e.g. "IV-7") plus the
-        // label when there is one — never the internal graph id.
-        const pid = pedigreeIds.get(n.id)?.displayId;
-        const name = n.displayLabel || n.label;
-        const label = pid ? (name ? `${pid} (${name})` : pid) : (name || 'birey');
-        const entry = `[${i + 1}] ${label}: ${parts.join(' | ')}`;
-        legendG.append('text')
+        // pedigree number plus the clinician's own label — never an internal id
+        const pid = pedigreeIds.get(n.id)?.displayId || '—';
+        const who = n.displayLabel ? `${pid} (${n.displayLabel})` : pid;
+        const t = legendG.append('text')
           .attr('x', legendX).attr('y', legendY + 12 * LK)
-          .attr('font-size', `${12 * LK}px`).attr('fill', '#475569')
-          .text(entry.length > 80 ? entry.substring(0, 79) + '...' : entry);
+          .attr('font-size', `${12 * LK}px`).attr('fill', '#475569');
+        t.append('tspan').attr('font-weight', '600').text(`[${i + 1}] ${who}: `);
+        const parts = [];
+        if (n.condition) parts.push(['condition', n.condition, n.condition]);
+        if (n.deceased && n.causeOfDeath) parts.push(['causeOfDeath', `Ölüm: ${n.causeOfDeath}`, n.causeOfDeath]);
+        if (n.notes) parts.push(['note', n.notes, n.notes]);
+        parts.forEach(([kind, shown, value], k) => {
+          if (k) t.append('tspan').text(' | ');
+          editable(t.append('tspan').text(clip(shown)), kind, n.id, value);
+        });
         legendY += NOTE_ROW;
       });
     }
@@ -662,7 +688,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // Store for external reset
     svg.node().__zoom_ref = zoom;
 
-  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar, patientName]);
+  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar, patientName, startEdit]);
 
   const zoomBy = (k) => {
     const svg = d3.select(svgRef.current);
@@ -690,7 +716,16 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         style={{ cursor: 'grab', background: '#f8fafc' }}
         onClick={() => onNodeSelect(null)}
       />
-      {anchor && renderQuickBar && renderQuickBar(anchor)}
+      {anchor && renderQuickBar && !editing && renderQuickBar(anchor)}
+      {editing && (
+        <input className="inline-edit" autoFocus defaultValue={editing.value}
+          style={{ left: editing.x - 6, top: editing.y - 5, width: Math.max(editing.w + 60, 160), height: Math.max(editing.h + 10, 28) }}
+          onKeyDown={e => {
+            if (e.key === 'Enter') finishEdit(e.currentTarget.value);
+            if (e.key === 'Escape') { committed.current = true; setEditing(null); }
+          }}
+          onBlur={e => finishEdit(e.currentTarget.value)} />
+      )}
     </div>
   );
 });

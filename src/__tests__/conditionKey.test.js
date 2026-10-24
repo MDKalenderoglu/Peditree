@@ -92,6 +92,19 @@ describe('the legend follows the findings', () => {
     expect(f.parts.map(p => [p.fill, p.a0, p.a1])).toEqual([['solid', 180, 225], ['hatch', 225, 270]]);
   });
 
+  it('renaming a finding on the key renames it for everyone; a name already in use is refused', () => {
+    S().addFinding('mother', 'Miyp');
+    S().addFinding('father', 'Miyp');
+    S().addFinding('proband', 'OSB');
+    S().renameFinding('Miyp', 'Miyop');
+    expect(labels()).toEqual(['Miyop', 'OSB']);
+    expect(['mother', 'father'].every(id => person(id).conditions.some(c => c.label === 'Miyop'))).toBe(true);
+    const before = S().doc;
+    S().renameFinding('Miyop', 'osb');
+    expect(S().doc).toBe(before);
+    expect(S().actionNotice.message).toMatch(/başka bir bulgu/);
+  });
+
   it('save → load keeps the legend with its signatures', () => {
     S().addFinding('proband', 'Miyop', { region: 'q4', fill: 'grey' });
     const file = S().exportProjectFile();
@@ -120,6 +133,14 @@ describe('renderer contract', () => {
     expect(src).toMatch(/attr\('stroke', NODE_FILL\)/);
     const css = readFileSync(join(process.cwd(), 'src/styles/app.css'), 'utf8');
     expect(css).toMatch(/\.node-group \.condition-regions path \{\s*stroke: #ffffff;/);
+  });
+  it('every text on the page can be corrected where it stands; the notes title is "Notlar"', () => {
+    for (const kind of ["'patientName'", "'finding'", "'displayLabel'", "'condition'"]) expect(src).toContain(`, ${kind}, `);
+    expect(src).toContain("deathAge ? 'ageAtDeath' : 'age'");
+    for (const kind of ["['note',", "['causeOfDeath',", "['condition',"]) expect(src).toContain(kind);
+    expect(src).toMatch(/className="inline-edit"/);
+    expect(src).toMatch(/\.text\('Notlar'\)/);
+    expect(src).not.toMatch(/Klinik Notlar/);
   });
   it('note markers under symbols use the notes legend numbering', () => {
     expect(src).toMatch(/notedNodes\.indexOf\(d\)/);

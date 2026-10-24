@@ -65,3 +65,24 @@ export function setFindingStyle(doc, label, style) {
     e.fill = style.fill;
   });
 }
+
+/**
+ * Rename a finding for everyone who has it and in the key (an edit made on
+ * the page's key reaches every person's findings — clinician request
+ * 2026-10-25). Refused when another finding already has the new name.
+ */
+export function renameFinding(doc, oldLabel, newLabel) {
+  return commit(doc, (d) => {
+    const name = String(newLabel || '').trim();
+    if (!name) block('Bulgunun adı boş olamaz.');
+    const e = keyEntry(d.graph.conditionKey, oldLabel);
+    if (!e) block('Bu bulgu açıklamada yok.');
+    const clash = keyEntry(d.graph.conditionKey, name);
+    if (clash && clash !== e) block(`"${name}" adında başka bir bulgu zaten var.`);
+    for (const p of d.graph.individuals) {
+      if (!Array.isArray(p.conditions)) continue;
+      p.conditions = p.conditions.map((c) => (normLabel(c.label) === normLabel(oldLabel) ? { ...c, label: name } : c));
+    }
+    e.label = name;
+  });
+}

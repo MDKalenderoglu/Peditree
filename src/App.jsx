@@ -5,6 +5,7 @@ import { exportSVG, exportPNG, exportFileName } from './utils/exportUtils';
 import { assessExportReadiness } from './utils/exportReadiness';
 import { withStableIdsExcludingDismissed } from './utils/warningIds';
 import { clinicalNotices } from './utils/clinicalNotices';
+import { sanitizeAgeValue } from './utils/ageValidation';
 import PedigreeCanvas from './components/PedigreeCanvas';
 import IndividualEditor from './components/IndividualEditor';
 import RadialAddMenu from './components/RadialAddMenu';
@@ -22,7 +23,7 @@ function App() {
     deleteIndividual, createUnionBetween, addCustomConsanguinity,
     reorderChild, setUnionRelationshipBackground, setUnionStatus,
     setMultipleBirth, addMultipleSibling, setMultipleZygosity, leaveMultipleBirth,
-    addFinding, setFindingStatus, setFindingStyle, wizardData, updateWizardData,
+    addFinding, setFindingStatus, setFindingStyle, renameFinding, wizardData, updateWizardData,
     addParentsTo, addSiblingTo,
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
@@ -318,6 +319,15 @@ function App() {
           onUnionSelect={selectUnion}
           conditionKey={pedigreeData.conditionKey || []}
           patientName={doc.patientName || ''}
+          onEditText={(kind, target, value) => {
+            const v = String(value);
+            if (kind === 'patientName') setPatientName(v.trim());
+            else if (kind === 'finding') renameFinding(target, v);
+            else if (kind === 'note') updateIndividual(target, { notes: v });
+            else if (kind === 'age') updateIndividual(target, { age: sanitizeAgeValue(v) });
+            else if (kind === 'ageAtDeath') updateIndividual(target, { ageAtDeath: sanitizeAgeValue(v) });
+            else updateIndividual(target, { [kind]: v }); // displayLabel, condition, causeOfDeath
+          }}
           renderQuickBar={(anchor) => (
             <RadialAddMenu anchor={anchor} node={selectedNode} pedigreeData={pedigreeData}
               onAddSibling={addSiblingTo} onAddSpouse={addSpouseTo} onAddParents={addParentsTo} onAddTwin={addMultipleSibling}

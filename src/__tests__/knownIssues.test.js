@@ -229,7 +229,7 @@ describe('KI-8 (fixed, P2) — a married-in second partner separates a couple fr
 describe('KI-9 (fixed, P1) — clinical notes legend shows pedigree numbers, not internal ids', () => {
   it('the legend label never falls back to the internal id', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
-    const legend = src.slice(src.indexOf("const entry = `[${i + 1}]"), src.indexOf("const entry = `[${i + 1}]") + 1);
+    const legend = src.slice(src.indexOf(".text(`[${i + 1}] ${who}: `)"), src.indexOf(".text(`[${i + 1}] ${who}: `)") + 1);
     expect(legend).toBeTruthy();
     expect(src).not.toMatch(/const label = n\.displayLabel \|\| n\.label \|\| n\.id;/);
     expect(src).toMatch(/pedigreeIds\.get\(n\.id\)\?\.displayId/);

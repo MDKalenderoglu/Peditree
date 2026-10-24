@@ -282,3 +282,12 @@ textarea.input { height: auto; min-height: 56px; padding: 6px 8px; resize: verti
   border: none; border-radius: 6px; background: none; color: var(--ink-2); cursor: pointer;
 }
 .quick-text:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
+
+/* text on the drawing corrected where it stands (PedigreeCanvas.jsx) */
+#pedigree-svg .editable:hover { fill: var(--accent-ink); text-decoration: underline; text-decoration-style: dotted; }
+.inline-edit {
+  position: absolute; z-index: 20; box-sizing: border-box; padding: 3px 8px;
+  font: 500 13px/1 system-ui, -apple-system, sans-serif; color: var(--ink);
+  background: var(--surface); border: 1.5px solid var(--accent); border-radius: 6px;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15), 0 4px 14px rgba(15, 23, 42, 0.14); outline: none;
+}
