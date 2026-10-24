@@ -310,6 +310,10 @@ export const usePedigreeStore = create((zSet, get) => {
     setUnionRelationshipBackground: (unionId, value) => apply(ops.setRelationshipBackground(get().doc, unionId, value)),
     setUnionStatus: (unionId, status) => apply(ops.setUnionStatus(get().doc, unionId, status)),
 
+    // patient's name: printed on the drawing and in the file names; saved
+    // with the document (not an undo step: it is a label, not the family)
+    setPatientName: (name) => zSet((state) => ({ doc: { ...state.doc, patientName: name } })),
+
     // ── several people at once (one undo step each) ──
     updateMany: (ids, patch) => apply(chain(get().doc, ids.map(id => (d) => ops.updatePerson(d, id, patch)))),
     setFindingStatusMany: (ids, label, status) => apply(chain(get().doc, ids.map(id => (d) => findings.setFindingStatus(d, id, label, status)))),

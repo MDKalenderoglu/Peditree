@@ -123,7 +123,7 @@ function drawStroke(g, edge, dx = 0, dy = 0) {
 // belt-and-suspenders fallback for exportUtils.js and for tests/tools
 // that query the DOM directly.
 const PedigreeCanvas = forwardRef(function PedigreeCanvas(
-  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar },
+  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar, patientName = '' },
   forwardedRef
 ) {
   const svgRef = useRef(null);
@@ -182,7 +182,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const pad = 100;
     const minX = d3.min(nodes, d => d.x) - pad;
     const maxX = d3.max(nodes, d => d.x) + pad;
-    const minY = d3.min(nodes, d => d.y) - pad - keyBlock;
+    // the patient's name at the top left (in the export too)
+    const headerBlock = patientName.trim() ? 34 * LK : 0;
+    const minY = d3.min(nodes, d => d.y) - pad - Math.max(keyBlock, headerBlock);
     const legendTop = d3.max(nodes, d => d.y) + 70; // clear of the age / label lines
     const maxY = Math.max(d3.max(nodes, d => d.y) + pad, legendTop + notesBlock + 10);
     const vw = Math.max(600, maxX - minX);
@@ -488,6 +490,13 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       }
     });
 
+    if (headerBlock) {
+      svg.append('text').attr('class', 'patient-header')
+        .attr('x', minX + 10 * LK).attr('y', minY + 24 * LK)
+        .attr('font-size', `${18 * LK}px`).attr('font-weight', '700').attr('fill', '#0f172a')
+        .text(patientName.trim());
+    }
+
     // --- Findings key (NSGC legend), top right: which mark is which finding ---
     if (shownKey.length) {
       const keyG = svg.append('g').attr('class', 'condition-legend');
@@ -557,7 +566,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // Store for external reset
     svg.node().__zoom_ref = zoom;
 
-  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar]);
+  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar, patientName]);
 
   const zoomBy = (k) => {
     const svg = d3.select(svgRef.current);
@@ -575,7 +584,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       <div className="zoom-controls" style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 10 }}>
         <button onClick={() => zoomBy(1.25)} title="Yakınlaştır" aria-label="Yakınlaştır">+</button>
         <button onClick={() => zoomBy(0.8)} title="Uzaklaştır" aria-label="Uzaklaştır">−</button>
-        <button onClick={fitZoom} title="Tüm pedigriyi ekrana sığdır">Sığdır</button>
+        <button onClick={fitZoom} title="Tüm pedigriyi ekrana sığdır (0)" aria-label="Sığdır">Sığdır</button>
       </div>
       <svg
         id="pedigree-svg"

@@ -8,6 +8,9 @@ import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { usePedigreeStore } from '../state/usePedigreeStore';
 import { clinicalNotices } from '../utils/clinicalNotices';
 import { withStableIdsExcludingDismissed } from '../utils/warningIds';
+import { exportFileName } from '../utils/exportUtils';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
 
@@ -70,5 +73,27 @@ describe('notes strip speaks the clinician’s language', () => {
     expect(text).not.toMatch(/U_[A-Z_]+|reported_unresolved|\bmother\b|\bfather\b|Union/);
     expect(text).not.toMatch(/^Bilgi|\| Bilgi/);
     expect(notices.length).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('patient name and keyboard (clinician request 2026-10-25)', () => {
+  it('the patient name names the downloads (Turkish letters readable) and travels in the project file', () => {
+    expect(exportFileName('Ayşe Çiğdem Yılmaz', 'png', new Date('2026-10-25T10:00:00Z'))).toBe('pedigri-ayse-cigdem-yilmaz-2026-10-25.png');
+    expect(exportFileName('', 'svg', new Date('2026-10-25T10:00:00Z'))).toBe('pedigri-2026-10-25.svg');
+    S().resetPedigree();
+    S().setPatientName('Ali Veli');
+    const file = S().exportProjectFile();
+    S().resetPedigree();
+    expect(S().doc.patientName).toBeUndefined(); // a new pedigree is a new patient
+    S().openProjectFile(file);
+    expect(S().doc.patientName).toBe('Ali Veli');
+  });
+
+  it('the name is drawn at the top left of the SVG; shortcuts never fire while typing', () => {
+    const canvas = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
+    expect(canvas).toMatch(/patient-header/);
+    const app = readFileSync(join(process.cwd(), 'src/App.jsx'), 'utf8');
+    expect(app).toMatch(/if \(typing\) \{ if \(e\.key === 'Escape'\) t\.blur\(\); return; \}/);
+    expect(app).toMatch(/key === 'z'/);
   });
 });

@@ -100,16 +100,25 @@ function triggerDownload(href, filename) {
   document.body.removeChild(downloadLink);
 }
 
+/** File name for a download: pedigri-<patient>-<date>.<ext> (Turkish letters kept readable). */
+export function exportFileName(patientName, ext, date = new Date()) {
+  const map = { ç: 'c', ğ: 'g', ı: 'i', i: 'i', ö: 'o', ş: 's', ü: 'u' };
+  const slug = String(patientName || '').trim().toLocaleLowerCase('tr')
+    .replace(/[çğıiöşü]/g, (ch) => map[ch] || ch)
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return `pedigri${slug ? `-${slug}` : ''}-${date.toISOString().slice(0, 10)}.${ext}`;
+}
+
 /**
  * Export the pedigree as an SVG file.
  * @param {SVGSVGElement} [svgElement] - the live svg node (preferred). Falls back to #pedigree-svg.
  * @throws {ExportError} if no svg element can be found.
  */
-export function exportSVG(svgElement) {
+export function exportSVG(svgElement, filename = 'pedigree.svg') {
   const svg = resolveSvgElement(svgElement);
   const source = serializeSvg(svg);
   const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(source);
-  triggerDownload(url, 'pedigree.svg');
+  triggerDownload(url, filename);
 }
 
 /**
@@ -117,7 +126,7 @@ export function exportSVG(svgElement) {
  * @param {SVGSVGElement} [svgElement] - the live svg node (preferred). Falls back to #pedigree-svg.
  * @returns {Promise<void>} resolves once the download has been triggered, rejects with ExportError on failure.
  */
-export function exportPNG(svgElement) {
+export function exportPNG(svgElement, filename = 'pedigree.png') {
   return new Promise((resolve, reject) => {
     let svg;
     try {
@@ -153,7 +162,7 @@ export function exportPNG(svgElement) {
         URL.revokeObjectURL(url);
 
         const imgURI = canvas.toDataURL('image/png').replace('image/png', 'image/octet-stream');
-        triggerDownload(imgURI, 'pedigree.png');
+        triggerDownload(imgURI, filename);
         resolve();
       } catch (err) {
         URL.revokeObjectURL(url);
