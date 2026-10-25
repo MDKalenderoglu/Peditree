@@ -1,7 +1,7 @@
 import React from 'react';
 import * as d3 from 'd3';
 import { usePedigreeStore, needsLeaveWarning, flushAutosave } from './state/usePedigreeStore';
-import { exportSVG, exportPNG, exportFileName, pngBlob, shareFile, downloadBlob } from './utils/exportUtils';
+import { exportSVG, exportPNG, exportFileName, pngBlob, shareFile, downloadBlob, prepareExportSvg } from './utils/exportUtils';
 import { assessExportReadiness } from './utils/exportReadiness';
 import { withStableIdsExcludingDismissed } from './utils/warningIds';
 import { clinicalNotices } from './utils/clinicalNotices';
@@ -12,7 +12,7 @@ import { flushDrafts } from './utils/drafts';
 import DraftField from './components/DraftField';
 import { nextPerson, RING_KEYS } from './utils/keyboardNav';
 import { toPed } from './graph/ped';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2, MoreHorizontal } from 'lucide-react';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2, MoreHorizontal, Printer } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
 
@@ -38,6 +38,7 @@ const KEY_HELP = [
   ['Delete', 'seçili kişiyi sil'],
   ['Cmd/Ctrl+Z', 'geri al (Shift ile: yinele)'],
   ['Cmd/Ctrl+S', 'kaydet'],
+  ['Cmd/Ctrl+P', 'yazdır (A4)'],
   ['+ / − / 0', 'yakınlaştır / uzaklaştır / sığdır'],
   ['Cmd/Ctrl/Shift+tık', 'birden çok kişi seç (tablette: “Çoklu seçim”)'],
 ];
@@ -188,7 +189,34 @@ function App() {
     }
   };
 
-  // "Diğer": PED file (and printing)
+  // Printing (clinician request 2026-10-25): one A4 page, landscape or
+  // portrait by the drawing's shape; the same canonical copy as the export
+  // (no selection, no zoom), the date at the foot.
+  const printRef = React.useRef(null);
+  const handlePrint = () => {
+    const assessment = gateExport();
+    if (!assessment || !svgRef.current || !printRef.current) return;
+    const clone = prepareExportSvg(svgRef.current);
+    clone.removeAttribute('width');
+    clone.removeAttribute('height');
+    clone.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    const [, , w, h] = (svgRef.current.getAttribute('viewBox') || '0 0 4 3').split(/[\s,]+/).map(Number);
+    const root = printRef.current;
+    root.replaceChildren(clone);
+    const foot = document.createElement('div');
+    foot.className = 'print-foot';
+    foot.textContent = `Peditree · ${new Date().toLocaleDateString('tr-TR')}`;
+    root.appendChild(foot);
+    let page = document.getElementById('print-page');
+    if (!page) { page = document.createElement('style'); page.id = 'print-page'; document.head.appendChild(page); }
+    page.textContent = `@page { size: A4 ${w >= h ? 'landscape' : 'portrait'}; margin: 10mm; }`;
+    const done = () => { root.replaceChildren(); window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    window.print();
+    setMore(false);
+  };
+
+  // "Diğer": PED file and printing
   const [more, setMore] = React.useState(false);
   const [pedPhenotype, setPedPhenotype] = React.useState('affected');
   const handleExportPed = () => {
@@ -261,7 +289,7 @@ function App() {
   // Keyboard shortcuts (clinician request 2026-10-25); never while typing
   const keyRef = React.useRef(null);
   React.useEffect(() => {
-    keyRef.current = { undo, redo, handleSaveProject, clearSelection, deleteIndividual, selectedNodes, pedigreeData, selectIndividual, addParentsTo, addSpouseTo };
+    keyRef.current = { undo, redo, handleSaveProject, handlePrint, clearSelection, deleteIndividual, selectedNodes, pedigreeData, selectIndividual, addParentsTo, addSpouseTo };
   });
   React.useEffect(() => {
     const onKey = (e) => {
@@ -272,6 +300,7 @@ function App() {
       const mod = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
       if (mod && key === 's') { e.preventDefault(); k.handleSaveProject(); return; }
+      if (mod && key === 'p') { e.preventDefault(); k.handlePrint(); return; }
       if (typing) { if (e.key === 'Escape') t.blur(); return; }
       if (mod && key === 'z') { e.preventDefault(); if (e.shiftKey) k.redo(); else k.undo(); return; }
       if (mod && key === 'y') { e.preventDefault(); k.redo(); return; }
@@ -314,6 +343,7 @@ function App() {
   };
 
   return (
+    <>
     <div className={`app-shell${selectedNode || selectedNode2 ? ' has-editor' : ''}`}>
 
       <div className="canvas-container">
@@ -395,11 +425,12 @@ function App() {
               )}
             </div>
             <div className="keys-wrap">
-              <button className="ui-btn ui-btn-icon" onClick={() => setMore(v => !v)} aria-expanded={more} aria-label="Diğer" title="Diğer: PED dosyası, yazdır">
+              <button className="ui-btn ui-btn-icon" onClick={() => setMore(v => !v)} aria-expanded={more} aria-label="Diğer" title="Diğer: yazdır, PED dosyası">
                 <MoreHorizontal size={15} />
               </button>
               {more && (
                 <div className="keys-popover share-popover" role="dialog" aria-label="Diğer">
+                  <button className="ui-btn" onClick={handlePrint}><Printer size={15} /> Yazdır (A4)</button>
                   <div className="more-title">PED dosyası</div>
                   <p className="share-note">Analiz programları ve laboratuvarlar için: kişi, anne, baba, cinsiyet ve tek bir etkilenme durumu. Kimlik olarak pedigri numaraları yazılır; hasta adı yazılmaz.</p>
                   <label className="field-col">
@@ -554,6 +585,9 @@ function App() {
         />
       </aside>
     </div>
+    {/* what printing shows (A4): the drawing as exported, and the date */}
+    <div id="print-root" ref={printRef} aria-hidden="true" />
+    </>
   );
 }
 
