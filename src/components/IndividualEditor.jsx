@@ -439,6 +439,14 @@ export default function IndividualEditor({
                 </label>
               </>
             )}
+            {/* the week a child was born in (kept from a pregnancy; clinician decision 2026-10-25) */}
+            {!isLoss && node.gestationWeeks && (
+              <label className="field">
+                <span className="field-label">Doğum haftası</span>
+                <DraftField key={`${node.id}-birthweek`} type="text" className="input input-age" value={node.gestationWeeks || ''} placeholder="hf"
+                  onCommit={v => onSetGestationWeeks(node.id, v)} />
+              </label>
+            )}
             {/* NSGC evaluation below the symbol (clinician decision 2026-10-25) */}
             <div className="field-col">
               <span className="field-label">Genetik test</span>

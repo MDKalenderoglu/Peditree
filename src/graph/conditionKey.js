@@ -114,6 +114,19 @@ export function rightSideFindings(graph, key = graph.conditionKey || []) {
  */
 function keepCarriersFindingsRight(graph, key) {
   const order = ['hatch', 'dots', 'grey', 'solid'];
+  // a carried finding drawn in black beside a plain "affected" (a black right
+  // half) takes another fill, for everyone who has it
+  for (const p of graph.individuals) {
+    const conds = Array.isArray(p.conditions) ? p.conditions : [];
+    if (!p.affected || conds.some((c) => c && c.status === 'affected')) continue;
+    for (const c of conds.filter((x) => x && x.status === 'carrier' && x.label)) {
+      const e = key.find((x) => normLabel(x.label) === normLabel(c.label));
+      if (!e || e.fill !== 'solid') continue;
+      const tries = order.filter((f) => f !== 'solid').flatMap((fill) => [e.region, ...REGIONS.filter((r) => r !== e.region)].map((region) => ({ region, fill })));
+      const free = tries.find((t) => !styleTaken(key, t, e.label));
+      if (free) Object.assign(e, free);
+    }
+  }
   for (let pass = 0; pass < 3; pass++) {
     const right = rightSideFindings(graph, key);
     // the other findings on the same carrier's right side: their fills too are avoided
@@ -192,6 +205,11 @@ export function fillFor(person, key = []) {
   const affected = marks.filter((m) => !m.carrier);
   const carried = marks.filter((m) => m.carrier);
   if (person.proband && affected.length) return { mode: 'full' };
+  // affected and a carrier, neither named: affected right half, the NSGC
+  // carrier dot on the left half (second audit 2026-10-25: it was all black)
+  if (person.affected && person.carrier && !affected.length && !carried.length) {
+    return { mode: 'regions', parts: [{ region: 'q2', fill: 'solid', carrier: false, a0: 270, a1: 450 }], carrierDot: true };
+  }
   const byKey = (a, b) => keyIndex(key, a.label) - keyIndex(key, b.label);
   const upperFirst = (m) => (m.region === 'q1' || m.region === 'q2' ? 0 : 1);
   if (carried.length || (person.carrier && affected.length)) {
@@ -221,4 +239,31 @@ export function fillFor(person, key = []) {
   }
   if (person.affected) return { mode: 'full' };
   return { mode: 'none' };
+}
+
+/**
+ * A non-proband person whose carrier half and findings would be drawn in the
+ * same fill cannot be read (left-half carrier, right-side findings): an error
+ * — the operation that causes it is refused with the reason. Arises only
+ * when no distinct signature is left (all 16 used).
+ */
+export function carrierFindingIssues(graph) {
+  const key = graph.conditionKey || [];
+  const issues = [];
+  for (const p of graph.individuals) {
+    if (p.proband) continue;
+    const conds = Array.isArray(p.conditions) ? p.conditions : [];
+    const fillOf = (c) => keyEntry(key, c.label)?.fill;
+    const carried = conds.filter((c) => c && c.status === 'carrier' && c.label);
+    if (!carried.length) continue;
+    const affectedFills = conds.filter((c) => c && c.status === 'affected' && c.label).map(fillOf);
+    const right = new Set(affectedFills.length ? affectedFills : p.affected ? ['solid'] : []);
+    if (carried.map(fillOf).some((f) => right.has(f))) {
+      issues.push({
+        severity: 'error', code: 'CARRIER_FINDING_INDISTINCT', ids: [p.id],
+        message: 'Bu kişinin taşıyıcılığı ile bulgusu aynı dolguyla çizilir ve ayırt edilemez; boş işaret kalmadı. Benzer bulguları tek adda toplayın ya da birini kaldırın.',
+      });
+    }
+  }
+  return issues;
 }

@@ -74,6 +74,9 @@ function tagIssues(issues, source) {
  * bring an earlier name back, also into the file names).
  */
 function withName(doc, current) {
+  // another document (a file opened, a PED imported, "Yeni"): its own name
+  // comes back with it (second audit 2026-10-25)
+  if (!current || doc.docId !== current.docId) return doc;
   const name = current && current.patientName;
   if ((doc.patientName || '') === (name || '')) return doc;
   const out = { ...doc };
@@ -81,8 +84,16 @@ function withName(doc, current) {
   return out;
 }
 
+/**
+ * Every document gets its own id when it is created, opened or imported;
+ * edits keep it (commit copies the document). Undo uses it to tell "the
+ * same patient, edited" from "another patient's file".
+ */
+let docSeq = 0;
+export const withDocId = (doc) => ({ ...doc, docId: `d${Date.now().toString(36)}${(docSeq++).toString(36)}` });
+
 export function starterDocument() {
-  const doc = migrateV1ToV2(cloneInitialState()).doc;
+  const doc = withDocId(migrateV1ToV2(cloneInitialState()).doc);
   // the proband opens marked affected (clinician request 2026-10-25)
   const p = doc.graph.individuals.find((i) => i.id === doc.wizardAnchorId);
   if (p) p.affected = true;
@@ -113,8 +124,11 @@ function hintsFromNodes(nodes) {
   return { version: 1, positions: Object.fromEntries((nodes || []).map((n) => [n.id, [n.x, n.y]])) };
 }
 function nodesFromHints(hints) {
-  if (!hints || hints.version !== 1 || !hints.positions) return null;
-  return Object.entries(hints.positions).map(([id, [x, y]]) => ({ id, x, y }));
+  if (!hints || hints.version !== 1 || !hints.positions || typeof hints.positions !== 'object') return null;
+  const entries = Object.entries(hints.positions);
+  // a damaged hint is dropped and the family drawn afresh (second audit 2026-10-25)
+  const ok = entries.every(([, v]) => Array.isArray(v) && v.length === 2 && v.every((n) => typeof n === 'number' && Number.isFinite(n)));
+  return ok ? entries.map(([id, [x, y]]) => ({ id, x, y })) : null;
 }
 /** Ages that follow a birth date, as of today (a file or session opened later). */
 function withBirthDateAges(doc) {
@@ -514,7 +528,7 @@ export const usePedigreeStore = create((zSet, get) => {
       const parsed = parseProjectFile(text);
       if (!parsed.ok) return apply({ ok: false, reason: parsed.reason });
       const prevNodes = nodesFromHints(parsed.doc.layoutHints);
-      const doc = withBirthDateAges(withoutHints(parsed.doc));
+      const doc = withDocId(withBirthDateAges(withoutHints(parsed.doc)));
       let derived;
       try {
         derived = deriveAll(doc, get().ui, prevNodes ? { prevNodes, frozen: true } : null);
@@ -539,7 +553,7 @@ export const usePedigreeStore = create((zSet, get) => {
         console.warn('[importPedFile] could not draw the file:', err);
         return apply({ ok: false, reason: 'PED dosyasındaki aile çizilemedi, açılmadı.' });
       }
-      const result = apply({ ok: true, doc: r.doc }, sel([]), derived);
+      const result = apply({ ok: true, doc: withDocId(r.doc) }, sel([]), derived);
       zSet({ actionNotice: { message: r.notice, kind: 'info', at: Date.now() } });
       return result;
     },

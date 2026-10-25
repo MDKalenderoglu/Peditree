@@ -13,7 +13,9 @@ import { commit, block } from './ops';
 import { normalizeAge, AGE_EXAMPLE } from '../utils/age';
 import { normLabel, keyEntry, styleTaken, keyFull, KEY_FULL_MESSAGE, rightSideFindings, REGIONS, FILLS } from './conditionKey';
 
-const STATUSES = ['affected', 'carrier', 'none'];
+// 'unknown': the clinician is not sure (clinician decision 2026-10-25:
+// written as unknown, never as "no", e.g. in a PED file)
+const STATUSES = ['affected', 'carrier', 'unknown', 'none'];
 
 function applyStatus(person, label, status) {
   const conds = Array.isArray(person.conditions) ? person.conditions : [];

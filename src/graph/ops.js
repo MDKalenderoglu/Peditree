@@ -486,7 +486,8 @@ function pregnancyFlags(kind) {
 
 /**
  * Change what a pregnancy outcome is (SAB, SB, P, TOP, ECT), or ''
- * for "born" (an ongoing pregnancy that was born becomes a person).
+ * for "born" (an ongoing pregnancy that was born becomes a person; its
+ * gestationWeeks is kept as the week of birth, shown in the notes).
  */
 export function setPregnancyKind(doc, id, kind) {
   return commit(doc, (d) => {
@@ -498,7 +499,7 @@ export function setPregnancyKind(doc, id, kind) {
     for (const f of PREGNANCY_FIELDS) p[f] = false;
     Object.assign(p, pregnancyFlags(kind));
     if (wasStillbirth && kind !== 'stillbirth') p.deceased = false;
-    if (!kind) delete p.gestationWeeks;
+    // born: the week stays as the week of birth (clinician decision 2026-10-25)
     if (Object.values(PREGNANCY_LABEL).includes(p.label) || /^(Düşük|Ölü Doğum)$/.test(p.label)) {
       p.label = kind ? PREGNANCY_LABEL[kind] : (p.sex === 'male' ? 'Cocuk (E)' : p.sex === 'female' ? 'Cocuk (K)' : 'Cocuk');
     }

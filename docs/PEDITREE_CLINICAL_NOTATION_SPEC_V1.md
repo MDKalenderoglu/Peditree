@@ -307,5 +307,8 @@ Onay sonrası her kural için:
 | 2026-10-25 | K10 — danışan | şimdilik eklenmeyecek | kullanıcı (klinisyen) |
 | 2026-10-25 | K11 — gebelik sonuçları | NSGC: düşük (SAB) küçük üçgen; sonlandırma (TOP) eğik çizgili üçgen; dış gebelik (ECT) üçgen + "ECT"; devam eden gebelik normal boy sembol içinde "P"; ölü doğum normal boy, eğik çizgi + "SB"; altta gebelik haftası ("28 hf"); simit aynı kalır, kardeş/çocuk seçeneklerine ikinci "Gebelik" satırı; devam eden gebelik "Doğdu" ile kişiye çevrilir (uygulandı) | kullanıcı (klinisyen) |
 | 2026-10-25 | hazır akraba evliliği şablonları | "Yeni"de iki adım: derece (1. kuzen 4, 2. kuzen 16, 1. kuzenin çocuğu 16, çift 1. kuzen 2), sonra tür; kardeş olan ataların adıyla ("babanın babası ile annenin annesi kardeş"), 1. kuzenlerde klinik adı (amca / teyze / hala–dayı çocukları); hepsi denenip gerekirse geri alınacak (uygulandı) | kullanıcı (klinisyen) |
-| | K2–K4, K6–K9, K11–K13 | bekliyor | |
+| 2026-10-25 | etkilenmiş + taşıyıcı (bulgu adı yok) | sağ yarı siyah (etkilenmiş), sol yarıda NSGC taşıyıcı noktası; adlandırılmış taşınan bulgu siyahsa ve kişi "etkilenmiş"se o bulgu herkes için başka dolguya geçer; ayırt edilemeyecek birleşim (16 imza dolu) gerekçeyle reddedilir (uygulandı) | kullanıcı (klinisyen) / ikinci denetim |
+| 2026-10-25 | bulguda "bilinmiyor" | klinisyen emin değilse bulgu "?" (bilinmiyor) işaretlenir; notlarda "Bulgu: bilinmiyor"; PED'de 0 (bilinmiyor); girilmemiş bulgu 1 (yok) (uygulandı) | kullanıcı (klinisyen) |
+| 2026-10-25 | doğum haftası | devam eden gebelik "Doğdu" ile kişiye çevrilince gebelik haftası doğum haftası olarak kalır; notlarda "doğum: 32 hf" (uygulandı) | kullanıcı (klinisyen) |
+| | K2–K4, K6–K9, K13 | bekliyor (K10 danışan: şimdilik yok; K11 gebelik ve K12 ikizler: yukarıda karara bağlandı) | |
 | | §4 "Standart" özetleri (orijinal yayına karşı) | bekliyor | |

@@ -57,7 +57,7 @@ describe('the five pregnancy outcomes', () => {
     S().setPregnancyKind(id, 'ongoing');
     S().setPregnancyKind(id, '');
     expect(isPregnancy(P(id))).toBe(false);
-    expect(P(id).gestationWeeks).toBeUndefined();
+    expect(P(id).gestationWeeks).toBe('16'); // kept as the week of birth (clinician decision 2026-10-25)
     expect(P(id).label).toBe('Cocuk');
   });
 

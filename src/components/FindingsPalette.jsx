@@ -76,7 +76,7 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
   const conds = Array.isArray(node.conditions) ? node.conditions : [];
   const stateOf = (label) => {
     const c = conds.find(x => normLabel(x.label) === normLabel(label));
-    return !c ? 'none' : c.status === 'affected' ? 'affected' : c.status === 'carrier' ? 'carrier' : 'none';
+    return !c ? 'none' : ['affected', 'carrier', 'unknown'].includes(c.status) ? c.status : 'none';
   };
   const suggested = style || suggestStyle(conditionKey);
   const add = () => {
@@ -99,13 +99,14 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
                 </button>
                 <span className="finding-name" title={e.label}>{e.label}</span>
                 <div className="segmented finding-state" role="radiogroup" aria-label={e.label}>
-                  {[['none', 'Yok'], ['affected', 'Var'], ['carrier', 'Taşıyıcı']].map(([v, t]) => (
+                  {[['none', 'Yok'], ['affected', 'Var'], ['carrier', 'Taşıyıcı'], ['unknown', '?']].map(([v, t]) => (
                     <button key={v} className={st === v ? 'on' : undefined} role="radio" aria-checked={st === v}
+                      title={v === 'unknown' ? 'Bilinmiyor (emin değilim)' : undefined} aria-label={v === 'unknown' ? 'Bilinmiyor' : undefined}
                       onClick={() => onSetStatus(node.id, e.label, v)}>{t}</button>
                   ))}
                 </div>
                 {/* the age it was diagnosed at (shown in the notes; clinician decision 2026-10-25) */}
-                {onSetOnset && st !== 'none' && (
+                {onSetOnset && (st === 'affected' || st === 'carrier') && (
                   <label className="finding-onset">
                     <span>Tanı yaşı</span>
                     <DraftField key={`${node.id}-${e.id}-onset`} type="text" className="input input-age" placeholder="3 ay…"

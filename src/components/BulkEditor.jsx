@@ -11,7 +11,7 @@ import { isPregnancy } from '../graph/model';
 
 const findingState = (p, label) => {
   const c = (Array.isArray(p.conditions) ? p.conditions : []).find(x => normLabel(x.label) === normLabel(label));
-  return !c ? 'none' : c.status === 'affected' ? 'affected' : c.status === 'carrier' ? 'carrier' : 'none';
+  return !c ? 'none' : ['affected', 'carrier', 'unknown'].includes(c.status) ? c.status : 'none';
 };
 
 export default function BulkEditor({ nodes, conditionKey = [], onUpdateMany, onSetFindingStatusMany, onAddFindingMany }) {
@@ -58,7 +58,7 @@ export default function BulkEditor({ nodes, conditionKey = [], onUpdateMany, onS
                 <span className="finding-glyph"><FindingGlyph region={e.region} fill={e.fill} /></span>
                 <span className="finding-name" title={e.label}>{e.label}{st === null ? ' · karışık' : ''}</span>
                 <div className="segmented finding-state" role="radiogroup" aria-label={e.label}>
-                  {[['none', 'Yok'], ['affected', 'Var'], ['carrier', 'Taşıyıcı']].map(([v, t]) => (
+                  {[['none', 'Yok'], ['affected', 'Var'], ['carrier', 'Taşıyıcı'], ['unknown', '?']].map(([v, t]) => (
                     <button key={v} className={st === v ? 'on' : undefined} role="radio" aria-checked={st === v}
                       onClick={() => onSetFindingStatusMany(ids, e.label, v)}>{t}</button>
                   ))}

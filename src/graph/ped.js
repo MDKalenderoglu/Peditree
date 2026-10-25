@@ -10,7 +10,9 @@
  * project file (.peditree.json) keeps everything.
  *
  * Export: ids are the pedigree numbers (II-3), never the patient's name; the
- * clinician chooses what counts as affected ("affected" or one finding).
+ * clinician chooses what counts as affected ("affected" or one finding). A
+ * finding not entered is written as unaffected (1); one marked "unknown"
+ * as unknown (0).
  * Pregnancy losses and stillbirths are left out. An unspecified parent is
  * written as a person with unknown phenotype, so every child has both
  * parents or none (what most tools require).
@@ -59,11 +61,14 @@ export function toPed(graph, nodes, { phenotype = 'affected', familyId = 'AILE1'
     if (father) roles.set(`sex:${father.id}`, 1);
     if (mother) roles.set(`sex:${mother.id}`, 2);
   }
+  // not entered = no (1); the clinician unsure = unknown (0), never "no"
+  // (clinician decision 2026-10-25)
   const phenotypeOf = (p) => {
     if (p.placeholder) return 0;
-    if (phenotype === 'affected') return p.affected ? 2 : 1;
-    const c = (p.conditions || []).find((x) => x && normLabel(x.label) === normLabel(phenotype));
-    return c && c.status === 'affected' ? 2 : 1;
+    const conds = (p.conditions || []).filter(Boolean);
+    if (phenotype === 'affected') return p.affected ? 2 : conds.some((c) => c.status === 'unknown') ? 0 : 1;
+    const c = conds.find((x) => normLabel(x.label) === normLabel(phenotype));
+    return c && c.status === 'affected' ? 2 : c && c.status === 'unknown' ? 0 : 1;
   };
   const rows = people.map((p) => {
     const uid = idx.bioParentUnion.get(p.id);
@@ -96,7 +101,12 @@ function columnsOf(header) {
 /**
  * @returns {{ ok: true, doc, notice } | { ok: false, reason }}
  */
+export const MAX_PED_CHARS = 20 * 1024 * 1024;
+export const MAX_PED_PEOPLE = 3000;
+
 export function fromPed(text) {
+  // limits (second audit 2026-10-25): a clinical family is far smaller
+  if (String(text || '').length > MAX_PED_CHARS) return { ok: false, reason: 'PED dosyası çok büyük (20 MB üstü), açılmadı.' };
   const lines = String(text || '').split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
   if (!lines.length) return { ok: false, reason: 'PED dosyası boş.' };
   let rows = lines.map((l) => l.split(/\s+/));
@@ -122,6 +132,7 @@ export function fromPed(text) {
     affected: String(get(r, 'pheno') ?? '') === '2',
   }));
   if (recs.some((r) => !r.id)) return { ok: false, reason: 'PED dosyasında kimliği olmayan bir satır var.' };
+  if (recs.length > MAX_PED_PEOPLE) return { ok: false, reason: `PED dosyasındaki aile ${MAX_PED_PEOPLE} kişiden büyük (${recs.length}); bu boyutta bir pedigri çizilemez.` };
   const seen = new Set();
   for (const r of recs) {
     if (seen.has(r.id)) return { ok: false, reason: `PED dosyasında "${r.id}" iki kez geçiyor.` };
@@ -140,16 +151,31 @@ export function fromPed(text) {
       else if (parent.sex !== sex) return { ok: false, reason: `"${pid}" hem ${sex === 'male' ? 'baba' : 'anne'} olarak yazılmış hem de cinsiyeti ${parent.sex === 'male' ? 'erkek' : 'kadın'}.` };
     }
   }
-  // nobody may be their own ancestor
-  const state = new Map();
-  const cyclic = (id) => {
-    if (state.get(id) === 1) return true;
-    if (state.get(id) === 2) return false;
-    state.set(id, 1);
-    const r = byId.get(id);
-    const bad = [r.father, r.mother].some((p) => p && cyclic(p));
-    state.set(id, 2);
-    return bad;
+  // nobody may be their own ancestor (iterative: a very deep ancestry must
+  // not exhaust the call stack)
+  const state = new Map(); // 1 on the path, 2 done
+  const cyclic = (start) => {
+    const stack = [[start, 0]];
+    while (stack.length) {
+      const top = stack[stack.length - 1];
+      const [id, k] = top;
+      if (k === 0) {
+        if (state.get(id) === 2) { stack.pop(); continue; }
+        state.set(id, 1);
+      }
+      const r = byId.get(id);
+      const next = [r.father, r.mother][k];
+      if (k < 2) {
+        top[1] = k + 1;
+        if (!next) continue;
+        if (state.get(next) === 1) return true;
+        if (state.get(next) !== 2) stack.push([next, 0]);
+        continue;
+      }
+      state.set(id, 2);
+      stack.pop();
+    }
+    return false;
   };
   const loop = recs.find((r) => cyclic(r.id));
   if (loop) return { ok: false, reason: `"${loop.id}" kendi atası olarak görünüyor; dosya açılmadı.` };
@@ -162,6 +188,7 @@ export function fromPed(text) {
   const unions = [];
   const pcrs = [];
   const unionOf = new Map();
+  const pcrOf = new Map();
   for (const r of recs) {
     if (!r.father && !r.mother) continue;
     const key = `${r.father || '?'}|${r.mother || '?'}`;
@@ -177,10 +204,12 @@ export function fromPed(text) {
         id: uid, partners: [partner('father'), partner('mother')],
         consanguineous: false, consanguinityDegree: null, consanguinityStatus: 'none', status: 'together', relationshipBackground: 'not_asked',
       });
-      pcrs.push({ unionId: uid, children: [], orderPolicy: 'insertion' });
+      const rel = { unionId: uid, children: [], orderPolicy: 'insertion' };
+      pcrs.push(rel);
+      pcrOf.set(uid, rel);
       unionOf.set(key, uid);
     }
-    pcrs.find((x) => x.unionId === unionOf.get(key)).children.push(pid.get(r.id));
+    pcrOf.get(unionOf.get(key)).children.push(pid.get(r.id));
   }
   // a proband is needed: the first affected person without children, else the first affected, else the first person
   const isParent = new Set(recs.flatMap((r) => [r.father, r.mother]).filter(Boolean));

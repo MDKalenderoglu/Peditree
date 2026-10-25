@@ -102,6 +102,7 @@ function App() {
    * the error-tier confirmation).
    */
   const gateExport = () => {
+    flushDrafts(); // a box still being typed in is part of the picture
     const zoomTransform = svgRef.current ? d3.zoomTransform(svgRef.current) : null;
     const assessment = assessExportReadiness({
       pedigreeData, integrityIssues, svgElement: svgRef.current, zoomTransform,
@@ -222,8 +223,11 @@ function App() {
   const [more, setMore] = React.useState(false);
   const [pedPhenotype, setPedPhenotype] = React.useState('affected');
   const handleExportPed = () => {
-    const text = toPed(doc.graph, pedigreeData.nodes, { phenotype: pedPhenotype });
-    downloadBlob(new Blob([text], { type: 'text/plain' }), exportFileName(doc.patientName, 'ped'));
+    flushDrafts();
+    const st = usePedigreeStore.getState();
+    const text = toPed(st.doc.graph, st.pedigreeData.nodes, { phenotype: pedPhenotype });
+    // no patient name in the file, nor in its name (it goes to a lab)
+    downloadBlob(new Blob([text], { type: 'text/plain' }), exportFileName('', 'ped'));
     setMore(false);
   };
 
@@ -256,6 +260,7 @@ function App() {
 
   // Project file (schema v2 document, .peditree.json) — Faz 2b.
   const handleSaveProject = () => {
+    flushDrafts(); // what is still being typed goes into the file (second audit 2026-10-25)
     const blob = new Blob([exportProjectFile()], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -271,7 +276,8 @@ function App() {
     const file = e.target.files && e.target.files[0];
     e.target.value = '';
     if (!file) return;
-    if (_history && _history.length > 0 && !window.confirm('Açık pedigrinin yerine dosyadaki pedigri yüklensin mi? (Geri Al ile dönebilirsiniz.)')) return;
+    // asks whenever work would be replaced, also when only the patient's name was typed
+    if (needsLeaveWarning(doc, downloadedDoc.current) && !window.confirm('Açık pedigrinin yerine dosyadaki pedigri yüklensin mi? (Geri Al ile dönebilirsiniz.)')) return;
     // a project file is JSON; anything else is read as a PED file
     file.text().then(text => (/\.(ped|fam|txt)$/i.test(file.name) || !text.trim().startsWith('{') ? importPedFile(text) : openProjectFile(text)))
       .catch(() => openProjectFile(null));
@@ -464,7 +470,7 @@ function App() {
                 <div className="keys-popover share-popover" role="dialog" aria-label="Diğer">
                   <button className="ui-btn" onClick={handlePrint}><Printer size={15} /> Yazdır (A4)</button>
                   <div className="more-title">PED dosyası</div>
-                  <p className="share-note">Analiz programları ve laboratuvarlar için: kişi, anne, baba, cinsiyet ve tek bir etkilenme durumu. Kimlik olarak pedigri numaraları yazılır; hasta adı yazılmaz.</p>
+                  <p className="share-note">Analiz programları ve laboratuvarlar için: kişi, anne, baba, cinsiyet ve tek bir etkilenme durumu. Kimlik olarak pedigri numaraları yazılır; hasta adı ne dosyaya ne dosya adına yazılır.</p>
                   <label className="field-col">
                     <span className="field-label">Etkilenmiş sayılacak</span>
                     <select className="select" value={pedPhenotype} onChange={e => setPedPhenotype(e.target.value)}>

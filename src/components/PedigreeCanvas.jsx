@@ -29,7 +29,7 @@ import * as d3 from 'd3';
 import { fillFor, REGION_ANGLES } from '../graph/conditionKey';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { annotationAge, pregnancyLine } from '../utils/annotations';
-import { isSmallSymbol, pregnancyKind, PREGNANCY_LABEL } from '../graph/model';
+import { isSmallSymbol, isPregnancy, pregnancyKind, PREGNANCY_LABEL } from '../graph/model';
 import { packLines } from '../utils/textWrap';
 import { GENETIC_TEST } from '../graph/ops';
 
@@ -217,7 +217,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       ...conditionKey.filter(e => has('carrier', e)).map(e => ({ ...e, carrier: true, text: `${e.label} taşıyıcısı` })),
     ];
     const onsetsOf = (n) => (n.conditions || []).filter(c => c && c.label && c.onsetAge && (c.status === 'affected' || c.status === 'carrier'));
-    const notedNodes = nodes.filter(n => n.notes || n.condition || (n.deceased && n.causeOfDeath) || onsetsOf(n).length);
+    const unsureOf = (n) => (n.conditions || []).filter(c => c && c.label && c.status === 'unknown');
+    const bornWeek = (n) => (!isPregnancy(n) && n.gestationWeeks ? n.gestationWeeks : null);
+    const notedNodes = nodes.filter(n => n.notes || n.condition || (n.deceased && n.causeOfDeath) || onsetsOf(n).length || unsureOf(n).length || bornWeek(n));
     const hasTests = nodes.some(n => GENETIC_TEST[n.geneticTest]);
     // legends grow with a wide pedigree, so they read at the same size once
     // the drawing is fitted to the screen (clinician feedback 2026-10-24)
@@ -250,10 +252,13 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       if (n.deceased && n.causeOfDeath) parts.push(['causeOfDeath', `Ölüm: ${n.causeOfDeath}`, n.causeOfDeath]);
       // the age a finding was diagnosed at (clinician decision 2026-10-25: here, not under the symbol)
       onsetsOf(n).forEach(c => parts.push(['onset', `${c.label}: tanı ${/^\d+(,\d+)?$/.test(c.onsetAge) ? `${c.onsetAge} yaş` : c.onsetAge}`, c.onsetAge, `${n.id}\u0001${c.label}`]));
+      // a finding the clinician is unsure about, and the week a child was born in (clinician decisions 2026-10-25)
+      unsureOf(n).forEach(c => parts.push(['unsure', `${c.label}: bilinmiyor`, null]));
+      if (bornWeek(n)) parts.push(['gestationWeeks', `doğum: ${bornWeek(n)} hf`, bornWeek(n)]);
       if (n.notes) parts.push(['note', n.notes, n.notes]);
       parts.forEach(([kind, shown, value, target], k) => {
         if (k) segs.push({ text: ' | ' });
-        segs.push({ text: shown, kind, target: target || n.id, value });
+        segs.push({ text: shown, kind: kind === 'unsure' ? undefined : kind, target: target || n.id, value });
       });
       return packLines(segs, noteChars);
     });
@@ -270,8 +275,18 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     ]), KEY_CHARS);
     const headBlock = probandNode && (name || probandFindings.length) ? 30 * LK + Math.max(0, headLines.length - 1) * HEAD_LINE : 0;
     const minY = d3.min(nodes, d => d.y) - pad - headBlock - keyBlock;
-    const legendTop = d3.max(nodes, d => d.y) + 70; // clear of the age / label lines
-    const maxY = Math.max(d3.max(nodes, d => d.y) + pad, legendTop + notesBlock + 10);
+    // how far the lines under a symbol reach (age, pregnancy, E, wrapped
+    // note, label, older text, note number) — the same rules as below; the
+    // frame and the notes start under the lowest one (second audit 2026-10-25:
+    // a long note could leave the picture)
+    const annotationBottom = (d) => {
+      const lines = [annotationAge(d), pregnancyLine(d), GENETIC_TEST[d.geneticTest], d.displayLabel, d.condition, notedNodes.includes(d)].filter(Boolean).length;
+      const noteLines = d.geneticNote ? packLines([{ text: d.geneticNote }], d.proband ? 15 : 18).length : 0;
+      return (isSmallSymbol(d) ? LOSS_SIZE : HALF) + 14 + lines * 13 + noteLines * 11;
+    };
+    const lowest = d3.max(nodes, d => d.y + annotationBottom(d));
+    const legendTop = Math.max(d3.max(nodes, d => d.y) + 70, lowest + 18); // clear of the age / label lines
+    const maxY = Math.max(d3.max(nodes, d => d.y) + pad, lowest + 20, legendTop + notesBlock + 10);
     const vw = Math.max(600, maxX - minX);
     const vh = Math.max(400, maxY - minY);
     svg.attr('viewBox', `${minX} ${minY} ${vw} ${vh}`)
@@ -577,6 +592,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       shape.attr('class', 'pedigree-shape')
         .attr('fill', fill).attr('stroke', NODE_STROKE).attr('stroke-width', 2);
       if (filling.mode === 'regions') drawRegions(el, defs, `regions-${nodeIndex}`, shape, filling.parts, sz);
+      // carrier dot (NSGC) on the left half when the right half shows "affected"
+      if (filling.carrierDot) el.append('circle').attr('class', 'carrier-dot').attr('cx', -sz * 0.5).attr('cy', 0).attr('r', Math.max(2.5, sz * 0.2)).attr('fill', NODE_STROKE);
       // Selection highlight (primary blue / secondary violet) comes from the
       // node-group classes above via app.css — see EX-1 note there.
 
