@@ -79,7 +79,7 @@ function followAges(prev, graph) {
     if (!before.has(p.id) || before.get(p.id) === String(p.age ?? '').trim()) continue;
     const rel = graph.parentChildRelationships.find((r) => r.children.includes(p.id));
     if (!rel) continue;
-    if (rel.birthOrderExplicit) rel.children = ageOrder(rel.children.map((id) => byId.get(id)).filter(Boolean), { inPlace: true });
+    if (rel.birthOrderExplicit) rel.children = ageOrder(rel.children.map((id) => byId.get(id)).filter(Boolean));
     else rel.orderPolicy = 'byAge';
   }
 }

@@ -24,10 +24,9 @@ describe('ageOrder', () => {
   it('a group sorted by the earlier rule (aged first) is unchanged', () => {
     expect(ageOrder([k('a', '40'), k('b', '20'), k('c', ''), k('d', '')])).toEqual(['a', 'b', 'c', 'd']);
   });
-  it('pregnancy losses then stillbirths follow the liveborn; in place they stay put', () => {
+  it('pregnancy losses and stillbirths keep their chronological place (clinician decision 2026-10-25)', () => {
     const kids = [k('m', '', { pregnancyLoss: true }), k('a', '3'), k('s', '', { stillbirth: true }), k('b', '9')];
-    expect(ageOrder(kids)).toEqual(['b', 'a', 'm', 's']);
-    expect(ageOrder(kids, { inPlace: true })).toEqual(['m', 'b', 's', 'a']);
+    expect(ageOrder(kids)).toEqual(['m', 'b', 's', 'a']);
   });
 });
 
@@ -80,5 +79,21 @@ describe('entering an age moves the sibling in the drawing', () => {
     expect(sibshipOf('proband').children).toEqual([before[1], before[0]]);
     S().undo();
     expect(sibshipOf('proband').children).toEqual(before);
+  });
+});
+
+describe('a pregnancy loss stays where it was put', () => {
+  it('added after the siblings, moved between them, it stays there when ages are entered', () => {
+    S().resetPedigree();
+    S().addSiblingTo('proband', 'male');
+    const rel = () => sibshipOf('proband');
+    S().addChildToUnion(rel().unionId, 'unknown', { pregnancyLoss: true });
+    const [p, b, loss] = rel().children;
+    expect(rel().children).toEqual([p, b, loss]); // not moved anywhere by itself
+    S().reorderChild(rel().unionId, loss, 'left');
+    expect(rel().children).toEqual([p, loss, b]);
+    S().updateIndividual(b, { age: '20' });
+    S().updateIndividual(p, { age: '10' });
+    expect(rel().children).toEqual([b, loss, p]);
   });
 });

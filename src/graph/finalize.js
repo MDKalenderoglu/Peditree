@@ -4,8 +4,8 @@
  *
  *   1. birth order of child groups whose order is not explicit
  *      (orderPolicy 'byAge': liveborn by age, oldest first — the aged
- *      siblings are sorted among the places they hold, the unaged keep
- *      theirs; then pregnancy losses, stillbirths);
+ *      siblings are sorted among the places they hold; the unaged,
+ *      pregnancy losses and stillbirths keep theirs);
  *   2. generation (topology-derived BFS from the wizard anchor — the same
  *      computeGenerations the v1 builder runs);
  *   3. consanguinity: partners who share an ancestor that exists in the
@@ -60,24 +60,16 @@ const ageOf = (p) => { const a = parseInt(p.age, 10); return Number.isFinite(a) 
  * are sorted among the places they already hold, so a sibling whose age is
  * not known yet stays where the clinician drew them (entering the youngest
  * child's age first does not move that child to the front). Pregnancy
- * losses, then stillbirths, follow the liveborn in their stored order.
- * Groups sorted by the earlier rule (aged first) are unchanged by it.
- * `inPlace` (a hand-set order): only the aged liveborn are sorted among
- * their places; everyone else, pregnancy losses included, stays put.
+ * losses and stillbirths stay where they are: their place is the order of
+ * the pregnancies, which the clinician sets with "Doğum sırası" — they are
+ * never sent to the end (clinician decision 2026-10-25).
  */
-export function ageOrder(kids, { inPlace = false } = {}) {
+export function ageOrder(kids) {
   const isLive = (k) => !k.pregnancyLoss && !k.stillbirth;
-  const live = inPlace ? kids : kids.filter(isLive);
-  const aged = live.filter((k) => isLive(k) && ageOf(k) !== null);
+  const aged = kids.filter((k) => isLive(k) && ageOf(k) !== null);
   const sorted = [...aged].sort((a, b) => ageOf(b) - ageOf(a)); // stable: equal ages keep their order
   let n = 0;
-  const liveOrder = live.map((k) => (isLive(k) && ageOf(k) !== null ? sorted[n++] : k));
-  if (inPlace) return liveOrder.map((k) => k.id);
-  return [
-    ...liveOrder,
-    ...kids.filter((k) => k.pregnancyLoss && !k.stillbirth),
-    ...kids.filter((k) => k.stillbirth),
-  ].map((k) => k.id);
+  return kids.map((k) => (isLive(k) && ageOf(k) !== null ? sorted[n++] : k)).map((k) => k.id);
 }
 
 /**

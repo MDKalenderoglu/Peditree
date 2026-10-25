@@ -63,9 +63,13 @@ describe('KI-2 store level — random edit populations', () => {
     // 2026-10-25: the proband opens affected (clinician request) — it now
     // counts as a person with clinical data, so a few random edits end
     // differently: random movedFraction 0.3915 → 0.3917 (recorded).
+    // 2026-10-25: pregnancy losses keep their chronological place instead of
+    // going to the end of the sibship (clinician decision): random
+    // sideHangDrawn 2196 → 2198 px over the population (recorded; the other
+    // values unchanged).
     'random-200x12': {
       prefix: 'stab', sequences: 200, ops: 12, parentFlips: 8, movedFraction: 0.3917, neighbourGapChanged: 0.2047, meanShiftRawPx: 33,
-      editsWorseThanFresh: { offCenter: 10, crossings: 3, longUnions: 2 }, sideHangDrawn: 2196,
+      editsWorseThanFresh: { offCenter: 10, crossings: 3, longUnions: 2 }, sideHangDrawn: 2198,
     },
     'ki2-40x10': {
       prefix: 'ki2-', sequences: 40, ops: 10, parentFlips: 1, movedFraction: 0.3857, neighbourGapChanged: 0.2016, meanShiftRawPx: 22.2,
