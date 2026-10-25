@@ -17,6 +17,7 @@
  */
 
 import { isGhost } from './crossGeneration';
+import { ageInDays } from '../../utils/age';
 
 export function buildStructure(graph) {
   const individuals = graph.individuals || [];
@@ -201,8 +202,7 @@ export function buildStructure(graph) {
   const ageOf = (id) => {
     const ind = indById.get(id) || {};
     if (ind.pregnancyLoss || ind.stillbirth) return null;
-    const a = parseInt(ind.age, 10);
-    return Number.isFinite(a) ? a : null;
+    return ageInDays(ind.age); // "3 ay" younger than "2" (years)
   };
   const agesConsistent = (core) => {
     let prev = Infinity;

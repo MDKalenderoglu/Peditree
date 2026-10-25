@@ -22,7 +22,9 @@ Three collections form the graph:
 Individual   { id, sex, age, generation, relation, label, displayLabel,
                affected, carrier, deceased, proband, placeholder?,
                pregnancyLoss, stillbirth, notes, condition?, conditions?,
-               ageAtDeath?, causeOfDeath? }
+               ageAtDeath?, causeOfDeath?, birthDate? }
+                         // age / ageAtDeath: "35" (years), "2,5", "3 ay", "12 gün" — src/utils/age.js,
+                         // compared in days; birthDate 'YYYY-MM-DD' (the proband's, top bar) sets the age as of today
 
 Union        { id, partners: [id, id], status, consanguineous, consanguinityDegree,
                consanguinityStatus, relationshipBackground }

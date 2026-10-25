@@ -113,6 +113,11 @@ function nodesFromHints(hints) {
   if (!hints || hints.version !== 1 || !hints.positions) return null;
   return Object.entries(hints.positions).map(([id, [x, y]]) => ({ id, x, y }));
 }
+/** Ages that follow a birth date, as of today (a file or session opened later). */
+function withBirthDateAges(doc) {
+  const r = ops.refreshBirthDateAges(doc, new Date());
+  return r.ok ? r.doc : doc;
+}
 function withoutHints(doc) {
   if (!doc || !doc.layoutHints) return doc;
   const { layoutHints, ...rest } = doc; // eslint-disable-line no-unused-vars
@@ -164,7 +169,7 @@ function bootstrap() {
   if (doc) {
     try {
       const prevNodes = nodesFromHints(doc.layoutHints);
-      const clean = withoutHints(doc);
+      const clean = withBirthDateAges(withoutHints(doc));
       return { doc: clean, ...deriveAll(clean, {}, prevNodes ? { prevNodes, frozen: true } : null), actionNotice };
     } catch (err) {
       console.error('[usePedigreeStore] Saved pedigree failed to load — starting clean (saved data not deleted).', err);
@@ -336,6 +341,12 @@ export const usePedigreeStore = create((zSet, get) => {
     // patient's name: printed on the drawing and in the file names; saved
     // with the document (not an undo step: it is a label, not the family)
     setPatientName: (name) => zSet((state) => ({ doc: { ...state.doc, patientName: name } })),
+    // the proband's birth date (optional): their age follows it, as of today
+    setProbandBirthDate: (iso) => {
+      const proband = get().doc.graph.individuals.find(i => i.proband);
+      if (!proband) return apply({ ok: false, reason: 'Önce bir kişiyi proband yapın.' });
+      return apply(ops.setBirthDate(get().doc, proband.id, iso || ''));
+    },
 
     // ── several people at once (one undo step each) ──
     updateMany: (ids, patch) => apply(chain(get().doc, ids.map(id => (d) => ops.updatePerson(d, id, patch)))),
@@ -433,7 +444,7 @@ export const usePedigreeStore = create((zSet, get) => {
       const parsed = parseProjectFile(text);
       if (!parsed.ok) return apply({ ok: false, reason: parsed.reason });
       const prevNodes = nodesFromHints(parsed.doc.layoutHints);
-      const doc = withoutHints(parsed.doc);
+      const doc = withBirthDateAges(withoutHints(parsed.doc));
       let derived;
       try {
         derived = deriveAll(doc, get().ui, prevNodes ? { prevNodes, frozen: true } : null);

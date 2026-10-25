@@ -299,5 +299,6 @@ Onay sonrası her kural için:
 | 2026-10-25 | proband ve açıklama düzeni | bulgusu olan proband **tamamen dolu** çizilir (bölgelere ayrılmaz); açıklamanın ilk satırı: hasta adı · probandın sembolü · probandın bulguları; altında, akrabalarda görülen bulguların bölge işaretleri probandın sembolü hizasında, adları bulguların hizasında (uygulandı) | kullanıcı (klinisyen) |
 | 2026-10-25 | düşük / ölü doğum sırası | düşük ve ölü doğum kardeşler arasında **kronolojik yerinde** kalır; otomatik olarak sona taşınmaz; yeri "Doğum sırası" ile ayarlanır; yaş girilince yalnızca yaşı bilinen canlı doğanlar kendi yerleri arasında sıralanır (uygulandı) | kullanıcı (klinisyen) |
 | 2026-10-25 | bulgu sınırı | 16 imza (4 çeyrek × 4 dolgu) dolunca yeni bulgu eklenmez; **açık uyarı** verilir, klinisyen bulguları sadeleştirir | kullanıcı (klinisyen) |
+| 2026-10-25 | yaş birimleri ve doğum tarihi | yaş yıl, ay ya da gün olarak girilir ve sembol altında "35", "3 ay", "12 gün" yazılır; anlaşılmayan yaş reddedilir; kardeş sırası günlere çevrilerek karşılaştırılır; probandın doğum tarihi (isteğe bağlı, üst çubuk) girilince yaş bugüne göre hesaplanır: 1 aydan küçük gün, 2 yaşından küçük ay, sonra yıl (uygulandı) | kullanıcı (klinisyen) |
 | | K2–K4, K6–K9, K11–K13 | bekliyor | |
 | | §4 "Standart" özetleri (orijinal yayına karşı) | bekliyor | |

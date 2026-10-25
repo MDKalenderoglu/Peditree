@@ -36,7 +36,9 @@ body { font-size: 13px; color: var(--ink-2); background: var(--canvas); }
 }
 .app-shell.has-editor { grid-template-columns: minmax(0, 1fr) 312px; }
 .toolbar-brand { margin-right: 4px; }
-.patient-name { width: 200px; font-weight: 600; }
+.patient-name { width: 180px; font-weight: 600; }
+.toolbar-field { display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--muted, #64748b); white-space: nowrap; }
+.toolbar-field .birth-date { width: 124px; padding-left: 6px; padding-right: 4px; }
 .side {
   background: var(--surface);
   overflow-y: auto;
@@ -104,7 +106,7 @@ body { font-size: 13px; color: var(--ink-2); background: var(--canvas); }
   background: var(--surface); outline: none;
 }
 .input:focus, .select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12); }
-.input-age { width: 64px; text-align: right; }
+.input-age { width: 72px; text-align: right; }
 .input-wide { width: 100%; box-sizing: border-box; }
 textarea.input { height: auto; min-height: 56px; padding: 6px 8px; resize: vertical; }
 .check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; cursor: pointer; color: var(--ink-2); }

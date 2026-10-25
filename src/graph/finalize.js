@@ -24,6 +24,7 @@ import { indexGraph, displayParentage } from './model';
 import { kinshipOf } from './kinship';
 import { deriveConditionKey } from './conditionKey';
 import { normalizeMultiples } from './multiples';
+import { ageInDays } from '../utils/age';
 
 // declared degrees richer than a partly drawn structure
 const KEEP_DECLARED = new Set(['other', 'multiple_relationship', 'double_first_cousin']);
@@ -53,7 +54,8 @@ export function finalizeGraph(graph, { anchorId = 'proband' } = {}) {
   return graph;
 }
 
-const ageOf = (p) => { const a = parseInt(p.age, 10); return Number.isFinite(a) ? a : null; };
+// compared in days: "3 ay" is younger than "2" (years)
+const ageOf = (p) => ageInDays(p.age);
 
 /**
  * Step 1: liveborn siblings with a known age stand oldest → youngest; they

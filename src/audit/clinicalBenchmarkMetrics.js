@@ -8,6 +8,7 @@
 import { createDocument } from '../graph/document';
 import { finalizeGraph } from '../graph/finalize';
 import { validateDocument, errorsOf } from '../graph/validate';
+import { ageInDays } from '../utils/age';
 import { displayParentage } from '../graph/model';
 import { auditPedigreeGraph } from '../utils/graphIntegrity';
 import { validatePedigree } from '../utils/validators';
@@ -77,7 +78,7 @@ function ownership(drawnGraph, edges) {
 function birthOrder(drawnGraph, nodes) {
   const x = new Map(nodes.map((n) => [n.id, n.x]));
   const person = new Map(drawnGraph.individuals.map((i) => [i.id, i]));
-  const age = (id) => { const a = parseInt((person.get(id) || {}).age, 10); return Number.isFinite(a) ? a : null; };
+  const age = (id) => ageInDays((person.get(id) || {}).age);
   const consang = new Set(drawnGraph.unions.filter((u) => u.consanguineous).flatMap((u) => u.partners));
   const violations = [], reordered = [];
   for (const r of drawnGraph.parentChildRelationships) {

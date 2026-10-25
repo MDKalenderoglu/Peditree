@@ -5,14 +5,19 @@ import { exportSVG, exportPNG, exportFileName } from './utils/exportUtils';
 import { assessExportReadiness } from './utils/exportReadiness';
 import { withStableIdsExcludingDismissed } from './utils/warningIds';
 import { clinicalNotices } from './utils/clinicalNotices';
-import { sanitizeAgeValue } from './utils/ageValidation';
 import PedigreeCanvas from './components/PedigreeCanvas';
 import IndividualEditor from './components/IndividualEditor';
 import RadialAddMenu from './components/RadialAddMenu';
 import { flushDrafts } from './utils/drafts';
+import DraftField from './components/DraftField';
 import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
+
+const todayIso = () => {
+  const t = new Date();
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+};
 
 function App() {
   const {
@@ -29,8 +34,9 @@ function App() {
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
     actionNotice, dismissActionNotice, autosaveFailed,
-    exportProjectFile, openProjectFile, relayout, doc, setPatientName,
+    exportProjectFile, openProjectFile, relayout, doc, setPatientName, setProbandBirthDate,
   } = usePedigreeStore();
+  const probandNode = doc.graph.individuals.find(i => i.proband);
   const [exportError, setExportError] = React.useState(null);
   const [exportNotice, setExportNotice] = React.useState(null);
   const svgRef = React.useRef(null);
@@ -231,6 +237,13 @@ function App() {
           <div className="toolbar-sep" />
           <input className="input patient-name" value={doc.patientName || ''} placeholder="Hasta adı soyadı"
             aria-label="Hasta adı soyadı" onChange={e => setPatientName(e.target.value)} />
+          {/* optional: the proband's age follows it, as of today (clinician decision 2026-10-25) */}
+          <label className="toolbar-field" title="Probandın doğum tarihi (isteğe bağlı): yaşı bugüne göre hesaplanır">
+            <span>Doğum</span>
+            <DraftField key={probandNode ? probandNode.id : 'none'} type="date" className="input birth-date"
+              value={(probandNode && probandNode.birthDate) || ''} max={todayIso()} disabled={!probandNode}
+              aria-label="Probandın doğum tarihi" onCommit={setProbandBirthDate} />
+          </label>
           <div className="toolbar-sep" />
           <div className="toolbar-group">
             <button className="ui-btn" onClick={handleNewPedigree} title="Kaydedilmiş pedigriyi sil ve yeniden başla"><FilePlus2 size={15} /> Yeni</button>
@@ -336,8 +349,8 @@ function App() {
             if (kind === 'patientName') setPatientName(v.trim());
             else if (kind === 'finding') renameFinding(target, v);
             else if (kind === 'note') updateIndividual(target, { notes: v });
-            else if (kind === 'age') updateIndividual(target, { age: sanitizeAgeValue(v) });
-            else if (kind === 'ageAtDeath') updateIndividual(target, { ageAtDeath: sanitizeAgeValue(v) });
+            else if (kind === 'age') updateIndividual(target, { age: v.trim() }); // read (or refused) in ops.updatePerson
+            else if (kind === 'ageAtDeath') updateIndividual(target, { ageAtDeath: v.trim() });
             else updateIndividual(target, { [kind]: v }); // displayLabel, condition, causeOfDeath
           }}
           renderQuickBar={(anchor) => (

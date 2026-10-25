@@ -7,7 +7,7 @@
  */
 import { X, Trash2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { computeSiblingCreationPlan, computeUnionCreationPlan } from '../state/usePedigreeStore';
-import { sanitizeAgeValue } from '../utils/ageValidation';
+import { AGE_EXAMPLE } from '../utils/age';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { degreeLabel } from '../graph/kinship';
 import { groupOf, multipleName, zygosityLabel, ZYGOSITY } from '../graph/multiples';
@@ -343,16 +343,18 @@ export default function IndividualEditor({
             {!isLoss && (
               <label className="field">
                 <span className="field-label">Yaş</span>
-                <DraftField key={`${node.id}-age`} type="number" min="0" className="input input-age" value={node.age || ''} placeholder="—"
-                  onCommit={v => set({ age: sanitizeAgeValue(v) })} />
+                <DraftField key={`${node.id}-age`} type="text" className="input input-age" value={node.age || ''} placeholder="35, 3 ay…"
+                  disabled={!!node.birthDate}
+                  title={node.birthDate ? 'Yaş doğum tarihinden hesaplanıyor (üst çubuk)' : `Yıl, ay ya da gün — ${AGE_EXAMPLE}`}
+                  onCommit={v => set({ age: v.trim() })} />
               </label>
             )}
             {!!node.deceased && !isLoss && (
               <>
                 <label className="field">
                   <span className="field-label">Ölüm yaşı</span>
-                  <DraftField key={`${node.id}-death-age`} type="number" min="0" className="input input-age" value={node.ageAtDeath || ''} placeholder="—"
-                    onCommit={v => set({ ageAtDeath: sanitizeAgeValue(v) })} />
+                  <DraftField key={`${node.id}-death-age`} type="text" className="input input-age" value={node.ageAtDeath || ''} placeholder="—"
+                    title={`Yıl, ay ya da gün — ${AGE_EXAMPLE}`} onCommit={v => set({ ageAtDeath: v.trim() })} />
                 </label>
                 <label className="field-col">
                   <span className="field-label">Ölüm nedeni</span>

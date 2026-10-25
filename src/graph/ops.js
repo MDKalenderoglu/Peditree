@@ -24,6 +24,7 @@ import {
   computeAddParentsPlan, computeAddSiblingPlan,
 } from './plans';
 import { reconcileOrder, moveChildInOrder } from '../utils/childOrdering';
+import { normalizeAge, ageFromBirthDate, AGE_EXAMPLE } from '../utils/age';
 
 const issueKey = (i) => `${i.code}|${[...(i.ids || [])].sort().join(',')}`;
 
@@ -205,7 +206,7 @@ function partnerSexConflict(graph, personId, newSex) {
   return null;
 }
 
-const PROTECTED_FIELDS = new Set(['id', 'generation', 'proband', 'placeholder']);
+const PROTECTED_FIELDS = new Set(['id', 'generation', 'proband', 'placeholder', 'birthDate']);
 
 // ── operations ──
 
@@ -218,12 +219,52 @@ export function updatePerson(doc, id, fields) {
       const conflict = partnerSexConflict(d.graph, id, fields.sex);
       if (conflict) block(conflict);
     }
+    if (Object.prototype.hasOwnProperty.call(fields, 'age') && p.birthDate && fields.age !== p.age) {
+      block('Bu kişinin yaşı doğum tarihinden hesaplanıyor; değiştirmek için üst çubuktaki doğum tarihini düzeltin ya da silin.');
+    }
     for (const [k, v] of Object.entries(fields)) {
       if (PROTECTED_FIELDS.has(k)) continue;
+      if (k === 'age' || k === 'ageAtDeath') {
+        const age = normalizeAge(v);
+        if (age === null) block(`Yaş anlaşılamadı: "${v}" (${AGE_EXAMPLE}).`);
+        p[k] = age;
+        continue;
+      }
       p[k] = v;
     }
     // "affected" set by hand is the clinician's own; findings no longer clear it
     if (Object.prototype.hasOwnProperty.call(fields, 'affected')) delete p.affectedByFindings;
+  });
+}
+
+/**
+ * A person's birth date ('YYYY-MM-DD', the proband's from the top bar;
+ * clinician decision 2026-10-25): their age follows it, as of `today`. An
+ * empty date removes it and leaves the age as it was.
+ */
+export function setBirthDate(doc, id, iso, today = new Date()) {
+  return commit(doc, (d) => {
+    const p = d.graph.individuals.find((i) => i.id === id);
+    if (!p) block('Birey grafikte bulunamadı.');
+    if (!iso) { delete p.birthDate; return; }
+    const age = ageFromBirthDate(iso, today);
+    if (age === null) {
+      block(/^\d{4}-\d{2}-\d{2}$/.test(iso) && ageFromBirthDate(iso, new Date(9999, 0, 1)) !== null
+        ? 'Doğum tarihi bugünden sonra olamaz.' : 'Doğum tarihi anlaşılamadı.');
+    }
+    if (Number(iso.slice(0, 4)) < 1900) block('Doğum tarihi 1900 öncesi olamaz.');
+    p.birthDate = iso;
+    p.age = age;
+  });
+}
+
+/** Ages that follow a birth date, brought up to date (a file opened later). */
+export function refreshBirthDateAges(doc, today = new Date()) {
+  return commit(doc, (d) => {
+    for (const p of d.graph.individuals) {
+      const age = p.birthDate ? ageFromBirthDate(p.birthDate, today) : null;
+      if (age !== null) p.age = age;
+    }
   });
 }
 
