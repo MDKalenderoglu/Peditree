@@ -20,6 +20,7 @@
  * This module does not decide *how* to present these (that's App.jsx's
  * job) — it only classifies.
  */
+import { clinicalNamer } from './clinicalNotices';
 
 // graphIntegrity.js codes that mean the graph itself is structurally
 // invalid in a way that would misrepresent family structure if drawn
@@ -94,7 +95,7 @@ export function assessExportReadiness({ pedigreeData, integrityIssues, svgElemen
   const unsupportedSymbol = individuals.filter(i => !KNOWN_SEX_SYMBOLS.has(i.sex));
   if (unsupportedSymbol.length > 0) {
     warnings.push(
-      `Desteklenmeyen sembol türü: ${unsupportedSymbol.map(i => i.id).join(', ')} için tanımlı bir cinsiyet sembolü yok.`
+      `Desteklenmeyen sembol türü: ${unsupportedSymbol.map(i => `"${i.id}"`).join(', ')} için tanımlı bir cinsiyet sembolü yok.`
     );
   }
 
@@ -106,7 +107,7 @@ export function assessExportReadiness({ pedigreeData, integrityIssues, svgElemen
   );
   if (clinicallyRelevantUnknownSex.length > 0) {
     warnings.push(
-      `Klinik olarak önemli bireylerde cinsiyet bilinmiyor: ${clinicallyRelevantUnknownSex.map(i => i.id).join(', ')}.`
+      `Klinik olarak önemli bireylerde cinsiyet bilinmiyor: ${clinicallyRelevantUnknownSex.map(i => `"${i.id}"`).join(', ')}.`
     );
   }
 
@@ -117,5 +118,7 @@ export function assessExportReadiness({ pedigreeData, integrityIssues, svgElemen
   // is still accepted for API compatibility.)
   void zoomTransform;
 
-  return { fatal, errors, warnings, canExport: fatal.length === 0 };
+  // people by pedigree number (II-1), never by internal id (audit 2026-10-25)
+  const { plain } = clinicalNamer(pedigreeData || {});
+  return { fatal: fatal.map(plain), errors: errors.map(plain), warnings: warnings.map(plain), canExport: fatal.length === 0 };
 }

@@ -122,28 +122,32 @@ describe('assessExportReadiness (v0.2 follow-up)', () => {
     const result = assessExportReadiness({
       pedigreeData: basePedigreeData({
         individuals: [
-          { id: 'weird', sex: 'not_a_real_value', proband: false, affected: false },
+          { id: 'weird', sex: 'not_a_real_value', proband: false, affected: false, generation: 1 },
         ],
+        nodes: [{ id: 'weird', x: 0, y: 0, generation: 1 }],
       }),
       integrityIssues: [],
       svgElement: {},
     });
     expect(result.canExport).toBe(true);
-    expect(result.warnings.some(w => w.includes('weird'))).toBe(true);
+    // named by pedigree number, never by the internal id (audit 2026-10-25)
+    expect(result.warnings.some(w => w.startsWith('Desteklenmeyen sembol türü: I-1 '))).toBe(true);
+    expect(result.warnings.some(w => w.includes('weird'))).toBe(false);
   });
 
   it('WARNING: unknown sex on the proband is flagged as clinically relevant', () => {
     const result = assessExportReadiness({
       pedigreeData: basePedigreeData({
         individuals: [
-          { id: 'proband', sex: 'unknown', proband: true, affected: false },
+          { id: 'proband', sex: 'unknown', proband: true, affected: false, generation: 3 },
         ],
+        nodes: [{ id: 'proband', x: 0, y: 0, generation: 3 }],
       }),
       integrityIssues: [],
       svgElement: {},
     });
     expect(result.canExport).toBe(true);
-    expect(result.warnings.some(w => w.includes('proband'))).toBe(true);
+    expect(result.warnings.some(w => /cinsiyet bilinmiyor: I-1\./.test(w))).toBe(true);
   });
 
   it('WARNING: unknown sex on a non-affected, non-proband relative is NOT flagged', () => {

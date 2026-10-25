@@ -18,7 +18,12 @@ const BY_CODE = {
  * @param {{ nodes, individuals, unions }} pedigreeData
  * @returns {Array<{ text, level: 'error'|'warning', ids: string[] }>}
  */
-export function clinicalNotices({ errorIssues = [], warningIssues = [], warnings = [] }, pedigreeData) {
+/**
+ * People and couples named the way the clinician reads them: pedigree
+ * numbers (II-1), never internal ids. Also used for the export messages.
+ * @returns {{ nameOf, unionName, plain }}
+ */
+export function clinicalNamer(pedigreeData) {
   const pids = computePedigreeIds(pedigreeData.nodes || []);
   const person = new Map((pedigreeData.individuals || []).map((i) => [i.id, i]));
   const nameOf = (id) => pids.get(id)?.displayId || person.get(id)?.displayLabel || person.get(id)?.label || 'bir kişi';
@@ -32,15 +37,21 @@ export function clinicalNotices({ errorIssues = [], warningIssues = [], warnings
       .replace(/^(Uyarı|Hata):\s*/, '')
       .replace(/\s*\((reported_unresolved|known_supported|[a-z]+_[a-z_]+)\)/g, '')
       .replace(/Union\s+'?([A-Za-z0-9_]+)'?/g, (_, uid) => unionName(uid))
-      .replace(/"([A-Za-z0-9_]+)"/g, (m, id) => (person.has(id) ? nameOf(id) : m));
-    for (const id of knownIds) {
+      .replace(/"([A-Za-z0-9_]+)"|'([A-Za-z0-9_]+)'/g, (m, a, b) => (person.has(a || b) ? nameOf(a || b) : m));
+    // bare ids only when they look like ids (an underscore or a digit): a word
+    // such as "proband" or "mother" in a sentence is not a person's id
+    for (const id of knownIds.filter((x) => /[_\d]/.test(x))) {
       if (!t.includes(id)) continue;
       const name = person.has(id) ? nameOf(id) : unionName(id);
       t = t.replace(new RegExp(`\\b${id}\\b`, 'g'), name);
     }
     return t;
   };
+  return { nameOf, unionName, plain };
+}
 
+export function clinicalNotices({ errorIssues = [], warningIssues = [], warnings = [] }, pedigreeData) {
+  const { unionName, plain } = clinicalNamer(pedigreeData);
   const out = [];
   const seen = new Map();
   const push = (text, level, id) => {

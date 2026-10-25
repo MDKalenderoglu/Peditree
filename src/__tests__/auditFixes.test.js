@@ -305,3 +305,18 @@ describe('#13 the findings key holds 16 findings, then says so', () => {
     expect(P('father').conditions.map(c => c.label)).toEqual(['Bulgu 3']);
   });
 });
+
+describe('export messages name people by pedigree number', () => {
+  it('a clinically relevant person with unknown sex is named II-…/III-…, not by an internal id', async () => {
+    const { assessExportReadiness } = await import('../utils/exportReadiness');
+    S().resetPedigree();
+    S().addSiblingTo('proband', 'unknown');
+    const sib = sibsOf('proband').find(c => c !== 'proband');
+    S().updateIndividual(sib, { affected: true });
+    const a = assessExportReadiness({ pedigreeData: S().pedigreeData, integrityIssues: [], svgElement: {} });
+    const line = a.warnings.find(w => /cinsiyet bilinmiyor/.test(w));
+    expect(line).toBeTruthy();
+    expect(line).not.toContain(sib);
+    expect(line).toMatch(/III-\d/);
+  });
+});
