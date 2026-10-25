@@ -35,12 +35,17 @@ describe('consanguinity follows the drawing, whichever panel drew it', () => {
     expect(errors()).toEqual([]);
   });
 
-  it('ticking the box afterwards changes nothing (the drawing already decides)', () => {
+  it('ticking the box afterwards changes nothing drawn (the drawing already decides); it is kept as the clinician’s statement', () => {
     S().addCustomConsanguinity('mat_gm', 'pat_gm');
     const before = S().doc;
+    const parents = () => S().doc.graph.unions.find(u => u.id === 'U_PARENTS');
+    expect(parents().consanguinityFromStructure).toBe(true);
     S().updateWizardData('parents', 'consanguineous', true);
     expect(wd().parents.consanguinityPath).toBe('mothers_maternal_is_fathers_maternal');
-    expect(S().doc.graph).toEqual(before.graph);
+    const strip = (g) => ({ ...g, unions: g.unions.map(({ consanguinityFromStructure, ...u }) => u) }); // eslint-disable-line no-unused-vars
+    expect(strip(S().doc.graph)).toEqual(strip(before.graph));
+    // confirmed: it stays when the shared ancestry is no longer drawn (audit 2026-10-25)
+    expect(parents().consanguinityFromStructure).toBeUndefined();
   });
 
   it('a degree chosen in the wizard draws the ancestors and both panels read the same degree', () => {

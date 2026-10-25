@@ -130,6 +130,11 @@ export function draftAddChild(draft, unionId, childId, { orderPolicy = 'byAge' }
  * partner keeps existing with an explicit "unspecified parent" placeholder
  * in the removed partner's slot (its consanguinity claim is dropped); other
  * unions of the person are removed. Removed ids are retired.
+ * A child linked to the couple socially (adopted, fostered …) counts as
+ * their child, so the link to the remaining parent stays (audit 2026-10-25:
+ * it used to be lost) — unless the remaining parent is the child's own
+ * biological parent (a step-parent or a stepfamily adoption: that bond was
+ * with the removed person).
  */
 export function draftRemovePerson(draft, id) {
   const g = draft.graph;
@@ -143,7 +148,10 @@ export function draftRemovePerson(draft, id) {
   for (const uid of idx.unionsOf.get(id) || []) {
     const u = idx.unionById.get(uid);
     const other = u.partners.find((p) => p !== id);
-    const kids = idx.childrenOf(uid);
+    const bioParentOf = (child) => (idx.unionById.get(idx.bioParentUnion.get(child))?.partners || []).includes(other);
+    const kids = [...idx.childrenOf(uid), ...(g.socialParentLinks || [])
+      .filter((l) => l.unionId === uid && !bioParentOf(l.childId))
+      .map((l) => l.childId)];
     // with no real partner left (the other slot is already an "unspecified"
     // placeholder) the union goes, as in v1 when both partners were deleted
     const otherIsPlaceholder = !!idx.byId.get(other)?.placeholder;
@@ -214,6 +222,8 @@ export function updatePerson(doc, id, fields) {
       if (PROTECTED_FIELDS.has(k)) continue;
       p[k] = v;
     }
+    // "affected" set by hand is the clinician's own; findings no longer clear it
+    if (Object.prototype.hasOwnProperty.call(fields, 'affected')) delete p.affectedByFindings;
   });
 }
 
@@ -397,6 +407,7 @@ export function setRelationshipBackground(doc, unionId, value) {
   return commit(doc, (d) => {
     const u = d.graph.unions.find((x) => x.id === unionId);
     if (!u) block('Birliktelik grafikte bulunamadı.');
+    delete u.consanguinityFromStructure; // the clinician's own statement
     if (CONSANGUINITY_BACKGROUNDS.has(value)) {
       u.consanguineous = true;
     } else {
@@ -412,6 +423,7 @@ export function setUnionConsanguineous(doc, unionId, value, extra = {}) {
   return commit(doc, (d) => {
     const u = d.graph.unions.find((x) => x.id === unionId);
     if (!u) block('Birliktelik grafikte bulunamadı.');
+    delete u.consanguinityFromStructure; // the clinician's own statement
     u.consanguineous = !!value;
     Object.assign(u, extra);
     if (!value) {

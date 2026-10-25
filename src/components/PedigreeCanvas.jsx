@@ -28,6 +28,8 @@ import { useEffect, useRef, useState, useCallback, forwardRef } from 'react';
 import * as d3 from 'd3';
 import { fillFor, REGION_ANGLES } from '../graph/conditionKey';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
+import { annotationAge } from '../utils/annotations';
+import { packLines } from '../utils/textWrap';
 
 const EDGE_COLOR = '#64748b';
 const NODE_STROKE = '#1e293b';
@@ -210,19 +212,48 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // the drawing is fitted to the screen (clinician feedback 2026-10-24)
     const LK = Math.max(1.2, (d3.max(nodes, d => d.x) - d3.min(nodes, d => d.x) + 200) / 900);
     const KEY_ROW = 22 * LK, NOTE_ROW = 16 * LK, TITLE_ROW = 20 * LK;
-    const keyBlock = shownKey.length ? shownKey.length * KEY_ROW + 14 * LK : 0;
-    const notesBlock = notedNodes.length ? TITLE_ROW + notedNodes.length * NOTE_ROW + 10 * LK : 0;
+    // long key and note text wraps onto more lines, never cut (audit
+    // 2026-10-25); the blocks grow with the lines
+    const KEY_LINE = 15 * LK, HEAD_LINE = 17 * LK, KEY_CHARS = 40;
+    const keyLines = shownKey.map(e => packLines([{ text: e.label }], KEY_CHARS));
+    const keyRowH = keyLines.map(l => KEY_ROW + (l.length - 1) * KEY_LINE);
+    const keyBlock = shownKey.length ? d3.sum(keyRowH) + 14 * LK : 0;
 
     // --- ViewBox ---
     const pad = 100;
     const minX = d3.min(nodes, d => d.x) - pad;
     const maxX = d3.max(nodes, d => d.x) + pad;
+    // v0.3a.3 — pedigree-standard visible IDs (I-1, II-3, ...). Purely
+    // derived from the already-computed generation + x-position of every
+    // node; recomputes automatically on every render, so a birth-order
+    // reorder (which changes x) renumbers correctly with no extra wiring.
+    const pedigreeIds = computePedigreeIds(nodes);
+    const noteChars = Math.max(40, Math.floor((Math.max(600, maxX - minX) - 30) / (6.6 * LK)));
+    const noteLines = notedNodes.map((n, i) => {
+      // pedigree number plus the clinician's own label — never an internal id
+      const pid = pedigreeIds.get(n.id)?.displayId || '—';
+      const who = n.displayLabel ? `${pid} (${n.displayLabel})` : pid;
+      const segs = [{ text: `[${i + 1}] ${who}: `, head: true }];
+      const parts = [];
+      if (n.condition) parts.push(['condition', n.condition, n.condition]);
+      if (n.deceased && n.causeOfDeath) parts.push(['causeOfDeath', `Ölüm: ${n.causeOfDeath}`, n.causeOfDeath]);
+      if (n.notes) parts.push(['note', n.notes, n.notes]);
+      parts.forEach(([kind, shown, value], k) => {
+        if (k) segs.push({ text: ' | ' });
+        segs.push({ text: shown, kind, target: n.id, value });
+      });
+      return packLines(segs, noteChars);
+    });
+    const notesBlock = notedNodes.length ? TITLE_ROW + d3.sum(noteLines, l => l.length) * NOTE_ROW + 10 * LK : 0;
     // the key's first line (clinician request 2026-10-25): the patient's
     // name, the proband's own symbol, the proband's findings
     const probandNode = nodes.find(n => n.proband);
     const probandFindings = probandNode ? (probandNode.conditions || []).filter(c => c && c.label && c.status === 'affected').map(c => c.label.trim()) : [];
     const name = patientName.trim();
-    const headBlock = probandNode && (name || probandFindings.length) ? 30 * LK : 0;
+    const headLines = packLines(probandFindings.flatMap((label, k) => [
+      ...(k ? [{ text: ', ' }] : []), { text: label, kind: 'finding', target: label, value: label },
+    ]), KEY_CHARS);
+    const headBlock = probandNode && (name || probandFindings.length) ? 30 * LK + Math.max(0, headLines.length - 1) * HEAD_LINE : 0;
     const minY = d3.min(nodes, d => d.y) - pad - headBlock - keyBlock;
     const legendTop = d3.max(nodes, d => d.y) + 70; // clear of the age / label lines
     const maxY = Math.max(d3.max(nodes, d => d.y) + pad, legendTop + notesBlock + 10);
@@ -341,11 +372,6 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // =====================
     // DRAW NODES
     // =====================
-    // v0.3a.3 — pedigree-standard visible IDs (I-1, II-3, ...). Purely
-    // derived from the already-computed generation + x-position of every
-    // node; recomputes automatically on every render, so a birth-order
-    // reorder (which changes x) renumbers correctly with no extra wiring.
-    const pedigreeIds = computePedigreeIds(nodes);
     // Adopted-in children (only a social, adoptive link): NSGC brackets
     // around the symbol (notation spec R3). Read from the layout's edges —
     // their line of descent is the dashed, adoptive one.
@@ -520,13 +546,13 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       let lineY = sz + 14;
       const LINE_H = 13;
 
-      // Age (always shown for liveborn if set)
-      if (d.age && !d.pregnancyLoss && !d.stillbirth) {
-        const deathAge = d.deceased && d.ageAtDeath;
+      // Age, or "d." and the age at death (also without an age filled in)
+      const ageLine = annotationAge(d);
+      if (ageLine) {
         editable(el.append('text')
           .attr('y', lineY).attr('text-anchor', 'middle')
           .attr('font-size', '11px').attr('fill', '#475569')
-          .text(deathAge ? `d.${d.ageAtDeath}` : d.age), deathAge ? 'ageAtDeath' : 'age', d.id, deathAge ? d.ageAtDeath : d.age);
+          .text(ageLine.text), ageLine.kind, d.id, ageLine.value);
         lineY += LINE_H;
       }
 
@@ -567,12 +593,11 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     if (headBlock || shownKey.length) {
       const keyG = svg.append('g').attr('class', 'condition-legend');
       const s = 8 * LK;
-      const labelOf = (e) => (e.label.length > 50 ? e.label.substring(0, 49) + '…' : e.label);
-      const findingsText = probandFindings.join(', ');
+      const lineLen = (l) => l.reduce((n, p) => n + p.text.length, 0);
       const nameW = headBlock && name ? name.length * 8.4 * LK + 12 * LK : 0;
       // columns: [name] [symbols] [texts] — the rows below line up with the
       // proband's symbol and findings (clinician request 2026-10-25)
-      const textsW = Math.max(findingsText.length * 7.2 * LK, ...shownKey.map(e => labelOf(e).length * 7.2 * LK), 40);
+      const textsW = Math.max(...headLines.map(l => lineLen(l) * 7.2 * LK), ...keyLines.flat().map(l => lineLen(l) * 7.2 * LK), 40);
       const width = nameW + 2 * s + 12 * LK + textsW;
       const kx = Math.max(minX + 10, maxX - width - 10 * LK);
       const symX = kx + nameW;              // symbol column
@@ -597,15 +622,15 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         shape.attr('stroke', NODE_STROKE).attr('stroke-width', 1.5)
           .attr('fill', f.mode === 'full' ? NODE_STROKE : f.mode === 'none' && probandNode.carrier ? 'url(#carrier-half)' : NODE_FILL);
         if (f.mode === 'regions') drawRegions(cell, defs, 'legend-proband-regions', shape, f.parts, s);
-        if (findingsText) {
+        headLines.forEach((line, li) => {
           const t = keyG.append('text')
-            .attr('x', textX).attr('y', ky + s + 5 * LK)
+            .attr('x', textX).attr('y', ky + s + 5 * LK + li * HEAD_LINE)
             .attr('font-size', `${13 * LK}px`).attr('fill', '#1e293b');
-          probandFindings.forEach((label, k) => {
-            if (k) t.append('tspan').text(', ');
-            editable(t.append('tspan').text(label), 'finding', label, label);
+          line.forEach(p => {
+            const ts = t.append('tspan').text(p.text);
+            if (p.seg.kind) editable(ts, p.seg.kind, p.seg.target, p.seg.value);
           });
-        }
+        });
         ky += headBlock;
       }
       shownKey.forEach((entry, row) => {
@@ -614,11 +639,13 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           .attr('fill', NODE_FILL).attr('stroke', NODE_STROKE).attr('stroke-width', 1.5);
         const [a0, a1] = REGION_ANGLES[entry.region] || REGION_ANGLES.q1;
         drawRegions(cell, defs, `key-region-${row}`, box, [{ fill: entry.fill, a0, a1 }], s);
-        editable(keyG.append('text')
-          .attr('x', textX).attr('y', ky + s + 4.5 * LK)
-          .attr('font-size', `${12.5 * LK}px`).attr('fill', '#334155')
-          .text(labelOf(entry)), 'finding', entry.label, entry.label);
-        ky += KEY_ROW;
+        keyLines[row].forEach((line, li) => {
+          editable(keyG.append('text')
+            .attr('x', textX).attr('y', ky + s + 4.5 * LK + li * KEY_LINE)
+            .attr('font-size', `${12.5 * LK}px`).attr('fill', '#334155')
+            .text(line.map(p => p.text).join('')), 'finding', entry.label, entry.label);
+        });
+        ky += keyRowH[row];
       });
     }
     const legendX = minX + 10;
@@ -632,24 +659,18 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         .attr('font-size', `${13 * LK}px`).attr('font-weight', '700').attr('fill', '#1e293b')
         .text('Notlar');
       legendY += TITLE_ROW;
-      const clip = (t) => (t.length > 100 ? t.substring(0, 99) + '…' : t);
-      notedNodes.forEach((n, i) => {
-        // pedigree number plus the clinician's own label — never an internal id
-        const pid = pedigreeIds.get(n.id)?.displayId || '—';
-        const who = n.displayLabel ? `${pid} (${n.displayLabel})` : pid;
-        const t = legendG.append('text')
-          .attr('x', legendX).attr('y', legendY + 12 * LK)
-          .attr('font-size', `${12 * LK}px`).attr('fill', '#475569');
-        t.append('tspan').attr('font-weight', '600').text(`[${i + 1}] ${who}: `);
-        const parts = [];
-        if (n.condition) parts.push(['condition', n.condition, n.condition]);
-        if (n.deceased && n.causeOfDeath) parts.push(['causeOfDeath', `Ölüm: ${n.causeOfDeath}`, n.causeOfDeath]);
-        if (n.notes) parts.push(['note', n.notes, n.notes]);
-        parts.forEach(([kind, shown, value], k) => {
-          if (k) t.append('tspan').text(' | ');
-          editable(t.append('tspan').text(clip(shown)), kind, n.id, value);
+      noteLines.forEach((lines) => {
+        lines.forEach((line) => {
+          const t = legendG.append('text')
+            .attr('x', legendX).attr('y', legendY + 12 * LK)
+            .attr('font-size', `${12 * LK}px`).attr('fill', '#475569');
+          line.forEach(p => {
+            const ts = t.append('tspan').text(p.text);
+            if (p.seg.head) ts.attr('font-weight', '600');
+            if (p.seg.kind) editable(ts, p.seg.kind, p.seg.target, p.seg.value);
+          });
+          legendY += NOTE_ROW;
         });
-        legendY += NOTE_ROW;
       });
     }
 

@@ -2,9 +2,12 @@
  * findings.js — operations on a person's findings and on the findings key
  * (conditionKey.js). Each is one atomic graph operation (one undo step).
  *
- * A person's `affected` follows their findings when findings decide it
- * (adding an affected finding sets it; removing the last one clears it); a
- * plain "affected" without any finding is left alone.
+ * A person's `affected` follows their findings when findings decide it:
+ * an affected finding sets it (`affectedByFindings` remembers that a finding
+ * did), and when no affected finding is left it is cleared again — only if a
+ * finding had set it. An "affected" the clinician set by hand is never
+ * cleared by findings (audit 2026-10-25: it used to be lost when a finding
+ * was made carrier); a hand toggle takes over (ops.updatePerson).
  */
 import { commit, block } from './ops';
 import { normLabel, keyEntry, styleTaken, REGIONS, FILLS } from './conditionKey';
@@ -13,13 +16,18 @@ const STATUSES = ['affected', 'carrier', 'none'];
 
 function applyStatus(person, label, status) {
   const conds = Array.isArray(person.conditions) ? person.conditions : [];
-  const drivenBefore = conds.some((c) => c.status === 'affected');
   const rest = conds.filter((c) => normLabel(c.label) !== normLabel(label));
   const existing = conds.find((c) => normLabel(c.label) === normLabel(label));
   const next = status === 'none' ? rest : [...rest, { ...(existing || {}), label: existing ? existing.label : label.trim(), status }];
   person.conditions = next;
   const anyAffected = next.some((c) => c.status === 'affected');
-  person.affected = anyAffected || (!drivenBefore && !!person.affected);
+  if (anyAffected) {
+    if (!person.affected) person.affectedByFindings = true;
+    person.affected = true;
+  } else if (person.affectedByFindings) {
+    delete person.affectedByFindings;
+    person.affected = false;
+  }
 }
 
 /** Set one finding of a person: 'affected' | 'carrier' | 'none' (removes it). */

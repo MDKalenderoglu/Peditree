@@ -453,6 +453,7 @@ function draftSetParentsConsanguinity(d, { consanguineous, degree, path }) {
   if (!r.parentsUnion || !r.mother || !r.father) block('Akraba evliliği için anne ve baba çizili olmalı.');
   teardownTemplate(d);
   const u = d.graph.unions.find((x) => x.id === r.parentsUnion);
+  delete u.consanguinityFromStructure; // the clinician's own statement
   if (!consanguineous) {
     Object.assign(u, { consanguineous: false, consanguinityDegree: null, consanguinityStatus: 'none' });
     if (['consanguinity_reported', 'consanguinity_structurally_supported'].includes(u.relationshipBackground)) u.relationshipBackground = 'not_asked';

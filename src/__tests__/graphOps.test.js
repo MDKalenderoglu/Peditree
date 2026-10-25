@@ -224,7 +224,9 @@ describe('graph operations', () => {
     expect(doc.graph.socialParentLinks).toEqual([{ childId: 'de_sp_0', unionId: adoptive, kind: 'adoptive' }]);
     expect(ops.addSocialParentLink(doc, 'de_sp_0', 'U_DE_PARENTS_1', 'adoptive').ok).toBe(false); // = biological
     expect(ops.addSocialParentLink(doc, 'de_sp_0', adoptive, 'xyz').ok).toBe(false);
-    // removing the adoptive union's partner removes the link with the union
+    // the adoptive couple is the spouse's own mother and her new partner:
+    // removing him removes the link with the union (the mother is her
+    // biological parent already — audit 2026-10-25)
     doc = ok(ops.removePerson(doc, doc.graph.unions.find(u => u.id === adoptive).partners.find(p => p !== 'de_par_1_1'))).doc;
     expect(doc.graph.socialParentLinks).toEqual([]);
   });

@@ -65,6 +65,19 @@ function tagIssues(issues, source) {
 }
 
 /** A fresh pedigree: exactly the v1 starter (3 generations), as a v2 document. */
+/**
+ * The patient's name is a label, not part of the family: undo / redo of a
+ * graph edit keep the name as it is now (audit 2026-10-25: undo used to
+ * bring an earlier name back, also into the file names).
+ */
+function withName(doc, current) {
+  const name = current && current.patientName;
+  if ((doc.patientName || '') === (name || '')) return doc;
+  const out = { ...doc };
+  if (name) out.patientName = name; else delete out.patientName;
+  return out;
+}
+
 export function starterDocument() {
   const doc = migrateV1ToV2(cloneInitialState()).doc;
   // the proband opens marked affected (clinician request 2026-10-25)
@@ -431,7 +444,7 @@ export const usePedigreeStore = create((zSet, get) => {
     undo: () => zSet((state) => {
       const history = state._history || [];
       if (history.length === 0) return {};
-      const prev = history[history.length - 1];
+      const prev = withName(history[history.length - 1], state.doc);
       const views = state._viewHistory || [];
       const view = views.length === history.length ? views[views.length - 1] : null;
       return {
@@ -446,7 +459,7 @@ export const usePedigreeStore = create((zSet, get) => {
     redo: () => zSet((state) => {
       const future = state._future || [];
       if (future.length === 0) return {};
-      const next = future[future.length - 1];
+      const next = withName(future[future.length - 1], state.doc);
       const views = state._viewFuture || [];
       const view = views.length === future.length ? views[views.length - 1] : null;
       return {

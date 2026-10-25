@@ -83,7 +83,10 @@ export function ageOrder(kids, { inPlace = false } = {}) {
 /**
  * Step 3: partners who share a drawn ancestor ARE consanguineous, whichever
  * panel drew the shared ancestry, with the degree the drawing shows (a
- * declared degree richer than a partly drawn structure is kept). Returns the
+ * declared degree richer than a partly drawn structure is kept). A union
+ * the drawing alone made consanguineous (`consanguinityFromStructure`)
+ * loses it again when the shared ancestors are removed; one the clinician
+ * declared stays, as reported. Returns the
  * ids of the unions whose consanguinity fields it changed.
  */
 export function deriveConsanguinity(graph) {
@@ -93,8 +96,18 @@ export function deriveConsanguinity(graph) {
     const before = JSON.stringify([u.consanguineous, u.consanguinityDegree, u.consanguinityStatus, u.relationshipBackground]);
     const kin = kinshipOf(graph, u.partners[0], u.partners[1], idx);
     if (kin) {
+      // remember when only the drawing made them consanguineous
+      if (!u.consanguineous) u.consanguinityFromStructure = true;
       u.consanguineous = true;
       if (!KEEP_DECLARED.has(u.consanguinityDegree)) u.consanguinityDegree = kin.degree;
+    } else if (u.consanguinityFromStructure) {
+      // the shared ancestors are gone and nobody declared it: no double line
+      // (audit 2026-10-25; it used to stay as "reported")
+      delete u.consanguinityFromStructure;
+      u.consanguineous = false;
+      u.consanguinityDegree = null;
+      u.consanguinityStatus = 'none';
+      u.relationshipBackground = 'not_asked';
     }
     if (!u.consanguineous) {
       if (!u.consanguinityStatus) u.consanguinityStatus = 'none';

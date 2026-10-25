@@ -81,7 +81,9 @@ describe('the legend follows the findings', () => {
     expect(regionsOf('proband')).toEqual(['q1:solid:carrier']);
     const part = fillFor(person('proband'), key()).parts[0];
     expect(part.a1 - part.a0).toBe(45);
-    expect(person('proband').affected).toBe(false);
+    // the proband opens marked affected (clinician request 2026-10-25): a
+    // finding made carrier never erases an "affected" it did not set
+    expect(person('proband').affected).toBe(true);
     expect(fillFor({ affected: true }, key())).toEqual({ mode: 'full' });
     expect(fillFor({ carrier: true }, key())).toEqual({ mode: 'none' });
   });
@@ -136,7 +138,7 @@ describe('renderer contract', () => {
   });
   it('every text on the page can be corrected where it stands; the notes title is "Notlar"', () => {
     for (const kind of ["'patientName'", "'finding'", "'displayLabel'", "'condition'"]) expect(src).toContain(`, ${kind}, `);
-    expect(src).toContain("deathAge ? 'ageAtDeath' : 'age'");
+    expect(src).toContain('ageLine.kind, d.id, ageLine.value');
     for (const kind of ["['note',", "['causeOfDeath',", "['condition',"]) expect(src).toContain(kind);
     expect(src).toMatch(/className="inline-edit"/);
     expect(src).toMatch(/\.text\('Notlar'\)/);
