@@ -9,7 +9,7 @@ import { X, Trash2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { computeSiblingCreationPlan, computeUnionCreationPlan } from '../state/usePedigreeStore';
 import { AGE_EXAMPLE } from '../utils/age';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
-import { degreeLabel } from '../graph/kinship';
+import { degreeLabel, kinshipOf, kinshipCoefficient, childInbreeding, formatCoefficient, cousinMarriageName } from '../graph/kinship';
 import { groupOf, multipleName, zygosityLabel, ZYGOSITY } from '../graph/multiples';
 import BulkEditor from './BulkEditor';
 import DraftField from './DraftField';
@@ -69,11 +69,15 @@ const DEGREE_OPTIONS = [
  * "Var" offers degree and path, and the shared ancestors are drawn from the
  * choice (wizard template, wizardAdapter.js).
  */
-function RelationshipChoice({ u, onSetBackground, parentsCons }) {
+function RelationshipChoice({ u, onSetBackground, parentsCons, graph }) {
   const isParents = parentsCons && parentsCons.parents.unionId === u.id;
   const parents = isParents ? parentsCons.parents : null;
   const kin = parents ? parents.kinship : null;
   const drawn = isParents ? kin && !kin.fromTemplate : u.consanguinityStatus === 'known_supported';
+  // informational, for counselling and homozygosity comparison (clinician request 2026-10-25)
+  const cousinName = graph ? cousinMarriageName(graph, u.partners[0], u.partners[1]) : null;
+  const F = graph ? childInbreeding(graph, u.id) : 0;
+  const inbreeding = F > 0 && <span className="field-hint">Çocuklarında akrabalık katsayısı: <b>F = {formatCoefficient(F)}</b></span>;
   if (drawn) {
     const nameOf = parentsCons ? parentsCons.nameOf : (x) => x;
     return (
@@ -81,8 +85,10 @@ function RelationshipChoice({ u, onSetBackground, parentsCons }) {
         <span className="field-label">Akrabalık: var</span>
         <span className="field-hint">
           Çizime göre: {degreeLabel(isParents ? kin.degree : u.consanguinityDegree) || 'akraba'}
+          {cousinName ? ` (${cousinName})` : ''}
           {isParents && PATH_TEXT[parents.consanguinityPath] ? ` — ${PATH_TEXT[parents.consanguinityPath]}` : ''}.
         </span>
+        {inbreeding}
         {isParents && <span className="field-hint">Ortak atalar: {kin.ancestors.map(nameOf).join(', ')}</span>}
       </div>
     );
@@ -123,6 +129,8 @@ function RelationshipChoice({ u, onSetBackground, parentsCons }) {
           {kin
             ? <span className="field-hint">Ortak atalar çizildi: {kin.ancestors.map(parentsCons.nameOf).join(', ')}</span>
             : <span className="field-hint">Derece (1. kuzende yol da) seçilince ortak atalar otomatik çizilir; seçilmezse yalnız çift çizgi.</span>}
+          {kin && cousinName && <span className="field-hint">Eşler {cousinName}.</span>}
+          {inbreeding}
         </>
       )}
       {!isParents && value === 'yes' && <span className="field-hint">Ortak atalar çizimde yok; çift çizgi bildirime dayanır.</span>}
@@ -131,7 +139,7 @@ function RelationshipChoice({ u, onSetBackground, parentsCons }) {
 }
 
 /** One partnership: status (divorce/separation), consanguinity, children (couple card). */
-function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground, parentsCons, withChildren = true }) {
+function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground, parentsCons, withChildren = true, graph }) {
   const children = pcrs.find(r => r.unionId === u.id)?.children || [];
   return (
     <>
@@ -145,7 +153,7 @@ function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelati
         </label>
       )}
       {onSetUnionRelationshipBackground && (
-        <RelationshipChoice u={u} onSetBackground={onSetUnionRelationshipBackground} parentsCons={parentsCons} />
+        <RelationshipChoice u={u} onSetBackground={onSetUnionRelationshipBackground} parentsCons={parentsCons} graph={graph} />
       )}
       {withChildren && (
         <div className="field-col">
@@ -196,6 +204,32 @@ function MultiplesCard({ node, pedigreeData, displayNameFor, onAddMultiple, onSe
  * Two individuals selected (Cmd/Ctrl-click, or a click on their relationship
  * line): an existing couple gets its relationship card, others the pair actions.
  */
+/**
+ * How two selected people are related, and the share of genes they have in
+ * common (r = 2φ for people who are not inbred) — informational.
+ */
+function PairKinship({ a, b, graph }) {
+  if (!graph || a.placeholder || b.placeholder) return null;
+  const phi = kinshipCoefficient(graph, a.id, b.id);
+  if (!phi) return null;
+  const pcrs = graph.parentChildRelationships || [];
+  const unions = graph.unions || [];
+  const parentsOf = (id) => unions.find((u) => u.id === (pcrs.find((r) => r.children.includes(id)) || {}).unionId)?.partners || [];
+  const sameParents = pcrs.some((r) => r.children.includes(a.id) && r.children.includes(b.id));
+  const kin = kinshipOf(graph, a.id, b.id);
+  const what = parentsOf(b.id).includes(a.id) || parentsOf(a.id).includes(b.id) ? 'Ebeveyn – çocuk'
+    : sameParents ? 'Kardeş'
+      : kin ? `${degreeLabel(kin.degree)}${cousinMarriageName(graph, a.id, b.id) ? ` (${cousinMarriageName(graph, a.id, b.id)})` : ''}`
+        : 'Akraba';
+  return (
+    <div className="card">
+      <div className="card-title">Akrabalık</div>
+      <span className="field-hint">{what}</span>
+      <span className="field-hint">Ortak gen oranı: <b>{formatCoefficient(2 * phi)}</b></span>
+    </div>
+  );
+}
+
 function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSiblings, onClearSelection, unionProps, onSetMultipleBirth, bulk }) {
   // Authoritative safety checks (self/duplicate, pregnancy loss, siblings,
   // cross-generation; two different parent unions cannot be merged).
@@ -221,9 +255,10 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
         {couple && (
           <div className="card">
             <div className="card-title">Bu çift</div>
-            <UnionControls u={couple} pcrs={pedigreeData.parentChildRelationships || []} {...unionProps} />
+            <UnionControls u={couple} pcrs={pedigreeData.parentChildRelationships || []} {...unionProps} graph={pedigreeData} />
           </div>
         )}
+        {!couple && <PairKinship a={node} b={node2} graph={pedigreeData} />}
         {siblings && onSetMultipleBirth && (
           <div className="card">
             <div className="card-title">İkiz yap</div>
@@ -382,7 +417,7 @@ export default function IndividualEditor({
         {!isLoss && !node.placeholder && existingUnions.map(u => (
           <div className="card" key={u.id}>
             <div className="card-title">Eş: {displayNameFor(u.partners.find(p => p !== node.id))}</div>
-            <UnionControls u={u} pcrs={pcrs} onSetUnionStatus={onSetUnionStatus} withChildren={false}
+            <UnionControls u={u} pcrs={pcrs} onSetUnionStatus={onSetUnionStatus} withChildren={false} graph={pedigreeData}
               onSetUnionRelationshipBackground={onSetUnionRelationshipBackground} parentsCons={parentsCons} />
           </div>
         ))}
