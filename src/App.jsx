@@ -1,7 +1,7 @@
 import React from 'react';
 import * as d3 from 'd3';
 import { usePedigreeStore, needsLeaveWarning, flushAutosave } from './state/usePedigreeStore';
-import { exportSVG, exportPNG, exportFileName } from './utils/exportUtils';
+import { exportSVG, exportPNG, exportFileName, pngBlob, shareFile, downloadBlob } from './utils/exportUtils';
 import { assessExportReadiness } from './utils/exportReadiness';
 import { withStableIdsExcludingDismissed } from './utils/warningIds';
 import { clinicalNotices } from './utils/clinicalNotices';
@@ -11,7 +11,7 @@ import RadialAddMenu from './components/RadialAddMenu';
 import { flushDrafts } from './utils/drafts';
 import DraftField from './components/DraftField';
 import { nextPerson, RING_KEYS } from './utils/keyboardNav';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare } from 'lucide-react';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2 } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
 
@@ -152,6 +152,38 @@ function App() {
     } catch (err) {
       setExportNotice(null);
       setExportError(err.message || 'PNG dışa aktarılamadı.');
+    }
+  };
+
+  // Share (WhatsApp, Gmail … through the device's share sheet; clinician
+  // request 2026-10-25). The images are made when the menu opens, so the
+  // share itself still counts as the tap that asked for it (Safari).
+  const [share, setShare] = React.useState(null); // null | { withName?: File, noName?: File, busy }
+  const openShare = async () => {
+    if (share) { setShare(null); return; }
+    const assessment = gateExport();
+    if (!assessment) return;
+    setShare({ busy: true });
+    try {
+      const name = (doc.patientName || '').trim();
+      const noName = new File([await pngBlob(svgRef.current, { withoutPatientName: true })], exportFileName('', 'png'), { type: 'image/png' });
+      const withName = name ? new File([await pngBlob(svgRef.current)], exportFileName(name, 'png'), { type: 'image/png' }) : null;
+      setShare({ withName, noName, busy: false });
+    } catch (err) {
+      setShare(null);
+      setExportError(err.message || 'Paylaşım için resim hazırlanamadı.');
+    }
+  };
+  const doShare = async (file) => {
+    try {
+      const r = await shareFile(file, 'Pedigri');
+      if (r === 'unsupported') {
+        downloadBlob(file, file.name);
+        setExportNotice('Bu tarayıcı doğrudan paylaşmayı desteklemiyor; resim indirildi. WhatsApp ya da Gmail’de ek olarak seçebilirsiniz.');
+      }
+      setShare(null);
+    } catch (err) {
+      setExportError(err.message);
     }
   };
 
@@ -329,6 +361,27 @@ function App() {
           <div className="toolbar-group">
             <button className="ui-btn" onClick={handleExportSVG} title="SVG olarak indir"><Download size={15} /> SVG</button>
             <button className="ui-btn ui-btn-primary" onClick={handleExportPNG} title="PNG olarak indir"><ImageIcon size={15} /> PNG</button>
+            <div className="keys-wrap">
+              <button className="ui-btn" onClick={openShare} aria-expanded={!!share} title="Resmi WhatsApp, Gmail … ile gönder">
+                <Share2 size={15} /> Paylaş
+              </button>
+              {share && (
+                <div className="keys-popover share-popover" role="dialog" aria-label="Paylaş">
+                  <p className="share-note">Resim bu cihazdan çıkar ve hasta bilgileri içerir.</p>
+                  {share.busy ? <p className="share-note">Resim hazırlanıyor…</p> : (
+                    <div className="share-actions">
+                      {share.withName && (
+                        <button className="ui-btn ui-btn-primary" onClick={() => doShare(share.withName)}>Adıyla paylaş</button>
+                      )}
+                      <button className={`ui-btn${share.withName ? '' : ' ui-btn-primary'}`} onClick={() => doShare(share.noName)}>
+                        {share.withName ? 'Hasta adı olmadan' : 'Paylaş'}
+                      </button>
+                    </div>
+                  )}
+                  {share.withName && <p className="share-note">“Hasta adı olmadan”: üstteki ad resimden çıkarılır; etiketler ve notlar olduğu gibi kalır.</p>}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

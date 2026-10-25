@@ -49,9 +49,15 @@ function readViewBox(svg) {
  *
  * Falls back to the element itself when it cannot be cloned (non-DOM stubs).
  */
-export function prepareExportSvg(svg) {
+export function prepareExportSvg(svg, { withoutPatientName = false } = {}) {
   if (!svg || typeof svg.cloneNode !== 'function') return svg;
   const clone = svg.cloneNode(true);
+  // keyboard / screen-reader helpers of the screen are not part of the file
+  clone.querySelectorAll?.('[data-node-id]').forEach((n) => {
+    ['data-node-id', 'tabindex', 'role', 'aria-label'].forEach((a) => n.removeAttribute(a));
+  });
+  // sharing without the patient's name (labels and notes stay as they are)
+  if (withoutPatientName) clone.querySelectorAll?.('.patient-header').forEach((n) => n.remove());
   const vb = readViewBox(svg);
   if (vb) {
     clone.setAttribute('width', String(Math.ceil(vb.width)));
@@ -75,9 +81,9 @@ export function prepareExportSvg(svg) {
   return clone;
 }
 
-function serializeSvg(svg) {
+function serializeSvg(svg, opts) {
   const serializer = new XMLSerializer();
-  let source = serializer.serializeToString(prepareExportSvg(svg));
+  let source = serializer.serializeToString(prepareExportSvg(svg, opts));
 
   // Add name spaces.
   if (!source.match(/^<svg[^>]+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/)) {
@@ -122,11 +128,11 @@ export function exportSVG(svgElement, filename = 'pedigree.svg') {
 }
 
 /**
- * Export the pedigree as a PNG file.
- * @param {SVGSVGElement} [svgElement] - the live svg node (preferred). Falls back to #pedigree-svg.
- * @returns {Promise<void>} resolves once the download has been triggered, rejects with ExportError on failure.
+ * The pedigree as a PNG image (Blob), 2× for print quality — for download
+ * and for sharing. `withoutPatientName` leaves the patient's name out.
+ * @returns {Promise<Blob>} rejects with ExportError on failure
  */
-export function exportPNG(svgElement, filename = 'pedigree.png') {
+export function pngBlob(svgElement, opts = {}) {
   return new Promise((resolve, reject) => {
     let svg;
     try {
@@ -136,7 +142,7 @@ export function exportPNG(svgElement, filename = 'pedigree.png') {
       return;
     }
 
-    const source = serializeSvg(svg);
+    const source = serializeSvg(svg, opts);
     const img = new Image();
     const svgBlob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(svgBlob);
@@ -160,10 +166,7 @@ export function exportPNG(svgElement, filename = 'pedigree.png') {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         URL.revokeObjectURL(url);
-
-        const imgURI = canvas.toDataURL('image/png').replace('image/png', 'image/octet-stream');
-        triggerDownload(imgURI, filename);
-        resolve();
+        canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new ExportError('PNG oluşturulamadı.'))), 'image/png');
       } catch (err) {
         URL.revokeObjectURL(url);
         reject(new ExportError(`PNG oluşturulamadı: ${err.message}`));
@@ -177,4 +180,38 @@ export function exportPNG(svgElement, filename = 'pedigree.png') {
 
     img.src = url;
   });
+}
+
+/**
+ * Export the pedigree as a PNG file.
+ * @param {SVGSVGElement} [svgElement] - the live svg node (preferred). Falls back to #pedigree-svg.
+ * @returns {Promise<void>} resolves once the download has been triggered, rejects with ExportError on failure.
+ */
+export async function exportPNG(svgElement, filename = 'pedigree.png') {
+  const blob = await pngBlob(svgElement);
+  downloadBlob(blob, filename);
+}
+
+/** Save a Blob as a file. */
+export function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  triggerDownload(url, filename);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * Hand a file to the device's share sheet (WhatsApp, Gmail, …). Returns
+ * 'shared', 'cancelled', or 'unsupported' (the browser cannot share files:
+ * the caller downloads it instead).
+ */
+export async function shareFile(file, title = 'Pedigri') {
+  const nav = typeof navigator !== 'undefined' ? navigator : null;
+  if (!nav || !nav.share || !nav.canShare || !nav.canShare({ files: [file] })) return 'unsupported';
+  try {
+    await nav.share({ files: [file], title });
+    return 'shared';
+  } catch (err) {
+    if (err && err.name === 'AbortError') return 'cancelled';
+    throw new ExportError(`Paylaşılamadı: ${err.message}`);
+  }
 }
