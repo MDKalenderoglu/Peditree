@@ -57,7 +57,7 @@ export function assessExportReadiness({ pedigreeData, integrityIssues, svgElemen
 
   // --- FATAL: no renderable SVG ---
   if (!svgElement) {
-    fatal.push('Pedigri çizimi bulunamadı — export edilecek bir grafik yok.');
+    fatal.push('Pedigri çizimi bulunamadı — dışa aktarılacak bir çizim yok.');
   }
 
   const individuals = pedigreeData?.individuals || [];

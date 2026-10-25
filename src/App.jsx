@@ -72,17 +72,17 @@ function App() {
 
     if (!assessment.canExport) {
       setExportNotice(null);
-      setExportError(`Export engellendi (düzeltilmesi gereken kritik sorunlar var):\n${assessment.fatal.join('\n')}`);
+      setExportError(`Dışa aktarma yapılmadı (önce düzeltilmesi gereken sorunlar var):\n${assessment.fatal.join('\n')}`);
       return null;
     }
 
     if (assessment.errors.length > 0) {
       const proceed = window.confirm(
-        `Pedigride ciddi veri kalitesi sorunları var:\n\n${assessment.errors.join('\n')}\n\nYine de export etmek istiyor musunuz?`
+        `Pedigride ciddi veri kalitesi sorunları var:\n\n${assessment.errors.join('\n')}\n\nYine de dışa aktarmak istiyor musunuz?`
       );
       if (!proceed) {
         setExportError(null);
-        setExportNotice('Export iptal edildi.');
+        setExportNotice('Dışa aktarma iptal edildi.');
         return null;
       }
     }
@@ -98,11 +98,11 @@ function App() {
       markDownloaded();
       setExportError(null);
       setExportNotice(assessment.warnings.length > 0
-        ? `Export tamamlandı — dikkat edilmesi gerekenler:\n${assessment.warnings.join('\n')}`
+        ? `Dışa aktarıldı — dikkat edilmesi gerekenler:\n${assessment.warnings.join('\n')}`
         : null);
     } catch (err) {
       setExportNotice(null);
-      setExportError(err.message || 'SVG export başarısız oldu.');
+      setExportError(err.message || 'SVG dışa aktarılamadı.');
     }
   };
 
@@ -114,11 +114,11 @@ function App() {
       markDownloaded();
       setExportError(null);
       setExportNotice(assessment.warnings.length > 0
-        ? `Export tamamlandı — dikkat edilmesi gerekenler:\n${assessment.warnings.join('\n')}`
+        ? `Dışa aktarıldı — dikkat edilmesi gerekenler:\n${assessment.warnings.join('\n')}`
         : null);
     } catch (err) {
       setExportNotice(null);
-      setExportError(err.message || 'PNG export başarısız oldu.');
+      setExportError(err.message || 'PNG dışa aktarılamadı.');
     }
   };
 
@@ -283,7 +283,7 @@ function App() {
         {exportError && (
           <div className="warning-panel" style={{ borderColor: '#dc2626', background: '#fef2f2' }}>
             <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '5px', color: '#dc2626' }}>
-              <AlertTriangle size={16} /> Export Hatası
+              <AlertTriangle size={16} /> Dışa aktarma hatası
             </h4>
             <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: '#991b1b', whiteSpace: 'pre-line' }}>{exportError}</p>
           </div>
@@ -292,7 +292,7 @@ function App() {
         {exportNotice && (
           <div className="warning-panel" style={{ borderColor: '#d97706', background: '#fffbeb' }}>
             <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '5px', color: '#b45309' }}>
-              <AlertTriangle size={16} /> Export Uyarısı
+              <AlertTriangle size={16} /> Dışa aktarma uyarısı
             </h4>
             <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: '#92400e', whiteSpace: 'pre-line' }}>{exportNotice}</p>
           </div>

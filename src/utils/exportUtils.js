@@ -25,7 +25,7 @@ export class ExportError extends Error {
 function resolveSvgElement(svgElement) {
   const el = svgElement || (typeof document !== 'undefined' ? document.getElementById('pedigree-svg') : null);
   if (!el) {
-    throw new ExportError('Pedigri çizimi bulunamadı — export yapılamadı. Önce bir pedigri oluşturun.');
+    throw new ExportError('Pedigri çizimi bulunamadı — dışa aktarılamadı. Önce bir pedigri oluşturun.');
   }
   return el;
 }
