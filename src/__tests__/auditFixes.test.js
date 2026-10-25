@@ -282,3 +282,26 @@ describe('#2 the child of a cross-generation couple can be the proband', () => {
     expect(errors()).toEqual([]);
   });
 });
+
+describe('#13 the findings key holds 16 findings, then says so', () => {
+  it('a 17th finding is refused with a clear message by every way in; the 16 stay usable', async () => {
+    const { suggestStyle, keyFull } = await import('../graph/conditionKey');
+    S().resetPedigree();
+    for (let i = 1; i <= 16; i++) S().addFinding('mother', `Bulgu ${i}`, suggestStyle(S().doc.graph.conditionKey));
+    const key = S().doc.graph.conditionKey;
+    expect(key).toHaveLength(16);
+    expect(new Set(key.map(e => `${e.region}|${e.fill}`)).size).toBe(16);
+    expect(keyFull(key)).toBe(true);
+    expect(suggestStyle(key)).toBeNull();
+    const before = S().doc;
+    S().addFinding('father', 'Bulgu 17', null);
+    expect(S().doc).toBe(before);
+    expect(S().actionNotice.message).toMatch(/16 bulgu sınırı/);
+    S().setFindingStatus('father', 'Bulgu 17', 'carrier');
+    expect(S().doc).toBe(before);
+    S().addFindingMany(['father', 'proband'], 'Bulgu 17', null);
+    expect(S().doc).toBe(before);
+    S().setFindingStatus('father', 'Bulgu 3', 'affected');
+    expect(P('father').conditions.map(c => c.label)).toEqual(['Bulgu 3']);
+  });
+});

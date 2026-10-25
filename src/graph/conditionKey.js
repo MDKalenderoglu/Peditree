@@ -31,16 +31,30 @@ const personLabels = (p) => (Array.isArray(p.conditions) ? p.conditions : [])
 const signature = (e) => `${e.region}|${e.fill}`;
 const validStyle = (e) => REGIONS.includes(e.region) && FILLS.includes(e.fill);
 
-/** The next free (region, fill): quadrants in solid first, then the other fills. */
+// 4 quadrants × 4 fills: when all are used no new finding can be drawn apart
+// from the others; adding one is refused with this message (clinician
+// decision 2026-10-25: an explicit warning, the clinician simplifies)
+export const KEY_CAPACITY = REGIONS.length * FILLS.length;
+export const KEY_FULL_MESSAGE = '16 bulgu sınırına ulaşıldı: her bulgu sembolde kendine ait bir çeyrek ve dolguyla gösteriliyor ve boş işaret kalmadı. Yeni bulgu eklemek için benzer bulguları tek bir adda toplayın ya da gereksiz bir bulguyu kaldırın.';
+
+export function keyFull(key = []) {
+  return new Set(key.filter(validStyle).map(signature)).size >= KEY_CAPACITY;
+}
+
+/** The next free (region, fill): quadrants in solid first, then the other fills; null when all are used. */
 export function suggestStyle(key = []) {
   const taken = new Set(key.filter(validStyle).map(signature));
   for (const fill of FILLS) for (const region of REGIONS) if (!taken.has(`${region}|${fill}`)) return { region, fill };
-  return { region: 'q1', fill: 'solid' };
+  return null;
 }
 
 export function styleTaken(key, { region, fill }, exceptLabel) {
   return (key || []).some((e) => validStyle(e) && e.region === region && e.fill === fill && normLabel(e.label) !== normLabel(exceptLabel));
 }
+
+// only for a file from elsewhere with more than 16 findings (the editor refuses
+// a 17th): it is still drawn, sharing the first signature
+const FALLBACK_STYLE = { region: 'q1', fill: 'solid' };
 
 /** Bring graph.conditionKey in step with the people's findings (in place). */
 export function deriveConditionKey(graph) {
@@ -52,13 +66,13 @@ export function deriveConditionKey(graph) {
   for (const e of graph.conditionKey || []) {
     if (!used.has(normLabel(e.label))) continue;
     // an entry from before styles existed (or a clash) gets the next free signature
-    key.push(validStyle(e) && !styleTaken(key, e) ? e : { ...e, ...suggestStyle(key) });
+    key.push(validStyle(e) && !styleTaken(key, e) ? e : { ...e, ...(suggestStyle(key) || FALLBACK_STYLE) });
   }
   const have = new Set(key.map((e) => normLabel(e.label)));
   let n = Math.max(0, ...key.map((e) => Number(String(e.id).replace(/^k/, '')) || 0));
   for (const [norm, label] of used) {
     if (have.has(norm)) continue;
-    key.push({ id: `k${++n}`, label, ...suggestStyle(key) });
+    key.push({ id: `k${++n}`, label, ...(suggestStyle(key) || FALLBACK_STYLE) });
     have.add(norm);
   }
   graph.conditionKey = key;

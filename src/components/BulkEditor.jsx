@@ -6,7 +6,7 @@
  */
 import { useState } from 'react';
 import { FindingGlyph, StylePicker } from './FindingsPalette';
-import { normLabel, suggestStyle, styleTaken } from '../graph/conditionKey';
+import { normLabel, suggestStyle, styleTaken, KEY_FULL_MESSAGE } from '../graph/conditionKey';
 
 const findingState = (p, label) => {
   const c = (Array.isArray(p.conditions) ? p.conditions : []).find(x => normLabel(x.label) === normLabel(label));
@@ -67,13 +67,19 @@ export default function BulkEditor({ nodes, conditionKey = [], onUpdateMany, onS
           })}
         </div>
       )}
-      <div className="finding-new">
-        <FindingGlyph region={suggested.region} fill={suggested.fill} />
-        <input type="text" className="input" value={draft} placeholder="Yeni bulgu (hepsine)"
-          onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }} />
-        <button className="ui-btn ui-btn-sm ui-btn-primary" disabled={!draft.trim()} onClick={add}>Ekle</button>
-      </div>
-      {draft.trim() && <StylePicker value={suggested} isTaken={(st2) => styleTaken(conditionKey, st2)} onChange={setStyle} />}
+      {suggested ? (
+        <>
+        <div className="finding-new">
+          <FindingGlyph region={suggested.region} fill={suggested.fill} />
+          <input type="text" className="input" value={draft} placeholder="Yeni bulgu (hepsine)"
+            onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }} />
+          <button className="ui-btn ui-btn-sm ui-btn-primary" disabled={!draft.trim()} onClick={add}>Ekle</button>
+        </div>
+        {draft.trim() && <StylePicker value={suggested} isTaken={(st2) => styleTaken(conditionKey, st2)} onChange={setStyle} />}
+        </>
+      ) : (
+        <div className="field-hint finding-limit" role="alert">{KEY_FULL_MESSAGE}</div>
+      )}
     </div>
   );
 }

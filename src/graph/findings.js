@@ -10,7 +10,7 @@
  * was made carrier); a hand toggle takes over (ops.updatePerson).
  */
 import { commit, block } from './ops';
-import { normLabel, keyEntry, styleTaken, REGIONS, FILLS } from './conditionKey';
+import { normLabel, keyEntry, styleTaken, keyFull, KEY_FULL_MESSAGE, REGIONS, FILLS } from './conditionKey';
 
 const STATUSES = ['affected', 'carrier', 'none'];
 
@@ -37,6 +37,7 @@ export function setFindingStatus(doc, personId, label, status) {
     if (!String(label || '').trim()) block('Bulgunun adı boş olamaz.');
     const p = d.graph.individuals.find((i) => i.id === personId);
     if (!p) block('Birey grafikte bulunamadı.');
+    if (status !== 'none' && !keyEntry(d.graph.conditionKey, label) && keyFull(d.graph.conditionKey)) block(KEY_FULL_MESSAGE);
     applyStatus(p, label, status);
   });
 }
@@ -52,6 +53,7 @@ export function addFinding(doc, personId, label, style = null) {
     const p = d.graph.individuals.find((i) => i.id === personId);
     if (!p) block('Birey grafikte bulunamadı.');
     d.graph.conditionKey = d.graph.conditionKey || [];
+    if (!keyEntry(d.graph.conditionKey, name) && keyFull(d.graph.conditionKey)) block(KEY_FULL_MESSAGE);
     if (style && !keyEntry(d.graph.conditionKey, name)) {
       if (!REGIONS.includes(style.region) || !FILLS.includes(style.fill)) block('Geçersiz bölge ya da dolgu.');
       if (styleTaken(d.graph.conditionKey, style)) block('Bu bölge ve dolgu başka bir bulguda kullanılıyor; başka bir seçim yapın.');

@@ -7,7 +7,7 @@
  * everyone. Used in the ring menu and in the right panel.
  */
 import { useId, useState } from 'react';
-import { REGIONS, REGION_LABEL, FILLS, FILL_LABEL, REGION_ANGLES, suggestStyle, styleTaken, normLabel } from '../graph/conditionKey';
+import { REGIONS, REGION_LABEL, FILLS, FILL_LABEL, REGION_ANGLES, suggestStyle, styleTaken, normLabel, KEY_FULL_MESSAGE } from '../graph/conditionKey';
 
 const INK = '#1e293b';
 
@@ -113,14 +113,20 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
           })}
         </div>
       )}
-      <div className="finding-new">
-        <FindingGlyph region={suggested.region} fill={suggested.fill} shape={shape} />
-        <input type="text" className="input" value={draft} placeholder="Yeni bulgu, örn. miyop"
-          onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }} />
-        <button className="ui-btn ui-btn-sm ui-btn-primary" disabled={!draft.trim()} onClick={add}>Ekle</button>
-      </div>
-      {draft.trim() && (
-        <StylePicker value={suggested} isTaken={(st2) => styleTaken(conditionKey, st2)} onChange={setStyle} />
+      {suggested ? (
+        <>
+        <div className="finding-new">
+          <FindingGlyph region={suggested.region} fill={suggested.fill} shape={shape} />
+          <input type="text" className="input" value={draft} placeholder="Yeni bulgu, örn. miyop"
+            onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }} />
+          <button className="ui-btn ui-btn-sm ui-btn-primary" disabled={!draft.trim()} onClick={add}>Ekle</button>
+        </div>
+        {draft.trim() && (
+          <StylePicker value={suggested} isTaken={(st2) => styleTaken(conditionKey, st2)} onChange={setStyle} />
+        )}
+        </>
+      ) : (
+        <div className="field-hint finding-limit" role="alert">{KEY_FULL_MESSAGE}</div>
       )}
     </div>
   );
