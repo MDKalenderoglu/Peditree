@@ -30,6 +30,7 @@ import { fillFor, REGION_ANGLES } from '../graph/conditionKey';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { annotationAge } from '../utils/annotations';
 import { packLines } from '../utils/textWrap';
+import { GENETIC_TEST } from '../graph/ops';
 
 const EDGE_COLOR = '#64748b';
 const NODE_STROKE = '#1e293b';
@@ -214,7 +215,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       ...conditionKey.filter(e => has('affected', e)).map(e => ({ ...e, carrier: false, text: e.label })),
       ...conditionKey.filter(e => has('carrier', e)).map(e => ({ ...e, carrier: true, text: `${e.label} taşıyıcısı` })),
     ];
-    const notedNodes = nodes.filter(n => n.notes || n.condition || (n.deceased && n.causeOfDeath));
+    const onsetsOf = (n) => (n.conditions || []).filter(c => c && c.label && c.onsetAge && (c.status === 'affected' || c.status === 'carrier'));
+    const notedNodes = nodes.filter(n => n.notes || n.condition || (n.deceased && n.causeOfDeath) || onsetsOf(n).length);
+    const hasTests = nodes.some(n => GENETIC_TEST[n.geneticTest]);
     // legends grow with a wide pedigree, so they read at the same size once
     // the drawing is fitted to the screen (clinician feedback 2026-10-24)
     const LK = Math.max(1.2, (d3.max(nodes, d => d.x) - d3.min(nodes, d => d.x) + 200) / 900);
@@ -244,14 +247,18 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       const parts = [];
       if (n.condition) parts.push(['condition', n.condition, n.condition]);
       if (n.deceased && n.causeOfDeath) parts.push(['causeOfDeath', `Ölüm: ${n.causeOfDeath}`, n.causeOfDeath]);
+      // the age a finding was diagnosed at (clinician decision 2026-10-25: here, not under the symbol)
+      onsetsOf(n).forEach(c => parts.push(['onset', `${c.label}: tanı ${/^\d+(,\d+)?$/.test(c.onsetAge) ? `${c.onsetAge} yaş` : c.onsetAge}`, c.onsetAge, `${n.id}\u0001${c.label}`]));
       if (n.notes) parts.push(['note', n.notes, n.notes]);
-      parts.forEach(([kind, shown, value], k) => {
+      parts.forEach(([kind, shown, value, target], k) => {
         if (k) segs.push({ text: ' | ' });
-        segs.push({ text: shown, kind, target: n.id, value });
+        segs.push({ text: shown, kind, target: target || n.id, value });
       });
       return packLines(segs, noteChars);
     });
-    const notesBlock = notedNodes.length ? TITLE_ROW + d3.sum(noteLines, l => l.length) * NOTE_ROW + 10 * LK : 0;
+    // what E means, once, when anyone has a test result (NSGC: defined in the key)
+    if (hasTests) noteLines.unshift(packLines([{ text: 'E: ', head: true }, { text: 'genetik değerlendirme / test — E+ pozitif, E− negatif, E VUS önemi belirsiz varyant' }], noteChars));
+    const notesBlock = noteLines.length ? TITLE_ROW + d3.sum(noteLines, l => l.length) * NOTE_ROW + 10 * LK : 0;
     // the key's first line (clinician request 2026-10-25): the patient's
     // name, the proband's own symbol, the proband's findings
     const probandNode = nodes.find(n => n.proband);
@@ -359,6 +366,18 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         .attr('x', e.x).attr('y', e.y).attr('text-anchor', 'middle')
         .attr('font-size', '11px').attr('font-weight', '600').attr('fill', NODE_STROKE)
         .text('?');
+    });
+
+    // No children (one bar) / infertile (two bars), NSGC; the reason below
+    edges.filter(e => e.type === 'childless').forEach(e => {
+      const m = g.append('g').attr('class', 'childless-mark');
+      m.append('line').attr('x1', e.x).attr('y1', e.y).attr('x2', e.x).attr('y2', e.y + 24).attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5);
+      m.append('line').attr('x1', e.x - 11).attr('y1', e.y + 24).attr('x2', e.x + 11).attr('y2', e.y + 24).attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5);
+      if (e.kind === 'infertile') m.append('line').attr('x1', e.x - 11).attr('y1', e.y + 29).attr('x2', e.x + 11).attr('y2', e.y + 29).attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5);
+      if (e.reason) {
+        editable(m.append('text').attr('x', e.x).attr('y', e.y + (e.kind === 'infertile' ? 43 : 38)).attr('text-anchor', 'middle')
+          .attr('font-size', '10px').attr('fill', '#475569').text(e.reason), 'childlessReason', e.unionId, e.reason);
+      }
     });
 
     // Relationship lines are clickable (selects the couple). Wide transparent
@@ -591,20 +610,41 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       // --- Annotations below node ---
       let lineY = sz + 14;
       const LINE_H = 13;
+      // the proband's lines stand a little to the right, clear of the arrow at the lower left
+      const ann = el.append('g').attr('class', 'annotations').attr('transform', d.proband ? 'translate(14,0)' : null);
 
       // Age, or "d." and the age at death (also without an age filled in)
       const ageLine = annotationAge(d);
       if (ageLine) {
-        editable(el.append('text')
+        editable(ann.append('text')
           .attr('y', lineY).attr('text-anchor', 'middle')
           .attr('font-size', '11px').attr('fill', '#475569')
           .text(ageLine.text), ageLine.kind, d.id, ageLine.value);
         lineY += LINE_H;
       }
 
+      // NSGC evaluation: E+ / E− / E VUS / E, then the clinician's own text
+      // (variant, "het", "sonuç belgesi yok" …) wrapped, never cut
+      if (GENETIC_TEST[d.geneticTest]) {
+        editable(ann.append('text')
+          .attr('y', lineY).attr('text-anchor', 'middle')
+          .attr('font-size', '11px').attr('font-weight', '600').attr('fill', '#334155')
+          .text(GENETIC_TEST[d.geneticTest]), 'geneticTest', d.id, GENETIC_TEST[d.geneticTest]);
+        lineY += LINE_H;
+      }
+      if (d.geneticNote) {
+        packLines([{ text: d.geneticNote }], d.proband ? 15 : 18).forEach(line => {
+          editable(ann.append('text')
+            .attr('y', lineY - 1).attr('text-anchor', 'middle')
+            .attr('font-size', '9.5px').attr('fill', '#475569')
+            .text(line.map(p => p.text).join('')), 'geneticNote', d.id, d.geneticNote);
+          lineY += 11;
+        });
+      }
+
       // Display label
       if (d.displayLabel) {
-        editable(el.append('text')
+        editable(ann.append('text')
           .attr('y', lineY).attr('text-anchor', 'middle')
           .attr('font-size', '11px').attr('fill', '#475569')
           .text(d.displayLabel), 'displayLabel', d.id, d.displayLabel);
@@ -613,7 +653,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
 
       // Condition
       if (d.condition) {
-        editable(el.append('text')
+        editable(ann.append('text')
           .attr('y', lineY).attr('text-anchor', 'middle')
           .attr('font-size', '10px').attr('fill', '#6366f1')
           .attr('font-style', 'italic')
@@ -625,7 +665,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       {
         const noteIdx = notedNodes.indexOf(d);
         if (noteIdx >= 0) {
-          el.append('text')
+          ann.append('text')
             .attr('y', lineY).attr('text-anchor', 'middle')
             .attr('font-size', '9px').attr('fill', '#ef4444')
             .attr('font-weight', '600')
@@ -698,7 +738,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     let legendY = legendTop;
 
     // --- Notes legend (each part editable where it stands) ---
-    if (notedNodes.length > 0) {
+    if (noteLines.length > 0) {
       const legendG = svg.append('g').attr('class', 'notes-legend');
       legendG.append('text')
         .attr('x', legendX).attr('y', legendY + 12 * LK)

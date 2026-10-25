@@ -401,6 +401,8 @@ export const usePedigreeStore = create((zSet, get) => {
     setFindingStatus: (personId, label, status) => apply(findings.setFindingStatus(get().doc, personId, label, status)),
     setFindingStyle: (label, style) => apply(findings.setFindingStyle(get().doc, label, style)),
     renameFinding: (oldLabel, newLabel) => apply(findings.renameFinding(get().doc, oldLabel, newLabel)),
+    setFindingOnset: (personId, label, onset) => apply(findings.setFindingOnset(get().doc, personId, label, onset)),
+    setChildlessness: (unionId, kind, reason) => apply(ops.setChildlessness(get().doc, unionId, kind, reason)),
 
     // ── twins / multiple births ──
     setMultipleBirth: (childIds, zygosity) => apply(multiples.setMultipleBirth(get().doc, childIds, zygosity)),

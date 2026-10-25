@@ -224,6 +224,11 @@ export function updatePerson(doc, id, fields) {
     }
     for (const [k, v] of Object.entries(fields)) {
       if (PROTECTED_FIELDS.has(k)) continue;
+      if (k === 'geneticTest') {
+        if (v && !GENETIC_TEST[v]) block('Genetik test sonucu E+, E−, E VUS ya da E olmalı.');
+        if (v) p.geneticTest = v; else delete p.geneticTest;
+        continue;
+      }
       if (k === 'age' || k === 'ageAtDeath') {
         const age = normalizeAge(v);
         if (age === null) block(`Yaş anlaşılamadı: "${v}" (${AGE_EXAMPLE}).`);
@@ -470,6 +475,26 @@ export function setUnionConsanguineous(doc, unionId, value, extra = {}) {
     if (!value) {
       u.consanguinityStatus = 'none';
       if (CONSANGUINITY_BACKGROUNDS.has(u.relationshipBackground)) u.relationshipBackground = 'not_asked';
+    }
+  });
+}
+
+// NSGC evaluation below the symbol (clinician decision 2026-10-25): E+ a
+// positive genetic test, E− negative, E VUS a variant of unknown
+// significance, E tested / evaluated with no result to show; geneticNote is
+// free text under it (the variant, "het", "VUS", "sonuç belgesi yok" …)
+export const GENETIC_TEST = { positive: 'E+', negative: 'E−', vus: 'E VUS', tested: 'E' };
+
+/** A couple without children: 'by_choice' (one bar, NSGC) or 'infertile' (two bars), with the reason written below. */
+export function setChildlessness(doc, unionId, kind, reason) {
+  return commit(doc, (d) => {
+    const u = d.graph.unions.find((x) => x.id === unionId);
+    if (!u) block('Birliktelik grafikte bulunamadı.');
+    if (kind && !['by_choice', 'infertile'].includes(kind)) block('Bilinmeyen çocuksuzluk türü.');
+    if (kind !== undefined) { if (kind) u.childless = kind; else delete u.childless; }
+    if (reason !== undefined) {
+      const r = String(reason || '').trim();
+      if (r) u.childlessReason = r; else delete u.childlessReason;
     }
   });
 }

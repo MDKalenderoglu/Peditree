@@ -38,7 +38,7 @@ export const PERSON_DEFAULTS = {
  */
 export const CLINICAL_FIELDS = [
   'age', 'displayLabel', 'affected', 'carrier', 'notes', 'condition',
-  'ageAtDeath', 'causeOfDeath', 'conditions',
+  'ageAtDeath', 'causeOfDeath', 'conditions', 'geneticTest', 'geneticNote', 'birthDate',
 ];
 
 export function makePerson(props) {

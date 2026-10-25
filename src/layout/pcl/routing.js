@@ -306,6 +306,11 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
     if (u.status === 'divorced' || u.status === 'separated') {
       edges.push({ type: 'divorceSlash', x: geom.prefX, y: geom.y, status: u.status, unionId: u.id });
     }
+    // NSGC: a couple without children by choice / reason unknown (one bar)
+    // or infertile (two bars), the reason below — only while they have none
+    if ((u.childless === 'by_choice' || u.childless === 'infertile') && !hasKids(u.id)) {
+      edges.push({ type: 'childless', x: geom.prefX, y: geom.y, kind: u.childless, reason: u.childlessReason || '', unionId: u.id });
+    }
   }
 
   // ── lines of descent, sibship buses, stems ──

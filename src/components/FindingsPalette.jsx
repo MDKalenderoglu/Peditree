@@ -7,6 +7,7 @@
  * everyone. Used in the ring menu and in the right panel.
  */
 import { useId, useState } from 'react';
+import DraftField from './DraftField';
 import { REGIONS, REGION_LABEL, FILLS, FILL_LABEL, REGION_ANGLES, suggestStyle, styleTaken, normLabel, KEY_FULL_MESSAGE } from '../graph/conditionKey';
 
 const INK = '#1e293b';
@@ -67,7 +68,7 @@ export function StylePicker({ value, onChange, isTaken }) {
   );
 }
 
-export default function FindingsPalette({ node, conditionKey = [], onSetStatus, onAdd, onSetStyle, compact = false }) {
+export default function FindingsPalette({ node, conditionKey = [], onSetStatus, onAdd, onSetStyle, onSetOnset, compact = false }) {
   const [draft, setDraft] = useState('');
   const [style, setStyle] = useState(null);
   const [editing, setEditing] = useState(null);
@@ -103,6 +104,15 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
                       onClick={() => onSetStatus(node.id, e.label, v)}>{t}</button>
                   ))}
                 </div>
+                {/* the age it was diagnosed at (shown in the notes; clinician decision 2026-10-25) */}
+                {onSetOnset && st !== 'none' && (
+                  <label className="finding-onset">
+                    <span>Tanı yaşı</span>
+                    <DraftField key={`${node.id}-${e.id}-onset`} type="text" className="input input-age" placeholder="3 ay…"
+                      value={(conds.find(x => normLabel(x.label) === normLabel(e.label)) || {}).onsetAge || ''}
+                      onCommit={v => onSetOnset(node.id, e.label, v.trim())} />
+                  </label>
+                )}
                 {editing === e.id && (
                   <StylePicker value={{ region: e.region, fill: e.fill }}
                     isTaken={(st2) => styleTaken(conditionKey, st2, e.label)}

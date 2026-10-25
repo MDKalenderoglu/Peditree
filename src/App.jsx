@@ -55,7 +55,7 @@ function App() {
     reorderChild, setUnionRelationshipBackground, setUnionStatus,
     setMultipleBirth, addMultipleSibling, setMultipleZygosity, leaveMultipleBirth,
     addFinding, setFindingStatus, setFindingStyle, renameFinding, wizardData, updateWizardData,
-    addParentsTo, addSiblingTo, moveSideways, dropOnto,
+    addParentsTo, addSiblingTo, moveSideways, dropOnto, setFindingOnset, setChildlessness,
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
     actionNotice, dismissActionNotice, autosaveFailed,
@@ -537,6 +537,13 @@ function App() {
             if (kind === 'patientName') setPatientName(v.trim());
             else if (kind === 'finding') renameFinding(target, v);
             else if (kind === 'note') updateIndividual(target, { notes: v });
+            else if (kind === 'geneticTest') {
+              const code = { 'E+': 'positive', 'E-': 'negative', 'E−': 'negative', 'E VUS': 'vus', VUS: 'vus', E: 'tested', '': '' }[v.trim().toUpperCase().replace(/\s+/g, ' ')];
+              updateIndividual(target, { geneticTest: code === undefined ? v.trim() : code });
+            }
+            else if (kind === 'geneticNote') updateIndividual(target, { geneticNote: v.trim() });
+            else if (kind === 'onset') { const [pid, label] = String(target).split('\u0001'); setFindingOnset(pid, label, v.trim()); }
+            else if (kind === 'childlessReason') setChildlessness(target, undefined, v);
             else if (kind === 'age') updateIndividual(target, { age: v.trim() }); // read (or refused) in ops.updatePerson
             else if (kind === 'ageAtDeath') updateIndividual(target, { ageAtDeath: v.trim() });
             else updateIndividual(target, { [kind]: v }); // displayLabel, condition, causeOfDeath
@@ -545,7 +552,7 @@ function App() {
             <RadialAddMenu ref={ringRef} anchor={anchor} node={selectedNode} pedigreeData={pedigreeData} onNeedRoom={panBy}
               onAddSibling={addSiblingTo} onAddSpouse={addSpouseTo} onAddParents={addParentsTo} onAddTwin={addMultipleSibling}
               onUpdate={updateIndividual} onSetProband={setProband} onClearProband={clearProband}
-              onAddFinding={addFinding} onSetFindingStatus={setFindingStatus} onSetFindingStyle={setFindingStyle}
+              onAddFinding={addFinding} onSetFindingStatus={setFindingStatus} onSetFindingStyle={setFindingStyle} onSetFindingOnset={setFindingOnset}
               onAddChild={(unionId, sex, targetId, extra) => (unionId ? addChildToUnion(unionId, sex, extra) : addChildTo(targetId, sex, extra))} />
           )}
         />
@@ -575,6 +582,7 @@ function App() {
           onReorderChild={reorderChild}
           onSetUnionRelationshipBackground={setUnionRelationshipBackground}
           onSetUnionStatus={setUnionStatus}
+          onSetChildlessness={setChildlessness}
           onSetMultipleBirth={setMultipleBirth}
           onAddMultiple={addMultipleSibling}
           onSetZygosity={setMultipleZygosity}

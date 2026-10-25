@@ -10,6 +10,7 @@
  * was made carrier); a hand toggle takes over (ops.updatePerson).
  */
 import { commit, block } from './ops';
+import { normalizeAge, AGE_EXAMPLE } from '../utils/age';
 import { normLabel, keyEntry, styleTaken, keyFull, KEY_FULL_MESSAGE, rightSideFindings, REGIONS, FILLS } from './conditionKey';
 
 const STATUSES = ['affected', 'carrier', 'none'];
@@ -101,5 +102,21 @@ export function renameFinding(doc, oldLabel, newLabel) {
       p.conditions = p.conditions.map((c) => (normLabel(c.label) === normLabel(oldLabel) ? { ...c, label: name } : c));
     }
     e.label = name;
+  });
+}
+
+/**
+ * The age a finding was diagnosed at, for one person (clinician decision
+ * 2026-10-25: shown in the notes, not under the symbol). '' removes it.
+ */
+export function setFindingOnset(doc, personId, label, onset) {
+  return commit(doc, (d) => {
+    const p = d.graph.individuals.find((i) => i.id === personId);
+    if (!p) block('Birey grafikte bulunamadı.');
+    const c = (p.conditions || []).find((x) => x && normLabel(x.label) === normLabel(label));
+    if (!c) block('Bu kişide bu bulgu yok.');
+    const age = normalizeAge(onset);
+    if (age === null) block(`Tanı yaşı anlaşılamadı: "${onset}" (${AGE_EXAMPLE}).`);
+    if (age) c.onsetAge = age; else delete c.onsetAge;
   });
 }

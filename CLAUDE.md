@@ -22,12 +22,15 @@ Three collections form the graph:
 Individual   { id, sex, age, generation, relation, label, displayLabel,
                affected, carrier, deceased, proband, placeholder?,
                pregnancyLoss, stillbirth, notes, condition?, conditions?,
-               ageAtDeath?, causeOfDeath?, birthDate? }
+               ageAtDeath?, causeOfDeath?, birthDate?, geneticTest?, geneticNote? }
+                         // geneticTest: 'positive' | 'negative' | 'vus' | 'tested' → E+ / E− / E VUS / E under the symbol;
+                         // conditions[].onsetAge: diagnosis age (shown in the notes)
                          // age / ageAtDeath: "35" (years), "2,5", "3 ay", "12 gün" — src/utils/age.js,
                          // compared in days; birthDate 'YYYY-MM-DD' (the proband's, top bar) sets the age as of today
 
 Union        { id, partners: [id, id], status, consanguineous, consanguinityDegree,
-               consanguinityStatus, relationshipBackground, leftPartner? }
+               consanguinityStatus, relationshipBackground, leftPartner?, childless?, childlessReason? }
+                         // childless: 'by_choice' (one bar) | 'infertile' (two bars), drawn while there are no children
                          // leftPartner: the partner the clinician moved to the left (placement only;
                          // structure.js / ordering.js keep it) — src/utils/sidewaysMove.js
 

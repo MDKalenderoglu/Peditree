@@ -99,7 +99,7 @@ function sectorPath(a0, a1, r, R, gapDeg = 3) {
 
 export default function RadialAddMenu({
   anchor, node, pedigreeData, onAddSibling, onAddChild, onAddSpouse, onAddParents, onAddTwin,
-  onUpdate, onSetProband, onClearProband, onAddFinding, onSetFindingStatus, onSetFindingStyle,
+  onUpdate, onSetProband, onClearProband, onAddFinding, onSetFindingStatus, onSetFindingStyle, onSetFindingOnset,
   onNeedRoom, ref,
 }) {
   const [active, setActive] = useState(null);   // sector under the pointer
@@ -261,7 +261,7 @@ export default function RadialAddMenu({
   const panels = {
     findings: (
       <FindingsPalette node={node} conditionKey={pedigreeData.conditionKey || []} compact
-        onSetStatus={onSetFindingStatus} onAdd={onAddFinding} onSetStyle={onSetFindingStyle} />
+        onSetStatus={onSetFindingStatus} onAdd={onAddFinding} onSetStyle={onSetFindingStyle} onSetOnset={onSetFindingOnset} />
     ),
     twins: !hasParents || isLoss || !onAddTwin ? (
       <span className="radial-hint">İkiz eklemek için anne ve baba çizili olmalı.</span>

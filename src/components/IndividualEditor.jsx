@@ -139,7 +139,7 @@ function RelationshipChoice({ u, onSetBackground, parentsCons, graph }) {
 }
 
 /** One partnership: status (divorce/separation), consanguinity, children (couple card). */
-function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground, parentsCons, withChildren = true, graph }) {
+function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground, parentsCons, withChildren = true, graph, onSetChildlessness }) {
   const children = pcrs.find(r => r.unionId === u.id)?.children || [];
   return (
     <>
@@ -154,6 +154,23 @@ function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelati
       )}
       {onSetUnionRelationshipBackground && (
         <RelationshipChoice u={u} onSetBackground={onSetUnionRelationshipBackground} parentsCons={parentsCons} graph={graph} />
+      )}
+      {/* NSGC: no children by choice / reason unknown (one bar) or infertile (two bars), shown while they have none */}
+      {onSetChildlessness && children.length === 0 && (
+        <div className="field-col">
+          <span className="field-label">Çocukları yok</span>
+          <div className="segmented" role="radiogroup" aria-label="Çocukları yok">
+            {[['', '—'], ['by_choice', 'Çocuksuz'], ['infertile', 'İnfertil']].map(([v, t]) => (
+              <button key={v} role="radio" aria-checked={(u.childless || '') === v} className={(u.childless || '') === v ? 'on' : undefined}
+                onClick={() => onSetChildlessness(u.id, v || null)}>{t}</button>
+            ))}
+          </div>
+          {u.childless && (
+            <DraftField key={`${u.id}-childless`} type="text" className="input input-wide" value={u.childlessReason || ''}
+              placeholder="Nedeni (isteğe bağlı), ör. azospermi" onCommit={v => onSetChildlessness(u.id, undefined, v)} />
+          )}
+          <span className="field-hint">{u.childless === 'infertile' ? 'Çift çizgi: infertilite.' : u.childless ? 'Tek çizgi: bilerek çocuksuz ya da nedeni bilinmiyor.' : 'NSGC: tek çizgi çocuksuz, çift çizgi infertil.'}</span>
+        </div>
       )}
       {withChildren && (
         <div className="field-col">
@@ -296,7 +313,7 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
 export default function IndividualEditor({
   node, node2, pedigreeData, onUpdate, onAddChild,
   onDeleteIndividual, onCreateUnion, onMakeSiblings,
-  onClearSelection, onReorderChild, onSetUnionRelationshipBackground, onSetUnionStatus,
+  onClearSelection, onReorderChild, onSetUnionRelationshipBackground, onSetUnionStatus, onSetChildlessness,
   onSetMultipleBirth, onAddMultiple, onSetZygosity, onLeaveMultiple,
   wizardParents, onSetParentsField,
   selectedNodes = [], onUpdateMany, onSetFindingStatusMany, onAddFindingMany,
@@ -328,7 +345,7 @@ export default function IndividualEditor({
     return (
       <TwoPersonActions node={node} node2={node2} pedigreeData={pedigreeData}
         onCreateUnion={onCreateUnion} onMakeSiblings={onMakeSiblings} onClearSelection={onClearSelection}
-        unionProps={{ onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground, parentsCons }} onSetMultipleBirth={onSetMultipleBirth}
+        unionProps={{ onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground, parentsCons, onSetChildlessness }} onSetMultipleBirth={onSetMultipleBirth}
         bulk={bulk} />
     );
   }
@@ -398,6 +415,21 @@ export default function IndividualEditor({
                 </label>
               </>
             )}
+            {/* NSGC evaluation below the symbol (clinician decision 2026-10-25) */}
+            <div className="field-col">
+              <span className="field-label">Genetik test</span>
+              <div className="segmented" role="radiogroup" aria-label="Genetik test">
+                {[['', '—'], ['positive', 'E+'], ['negative', 'E−'], ['vus', 'E VUS'], ['tested', 'E']].map(([v, t]) => (
+                  <button key={v} role="radio" aria-checked={(node.geneticTest || '') === v} className={(node.geneticTest || '') === v ? 'on' : undefined}
+                    title={{ '': 'Test yok', positive: 'Pozitif', negative: 'Negatif', vus: 'Önemi belirsiz varyant', tested: 'Test edildi / değerlendirildi, sonuç yok ya da belirsiz' }[v]}
+                    onClick={() => set({ geneticTest: v })}>{t}</button>
+                ))}
+              </div>
+              {(node.geneticTest || node.geneticNote) && (
+                <DraftField key={`${node.id}-gnote`} type="text" className="input input-wide" value={node.geneticNote || ''}
+                  placeholder="Varyant ya da açıklama, ör. FBN1 c.1585C>T het" onCommit={v => set({ geneticNote: v.trim() })} />
+              )}
+            </div>
             {node.condition && (
               // older free-text field: still shown under the symbol, editable/clearable here
               <label className="field-col">
@@ -418,7 +450,7 @@ export default function IndividualEditor({
           <div className="card" key={u.id}>
             <div className="card-title">Eş: {displayNameFor(u.partners.find(p => p !== node.id))}</div>
             <UnionControls u={u} pcrs={pcrs} onSetUnionStatus={onSetUnionStatus} withChildren={false} graph={pedigreeData}
-              onSetUnionRelationshipBackground={onSetUnionRelationshipBackground} parentsCons={parentsCons} />
+              onSetUnionRelationshipBackground={onSetUnionRelationshipBackground} parentsCons={parentsCons} onSetChildlessness={onSetChildlessness} />
           </div>
         ))}
 
