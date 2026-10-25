@@ -15,10 +15,10 @@ const INK = '#1e293b';
 export function FindingGlyph({ region = 'q1', fill = 'solid', carrier = false, shape = 'square', size = 18 }) {
   const uid = useId().replace(/:/g, '');
   const s = 8;
-  const [a0, a1] = REGION_ANGLES[region] || REGION_ANGLES.q1;
-  const end = carrier ? (a0 + a1) / 2 : a1;
+  // a carrier is drawn on the left half (clinician decision 2026-10-25)
+  const [a0, a1] = carrier ? [90, 270] : (REGION_ANGLES[region] || REGION_ANGLES.q1);
   const p = (a) => [14 * Math.cos((a * Math.PI) / 180), 14 * Math.sin((a * Math.PI) / 180)];
-  const [x0, y0] = p(a0), [x1, y1] = p(end);
+  const [x0, y0] = p(a0), [x1, y1] = p(a1);
   const paint = { solid: INK, grey: '#9ca3af', hatch: `url(#h${uid})`, dots: `url(#d${uid})` }[fill] || INK;
   const outline = shape === 'circle'
     ? <circle r={s} />

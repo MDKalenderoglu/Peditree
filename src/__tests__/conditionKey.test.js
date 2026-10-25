@@ -2,8 +2,9 @@
  * conditionKey.test.js — findings marked as regions of the symbol, defined in
  * a legend (clinician requests 2026-10-24): each finding has a signature
  * (quadrant + fill), suggested automatically and changeable; the same finding
- * marks the same region on everyone; a carrier of a finding gets half of its
- * region; a plain "affected" without a finding stays a full fill.
+ * marks the same region on everyone; a plain "affected" without a finding
+ * stays a full fill. A carrier is drawn on the LEFT half of the symbol, the
+ * person's findings on the RIGHT side (clinician decision 2026-10-25).
  */
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -75,17 +76,79 @@ describe('the legend follows the findings', () => {
     expect(keyEntry(key(), 'D').region).toBe('q1'); // the freed quadrant
   });
 
-  it('carrier of a finding: half of its region; plain affected: full; person-level carrier: none (half fill)', () => {
-    S().addFinding('proband', 'Miyop');
-    S().setFindingStatus('proband', 'Miyop', 'carrier');
-    expect(regionsOf('proband')).toEqual(['q1:solid:carrier']);
-    const part = fillFor(person('proband'), key()).parts[0];
-    expect(part.a1 - part.a0).toBe(45);
-    // the proband opens marked affected (clinician request 2026-10-25): a
-    // finding made carrier never erases an "affected" it did not set
-    expect(person('proband').affected).toBe(true);
+  const part = (p) => `${p.fill}${p.carrier ? ':carrier' : ''}@${p.a0}-${p.a1}`;
+  const partsOf = (p, k = key()) => fillFor(p, k).parts?.map(part);
+
+  it('a carrier: the left half in the finding’s fill; plain affected: full; person-level carrier: none (half fill)', () => {
+    S().addFinding('mother', 'Miyop');
+    S().setFindingStatus('mother', 'Miyop', 'carrier');
+    expect(partsOf(person('mother'))).toEqual(['solid:carrier@90-270']);
+    expect(person('mother').affected).toBe(false);
     expect(fillFor({ affected: true }, key())).toEqual({ mode: 'full' });
     expect(fillFor({ carrier: true }, key())).toEqual({ mode: 'none' });
+  });
+
+  it('carrier of X and affected by Y: left half X, right half Y (clinician decision 2026-10-25)', () => {
+    const k = [{ id: 'k1', label: 'X', region: 'q2', fill: 'solid' }, { id: 'k2', label: 'Y', region: 'q2', fill: 'hatch' }];
+    const p = { conditions: [{ label: 'X', status: 'carrier' }, { label: 'Y', status: 'affected' }] };
+    expect(partsOf(p, k)).toEqual(['solid:carrier@90-270', 'hatch@270-450']);
+  });
+
+  it('carrier of X, affected by Y and Z: left half X, upper right Y, lower right Z', () => {
+    const k = [
+      { id: 'k1', label: 'X', region: 'q1', fill: 'solid' },
+      { id: 'k2', label: 'Y', region: 'q2', fill: 'hatch' },
+      { id: 'k3', label: 'Z', region: 'q3', fill: 'dots' },
+    ];
+    const p = { conditions: [{ label: 'X', status: 'carrier' }, { label: 'Z', status: 'affected' }, { label: 'Y', status: 'affected' }] };
+    expect(partsOf(p, k)).toEqual(['solid:carrier@90-270', 'hatch@270-360', 'dots@360-450']);
+  });
+
+  it('two carried findings share the left half (upper, lower); affected without a named finding fills the right half', () => {
+    const k = [{ id: 'k1', label: 'X', region: 'q1', fill: 'solid' }, { id: 'k2', label: 'W', region: 'q4', fill: 'grey' }];
+    const p = { affected: true, conditions: [{ label: 'X', status: 'carrier' }, { label: 'W', status: 'carrier' }] };
+    expect(partsOf(p, k)).toEqual(['solid:carrier@180-270', 'grey:carrier@90-180', 'solid@270-450']);
+  });
+
+  it('a person-level carrier with a finding: left half the classic carrier fill, the finding on the right', () => {
+    const k = [{ id: 'k1', label: 'Y', region: 'q2', fill: 'hatch' }];
+    expect(partsOf({ carrier: true, conditions: [{ label: 'Y', status: 'affected' }] }, k)).toEqual(['solid:carrier@90-270', 'hatch@270-450']);
+  });
+
+  it('the proband affected by X stays fully filled; both parents carry X; a parent’s extra finding is drawn on the right', () => {
+    S().addFinding('proband', 'X');
+    S().setFindingStatus('mother', 'X', 'carrier');
+    S().setFindingStatus('father', 'X', 'carrier');
+    S().addFinding('father', 'Y', null);
+    expect(fillFor(person('proband'), key())).toEqual({ mode: 'full' });
+    expect(partsOf(person('mother'))).toEqual(['solid:carrier@90-270']);
+    const y = keyEntry(key(), 'Y');
+    expect(['q2', 'q3']).toContain(y.region); // moved to the right side for everyone
+    expect(y.fill).not.toBe('solid'); // never the same fill as the carrier half beside it
+    expect(fillFor(person('father'), key()).parts.map(p => p.carrier ? 'L' : 'R')).toEqual(['L', 'R']);
+  });
+
+  it('a finding drawn on the left is moved to the right for everyone once a carrier has it too', () => {
+    S().addFinding('mother', 'A'); // q1 solid
+    S().addFinding('mother', 'B'); // q2 solid
+    S().addFinding('father', 'C'); // q3 solid
+    S().addFinding('proband', 'D'); // q4 solid
+    expect(['A', 'B', 'C', 'D'].map(l => keyEntry(key(), l).region)).toEqual(['q1', 'q2', 'q3', 'q4']);
+    // a sibling carries C and has A: A must leave the left side (q1 → a free right signature)
+    S().addSiblingTo('proband', 'female');
+    const sib = S().doc.graph.parentChildRelationships.find(r => r.children.includes('proband')).children.find(c => c !== 'proband');
+    S().setFindingStatus(sib, 'C', 'carrier');
+    S().setFindingStatus(sib, 'A', 'affected');
+    const a = keyEntry(key(), 'A');
+    expect(['q2', 'q3']).toContain(a.region);
+    expect(new Set(key().map(e => `${e.region}|${e.fill}`)).size).toBe(key().length);
+    // the mother, affected by A, shows it in the same new place
+    expect(fillFor(person('mother'), key()).parts.some(p => p.region === a.region && p.fill === a.fill)).toBe(true);
+    // choosing a left quadrant for A now is refused with the reason
+    const before = S().doc;
+    S().setFindingStyle('A', { region: 'q1', fill: 'grey' });
+    expect(S().doc).toBe(before);
+    expect(S().actionNotice.message).toMatch(/sağ/);
   });
 
   it('two findings of one person sharing a quadrant split it', () => {
@@ -146,5 +209,18 @@ describe('renderer contract', () => {
   });
   it('note markers under symbols use the notes legend numbering', () => {
     expect(src).toMatch(/notedNodes\.indexOf\(d\)/);
+  });
+});
+
+describe('a carrier with two findings: the two right quadrants differ in fill', () => {
+  it('neither matches the carrier half, nor each other', () => {
+    S().resetPedigree();
+    S().addFinding('proband', 'X');
+    S().setFindingStatus('mother', 'X', 'carrier');
+    S().addFinding('mother', 'Y', null);
+    S().addFinding('mother', 'Z', null);
+    const [x, y, z] = ['X', 'Y', 'Z'].map(l => keyEntry(key(), l));
+    expect(new Set([x.fill, y.fill, z.fill]).size).toBe(3);
+    expect([y.region, z.region].sort()).toEqual(['q2', 'q3']); // upper and lower right, as the key shows them
   });
 });

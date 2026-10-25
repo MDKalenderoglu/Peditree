@@ -10,7 +10,7 @@
  * was made carrier); a hand toggle takes over (ops.updatePerson).
  */
 import { commit, block } from './ops';
-import { normLabel, keyEntry, styleTaken, keyFull, KEY_FULL_MESSAGE, REGIONS, FILLS } from './conditionKey';
+import { normLabel, keyEntry, styleTaken, keyFull, KEY_FULL_MESSAGE, rightSideFindings, REGIONS, FILLS } from './conditionKey';
 
 const STATUSES = ['affected', 'carrier', 'none'];
 
@@ -71,6 +71,13 @@ export function setFindingStyle(doc, label, style) {
     if (!e) block('Bu bulgu açıklamada yok.');
     if (!REGIONS.includes(style.region) || !FILLS.includes(style.fill)) block('Geçersiz bölge ya da dolgu.');
     if (styleTaken(d.graph.conditionKey, style, label)) block('Bu bölge ve dolgu başka bir bulguda kullanılıyor; başka bir seçim yapın.');
+    const beside = rightSideFindings(d.graph).get(normLabel(label));
+    if (beside && !['q2', 'q3'].includes(style.region)) {
+      block('Bu bulgu taşıyıcı bir kişide de var; taşıyıcılık sembolün sol yarısında çizildiği için bulgu sağ üst ya da sağ alt çeyrekte olmalı.');
+    }
+    if (beside && beside.has(style.fill)) {
+      block('Bu dolgu, aynı kişinin sol yarısındaki taşıyıcılık işaretiyle aynı; bulgu ayırt edilemez. Başka bir dolgu seçin.');
+    }
     e.region = style.region;
     e.fill = style.fill;
   });

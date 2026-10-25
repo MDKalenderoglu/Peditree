@@ -200,13 +200,17 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
 
     // --- Legends (inside the SVG so they are exported): findings key at the
     // top right (clinician choice 2026-10-24), clinical notes at the bottom ---
-    // findings key: only findings a relative is affected by or carries (the
-    // proband is drawn fully filled; their findings stand in the first line)
-    const shownKey = conditionKey
-      .map((entry, i) => ({ ...entry, i }))
-      .filter(entry => nodes.some(n => !n.proband && (n.conditions || []).some(c =>
-        c && c.label && (c.status === 'affected' || c.status === 'carrier')
-        && c.label.trim().toLocaleLowerCase('tr') === entry.label.trim().toLocaleLowerCase('tr'))));
+    // findings key: a row for each finding a relative is affected by (its
+    // quadrant), and one for each finding someone carries ("… taşıyıcısı",
+    // the left half — clinician decision 2026-10-25); the proband is drawn
+    // fully filled, their findings stand in the first line
+    const has = (status, entry) => nodes.some(n => (status === 'carrier' || !n.proband) && (n.conditions || []).some(c =>
+      c && c.label && c.status === status
+      && c.label.trim().toLocaleLowerCase('tr') === entry.label.trim().toLocaleLowerCase('tr')));
+    const shownKey = [
+      ...conditionKey.filter(e => has('affected', e)).map(e => ({ ...e, carrier: false, text: e.label })),
+      ...conditionKey.filter(e => has('carrier', e)).map(e => ({ ...e, carrier: true, text: `${e.label} taşıyıcısı` })),
+    ];
     const notedNodes = nodes.filter(n => n.notes || n.condition || (n.deceased && n.causeOfDeath));
     // legends grow with a wide pedigree, so they read at the same size once
     // the drawing is fitted to the screen (clinician feedback 2026-10-24)
@@ -215,7 +219,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // long key and note text wraps onto more lines, never cut (audit
     // 2026-10-25); the blocks grow with the lines
     const KEY_LINE = 15 * LK, HEAD_LINE = 17 * LK, KEY_CHARS = 40;
-    const keyLines = shownKey.map(e => packLines([{ text: e.label }], KEY_CHARS));
+    const keyLines = shownKey.map(e => packLines([{ text: e.text }], KEY_CHARS));
     const keyRowH = keyLines.map(l => KEY_ROW + (l.length - 1) * KEY_LINE);
     const keyBlock = shownKey.length ? d3.sum(keyRowH) + 14 * LK : 0;
 
@@ -637,8 +641,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         const cell = keyG.append('g').attr('transform', `translate(${symX + s},${ky + s})`);
         const box = cell.append('rect').attr('x', -s).attr('y', -s).attr('width', 2 * s).attr('height', 2 * s)
           .attr('fill', NODE_FILL).attr('stroke', NODE_STROKE).attr('stroke-width', 1.5);
-        const [a0, a1] = REGION_ANGLES[entry.region] || REGION_ANGLES.q1;
-        drawRegions(cell, defs, `key-region-${row}`, box, [{ fill: entry.fill, a0, a1 }], s);
+        const [a0, a1] = entry.carrier ? [90, 270] : (REGION_ANGLES[entry.region] || REGION_ANGLES.q1);
+        drawRegions(cell, defs, `key-region-${row}`, box, [{ fill: entry.fill, a0, a1, carrier: entry.carrier }], s);
         keyLines[row].forEach((line, li) => {
           editable(keyG.append('text')
             .attr('x', textX).attr('y', ky + s + 4.5 * LK + li * KEY_LINE)
