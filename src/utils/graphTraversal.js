@@ -11,8 +11,13 @@
  * A union marked `crossGeneration` (partners from different generations,
  * clinician decision 2026-10-24) does not force its partners onto one
  * generation; its children are one generation below the LOWER partner.
- * Such a union is used only after the rest of the graph has been walked:
- * a partner reachable no other way gets the other partner's generation.
+ * Such a union is used only after the rest of the graph has been walked
+ * (also when walking up from one of its children): a partner reachable no
+ * other way keeps the side of the other partner they stood on before (one
+ * generation apart); when only a child is known, the lower partner is one
+ * generation above the child and the upper partner two (audit 2026-10-25:
+ * both partners used to land on the child's parent row, so the child of
+ * such a couple could not be made the proband).
  *
  * @param {{ individuals: Array, unions: Array, parentChildRelationships: Array }} graph
  * @param {string} anchorId - Individual to anchor BFS from (typically 'proband')
@@ -84,8 +89,9 @@ export function computeGenerations(graph, anchorId = 'proband', anchorGeneration
     const { id, gen } = queue.shift();
 
     // ── 1. UP: if this person is a child in a union, parents get gen - 1 ──
+    // (a cross-generation couple is settled below)
     const parentUnionId = childToUnion.get(id);
-    if (parentUnionId) {
+    if (parentUnionId && !crossGen.has(parentUnionId)) {
       const partners = unionToPartners.get(parentUnionId) || [];
       for (const partnerId of partners) {
         if (!visited.has(partnerId)) {
@@ -146,14 +152,26 @@ export function computeGenerations(graph, anchorId = 'proband', anchorGeneration
   // Cross-generation unions: children one below the lower partner; a partner
   // with no other link takes the other partner's generation.
   const seed = (id, gen) => { derived.set(id, gen); visited.add(id); queue.push({ id, gen }); };
+  // which partner stood above the other before (the generations this graph came with)
+  const before = new Map(individuals.map(i => [i.id, i.generation]));
+  const side = (x, y) => Math.sign((before.get(x) ?? 0) - (before.get(y) ?? 0)); // +1: x below y
   for (let progress = true; progress;) {
     progress = false;
     for (const unionId of crossGen) {
       const [a, b] = unionToPartners.get(unionId) || [];
       if (derived.has(a) !== derived.has(b)) {
         const [known, other] = derived.has(a) ? [a, b] : [b, a];
-        seed(other, derived.get(known));
+        seed(other, derived.get(known) + side(other, known));
         progress = true;
+      } else if (!derived.has(a)) {
+        const kid = (unionToChildren.get(unionId) || []).find(c => derived.has(c));
+        if (kid) {
+          const lowerGen = derived.get(kid) - 1;
+          const s = side(a, b);
+          seed(a, s < 0 ? lowerGen - 1 : lowerGen);
+          seed(b, s > 0 ? lowerGen - 1 : lowerGen);
+          progress = true;
+        }
       }
       if (!derived.has(a) || !derived.has(b)) continue;
       const childGen = Math.max(derived.get(a), derived.get(b)) + 1;

@@ -11,6 +11,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Stethoscope, HeartPulse, Users, StickyNote } from 'lucide-react';
 import FindingsPalette from './FindingsPalette';
+import DraftField from './DraftField';
 import { groupOf, multipleName } from '../graph/multiples';
 
 const S = 9; // glyph half-size
@@ -227,8 +228,8 @@ export default function RadialAddMenu({
       </div>
     ),
     note: (
-      <textarea className="input radial-note" value={node.notes || ''} placeholder="Klinik not"
-        onChange={e => onUpdate(node.id, { notes: e.target.value })} autoFocus />
+      <DraftField key={`${node.id}-note`} as="textarea" className="input radial-note" value={node.notes || ''} placeholder="Klinik not"
+        onCommit={v => onUpdate(node.id, { notes: v })} autoFocus />
     ),
   };
 

@@ -119,11 +119,61 @@ export function serializeDocument(doc) {
   return JSON.stringify({ ...doc, savedAt: new Date().toISOString() }, null, 2);
 }
 
+export const MAX_PROJECT_FILE_CHARS = 20 * 1024 * 1024;
+
+const isObj = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
+const isId = (x) => typeof x === 'string' && x.length > 0;
+const TEXT_FIELDS = ['label', 'displayLabel', 'notes', 'condition', 'causeOfDeath', 'age', 'ageAtDeath', 'relation', 'sex'];
+
+/**
+ * The form of a v2 document, checked before anything reads it (audit
+ * 2026-10-25: a person that is null made the validator throw, a union with
+ * one partner was accepted). Returns the first problem, or null.
+ */
+export function shapeProblem(doc) {
+  const g = doc.graph;
+  for (const p of g.individuals) {
+    if (!isObj(p) || !isId(p.id)) return 'bir kişinin kaydı bozuk (kimliği yok)';
+    for (const f of TEXT_FIELDS) {
+      const v = p[f];
+      if (v !== undefined && v !== null && typeof v !== 'string' && typeof v !== 'number') return `"${p.id}" kişisinin "${f}" alanı metin değil`;
+    }
+    if (p.conditions !== undefined && (!Array.isArray(p.conditions) || p.conditions.some((c) => !isObj(c) || typeof c.label !== 'string'))) return `"${p.id}" kişisinin bulguları bozuk`;
+  }
+  for (const u of g.unions) {
+    if (!isObj(u) || !isId(u.id) || !Array.isArray(u.partners) || u.partners.length !== 2 || !u.partners.every(isId) || u.partners[0] === u.partners[1]) {
+      return `bir birliktelik tam iki farklı kişiyi bağlamıyor${isObj(u) && u.id ? ` (${u.id})` : ''}`;
+    }
+  }
+  for (const r of g.parentChildRelationships) {
+    if (!isObj(r) || !isId(r.unionId) || !Array.isArray(r.children) || !r.children.every(isId)) return 'bir ebeveyn–çocuk kaydı bozuk';
+  }
+  if (g.socialParentLinks !== undefined && (!Array.isArray(g.socialParentLinks) || g.socialParentLinks.some((l) => !isObj(l) || !isId(l.childId) || !isId(l.unionId) || typeof l.kind !== 'string'))) {
+    return 'bir sosyal ebeveynlik kaydı bozuk';
+  }
+  if (g.conditionKey !== undefined && (!Array.isArray(g.conditionKey) || g.conditionKey.some((e) => !isObj(e) || typeof e.label !== 'string'))) {
+    return 'bulgu açıklaması bozuk';
+  }
+  return null;
+}
+
 /**
  * Parse a project file. Returns `{ ok, doc, migrated, reason }`; a document
  * with structural errors is refused rather than opened in a broken state.
+ * It never throws: whatever goes wrong comes back as a reason.
  */
 export function parseProjectFile(text) {
+  if (typeof text !== 'string') return { ok: false, reason: 'Dosya okunamadı.' };
+  if (text.length > MAX_PROJECT_FILE_CHARS) return { ok: false, reason: 'Dosya çok büyük (20 MB üstü); bir Peditree pedigrisi değil gibi görünüyor, açılmadı.' };
+  try {
+    return parseChecked(text);
+  } catch (err) {
+    console.warn('[persistenceV2] Project file could not be read:', err);
+    return { ok: false, reason: 'Dosya okunamadı: içeriği bozuk, açılmadı.' };
+  }
+}
+
+function parseChecked(text) {
   let parsed;
   try { parsed = JSON.parse(text); } catch {
     return { ok: false, reason: 'Dosya okunamadı: geçerli bir JSON değil.' };
@@ -131,6 +181,8 @@ export function parseProjectFile(text) {
   let doc, migrated = false, normalizations = [];
   if (isDocumentV2(parsed)) {
     doc = parsed;
+    const problem = shapeProblem(doc);
+    if (problem) return { ok: false, reason: `Dosyadaki pedigri bozuk, açılmadı: ${problem}.` };
     if (!Array.isArray(doc.graph.socialParentLinks)) doc.graph.socialParentLinks = [];
     if (!Array.isArray(doc.graph.conditionKey)) doc.graph.conditionKey = [];
     if (!doc.ids) doc.ids = { counters: {}, retired: [] };

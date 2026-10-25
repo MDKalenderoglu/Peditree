@@ -8,8 +8,8 @@
  *   #9 the age at death is shown without an age;
  *   #10 long key / note text is wrapped, never cut.
  */
-import { describe, it, expect, beforeAll, vi } from 'vitest';
-import { usePedigreeStore } from '../state/usePedigreeStore';
+import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
+import { usePedigreeStore, needsLeaveWarning } from '../state/usePedigreeStore';
 import { annotationAge } from '../utils/annotations';
 import { packLines } from '../utils/textWrap';
 
@@ -181,5 +181,104 @@ describe('#10 packLines wraps without losing text', () => {
   it('two labels with the same 49-character start stay different', () => {
     const a = 'A'.repeat(49) + ' bir', b = 'A'.repeat(49) + ' iki';
     expect(join(packLines([{ text: a }], 40))).not.toBe(join(packLines([{ text: b }], 40)));
+  });
+});
+
+// ── package 2: reliability ──
+
+describe('#8 opening a broken project file', () => {
+  const validDoc = () => { S().resetPedigree(); return JSON.parse(JSON.stringify(S().doc)); };
+  const variants = {
+    'a person that is null': (d) => { d.graph.individuals.push(null); },
+    'a person without an id': (d) => { d.graph.individuals.push({ sex: 'male' }); },
+    'a union with one partner': (d) => { d.graph.unions[0].partners = [d.graph.unions[0].partners[0]]; },
+    'a union with the same partner twice': (d) => { d.graph.unions[0].partners = ['mother', 'mother']; },
+    'children that are not a list': (d) => { d.graph.parentChildRelationships[0].children = 'proband'; },
+    'a note that is not text': (d) => { d.graph.individuals[0].notes = { x: 1 }; },
+    'findings that are not a list': (d) => { d.graph.individuals[0].conditions = 'Miyop'; },
+    'a social link without a child': (d) => { d.graph.socialParentLinks = [{ unionId: 'U_PARENTS', kind: 'adoptive' }]; },
+  };
+  for (const [name, spoil] of Object.entries(variants)) {
+    it(`refused with a reason, the open pedigree unchanged: ${name}`, () => {
+      const d = validDoc();
+      spoil(d);
+      const before = S().doc;
+      let r;
+      expect(() => { r = S().openProjectFile(JSON.stringify(d)); }).not.toThrow();
+      expect(r.ok).toBe(false);
+      expect(S().doc).toBe(before);
+      expect(S().actionNotice.message).toMatch(/açılmadı|okunamadı|değil/);
+    });
+  }
+  it('a file that is too large is refused before it is read as JSON', () => {
+    const r = S().openProjectFile(' '.repeat(21 * 1024 * 1024));
+    expect(r.ok).toBe(false);
+    expect(S().actionNotice.message).toMatch(/çok büyük/);
+  });
+  it('a valid file still opens', () => {
+    const d = validDoc();
+    S().updateIndividual('proband', { label: 'Başka' });
+    expect(S().openProjectFile(JSON.stringify(d)).ok).toBe(true);
+    expect(P('proband').label).toBe(d.graph.individuals.find(i => i.id === 'proband').label);
+  });
+});
+
+describe('#5 a failed autosave is shown', () => {
+  afterEach(() => { vi.useRealTimers(); delete globalThis.window; });
+  it('the store says so while saving fails, and stops saying so once it works again', () => {
+    vi.useFakeTimers();
+    let full = true;
+    const m = new Map();
+    globalThis.window = { sessionStorage: {
+      getItem: (k) => (m.has(k) ? m.get(k) : null),
+      setItem: (k, v) => { if (full) throw new Error('QuotaExceededError'); m.set(k, v); },
+      removeItem: (k) => m.delete(k),
+    } };
+    S().resetPedigree();
+    S().updateIndividual('proband', { label: 'A' });
+    vi.advanceTimersByTime(400);
+    expect(S().autosaveFailed).toBe(true);
+    full = false;
+    S().updateIndividual('proband', { label: 'B' });
+    vi.advanceTimersByTime(400);
+    expect(S().autosaveFailed).toBe(false);
+  });
+});
+
+describe('#12 leaving the page asks whenever work would be lost', () => {
+  it('only the patient name typed: asks', () => {
+    S().resetPedigree();
+    expect(needsLeaveWarning(S().doc, null)).toBe(false); // blank starter
+    S().setPatientName('Örnek');
+    expect(needsLeaveWarning(S().doc, null)).toBe(true);
+  });
+  it('a restored, never downloaded pedigree: asks; once downloaded: does not', () => {
+    S().resetPedigree();
+    S().updateIndividual('proband', { label: 'X' });
+    const doc = S().doc;
+    expect(needsLeaveWarning(doc, null)).toBe(true);
+    expect(needsLeaveWarning(doc, doc)).toBe(false);
+  });
+});
+
+describe('#2 the child of a cross-generation couple can be the proband', () => {
+  it('the partners keep their own rows, the child one below the lower partner', () => {
+    S().resetPedigree();
+    S().addSpouseTo('proband', 'female');
+    const wife = S().doc.graph.unions.find(u => u.partners.includes('proband')).partners.find(p => p !== 'proband');
+    S().addParentsTo(wife);
+    S().addSiblingTo(wife, 'female');
+    const sis = sibsOf(wife).find(c => c !== wife);
+    expect(S().createUnionBetween('father', sis).ok).toBe(true); // father one generation above her
+    const u = S().doc.graph.unions.find(x => x.partners.includes('father') && x.partners.includes(sis));
+    expect(u.crossGeneration).toBe(true);
+    S().addChildToUnion(u.id, 'male');
+    const kid = S().doc.graph.parentChildRelationships.find(r => r.unionId === u.id).children[0];
+    const r = S().setProband(kid);
+    expect(r.reason).toBeUndefined();
+    expect(P(kid).proband).toBe(true);
+    expect(P(sis).generation).toBe(P(kid).generation - 1);
+    expect(P('father').generation).toBe(P(kid).generation - 2);
+    expect(errors()).toEqual([]);
   });
 });

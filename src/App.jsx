@@ -1,6 +1,6 @@
 import React from 'react';
 import * as d3 from 'd3';
-import { usePedigreeStore } from './state/usePedigreeStore';
+import { usePedigreeStore, needsLeaveWarning, flushAutosave } from './state/usePedigreeStore';
 import { exportSVG, exportPNG, exportFileName } from './utils/exportUtils';
 import { assessExportReadiness } from './utils/exportReadiness';
 import { withStableIdsExcludingDismissed } from './utils/warningIds';
@@ -9,6 +9,7 @@ import { sanitizeAgeValue } from './utils/ageValidation';
 import PedigreeCanvas from './components/PedigreeCanvas';
 import IndividualEditor from './components/IndividualEditor';
 import RadialAddMenu from './components/RadialAddMenu';
+import { flushDrafts } from './utils/drafts';
 import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
@@ -27,7 +28,7 @@ function App() {
     addParentsTo, addSiblingTo,
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
-    actionNotice, dismissActionNotice,
+    actionNotice, dismissActionNotice, autosaveFailed,
     exportProjectFile, openProjectFile, relayout, doc, setPatientName,
   } = usePedigreeStore();
   const [exportError, setExportError] = React.useState(null);
@@ -161,17 +162,18 @@ function App() {
     e.target.value = '';
     if (!file) return;
     if (_history && _history.length > 0 && !window.confirm('Açık pedigrinin yerine dosyadaki pedigri yüklensin mi? (Geri Al ile dönebilirsiniz.)')) return;
-    file.text().then(text => openProjectFile(text));
+    file.text().then(text => openProjectFile(text)).catch(() => openProjectFile(null));
   };
 
   // Nothing is stored once the tab closes (session autosave, clinician
   // decision 2026-10-25): leaving with changes not downloaded asks first
-  const downloadedDoc = React.useRef(doc);
+  const downloadedDoc = React.useRef(null);
   const markDownloaded = () => { downloadedDoc.current = usePedigreeStore.getState().doc; };
   React.useEffect(() => {
     const onLeave = (e) => {
-      const st = usePedigreeStore.getState();
-      if (st.doc === downloadedDoc.current || !(st._history && st._history.length)) return;
+      flushDrafts();   // a box still being typed in
+      flushAutosave(); // a reload keeps the very last edit
+      if (!needsLeaveWarning(usePedigreeStore.getState().doc, downloadedDoc.current)) return;
       e.preventDefault();
       e.returnValue = '';
     };
@@ -256,6 +258,16 @@ function App() {
         </div>
 
         <div className="canvas-notices">
+        {autosaveFailed && (
+          <div className="warning-panel" role="alert" style={{ borderColor: '#dc2626', background: '#fef2f2' }}>
+            <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '5px', color: '#dc2626' }}>
+              <AlertTriangle size={16} /> Otomatik kayıt yapılamıyor
+            </h4>
+            <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: '#991b1b' }}>
+              Tarayıcı depolaması dolu ya da kapalı. Sayfa yenilenirse son değişiklikler kaybolabilir; çalışmanızı “Kaydet” ile dosyaya indirin.
+            </p>
+          </div>
+        )}
         {actionNotice && (
           <div className="warning-panel" role="status" style={{ borderColor: '#2563eb', background: '#eff6ff' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>

@@ -12,6 +12,7 @@ import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { degreeLabel } from '../graph/kinship';
 import { groupOf, multipleName, zygosityLabel, ZYGOSITY } from '../graph/multiples';
 import BulkEditor from './BulkEditor';
+import DraftField from './DraftField';
 
 const SEX_WORD = { male: 'Erkek', female: 'Kadın', unknown: 'Cinsiyet bilinmiyor' };
 // same options and wording as the wizard; an older 'separated' shows as the combined one
@@ -336,27 +337,27 @@ export default function IndividualEditor({
             <div className="card-title">Bilgiler</div>
             <label className="field-col">
               <span className="field-label">Etiket (çizimde görünür)</span>
-              <input type="text" className="input input-wide" value={node.displayLabel || ''} placeholder="Boşsa gösterilmez"
-                onChange={e => set({ displayLabel: e.target.value })} />
+              <DraftField key={`${node.id}-label`} type="text" className="input input-wide" value={node.displayLabel || ''} placeholder="Boşsa gösterilmez"
+                onCommit={v => set({ displayLabel: v })} />
             </label>
             {!isLoss && (
               <label className="field">
                 <span className="field-label">Yaş</span>
-                <input type="number" min="0" className="input input-age" value={node.age || ''} placeholder="—"
-                  onChange={e => set({ age: sanitizeAgeValue(e.target.value) })} />
+                <DraftField key={`${node.id}-age`} type="number" min="0" className="input input-age" value={node.age || ''} placeholder="—"
+                  onCommit={v => set({ age: sanitizeAgeValue(v) })} />
               </label>
             )}
             {!!node.deceased && !isLoss && (
               <>
                 <label className="field">
                   <span className="field-label">Ölüm yaşı</span>
-                  <input type="number" min="0" className="input input-age" value={node.ageAtDeath || ''} placeholder="—"
-                    onChange={e => set({ ageAtDeath: sanitizeAgeValue(e.target.value) })} />
+                  <DraftField key={`${node.id}-death-age`} type="number" min="0" className="input input-age" value={node.ageAtDeath || ''} placeholder="—"
+                    onCommit={v => set({ ageAtDeath: sanitizeAgeValue(v) })} />
                 </label>
                 <label className="field-col">
                   <span className="field-label">Ölüm nedeni</span>
-                  <input type="text" className="input input-wide" value={node.causeOfDeath || ''}
-                    onChange={e => set({ causeOfDeath: e.target.value })} />
+                  <DraftField key={`${node.id}-cause`} type="text" className="input input-wide" value={node.causeOfDeath || ''}
+                    onCommit={v => set({ causeOfDeath: v })} />
                 </label>
               </>
             )}
@@ -364,8 +365,8 @@ export default function IndividualEditor({
               // older free-text field: still shown under the symbol, editable/clearable here
               <label className="field-col">
                 <span className="field-label">Sembol altı yazı</span>
-                <input type="text" className="input input-wide" value={node.condition || ''}
-                  onChange={e => set({ condition: e.target.value })} />
+                <DraftField key={`${node.id}-condition`} type="text" className="input input-wide" value={node.condition || ''}
+                  onCommit={v => set({ condition: v })} />
               </label>
             )}
           </div>

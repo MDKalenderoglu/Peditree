@@ -434,7 +434,14 @@ export const usePedigreeStore = create((zSet, get) => {
       if (!parsed.ok) return apply({ ok: false, reason: parsed.reason });
       const prevNodes = nodesFromHints(parsed.doc.layoutHints);
       const doc = withoutHints(parsed.doc);
-      const derived = deriveAll(doc, get().ui, prevNodes ? { prevNodes, frozen: true } : null);
+      let derived;
+      try {
+        derived = deriveAll(doc, get().ui, prevNodes ? { prevNodes, frozen: true } : null);
+      } catch (err) {
+        // a file that passes the checks but cannot be drawn leaves the open pedigree as it is
+        console.warn('[openProjectFile] could not draw the file:', err);
+        return apply({ ok: false, reason: 'Dosyadaki pedigri çizilemedi, açılmadı.' });
+      }
       const result = apply({ ok: true, doc }, sel([]), derived);
       if (parsed.migrated) zSet({ actionNotice: { message: 'Eski biçimdeki dosya yeni veri biçimine taşınarak açıldı.', at: Date.now() } });
       return { ...result, migrated: parsed.migrated };
@@ -474,14 +481,38 @@ export const usePedigreeStore = create((zSet, get) => {
   };
 });
 
+/**
+ * Leaving the page loses what was not downloaded (autosave is per tab):
+ * ask whenever the pedigree is not the blank starter and differs from what
+ * was last downloaded — also when only the patient's name was typed, or the
+ * pedigree came back from the session after a reload (audit 2026-10-25: it
+ * used to ask only when there was something to undo).
+ */
+let starterJson = null;
+export function needsLeaveWarning(doc, downloadedDoc) {
+  if (!doc || doc === downloadedDoc) return false;
+  if (!starterJson) starterJson = JSON.stringify(starterDocument().graph);
+  return !!(doc.patientName && doc.patientName.trim()) || JSON.stringify(doc.graph) !== starterJson;
+}
+
 // ── Autosave (debounced) ──
 let saveTimer = null;
+function saveNow() {
+  saveTimer = null;
+  const st = usePedigreeStore.getState();
+  const ok = saveDocument({ ...st.doc, layoutHints: hintsFromNodes(st.pedigreeData.nodes) });
+  // shown on the page while it lasts (audit 2026-10-25: it used to fail silently)
+  if (!!st.autosaveFailed !== !ok) usePedigreeStore.setState({ autosaveFailed: !ok });
+}
 usePedigreeStore.subscribe((state, prevState) => {
   // the document or only the drawing ("Yeniden Düzenle") changed: save both
   if (state.doc === prevState.doc && state.pedigreeData === prevState.pedigreeData) return;
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    const st = usePedigreeStore.getState();
-    saveDocument({ ...st.doc, layoutHints: hintsFromNodes(st.pedigreeData.nodes) });
-  }, 300);
+  saveTimer = setTimeout(saveNow, 300);
 });
+/** Write a pending autosave at once (the page is being left or reloaded). */
+export function flushAutosave() {
+  if (!saveTimer) return;
+  clearTimeout(saveTimer);
+  saveNow();
+}
