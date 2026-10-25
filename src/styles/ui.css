@@ -293,3 +293,46 @@ textarea.input { height: auto; min-height: 56px; padding: 6px 8px; resize: verti
   background: var(--surface); border: 1.5px solid var(--accent); border-radius: 6px;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15), 0 4px 14px rgba(15, 23, 42, 0.14); outline: none;
 }
+
+/* ── tablet: finger and pen (clinician request 2026-10-25) ── */
+/* the drawing pans and pinch-zooms itself; the page must not scroll or zoom under it */
+#pedigree-svg { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* the multi-select switch is for touch screens (a mouse has Cmd/Ctrl/Shift-click) */
+.touch-only { display: none; }
+@media (pointer: coarse) {
+  .touch-only { display: inline-flex; }
+  .ui-btn { height: 40px; padding: 0 14px; }
+  .ui-btn-sm { height: 36px; }
+  .ui-btn-icon { width: 40px; }
+  .radial-sat { width: 42px; height: 42px; }
+  .quick-btn { width: 40px; height: 40px; }
+  .quick-text { height: 40px; padding: 0 12px; font-size: 13px; }
+  .finding-state button { padding: 7px 11px; font-size: 13px; }
+  .finding-glyph { width: 36px; height: 36px; }
+  .style-opt { width: 40px; height: 38px; }
+  .segmented button { min-height: 36px; }
+  /* iOS zooms into any text box under 16px */
+  .input, .inline-edit, textarea, select { font-size: 16px; }
+}
+/* a narrow window or a tablet in portrait: a slimmer side panel */
+@media (max-width: 1000px) {
+  .app-shell.has-editor { grid-template-columns: minmax(0, 1fr) 280px; }
+  .toolbar .brand-sub { display: none; }
+}
+
+/* ── keyboard focus, visible only when the keyboard moves it ── */
+#pedigree-svg .node-group:focus { outline: none; }
+#pedigree-svg .node-group:focus-visible > .pedigree-shape { stroke: var(--accent); stroke-width: 3.5; }
+.radial-sector:focus, .radial-arc:focus { outline: none; }
+.radial-sector:focus-visible path, .radial-arc:focus-visible path { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+.radial-sat:focus-visible, .quick-btn:focus-visible, .quick-text:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* keyboard shortcuts list (opens on a tap or click, so a tablet shows it too) */
+.keys-wrap { position: relative; }
+.keys-popover {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; padding: 8px 10px; width: 330px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+  font-size: 12.5px; color: var(--ink-2);
+}
+.keys-popover td { padding: 3px 6px; vertical-align: top; }
+.keys-popover kbd { font: 600 11.5px/1.4 system-ui, -apple-system, sans-serif; padding: 1px 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; background: var(--sunken); white-space: nowrap; }

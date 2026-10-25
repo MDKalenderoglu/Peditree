@@ -10,7 +10,8 @@ import IndividualEditor from './components/IndividualEditor';
 import RadialAddMenu from './components/RadialAddMenu';
 import { flushDrafts } from './utils/drafts';
 import DraftField from './components/DraftField';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard } from 'lucide-react';
+import { nextPerson, RING_KEYS } from './utils/keyboardNav';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
 
@@ -18,6 +19,27 @@ const todayIso = () => {
   const t = new Date();
   return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
 };
+
+const KEY_HELP = [
+  ['Tab', 'çizimdeki kişiler arasında gez'],
+  ['Enter / Boşluk', 'odaktaki kişiyi seç (simit açılır)'],
+  ['← →', 'aynı satırdaki komşu kişi'],
+  ['↑ ↓', 'ebeveyn / çocuk'],
+  ['A', 'anne ve baba ekle'],
+  ['E', 'eş ekle'],
+  ['K', 'kardeş seçenekleri'],
+  ['C / Ç', 'çocuk seçenekleri'],
+  ['B', 'bulgular'],
+  ['D', 'durum (cinsiyet, etkilenmiş, vefat …)'],
+  ['İ / I', 'ikiz'],
+  ['N', 'not'],
+  ['Esc', 'seçimi kapat'],
+  ['Delete', 'seçili kişiyi sil'],
+  ['Cmd/Ctrl+Z', 'geri al (Shift ile: yinele)'],
+  ['Cmd/Ctrl+S', 'kaydet'],
+  ['+ / − / 0', 'yakınlaştır / uzaklaştır / sığdır'],
+  ['Cmd/Ctrl/Shift+tık', 'birden çok kişi seç (tablette: “Çoklu seçim”)'],
+];
 
 function App() {
   const {
@@ -37,6 +59,11 @@ function App() {
     exportProjectFile, openProjectFile, relayout, doc, setPatientName, setProbandBirthDate,
   } = usePedigreeStore();
   const probandNode = doc.graph.individuals.find(i => i.proband);
+  // tablet: taps add people to the selection while this is on (a mouse has Cmd/Ctrl/Shift-click)
+  const [multiSelect, setMultiSelect] = React.useState(false);
+  const [showKeys, setShowKeys] = React.useState(false);
+  const [focusTick, setFocusTick] = React.useState(0);
+  const ringRef = React.useRef(null);
   const [exportError, setExportError] = React.useState(null);
   const [exportNotice, setExportNotice] = React.useState(null);
   const svgRef = React.useRef(null);
@@ -189,7 +216,9 @@ function App() {
 
   // Keyboard shortcuts (clinician request 2026-10-25); never while typing
   const keyRef = React.useRef(null);
-  React.useEffect(() => { keyRef.current = { undo, redo, handleSaveProject, clearSelection, deleteIndividual, selectedNodes }; });
+  React.useEffect(() => {
+    keyRef.current = { undo, redo, handleSaveProject, clearSelection, deleteIndividual, selectedNodes, pedigreeData, selectIndividual, addParentsTo, addSpouseTo };
+  });
   React.useEffect(() => {
     const onKey = (e) => {
       const t = e.target;
@@ -212,7 +241,25 @@ function App() {
         return;
       }
       const zoom = { '+': 'Yakınlaştır', '=': 'Yakınlaştır', '-': 'Uzaklaştır', '0': 'Sığdır' }[e.key];
-      if (zoom) document.querySelector(`.zoom-controls button[aria-label="${zoom}"]`)?.click();
+      if (zoom) { document.querySelector(`.zoom-controls button[aria-label="${zoom}"]`)?.click(); return; }
+      // one person selected: arrows move around the drawing, letters work the ring
+      if (k.selectedNodes.length !== 1) return;
+      const [me] = k.selectedNodes;
+      const dir = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }[e.key];
+      if (dir) {
+        e.preventDefault();
+        const next = nextPerson(k.pedigreeData, me.id, dir);
+        if (!next) return;
+        k.selectIndividual(next);
+        setFocusTick((n) => n + 1); // the drawing moves the focus to the new selection
+        return;
+      }
+      const action = RING_KEYS[e.key.toLocaleLowerCase('tr')];
+      if (!action || me.placeholder) return;
+      e.preventDefault();
+      if (action === 'parents') { k.addParentsTo(me.id, {}); return; }
+      if (action === 'spouse') { k.addSpouseTo(me.id, me.sex === 'female' ? 'male' : 'female'); return; }
+      ringRef.current?.open(action); // its first control takes the focus
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -260,10 +307,25 @@ function App() {
             <button className="ui-btn" onClick={relayout} title="Çizimi baştan düzenle: tüm pedigriyi yeniden yerleştirir (geri alınabilir)"><LayoutGrid size={15} /> Yeniden Düzenle</button>
           </div>
           <div className="toolbar-spacer" />
-          <button className="ui-btn ui-btn-icon ui-btn-ghost" aria-label="Klavye kısayolları"
-            title={'Klavye kısayolları\nCmd/Ctrl+Z  geri al\nCmd/Ctrl+Shift+Z  yinele\nCmd/Ctrl+S  kaydet\nDelete  seçili kişiyi sil\nEsc  seçimi kapat\n+ / −  yakınlaştır / uzaklaştır\n0  sığdır\nCmd/Ctrl+tık  birden çok kişi seç'}>
-            <Keyboard size={15} />
+          <button className={`ui-btn touch-only${multiSelect ? ' ui-btn-primary' : ''}`} aria-pressed={multiSelect}
+            onClick={() => setMultiSelect(v => !v)} title="Açıkken her dokunuş kişiyi seçime ekler ya da çıkarır">
+            <CheckSquare size={15} /> Çoklu seçim
           </button>
+          <div className="keys-wrap">
+            <button className="ui-btn ui-btn-icon ui-btn-ghost" aria-label="Klavye kısayolları" aria-expanded={showKeys}
+              title="Klavye kısayolları" onClick={() => setShowKeys(v => !v)}>
+              <Keyboard size={15} />
+            </button>
+            {showKeys && (
+              <div className="keys-popover" role="dialog" aria-label="Klavye kısayolları">
+                <table>
+                  <tbody>
+                    {KEY_HELP.map(([k, t]) => <tr key={k}><td><kbd>{k}</kbd></td><td>{t}</td></tr>)}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
           <div className="toolbar-group">
             <button className="ui-btn" onClick={handleExportSVG} title="SVG olarak indir"><Download size={15} /> SVG</button>
             <button className="ui-btn ui-btn-primary" onClick={handleExportPNG} title="PNG olarak indir"><ImageIcon size={15} /> PNG</button>
@@ -340,6 +402,8 @@ function App() {
           selectedNodeId={selectedId}
           selectedNodeId2={selectedId2}
           selectedIds={selectedIds || []}
+          multiSelect={multiSelect}
+          focusTick={focusTick}
           onNodeSelect={handleNodeSelect}
           onUnionSelect={selectUnion}
           conditionKey={pedigreeData.conditionKey || []}
@@ -353,8 +417,8 @@ function App() {
             else if (kind === 'ageAtDeath') updateIndividual(target, { ageAtDeath: v.trim() });
             else updateIndividual(target, { [kind]: v }); // displayLabel, condition, causeOfDeath
           }}
-          renderQuickBar={(anchor) => (
-            <RadialAddMenu anchor={anchor} node={selectedNode} pedigreeData={pedigreeData}
+          renderQuickBar={(anchor, panBy) => (
+            <RadialAddMenu ref={ringRef} anchor={anchor} node={selectedNode} pedigreeData={pedigreeData} onNeedRoom={panBy}
               onAddSibling={addSiblingTo} onAddSpouse={addSpouseTo} onAddParents={addParentsTo} onAddTwin={addMultipleSibling}
               onUpdate={updateIndividual} onSetProband={setProband} onClearProband={clearProband}
               onAddFinding={addFinding} onSetFindingStatus={setFindingStatus} onSetFindingStyle={setFindingStyle}

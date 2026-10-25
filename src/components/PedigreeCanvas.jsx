@@ -125,10 +125,11 @@ function drawStroke(g, edge, dx = 0, dy = 0) {
 // belt-and-suspenders fallback for exportUtils.js and for tests/tools
 // that query the DOM directly.
 const PedigreeCanvas = forwardRef(function PedigreeCanvas(
-  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar, patientName = '', onEditText },
+  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar, patientName = '', onEditText, multiSelect = false, focusTick = 0 },
   forwardedRef
 ) {
   const svgRef = useRef(null);
+  const focusTickRef = useRef(0);
   const boxRef = useRef(null);
   // where the quick-add bar sits: under the single selected person's symbol
   // Every text on the page can be corrected where it stands (clinician
@@ -182,6 +183,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const svg = d3.select(svgRef.current);
     // the selected person's place on screen, from the drawing about to go
     const before = selectedNodeId && keepRef.current && keepRef.current.id === selectedNodeId ? keepRef.current : null;
+    // a person with the keyboard focus keeps it across the redraw
+    const focusedId = svgRef.current.contains(document.activeElement) ? document.activeElement.getAttribute('data-node-id') : null;
     svg.selectAll('*').remove();
     const editable = (sel, kind, target, value) => sel.classed('editable', true).style('cursor', 'text')
       .on('click', (event) => { event.stopPropagation(); startEdit(kind, target, value, event.currentTarget); });
@@ -443,12 +446,28 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       })
       .attr('transform', d => `translate(${d.x},${d.y})`)
       .style('cursor', 'pointer')
+      // keyboard: Tab reaches each person, Enter / Space selects (tablet
+      // with a keyboard too; clinician request 2026-10-25)
+      .attr('data-node-id', d => d.id)
+      .attr('tabindex', 0)
+      .attr('role', 'button')
+      .attr('aria-label', d => [
+        pedigreeIds.get(d.id)?.displayId, d.displayLabel,
+        d.pregnancyLoss ? 'düşük' : d.stillbirth ? 'ölü doğum' : { male: 'erkek', female: 'kadın' }[d.sex] || 'cinsiyeti bilinmiyor',
+        d.proband && 'proband', d.affected && 'etkilenmiş', d.carrier && 'taşıyıcı', d.deceased && 'vefat',
+      ].filter(Boolean).join(', '))
       .on('click', (event, d) => {
         event.stopPropagation();
-        // Cmd-click (Mac) or Ctrl-click (Windows/Linux) toggles a second
-        // selection slot instead of replacing the whole selection — see
-        // usePedigreeStore.js's selectIndividual(id, { additive }).
-        onNodeSelect(d.id, { additive: event.metaKey || event.ctrlKey });
+        // Cmd-click (Mac) or Ctrl-click (Windows/Linux), Shift-click, or a tap
+        // in the multi-select mode (tablet) adds to the selection instead of
+        // replacing it — see usePedigreeStore.js's selectIndividual(id, { additive }).
+        onNodeSelect(d.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey || multiSelect });
+      })
+      .on('keydown', (event, d) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        event.stopPropagation();
+        onNodeSelect(d.id, { additive: event.shiftKey || multiSelect });
       });
 
     nodeGroups.each(function (d, nodeIndex) {
@@ -678,6 +697,16 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       });
     }
 
+    // the arrow keys moved the selection: the focus follows it; otherwise a
+    // focused person keeps the focus across the redraw
+    const follow = focusTick !== focusTickRef.current && selectedNodeId;
+    focusTickRef.current = focusTick;
+    const focusOn = follow ? selectedNodeId : focusedId;
+    if (focusOn) {
+      const again = svgRef.current.querySelector(`[data-node-id="${CSS.escape(focusOn)}"]`);
+      if (again) again.focus({ preventScroll: true });
+    }
+
     // --- Zoom/Pan ---
     const zoom = d3.zoom()
       .scaleExtent([0.1, 4])
@@ -688,6 +717,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         keepRef.current = m && selectedNodeId ? { id: selectedNodeId, ...m } : null;
       });
     svg.call(zoom);
+    // a quick second tap on a tablet selects again; it must not zoom
+    svg.on('dblclick.zoom', null);
     // keep the clinician's zoom/pan across edits (it used to jump back after
     // every change); "Sığdır" resets it
     svg.call(zoom.transform, d3.zoomTransform(svg.node()));
@@ -713,7 +744,18 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // Store for external reset
     svg.node().__zoom_ref = zoom;
 
-  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar, patientName, startEdit]);
+  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar, patientName, startEdit, multiSelect, focusTick]);
+
+  // a menu around the selected person that needs more room slides the
+  // drawing by (dx, dy) screen pixels (a narrow tablet screen)
+  const panBy = useCallback((dx, dy) => {
+    const el = svgRef.current;
+    const zoom = el && el.__zoom_ref;
+    if (!zoom) return;
+    const k = d3.zoomTransform(el).k;
+    const s = (el.getScreenCTM && el.getScreenCTM()?.a) || 1;
+    d3.select(el).call(zoom.translateBy, dx / (s * k), dy / (s * k));
+  }, []);
 
   const zoomBy = (k) => {
     const svg = d3.select(svgRef.current);
@@ -741,7 +783,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         style={{ cursor: 'grab', background: '#f8fafc' }}
         onClick={() => onNodeSelect(null)}
       />
-      {anchor && renderQuickBar && !editing && renderQuickBar(anchor)}
+      {anchor && renderQuickBar && !editing && renderQuickBar(anchor, panBy)}
       {editing && (
         <input className="inline-edit" autoFocus defaultValue={editing.value}
           style={{ left: editing.x - 6, top: editing.y - 5, width: Math.max(editing.w + 60, 160), height: Math.max(editing.h + 10, 28) }}

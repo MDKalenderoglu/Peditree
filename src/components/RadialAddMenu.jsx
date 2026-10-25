@@ -8,7 +8,7 @@
  * symbol visible and clickable. The same store operations as the right
  * panel; the store refuses (with a reason) anything the graph rules forbid.
  */
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import { Stethoscope, HeartPulse, Users, StickyNote } from 'lucide-react';
 import FindingsPalette from './FindingsPalette';
 import DraftField from './DraftField';
@@ -58,6 +58,16 @@ const SATELLITES = [
   { key: 'note', angle: 45, label: 'Not', Icon: StickyNote },
 ];
 
+/** Enter / Space on an SVG "button" acts as a click (keyboard use). */
+const pressKey = (e, fn) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); fn(); }
+};
+/**
+ * Hover opens menus for a mouse or a hovering pen only: a finger's tap
+ * fires "enter" and then "click", which would open and close at once.
+ */
+const isHover = (e) => e.pointerType !== 'touch';
+
 /** One button of a rainbow band: an annular segment with a (two-line) label. */
 function ArcButton({ a0, a1, r, R, label, on, disabled, onClick, title, flip = 0 }) {
   const mid = ((a0 + a1) / 2) * Math.PI / 180;
@@ -69,7 +79,8 @@ function ArcButton({ a0, a1, r, R, label, on, disabled, onClick, title, flip = 0
   const cx = tr * Math.cos(mid), cy = tr * Math.sin(mid);
   return (
     <g className={`radial-arc${on ? ' on' : ''}${disabled ? ' off' : ''}`} role="button" aria-label={label.replace('\n', ' ')}
-      aria-pressed={!!on} onClick={disabled ? undefined : onClick}>
+      aria-pressed={!!on} tabIndex={disabled ? -1 : 0} onClick={disabled ? undefined : onClick}
+      onKeyDown={disabled ? undefined : (e) => pressKey(e, onClick)}>
       <title>{title || label.replace('\n', ' ')}</title>
       <path d={sectorPath(a0, a1, r, R, 1.5)} />
       <text x={cx} y={cy - (lines.length - 1) * 5.5} textAnchor="middle" dominantBaseline="central" transform={`rotate(${rot} ${cx} ${cy})`}>
@@ -89,6 +100,7 @@ function sectorPath(a0, a1, r, R, gapDeg = 3) {
 export default function RadialAddMenu({
   anchor, node, pedigreeData, onAddSibling, onAddChild, onAddSpouse, onAddParents, onAddTwin,
   onUpdate, onSetProband, onClearProband, onAddFinding, onSetFindingStatus, onSetFindingStyle,
+  onNeedRoom, ref,
 }) {
   const [active, setActive] = useState(null);   // sector under the pointer
   const [panel, setPanel] = useState(null);     // satellite panel (stays open)
@@ -110,6 +122,36 @@ export default function RadialAddMenu({
     el.style.translate = `${dx}px ${dy}px`;
     setNudge((old) => (old.x === dx && old.y === dy ? old : { x: dx, y: dy }));
   }, [active, panel, anchor.x, anchor.y]);
+  // keyboard (App): a letter opens a sector's choices or a satellite's panel
+  const kbOpen = useRef(false);
+  const arcRef = useRef(null);
+  useImperativeHandle(ref, () => ({
+    open: (key) => {
+      clearTimeout(closeTimer.current);
+      clearTimeout(panelTimer.current);
+      kbOpen.current = true;
+      if (SECTORS[key]) { setPanel(null); setActive(key); } else { setActive(null); setPanel(key); }
+    },
+  }), []);
+  // the rainbow bands around the person must fit on screen: if they stick
+  // out, the drawing slides by that much (a narrow tablet screen)
+  useLayoutEffect(() => {
+    const el = arcRef.current;
+    if (!el || !onNeedRoom) return;
+    const r = el.getBoundingClientRect(), host = el.closest('.canvas-stage');
+    if (!host) return;
+    const h = host.getBoundingClientRect(), m = 8;
+    const dx = r.left < h.left + m ? h.left + m - r.left : r.right > h.right - m ? h.right - m - r.right : 0;
+    const dy = r.top < h.top + m ? h.top + m - r.top : r.bottom > h.bottom - m ? h.bottom - m - r.bottom : 0;
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) onNeedRoom(dx, dy);
+  }, [panel, anchor.x, anchor.y, onNeedRoom]);
+  // opened from the keyboard: its first control takes the focus (Tab moves on, Enter picks)
+  useEffect(() => {
+    if (!kbOpen.current) return;
+    const root = popRef.current || arcRef.current;
+    const first = root && root.querySelector('button:not(:disabled), [tabindex="0"], input, textarea');
+    if (first) { first.focus(); kbOpen.current = false; }
+  }, [active, panel]);
   if (!node || node.placeholder) return null;
   const isLoss = node.pregnancyLoss || node.stillbirth;
 
@@ -142,7 +184,9 @@ export default function RadialAddMenu({
   const r = Math.max(24, anchor.size / 2 + 8);
   const R = r + 34;
   const box = R + 2;
-  const sat = R + 20; // satellite distance from the centre
+  // satellite distance from the centre (bigger buttons on a touch screen)
+  const coarse = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  const sat = R + (coarse ? 27 : 20);
   const open = (k) => { clearTimeout(closeTimer.current); clearTimeout(panelTimer.current); setActive(direct[k] && !disabled[k] ? null : k); if (!direct[k]) setPanel(null); };
   // satellites open on hover (clinician request 2026-10-25); a panel stays
   // while the pointer is on it or a field inside it has the focus
@@ -157,6 +201,10 @@ export default function RadialAddMenu({
     }, 300);
   };
   const leave = () => { clearTimeout(closeTimer.current); closeTimer.current = setTimeout(() => setActive(null), 200); };
+  const pressSector = (k) => {
+    if (direct[k]) { if (!disabled[k]) direct[k](); else open(k); return; }
+    if (active === k) setActive(null); else open(k);
+  };
   const flyoutStyle = (k) => ({
     top: { left: 0, top: -R - 10, transform: 'translate(-50%, -100%)' },
     bottom: { left: 0, top: R + 10, transform: 'translate(-50%, 0)' },
@@ -242,11 +290,8 @@ export default function RadialAddMenu({
           const tr = (r + R) / 2;
           return (
             <g key={k} className={`radial-sector${active === k ? ' on' : ''}${disabled[k] ? ' off' : ''}`}
-              onMouseEnter={() => open(k)} onMouseLeave={leave}
-              onClick={() => {
-                if (direct[k]) { if (!disabled[k]) direct[k](); else open(k); return; }
-                if (active === k) setActive(null); else open(k);
-              }}
+              onPointerEnter={(e) => isHover(e) && open(k)} onPointerLeave={(e) => isHover(e) && leave()}
+              onClick={() => pressSector(k)} onKeyDown={(e) => pressKey(e, () => pressSector(k))} tabIndex={0}
               role="button" aria-label={label} aria-disabled={!!disabled[k]}>
               <title>{disabled[k] || (k === 'top' ? 'Anne ve baba ekle' : k === 'right' ? (unions.length ? 'Başka bir eş ekle' : 'Eş ekle') : label)}</title>
               <path d={sectorPath(a0, a1, r, R)} />
@@ -261,14 +306,14 @@ export default function RadialAddMenu({
         return (
           <button key={s.key} className={`radial-sat${panel === s.key ? ' on' : ''}`} style={{ left: x, top: y }}
             title={s.label} aria-label={s.label} aria-expanded={panel === s.key}
-            onMouseEnter={() => openPanel(s.key)} onMouseLeave={leavePanel}
+            onPointerEnter={(e) => isHover(e) && openPanel(s.key)} onPointerLeave={(e) => isHover(e) && leavePanel()}
             onClick={() => { setActive(null); setPanel(panel === s.key ? null : s.key); }}>
             <Icon size={15} />
           </button>
         );
       })}
       {active && (
-        <div className="radial-flyout" ref={popRef} style={{ ...flyoutStyle(active), translate: `${nudge.x}px ${nudge.y}px` }} onMouseEnter={() => open(active)} onMouseLeave={leave}>
+        <div className="radial-flyout" ref={popRef} style={{ ...flyoutStyle(active), translate: `${nudge.x}px ${nudge.y}px` }} onPointerEnter={(e) => isHover(e) && open(active)} onPointerLeave={(e) => isHover(e) && leave()}>
           {disabled[active] ? (
             <span className="radial-hint">{disabled[active]}</span>
           ) : choices[active].map(([title, glyph, run]) => (
@@ -279,14 +324,14 @@ export default function RadialAddMenu({
         </div>
       )}
       {arcPanel && (
-        <svg className="radial-ring radial-arcs" width={2 * outerBox} height={2 * outerBox}
+        <svg ref={arcRef} className="radial-ring radial-arcs" width={2 * outerBox} height={2 * outerBox}
           viewBox={`${-outerBox} ${-outerBox} ${2 * outerBox} ${2 * outerBox}`} style={{ left: -outerBox, top: -outerBox }}>
-          <g onMouseEnter={keepPanel} onMouseLeave={leavePanel}>{arcs[panel]()}</g>
+          <g onPointerEnter={(e) => isHover(e) && keepPanel()} onPointerLeave={(e) => isHover(e) && leavePanel()}>{arcs[panel]()}</g>
         </svg>
       )}
       {panel && !arcPanel && (
         <div className="radial-panel" ref={popRef} style={{ ...panelStyle(SATELLITES.find(s => s.key === panel)), translate: `${nudge.x}px ${nudge.y}px` }}
-          onMouseEnter={keepPanel} onMouseLeave={leavePanel}>
+          onPointerEnter={(e) => isHover(e) && keepPanel()} onPointerLeave={(e) => isHover(e) && leavePanel()}>
           <div className="radial-panel-title">{SATELLITES.find(s => s.key === panel).label}</div>
           {panels[panel]}
         </div>
