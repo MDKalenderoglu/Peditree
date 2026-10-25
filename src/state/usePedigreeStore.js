@@ -33,6 +33,7 @@ import { validateDocument } from '../graph/validate';
 import { displayParentage } from '../graph/model';
 import * as ops from '../graph/ops';
 import { fromPed } from '../graph/ped';
+import { buildTemplate } from '../graph/templates';
 import { sidewaysMove, dropMove, againstAges } from '../utils/sidewaysMove';
 import { wizardOps, deriveWizardView } from '../graph/wizardAdapter';
 import * as multiples from '../graph/multiples';
@@ -474,6 +475,25 @@ export const usePedigreeStore = create((zSet, get) => {
         ...deriveAll(fresh, ui, { straightStart: true }),
       };
     }),
+
+    // a new pedigree from a ready-made template (graph/templates.js): like
+    // "Yeni", nothing to undo; drawn with the fewest bends
+    newFromTemplate: (spec) => {
+      const r = buildTemplate(starterDocument(), spec);
+      if (!r.ok) return apply({ ok: false, reason: `Şablon kurulamadı: ${r.reason}` });
+      zSet(() => {
+        clearAllSessions();
+        const ui = { gen4Pending: [] };
+        return {
+          doc: r.doc, ui,
+          _history: [], _future: [], _viewHistory: [], _viewFuture: [],
+          ...sel([]),
+          dismissedWarningIds: [], openSectionId: 'proband', actionNotice: null,
+          ...deriveAll(r.doc, ui, { tidy: true, reason: 'Şablon' }),
+        };
+      });
+      return { ok: true };
+    },
 
     /** The current pedigree as a project file (`.peditree.json`). */
     exportProjectFile: () => serializeDocument({ ...get().doc, layoutHints: hintsFromNodes(get().pedigreeData.nodes) }),

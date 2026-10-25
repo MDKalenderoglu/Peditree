@@ -12,6 +12,7 @@ import { flushDrafts } from './utils/drafts';
 import DraftField from './components/DraftField';
 import { nextPerson, RING_KEYS } from './utils/keyboardNav';
 import { toPed } from './graph/ped';
+import { TEMPLATE_GROUPS } from './graph/templates';
 import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2, MoreHorizontal, Printer } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
@@ -59,7 +60,7 @@ function App() {
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
     actionNotice, dismissActionNotice, autosaveFailed,
-    exportProjectFile, openProjectFile, importPedFile, relayout, doc, setPatientName, setProbandBirthDate,
+    exportProjectFile, openProjectFile, importPedFile, relayout, doc, setPatientName, setProbandBirthDate, newFromTemplate,
   } = usePedigreeStore();
   const probandNode = doc.graph.individuals.find(i => i.proband);
   // tablet: taps add people to the selection while this is on (a mouse has Cmd/Ctrl/Shift-click)
@@ -226,12 +227,17 @@ function App() {
     setMore(false);
   };
 
-  const handleNewPedigree = () => {
+  // "Yeni": the nuclear family, or a ready-made consanguinity template
+  // (graph/templates.js; clinician decision 2026-10-25)
+  const [newMenu, setNewMenu] = React.useState(false);
+  const [tplGroup, setTplGroup] = React.useState(TEMPLATE_GROUPS[0].id);
+  const handleNewPedigree = (spec = null) => {
+    setNewMenu(false);
     if (window.confirm('Yeni pedigri başlatılsın mı?\n\nŞu anki pedigriyi indirmediyseniz (Kaydet / SVG / PNG) kaybolur.')) {
-      // resetPedigree() itself clears selection and the undo stack — see
-      // usePedigreeStore.js. Only export-banner state (local to App.jsx) is
-      // cleared here.
-      resetPedigree();
+      // resetPedigree() / newFromTemplate() clear selection and the undo
+      // stack — see usePedigreeStore.js. Only export-banner state (local to
+      // App.jsx) is cleared here.
+      if (spec) newFromTemplate(spec); else resetPedigree();
       setExportError(null);
       setExportNotice(null);
     }
@@ -374,7 +380,26 @@ function App() {
           </label>
           <div className="toolbar-sep" />
           <div className="toolbar-group">
-            <button className="ui-btn" onClick={handleNewPedigree} title="Kaydedilmiş pedigriyi sil ve yeniden başla"><FilePlus2 size={15} /> Yeni</button>
+            <div className="keys-wrap">
+              <button className="ui-btn" onClick={() => setNewMenu(v => !v)} aria-expanded={newMenu} title="Yeni pedigri: çekirdek aile ya da hazır şablon"><FilePlus2 size={15} /> Yeni</button>
+              {newMenu && (
+                <div className="keys-popover share-popover new-popover" role="dialog" aria-label="Yeni pedigri">
+                  <button className="ui-btn ui-btn-primary" onClick={() => handleNewPedigree(null)}>Çekirdek aile ile başla</button>
+                  <div className="more-title">Anne-baba akraba evliliği</div>
+                  <div className="segmented segmented-wrap" role="tablist" aria-label="Akrabalık derecesi">
+                    {TEMPLATE_GROUPS.map(g => (
+                      <button key={g.id} role="tab" aria-selected={tplGroup === g.id} className={tplGroup === g.id ? 'on' : undefined}
+                        onClick={() => setTplGroup(g.id)}>{g.label}</button>
+                    ))}
+                  </div>
+                  <div className="template-list" role="list">
+                    {TEMPLATE_GROUPS.find(g => g.id === tplGroup).items.map(i => (
+                      <button key={i.id} className="template-item" role="listitem" onClick={() => handleNewPedigree(i.spec)}>{i.label}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             <button className="ui-btn" onClick={() => fileInputRef.current && fileInputRef.current.click()} title="Proje dosyası (.peditree.json) ya da PED dosyası aç"><FolderOpen size={15} /> Aç</button>
             <button className="ui-btn" onClick={handleSaveProject} title="Pedigriyi proje dosyası olarak kaydet (.peditree.json)"><Save size={15} /> Kaydet</button>
             <input ref={fileInputRef} type="file" accept=".json,application/json,.ped,.fam,.txt,text/plain" onChange={handleOpenProject} style={{ display: 'none' }} aria-label="Proje ya da PED dosyası seç" />
