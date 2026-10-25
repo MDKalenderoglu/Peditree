@@ -32,6 +32,7 @@ import { assessRelationshipMutation } from '../utils/relationshipSafety';
 import { validateDocument } from '../graph/validate';
 import { displayParentage } from '../graph/model';
 import * as ops from '../graph/ops';
+import { fromPed } from '../graph/ped';
 import { wizardOps, deriveWizardView } from '../graph/wizardAdapter';
 import * as multiples from '../graph/multiples';
 import * as findings from '../graph/findings';
@@ -454,8 +455,24 @@ export const usePedigreeStore = create((zSet, get) => {
         return apply({ ok: false, reason: 'Dosyadaki pedigri çizilemedi, açılmadı.' });
       }
       const result = apply({ ok: true, doc }, sel([]), derived);
-      if (parsed.migrated) zSet({ actionNotice: { message: 'Eski biçimdeki dosya yeni veri biçimine taşınarak açıldı.', at: Date.now() } });
+      if (parsed.migrated) zSet({ actionNotice: { message: 'Eski biçimdeki dosya yeni veri biçimine taşınarak açıldı.', kind: 'info', at: Date.now() } });
       return { ...result, migrated: parsed.migrated };
+    },
+
+    // a PED file from a lab or another tool: drawn afresh, one undo step
+    importPedFile: (text) => {
+      const r = fromPed(text);
+      if (!r.ok) return apply({ ok: false, reason: r.reason });
+      let derived;
+      try {
+        derived = deriveAll(r.doc, get().ui, { tidy: true, reason: 'PED dosyası' });
+      } catch (err) {
+        console.warn('[importPedFile] could not draw the file:', err);
+        return apply({ ok: false, reason: 'PED dosyasındaki aile çizilemedi, açılmadı.' });
+      }
+      const result = apply({ ok: true, doc: r.doc }, sel([]), derived);
+      zSet({ actionNotice: { message: r.notice, kind: 'info', at: Date.now() } });
+      return result;
     },
 
     // ── undo / redo ──

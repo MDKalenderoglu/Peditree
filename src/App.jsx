@@ -11,7 +11,8 @@ import RadialAddMenu from './components/RadialAddMenu';
 import { flushDrafts } from './utils/drafts';
 import DraftField from './components/DraftField';
 import { nextPerson, RING_KEYS } from './utils/keyboardNav';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2 } from 'lucide-react';
+import { toPed } from './graph/ped';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2, MoreHorizontal } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
 
@@ -56,7 +57,7 @@ function App() {
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
     actionNotice, dismissActionNotice, autosaveFailed,
-    exportProjectFile, openProjectFile, relayout, doc, setPatientName, setProbandBirthDate,
+    exportProjectFile, openProjectFile, importPedFile, relayout, doc, setPatientName, setProbandBirthDate,
   } = usePedigreeStore();
   const probandNode = doc.graph.individuals.find(i => i.proband);
   // tablet: taps add people to the selection while this is on (a mouse has Cmd/Ctrl/Shift-click)
@@ -187,6 +188,15 @@ function App() {
     }
   };
 
+  // "Diğer": PED file (and printing)
+  const [more, setMore] = React.useState(false);
+  const [pedPhenotype, setPedPhenotype] = React.useState('affected');
+  const handleExportPed = () => {
+    const text = toPed(doc.graph, pedigreeData.nodes, { phenotype: pedPhenotype });
+    downloadBlob(new Blob([text], { type: 'text/plain' }), exportFileName(doc.patientName, 'ped'));
+    setMore(false);
+  };
+
   const handleNewPedigree = () => {
     if (window.confirm('Yeni pedigri başlatılsın mı?\n\nŞu anki pedigriyi indirmediyseniz (Kaydet / SVG / PNG) kaybolur.')) {
       // resetPedigree() itself clears selection and the undo stack — see
@@ -227,7 +237,9 @@ function App() {
     e.target.value = '';
     if (!file) return;
     if (_history && _history.length > 0 && !window.confirm('Açık pedigrinin yerine dosyadaki pedigri yüklensin mi? (Geri Al ile dönebilirsiniz.)')) return;
-    file.text().then(text => openProjectFile(text)).catch(() => openProjectFile(null));
+    // a project file is JSON; anything else is read as a PED file
+    file.text().then(text => (/\.(ped|fam|txt)$/i.test(file.name) || !text.trim().startsWith('{') ? importPedFile(text) : openProjectFile(text)))
+      .catch(() => openProjectFile(null));
   };
 
   // Nothing is stored once the tab closes (session autosave, clinician
@@ -326,9 +338,9 @@ function App() {
           <div className="toolbar-sep" />
           <div className="toolbar-group">
             <button className="ui-btn" onClick={handleNewPedigree} title="Kaydedilmiş pedigriyi sil ve yeniden başla"><FilePlus2 size={15} /> Yeni</button>
-            <button className="ui-btn" onClick={() => fileInputRef.current && fileInputRef.current.click()} title="Proje dosyası aç (.peditree.json; eski biçim de açılır)"><FolderOpen size={15} /> Aç</button>
+            <button className="ui-btn" onClick={() => fileInputRef.current && fileInputRef.current.click()} title="Proje dosyası (.peditree.json) ya da PED dosyası aç"><FolderOpen size={15} /> Aç</button>
             <button className="ui-btn" onClick={handleSaveProject} title="Pedigriyi proje dosyası olarak kaydet (.peditree.json)"><Save size={15} /> Kaydet</button>
-            <input ref={fileInputRef} type="file" accept=".json,application/json" onChange={handleOpenProject} style={{ display: 'none' }} aria-label="Proje dosyası seç" />
+            <input ref={fileInputRef} type="file" accept=".json,application/json,.ped,.fam,.txt,text/plain" onChange={handleOpenProject} style={{ display: 'none' }} aria-label="Proje ya da PED dosyası seç" />
           </div>
           <div className="toolbar-sep" />
           <div className="toolbar-group">
@@ -382,6 +394,26 @@ function App() {
                 </div>
               )}
             </div>
+            <div className="keys-wrap">
+              <button className="ui-btn ui-btn-icon" onClick={() => setMore(v => !v)} aria-expanded={more} aria-label="Diğer" title="Diğer: PED dosyası, yazdır">
+                <MoreHorizontal size={15} />
+              </button>
+              {more && (
+                <div className="keys-popover share-popover" role="dialog" aria-label="Diğer">
+                  <div className="more-title">PED dosyası</div>
+                  <p className="share-note">Analiz programları ve laboratuvarlar için: kişi, anne, baba, cinsiyet ve tek bir etkilenme durumu. Kimlik olarak pedigri numaraları yazılır; hasta adı yazılmaz.</p>
+                  <label className="field-col">
+                    <span className="field-label">Etkilenmiş sayılacak</span>
+                    <select className="select" value={pedPhenotype} onChange={e => setPedPhenotype(e.target.value)}>
+                      <option value="affected">“Etkilenmiş” işaretli kişiler</option>
+                      {(pedigreeData.conditionKey || []).map(e => <option key={e.id} value={e.label}>{e.label}</option>)}
+                    </select>
+                  </label>
+                  <button className="ui-btn ui-btn-primary" onClick={handleExportPed}><Download size={15} /> PED indir</button>
+                  <p className="share-note">PED dosyası açmak için “Aç” düğmesini kullanın.</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -400,7 +432,7 @@ function App() {
           <div className="warning-panel" role="status" style={{ borderColor: '#2563eb', background: '#eff6ff' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
               <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '5px', color: '#1d4ed8' }}>
-                <AlertTriangle size={16} /> İşlem uygulanmadı
+                <AlertTriangle size={16} /> {actionNotice.kind === 'info' ? 'Bilgi' : 'İşlem uygulanmadı'}
               </h4>
               <button onClick={dismissActionNotice} title="Kapat" style={dismissBtnStyle}>×</button>
             </div>
