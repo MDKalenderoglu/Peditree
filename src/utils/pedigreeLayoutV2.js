@@ -23,6 +23,7 @@
 import { computeFamilyBlockLayout, recursivePackerEnabled, selectedPacker } from './layoutPacking';
 import { computePclLayout } from '../layout/pcl';
 import { relationshipBackgroundToEdgeInfo } from './relationshipBackground';
+import { isSmallSymbol } from '../graph/model';
 
 const NODE_HALF = 20;
 const LOSS_HALF = 14;
@@ -51,7 +52,7 @@ export function computePedigreeLayoutV2(data, opts = {}) {
 
   const { xPos, yPos } = computeFamilyBlockLayout(data);
 
-  const symbolHalfFor = (ind) => (ind && (ind.pregnancyLoss || ind.stillbirth)) ? LOSS_HALF : NODE_HALF;
+  const symbolHalfFor = (ind) => isSmallSymbol(ind) ? LOSS_HALF : NODE_HALF;
   const indById = new Map(individuals.map(i => [i.id, i]));
   const childrenOf = (unionId) => {
     const rel = parentChildRelationships.find(r => r.unionId === unionId);

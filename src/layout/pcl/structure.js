@@ -18,6 +18,7 @@
 
 import { isGhost } from './crossGeneration';
 import { ageInDays } from '../../utils/age';
+import { isPregnancy } from '../../graph/model';
 
 export function buildStructure(graph) {
   const individuals = graph.individuals || [];
@@ -210,7 +211,7 @@ export function buildStructure(graph) {
   const explicitOrder = new Set(pcrs.filter(r => r.birthOrderExplicit).map(r => r.unionId));
   const ageOf = (id) => {
     const ind = indById.get(id) || {};
-    if (ind.pregnancyLoss || ind.stillbirth) return null;
+    if (isPregnancy(ind)) return null;
     return ageInDays(ind.age); // "3 ay" younger than "2" (years)
   };
   const agesConsistent = (core) => {
@@ -268,7 +269,7 @@ export function buildStructure(graph) {
   for (const atom of atoms) {
     const cores = [atom.core];
     const orderFlexible = atom.kind === 'sib' && atom.core.length >= 2 && !explicitOrder.has(atom.unionId)
-      && !atom.core.every(p => ageOf(p) !== null || (indById.get(p) || {}).pregnancyLoss || (indById.get(p) || {}).stillbirth);
+      && !atom.core.every(p => ageOf(p) !== null || isPregnancy(indById.get(p)));
     if (orderFlexible) {
       const direct = atom.core.filter(directLink);
       const linking = [...direct, ...atom.core.filter(p => !direct.includes(p) && links(p))].slice(0, 2);

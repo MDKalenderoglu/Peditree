@@ -20,15 +20,16 @@
  *   male      → square
  *   female    → circle
  *   unknown   → diamond
- *   pregnancyLoss → small triangle
- *   stillbirth → small shape + X cross
+ *   pregnancyLoss / termination / ectopic → small triangle (TOP slashed, ECT below)
+ *   stillbirth → full-size symbol, slash, "SB" below; ongoingPregnancy → "P" inside
  */
 
 import { useEffect, useRef, useState, useCallback, forwardRef } from 'react';
 import * as d3 from 'd3';
 import { fillFor, REGION_ANGLES } from '../graph/conditionKey';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
-import { annotationAge } from '../utils/annotations';
+import { annotationAge, pregnancyLine } from '../utils/annotations';
+import { isSmallSymbol, pregnancyKind, PREGNANCY_LABEL } from '../graph/model';
 import { packLines } from '../utils/textWrap';
 import { GENETIC_TEST } from '../graph/ops';
 
@@ -428,7 +429,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       for (const n of nodes.slice().sort((a, b) => (a.y - b.y) || (a.x - b.x))) {
         const pid = pedigreeIds.get(n.id);
         if (!pid) continue;
-        const nsz = n.pregnancyLoss || n.stillbirth ? LOSS_SIZE : HALF;
+        const nsz = isSmallSymbol(n) ? LOSS_SIZE : HALF;
         const gap = edges.some(e => e.type === 'childStem' && e.descentKind === 'adoptive' && e.childId === n.id) ? 12 : 6;
         const w = pid.displayId.length * LABEL_CHAR_W;
         const top = n.y - (nsz + 6) - LABEL_H + 2;
@@ -472,7 +473,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       .attr('role', 'button')
       .attr('aria-label', d => [
         pedigreeIds.get(d.id)?.displayId, d.displayLabel,
-        d.pregnancyLoss ? 'düşük' : d.stillbirth ? 'ölü doğum' : { male: 'erkek', female: 'kadın' }[d.sex] || 'cinsiyeti bilinmiyor',
+        pregnancyKind(d) ? PREGNANCY_LABEL[pregnancyKind(d)].toLocaleLowerCase('tr') : { male: 'erkek', female: 'kadın' }[d.sex] || 'cinsiyeti bilinmiyor',
         d.proband && 'proband', d.affected && 'etkilenmiş', d.carrier && 'taşıyıcı', d.deceased && 'vefat',
       ].filter(Boolean).join(', '))
       .on('click', (event, d) => {
@@ -514,7 +515,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
 
     nodeGroups.each(function (d, nodeIndex) {
       const el = d3.select(this);
-      const isSmall = d.pregnancyLoss || d.stillbirth;
+      const isSmall = isSmallSymbol(d);
       const sz = isSmall ? LOSS_SIZE : HALF;
 
       // Pedigree-standard ID (e.g. "II-3"), shown just above the symbol —
@@ -543,8 +544,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
 
       let shape;
 
-      if (d.pregnancyLoss && !d.stillbirth) {
-        // Small upward-pointing triangle
+      if (isSmall) {
+        // NSGC: a small upward-pointing triangle for a loss (SAB), a
+        // termination (TOP, with a slash) and an ectopic pregnancy (ECT below)
         shape = el.append('path')
           .attr('d', `M0,${-sz} L${sz},${sz} L${-sz},${sz} Z`);
       } else if (d.sex === 'male') {
@@ -578,11 +580,18 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       // Selection highlight (primary blue / secondary violet) comes from the
       // node-group classes above via app.css — see EX-1 note there.
 
-      // Stillbirth cross (X)
-      if (d.stillbirth) {
-        el.append('line').attr('x1', -sz).attr('y1', -sz).attr('x2', sz).attr('y2', sz).attr('stroke', NODE_STROKE).attr('stroke-width', 2);
-        el.append('line').attr('x1', -sz).attr('y1', sz).attr('x2', sz).attr('y2', -sz).attr('stroke', NODE_STROKE).attr('stroke-width', 2);
-      } else if (d.deceased && !d.pregnancyLoss) {
+      // Ongoing pregnancy: "P" inside the symbol (NSGC)
+      if (d.ongoingPregnancy) {
+        el.append('text').attr('class', 'pregnancy-p').attr('y', 5).attr('text-anchor', 'middle')
+          .attr('font-size', '14px').attr('font-weight', '700').attr('fill', filling.mode === 'full' ? NODE_FILL : NODE_STROKE).text('P');
+      }
+      // Termination (TOP): a slash through the triangle (NSGC)
+      if (d.termination) {
+        el.append('line').attr('x1', -(sz + 3)).attr('y1', sz + 3).attr('x2', sz + 3).attr('y2', -(sz + 3)).attr('stroke', NODE_STROKE).attr('stroke-width', 2);
+      }
+      // A stillbirth is drawn at full size with the slash of a deceased person
+      // and "SB" below (NSGC; clinician decision 2026-10-25)
+      if (d.deceased && !isSmall && !d.ongoingPregnancy) {
         // Diagonal slash for deceased
         el.append('line')
           .attr('x1', -(sz + 4)).attr('y1', -(sz + 4))
@@ -620,6 +629,16 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           .attr('y', lineY).attr('text-anchor', 'middle')
           .attr('font-size', '11px').attr('fill', '#475569')
           .text(ageLine.text), ageLine.kind, d.id, ageLine.value);
+        lineY += LINE_H;
+      }
+
+      // a pregnancy outcome: "SB 28 hf", "TOP 16 hf", "ECT", the week
+      const pLine = pregnancyLine(d);
+      if (pLine) {
+        editable(ann.append('text')
+          .attr('y', lineY).attr('text-anchor', 'middle')
+          .attr('font-size', '11px').attr('fill', '#475569')
+          .text(pLine), 'gestationWeeks', d.id, d.gestationWeeks || '');
         lineY += LINE_H;
       }
 

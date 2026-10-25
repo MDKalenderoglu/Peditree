@@ -12,6 +12,7 @@ import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { degreeLabel, kinshipOf, kinshipCoefficient, childInbreeding, formatCoefficient, cousinMarriageName } from '../graph/kinship';
 import { groupOf, multipleName, zygosityLabel, ZYGOSITY } from '../graph/multiples';
 import BulkEditor from './BulkEditor';
+import { isPregnancy, pregnancyKind, PREGNANCY_LABEL } from '../graph/model';
 import DraftField from './DraftField';
 
 const SEX_WORD = { male: 'Erkek', female: 'Kadın', unknown: 'Cinsiyet bilinmiyor' };
@@ -38,6 +39,7 @@ function Header({ title, sub, onClose }) {
 const KIN_KINDS = [
   ['Erkek', 'male', {}], ['Kız', 'female', {}], ['Bilinmeyen', 'unknown', {}],
   ['Düşük', 'unknown', { pregnancyLoss: true }], ['Ölü doğum', 'unknown', { stillbirth: true }],
+  ['Gebelik (P)', 'unknown', { ongoingPregnancy: true }], ['Sonlandırma', 'unknown', { termination: true }], ['Dış gebelik', 'unknown', { ectopic: true }],
 ];
 
 function AddButtons({ onAdd, title }) {
@@ -314,6 +316,7 @@ export default function IndividualEditor({
   node, node2, pedigreeData, onUpdate, onAddChild,
   onDeleteIndividual, onCreateUnion, onMakeSiblings,
   onClearSelection, onReorderChild, onSetUnionRelationshipBackground, onSetUnionStatus, onSetChildlessness,
+  onSetPregnancyKind, onSetGestationWeeks,
   onSetMultipleBirth, onAddMultiple, onSetZygosity, onLeaveMultiple,
   wizardParents, onSetParentsField,
   selectedNodes = [], onUpdateMany, onSetFindingStatusMany, onAddFindingMany,
@@ -351,7 +354,7 @@ export default function IndividualEditor({
   }
   if (!node) return null;
 
-  const isLoss = node.pregnancyLoss || node.stillbirth;
+  const isLoss = isPregnancy(node);
   const pedigreeIds = computePedigreeIds(pedigreeData?.nodes || []);
   const pedigreeId = pedigreeIds.get(node.id)?.displayId;
   const displayNameFor = (id) => {
@@ -368,7 +371,7 @@ export default function IndividualEditor({
   const siblingOrder = ownParentRel ? ownParentRel.children : null;
   const ownIndexInOrder = siblingOrder ? siblingOrder.indexOf(node.id) : -1;
 
-  const kind = node.pregnancyLoss ? 'Düşük' : node.stillbirth ? 'Ölü doğum' : SEX_WORD[node.sex || 'unknown'];
+  const kind = pregnancyKind(node) ? PREGNANCY_LABEL[pregnancyKind(node)] : SEX_WORD[node.sex || 'unknown'];
   const sub = [kind, node.age ? `${node.age} yaş` : null, node.proband ? 'proband' : null].filter(Boolean).join(' · ');
   const set = (patch) => onUpdate(node.id, patch);
 
@@ -382,6 +385,27 @@ export default function IndividualEditor({
 
         {!node.placeholder && (
           <div className="field-hint editor-tip">Eklemek, bulgu, durum, ikiz ve not için sembolün etrafındaki halkayı kullanın.</div>
+        )}
+
+        {/* a pregnancy outcome (NSGC; clinician decision 2026-10-25): its kind, the week, born */}
+        {isLoss && (
+          <div className="card">
+            <div className="card-title">Gebelik sonucu</div>
+            <div className="segmented segmented-wrap" role="radiogroup" aria-label="Gebelik sonucu">
+              {Object.entries(PREGNANCY_LABEL).map(([k, t]) => (
+                <button key={k} role="radio" aria-checked={pregnancyKind(node) === k} className={pregnancyKind(node) === k ? 'on' : undefined}
+                  onClick={() => onSetPregnancyKind(node.id, k)}>{t}</button>
+              ))}
+            </div>
+            <label className="field">
+              <span className="field-label">Gebelik haftası</span>
+              <DraftField key={`${node.id}-weeks`} type="text" className="input input-age" value={node.gestationWeeks || ''} placeholder="hf"
+                onCommit={v => onSetGestationWeeks(node.id, v)} />
+            </label>
+            {node.ongoingPregnancy && (
+              <button className="ui-btn" onClick={() => onSetPregnancyKind(node.id, '')}>Doğdu — kişiye çevir</button>
+            )}
+          </div>
         )}
 
         {!node.placeholder && (

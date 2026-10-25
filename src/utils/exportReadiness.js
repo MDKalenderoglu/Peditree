@@ -21,6 +21,7 @@
  * job) — it only classifies.
  */
 import { clinicalNamer } from './clinicalNotices';
+import { isPregnancy } from '../graph/model';
 
 // graphIntegrity.js codes that mean the graph itself is structurally
 // invalid in a way that would misrepresent family structure if drawn
@@ -103,7 +104,7 @@ export function assessExportReadiness({ pedigreeData, integrityIssues, svgElemen
   // the proband or an affected individual, not a spouse stub or an
   // otherwise-unremarkable relative.
   const clinicallyRelevantUnknownSex = individuals.filter(i =>
-    i.sex === 'unknown' && !i.pregnancyLoss && !i.stillbirth && (i.proband || i.affected)
+    i.sex === 'unknown' && !isPregnancy(i) && (i.proband || i.affected)
   );
   if (clinicallyRelevantUnknownSex.length > 0) {
     warnings.push(

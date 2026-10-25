@@ -13,6 +13,7 @@ import { Stethoscope, HeartPulse, Users, StickyNote } from 'lucide-react';
 import FindingsPalette from './FindingsPalette';
 import DraftField from './DraftField';
 import { groupOf, multipleName } from '../graph/multiples';
+import { isPregnancy } from '../graph/model';
 
 const S = 9; // glyph half-size
 
@@ -23,24 +24,36 @@ export function Glyph({ kind }) {
       {kind === 'male' && <rect x={-S + 1} y={-S + 1} width={2 * S - 2} height={2 * S - 2} {...common} />}
       {kind === 'female' && <circle r={S - 1} {...common} />}
       {kind === 'unknown' && <path d={`M0,${-S} L${S},0 L0,${S} L${-S},0 Z`} {...common} />}
-      {kind === 'loss' && <path d={`M0,${-S + 3} L${S - 2},${S - 3} L${-S + 2},${S - 3} Z`} {...common} />}
+      {(kind === 'loss' || kind === 'termination' || kind === 'ectopic') && <path d={`M0,${-S + 3} L${S - 2},${S - 3} L${-S + 2},${S - 3} Z`} {...common} />}
+      {kind === 'termination' && <path d={`M${-S + 1},${S - 1} L${S - 1},${-S + 1}`} {...common} />}
+      {kind === 'ectopic' && <text x="0" y={S + 1} fontSize="5.5" textAnchor="middle" fill="currentColor" stroke="none">ECT</text>}
       {kind === 'stillbirth' && (
         <>
-          <rect x={-S + 3} y={-S + 3} width={2 * S - 6} height={2 * S - 6} {...common} />
-          <path d={`M${-S + 3},${-S + 3} L${S - 3},${S - 3} M${-S + 3},${S - 3} L${S - 3},${-S + 3}`} {...common} />
+          <path d={`M0,${-S + 1} L${S - 1},0 L0,${S - 1} L${-S + 1},0 Z`} {...common} />
+          <path d={`M${-S},${S} L${S},${-S}`} {...common} />
+        </>
+      )}
+      {kind === 'ongoing' && (
+        <>
+          <path d={`M0,${-S + 1} L${S - 1},0 L0,${S - 1} L${-S + 1},0 Z`} {...common} />
+          <text x="0" y="3" fontSize="8" fontWeight="700" textAnchor="middle" fill="currentColor" stroke="none">P</text>
         </>
       )}
     </svg>
   );
 }
 
-// [glyph, title, sex, extra]
+// [glyph, title, sex, extra, row] — row 1 people, row 2 pregnancy outcomes
+// (NSGC; clinician decision 2026-10-25: the ring stays, the choices get a second row)
 const KINDS = [
-  ['male', 'Erkek', 'male', {}],
-  ['female', 'Kız', 'female', {}],
-  ['unknown', 'Cinsiyeti bilinmeyen', 'unknown', {}],
-  ['loss', 'Düşük', 'unknown', { pregnancyLoss: true }],
-  ['stillbirth', 'Ölü doğum', 'unknown', { stillbirth: true }],
+  ['male', 'Erkek', 'male', {}, 1],
+  ['female', 'Kız', 'female', {}, 1],
+  ['unknown', 'Cinsiyeti bilinmeyen', 'unknown', {}, 1],
+  ['loss', 'Düşük', 'unknown', { pregnancyLoss: true }, 2],
+  ['stillbirth', 'Ölü doğum (SB)', 'unknown', { stillbirth: true }, 2],
+  ['ongoing', 'Devam eden gebelik (P)', 'unknown', { ongoingPregnancy: true }, 2],
+  ['termination', 'Sonlandırma (TOP)', 'unknown', { termination: true }, 2],
+  ['ectopic', 'Dış gebelik (ECT)', 'unknown', { ectopic: true }, 2],
 ];
 
 // ring sectors (degrees, screen: 0 = east, clockwise)
@@ -153,7 +166,7 @@ export default function RadialAddMenu({
     if (first) { first.focus(); kbOpen.current = false; }
   }, [active, panel]);
   if (!node || node.placeholder) return null;
-  const isLoss = node.pregnancyLoss || node.stillbirth;
+  const isLoss = isPregnancy(node);
 
   const pcrs = pedigreeData.parentChildRelationships || [];
   const unions = (pedigreeData.unions || []).filter(u => u.partners.includes(node.id));
@@ -176,9 +189,9 @@ export default function RadialAddMenu({
     right: () => onAddSpouse(node.id, node.sex === 'female' ? 'male' : 'female'),
   };
   const choices = {
-    left: KINDS.map(([g, t, sex, extra]) => [`Kardeş: ${t}`, g, () => onAddSibling(node.id, sex, { ...extra, createParents: true })]),
-    bottom: KINDS.map(([g, t, sex, extra]) => [`Çocuk: ${t}`, g,
-      () => (lastUnion ? onAddChild(lastUnion.id, sex, null, extra) : onAddChild(null, sex, node.id, extra))]),
+    left: KINDS.map(([g, t, sex, extra, row]) => [`Kardeş: ${t}`, g, () => onAddSibling(node.id, sex, { ...extra, createParents: true }), row]),
+    bottom: KINDS.map(([g, t, sex, extra, row]) => [`Çocuk: ${t}`, g,
+      () => (lastUnion ? onAddChild(lastUnion.id, sex, null, extra) : onAddChild(null, sex, node.id, extra)), row]),
   };
 
   const r = Math.max(24, anchor.size / 2 + 8);
@@ -316,10 +329,15 @@ export default function RadialAddMenu({
         <div className="radial-flyout" ref={popRef} style={{ ...flyoutStyle(active), translate: `${nudge.x}px ${nudge.y}px` }} onPointerEnter={(e) => isHover(e) && open(active)} onPointerLeave={(e) => isHover(e) && leave()}>
           {disabled[active] ? (
             <span className="radial-hint">{disabled[active]}</span>
-          ) : choices[active].map(([title, glyph, run]) => (
-            glyph
-              ? <button key={title} className="quick-btn" title={title} aria-label={title} onClick={() => { run(); setActive(null); }}><Glyph kind={glyph} /></button>
-              : <button key={title} className="quick-text" onClick={() => { run(); setActive(null); }}>{title}</button>
+          ) : [1, 2].map((row) => (
+            <div key={row} className="flyout-row">
+              {row === 2 && <span className="flyout-row-label">Gebelik</span>}
+              {choices[active].filter((c) => (c[3] || 1) === row).map(([title, glyph, run]) => (
+                glyph
+                  ? <button key={title} className="quick-btn" title={title} aria-label={title} onClick={() => { run(); setActive(null); }}><Glyph kind={glyph} /></button>
+                  : <button key={title} className="quick-text" onClick={() => { run(); setActive(null); }}>{title}</button>
+              ))}
+            </div>
           ))}
         </div>
       )}

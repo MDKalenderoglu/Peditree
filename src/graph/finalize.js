@@ -20,7 +20,7 @@
  * Mutates the (already cloned) graph in place and returns it.
  */
 import { computeGenerations } from '../utils/graphTraversal';
-import { indexGraph, displayParentage } from './model';
+import { indexGraph, displayParentage, isPregnancy } from './model';
 import { kinshipOf } from './kinship';
 import { deriveConditionKey } from './conditionKey';
 import { normalizeMultiples } from './multiples';
@@ -67,7 +67,7 @@ const ageOf = (p) => ageInDays(p.age);
  * never sent to the end (clinician decision 2026-10-25).
  */
 export function ageOrder(kids) {
-  const isLive = (k) => !k.pregnancyLoss && !k.stillbirth;
+  const isLive = (k) => !isPregnancy(k);
   const aged = kids.filter((k) => isLive(k) && ageOf(k) !== null);
   const sorted = [...aged].sort((a, b) => ageOf(b) - ageOf(a)); // stable: equal ages keep their order
   let n = 0;

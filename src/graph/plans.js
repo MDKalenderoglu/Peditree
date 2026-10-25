@@ -5,6 +5,7 @@
  * Moved verbatim from usePedigreeStore.js (which re-exports them) so graph
  * code can use them without instantiating the store.
  */
+import { isPregnancy } from './model';
 
 /**
  * Pure, read-only check for whether `targetId` can be safely deleted via
@@ -105,7 +106,7 @@ export function computeUnionCreationPlan(pedigreeData, id1, id2) {
   if (!ind1 || !ind2) {
     return { ok: false, reason: 'Bireylerden biri grafikte bulunamadı.' };
   }
-  if ((ind1.pregnancyLoss || ind1.stillbirth) || (ind2.pregnancyLoss || ind2.stillbirth)) {
+  if (isPregnancy(ind1) || isPregnancy(ind2)) {
     return { ok: false, reason: 'Düşük/ölü doğum kaydı bir bireyle eş yapılamaz.' };
   }
 
@@ -234,7 +235,7 @@ export function computeSiblingCreationPlan(pedigreeData, id1, id2) {
   if (!ind1 || !ind2) {
     return { ok: false, reason: 'Bireylerden biri grafikte bulunamadı.' };
   }
-  if (ind1.pregnancyLoss || ind1.stillbirth || ind2.pregnancyLoss || ind2.stillbirth) {
+  if (isPregnancy(ind1) || isPregnancy(ind2)) {
     return { ok: false, reason: 'Düşük/ölü doğum kaydı bir bireyle kardeş bağı kurulamaz.' };
   }
   if (ind1.proband || ind2.proband) {
@@ -298,7 +299,7 @@ export function computeAddParentsPlan(pedigreeData, targetId) {
   if (!target) {
     return { ok: false, reason: 'Birey grafikte bulunamadı.' };
   }
-  if (target.pregnancyLoss || target.stillbirth) {
+  if (isPregnancy(target)) {
     return { ok: false, reason: 'Düşük/ölü doğum kaydına ebeveyn eklenemez.' };
   }
   const alreadyHasParent = pcrs.some(rel => rel.children.includes(targetId));
@@ -326,7 +327,7 @@ export function computeAddSiblingPlan(pedigreeData, targetId) {
   if (!target) {
     return { ok: false, reason: 'Birey grafikte bulunamadı.' };
   }
-  if (target.pregnancyLoss || target.stillbirth) {
+  if (isPregnancy(target)) {
     return { ok: false, reason: 'Düşük/ölü doğum kaydına kardeş eklenemez.' };
   }
   const parentRel = pcrs.find(rel => rel.children.includes(targetId));

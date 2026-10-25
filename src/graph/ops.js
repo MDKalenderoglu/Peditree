@@ -15,7 +15,7 @@
  * so behaviour does not change for the clinician; what changes is that the
  * result is stored as graph, not replayed from instructions.
  */
-import { cloneGraph, indexGraph, makePerson, SOCIAL_LINK_KINDS } from './model';
+import { cloneGraph, indexGraph, makePerson, SOCIAL_LINK_KINDS, PREGNANCY_FIELDS, PREGNANCY_KINDS, PREGNANCY_LABEL, isPregnancy, pregnancyKind } from './model';
 import { allocateEditNumber, retire } from './ids';
 import { finalizeGraph, ageOrder } from './finalize';
 import { validateDocument, errorsOf } from './validate';
@@ -338,10 +338,9 @@ export function addChild(doc, unionId, opts = {}) {
       id: childId, sex,
       generation: parent ? parent.generation + 1 : 3,
       relation: opts.relation || 'child_direct',
-      label: opts.label ?? (opts.pregnancyLoss ? 'Düşük' : opts.stillbirth ? 'Ölü Doğum'
+      label: opts.label ?? (pregnancyKind(opts) ? PREGNANCY_LABEL[pregnancyKind(opts)]
         : sex === 'male' ? 'Cocuk (E)' : sex === 'female' ? 'Cocuk (K)' : 'Cocuk'),
-      ...(opts.pregnancyLoss ? { pregnancyLoss: true } : {}),
-      ...(opts.stillbirth ? { stillbirth: true, deceased: true } : {}),
+      ...pregnancyFlags(pregnancyKind(opts)),
     });
     draftAddChild(d, unionId, childId, { orderPolicy: opts.orderPolicy || 'byAge' });
     return { created: { childId } };
@@ -476,6 +475,46 @@ export function setUnionConsanguineous(doc, unionId, value, extra = {}) {
       u.consanguinityStatus = 'none';
       if (CONSANGUINITY_BACKGROUNDS.has(u.relationshipBackground)) u.relationshipBackground = 'not_asked';
     }
+  });
+}
+
+/** The model flags of a pregnancy outcome (one kind at a time; a stillbirth is also deceased). */
+function pregnancyFlags(kind) {
+  if (!kind) return {};
+  return { [PREGNANCY_KINDS[kind]]: true, ...(kind === 'stillbirth' ? { deceased: true } : {}) };
+}
+
+/**
+ * Change what a pregnancy outcome is (SAB, SB, P, TOP, ECT), or ''
+ * for "born" (an ongoing pregnancy that was born becomes a person).
+ */
+export function setPregnancyKind(doc, id, kind) {
+  return commit(doc, (d) => {
+    const p = d.graph.individuals.find((i) => i.id === id);
+    if (!p) block('Birey grafikte bulunamadı.');
+    if (kind && !PREGNANCY_KINDS[kind]) block('Bilinmeyen gebelik sonucu.');
+    if (!isPregnancy(p) && kind) block('Bu kişi bir gebelik sonucu değil.');
+    const wasStillbirth = !!p.stillbirth;
+    for (const f of PREGNANCY_FIELDS) p[f] = false;
+    Object.assign(p, pregnancyFlags(kind));
+    if (wasStillbirth && kind !== 'stillbirth') p.deceased = false;
+    if (!kind) delete p.gestationWeeks;
+    if (Object.values(PREGNANCY_LABEL).includes(p.label) || /^(Düşük|Ölü Doğum)$/.test(p.label)) {
+      p.label = kind ? PREGNANCY_LABEL[kind] : (p.sex === 'male' ? 'Cocuk (E)' : p.sex === 'female' ? 'Cocuk (K)' : 'Cocuk');
+    }
+  });
+}
+
+/** Gestational week of a pregnancy outcome ('' removes it). */
+export function setGestationWeeks(doc, id, weeks) {
+  return commit(doc, (d) => {
+    const p = d.graph.individuals.find((i) => i.id === id);
+    if (!p) block('Birey grafikte bulunamadı.');
+    const w = String(weeks ?? '').trim();
+    if (!w) { delete p.gestationWeeks; return; }
+    const n = Number(w.replace(',', '.'));
+    if (!Number.isFinite(n) || n <= 0 || n > 45) block(`Gebelik haftası anlaşılamadı: "${w}" (1–45 arası bir sayı).`);
+    p.gestationWeeks = String(n).replace('.', ',');
   });
 }
 

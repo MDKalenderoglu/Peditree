@@ -12,6 +12,7 @@
  */
 import { nextPerson } from './keyboardNav';
 import { ageInDays } from './age';
+import { isPregnancy } from '../graph/model';
 
 const unionOf = (data, a, b) => (data.unions || []).find((u) => u.partners.includes(a) && u.partners.includes(b));
 const sibshipOf = (data, id) => (data.parentChildRelationships || []).find((r) => r.children.includes(id));
@@ -53,7 +54,7 @@ export function againstAges(data, unionId) {
   let prev = Infinity;
   for (const c of rel.children) {
     const p = byId.get(c);
-    if (!p || p.pregnancyLoss || p.stillbirth) continue;
+    if (!p || isPregnancy(p)) continue;
     const a = ageInDays(p.age);
     if (a === null) continue;
     if (a > prev) return true;

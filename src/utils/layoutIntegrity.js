@@ -12,6 +12,7 @@
  * @param {{ individuals: Array, unions: Array, parentChildRelationships: Array }} graph
  * @returns {Array<{ severity: 'error'|'warning', code: string, message: string, ids?: string[] }>}
  */
+import { isSmallSymbol } from '../graph/model';
 export function auditLayoutIntegrity(layout, graph) {
   const { nodes = [], edges = [] } = layout;
   const { individuals = [], unions = [], parentChildRelationships = [] } = graph;
@@ -60,7 +61,7 @@ export function auditLayoutIntegrity(layout, graph) {
   {
     const posMap = new Map(); // "x,y" → node id
     for (const node of nodes) {
-      if (node.pregnancyLoss || node.stillbirth) continue;
+      if (isSmallSymbol(node)) continue;
       if (typeof node.x !== 'number' || typeof node.y !== 'number') continue;
 
       const key = `${node.x},${node.y}`;

@@ -33,6 +33,24 @@ export const PERSON_DEFAULTS = {
 };
 
 /**
+ * Pregnancy outcomes (NSGC; clinician decision 2026-10-25), distinct types
+ * (non-negotiable rule 5): spontaneous loss (SAB), stillbirth (SB), ongoing
+ * pregnancy (P), termination (TOP), ectopic pregnancy (ECT). None is a born
+ * person: no partners, children or parents of their own, no age line.
+ * Losses, terminations and ectopics are small triangles; a stillbirth and an
+ * ongoing pregnancy are drawn at full size (by sex). `gestationWeeks` is the
+ * week, written below the symbol.
+ */
+export const PREGNANCY_FIELDS = ['pregnancyLoss', 'stillbirth', 'ongoingPregnancy', 'termination', 'ectopic'];
+export const PREGNANCY_KINDS = { loss: 'pregnancyLoss', stillbirth: 'stillbirth', ongoing: 'ongoingPregnancy', termination: 'termination', ectopic: 'ectopic' };
+export const PREGNANCY_LABEL = { loss: 'Düşük', stillbirth: 'Ölü doğum', ongoing: 'Devam eden gebelik', termination: 'Sonlandırma (TOP)', ectopic: 'Dış gebelik (ECT)' };
+export const isPregnancy = (p) => !!p && PREGNANCY_FIELDS.some((f) => p[f]);
+export const pregnancyKind = (p) => (!p ? null : p.ongoingPregnancy ? 'ongoing' : p.stillbirth ? 'stillbirth'
+  : p.termination ? 'termination' : p.ectopic ? 'ectopic' : p.pregnancyLoss ? 'loss' : null);
+/** Drawn as a small triangle (NSGC: SAB, TOP, ECT). */
+export const isSmallSymbol = (p) => ['loss', 'termination', 'ectopic'].includes(pregnancyKind(p));
+
+/**
  * Fields a clinician enters about a person. A person with any of these set
  * must never be removed as a side effect (e.g. lowering a wizard count).
  */

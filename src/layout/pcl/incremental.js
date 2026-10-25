@@ -25,7 +25,7 @@
 import { computePclLayout } from './index';
 import { checkAllInvariants } from '../../audit/layoutInvariants';
 import { checkConnectorReadability, readabilityMetrics } from '../../audit/connectorReadability';
-import { displayParentage } from '../../graph/model';
+import { displayParentage, pregnancyKind } from '../../graph/model';
 
 const WIDE_SHARE = 0.5; // an edit touching more than half the people: start wide
 
@@ -39,7 +39,7 @@ export function affectedPeople(prevGraph, graph) {
   for (const [id, p] of curInd) {
     const before = prevInd.get(id);
     if (!before) { out.add(id); continue; }
-    if (before.generation !== p.generation || !!before.pregnancyLoss !== !!p.pregnancyLoss || !!before.stillbirth !== !!p.stillbirth) out.add(id);
+    if (before.generation !== p.generation || pregnancyKind(before) !== pregnancyKind(p)) out.add(id);
   }
   const prevUnions = new Map((prevGraph.unions || []).map((u) => [u.id, u]));
   const curUnions = new Map((graph.unions || []).map((u) => [u.id, u]));

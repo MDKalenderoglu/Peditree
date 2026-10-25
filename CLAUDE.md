@@ -21,7 +21,8 @@ Three collections form the graph:
 ```js
 Individual   { id, sex, age, generation, relation, label, displayLabel,
                affected, carrier, deceased, proband, placeholder?,
-               pregnancyLoss, stillbirth, notes, condition?, conditions?,
+               pregnancyLoss, stillbirth, ongoingPregnancy?, termination?, ectopic?, gestationWeeks?,
+               notes, condition?, conditions?,
                ageAtDeath?, causeOfDeath?, birthDate?, geneticTest?, geneticNote? }
                          // geneticTest: 'positive' | 'negative' | 'vus' | 'tested' → E+ / E− / E VUS / E under the symbol;
                          // conditions[].onsetAge: diagnosis age (shown in the notes)
@@ -59,7 +60,7 @@ Consanguinity is derived from the drawing (`src/graph/kinship.js`, run in `final
 2. Each individual belongs to at most one **biological** parent union. `childToUnionMap` enforces this — never attach a child to two biological parent unions. Social parenthood (adoption, foster …) is a separate `socialParentLinks` entry; it never replaces or duplicates the biological link. A child with only a social link is drawn under the social parents with a dashed line of descent (`displayParentage`).
 3. A union connects exactly two partners. Never siblings. Never self.
 4. Consanguinity must reflect true shared ancestry: shared ancestor nodes must exist in the graph. A double line rendered without shared ancestor nodes is a structural error.
-5. `pregnancyLoss` (spontaneous miscarriage), `stillbirth`, and termination of pregnancy are distinct clinical types with distinct symbols. Do not conflate them.
+5. `pregnancyLoss` (spontaneous miscarriage, SAB), `stillbirth` (SB), `ongoingPregnancy` (P), `termination` (TOP) and `ectopic` (ECT) are distinct clinical types with distinct symbols (NSGC; `model.js` `isPregnancy` / `pregnancyKind` / `isSmallSymbol`). Do not conflate them. SAB/TOP/ECT are small triangles; SB and P are full size.
 6. `proband: true` must be set on exactly one individual. Zero or multiple probands is a validation error. (Product decision pending: NSGC allows no proband / a consultand — see audit report §4.)
 7. Integrity audit (`auditPedigreeGraph`) and semantic validation (`validatePedigree`) must pass after every graph mutation. Do not suppress their output.
 8. Partners must be of opposite sex (current product rule, `UNION_PARTNER_SEX_CONFLICT`). Same-sex partnership and unknown-sex partners are pending clinician decisions — do not change the rule without the user. Cross-generation partners are allowed one generation apart, never ancestor–descendant (clinician 2026-10-24): `union.crossGeneration`, each partner on their own row, stepped relationship line through an invisible stand-in beside the lower partner (`src/layout/pcl/crossGeneration.js`); children one generation below the lower partner (`computeGenerations`).

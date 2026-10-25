@@ -25,6 +25,7 @@
  */
 import { relationshipBackgroundToEdgeInfo } from '../../utils/relationshipBackground';
 import { isGhost } from './crossGeneration';
+import { isSmallSymbol } from '../../graph/model';
 
 const NODE_HALF = 20;
 const LOSS_HALF = 14;
@@ -51,7 +52,7 @@ const SEP = 8;                         // horizontal clearance between parallel 
 const CLEAR = 8;                       // min distance between a descent line and a foreign vertical
 
 // a cross-generation stand-in has no symbol: the couple's line reaches its centre
-const halfOf = (ind) => (isGhost(ind) ? 0 : (ind && (ind.pregnancyLoss || ind.stillbirth)) ? LOSS_HALF : NODE_HALF);
+const halfOf = (ind) => (isGhost(ind) ? 0 : isSmallSymbol(ind) ? LOSS_HALF : NODE_HALF);
 const XGEN_DROP_CLEAR = 14; // the couple's line of descent keeps off the stand-in's vertical
 
 function assignLevels(items, levels) {

@@ -305,5 +305,6 @@ Onay sonrası her kural için:
 | 2026-10-25 | bulgunun tanı yaşı | yalnız notlarda, numaralı: "Bulgu: tanı 3 ay" (uygulandı) | kullanıcı (klinisyen) |
 | 2026-10-25 | çocuksuzluk / infertilite | NSGC: çiftin çizgisinden inen kısa çizgi + tek çubuk (bilerek çocuksuz ya da nedeni bilinmiyor) / çift çubuk (infertil), altında neden; yalnız çocukları yokken (uygulandı) | kullanıcı (klinisyen) |
 | 2026-10-25 | K10 — danışan | şimdilik eklenmeyecek | kullanıcı (klinisyen) |
+| 2026-10-25 | K11 — gebelik sonuçları | NSGC: düşük (SAB) küçük üçgen; sonlandırma (TOP) eğik çizgili üçgen; dış gebelik (ECT) üçgen + "ECT"; devam eden gebelik normal boy sembol içinde "P"; ölü doğum normal boy, eğik çizgi + "SB"; altta gebelik haftası ("28 hf"); simit aynı kalır, kardeş/çocuk seçeneklerine ikinci "Gebelik" satırı; devam eden gebelik "Doğdu" ile kişiye çevrilir (uygulandı) | kullanıcı (klinisyen) |
 | | K2–K4, K6–K9, K11–K13 | bekliyor | |
 | | §4 "Standart" özetleri (orijinal yayına karşı) | bekliyor | |

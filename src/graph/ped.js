@@ -19,7 +19,7 @@
  * a header naming the columns (e.g. QuickPed: id fid mid sex aff, where fid
  * is the father). The first family of a multi-family file is opened.
  */
-import { makePerson, indexGraph } from './model';
+import { makePerson, indexGraph, isPregnancy } from './model';
 import { createDocument } from './document';
 import { finalizeGraph } from './finalize';
 import { validateDocument, errorsOf } from './validate';
@@ -37,7 +37,7 @@ import { normLabel } from './conditionKey';
 export function toPed(graph, nodes, { phenotype = 'affected', familyId = 'AILE1' } = {}) {
   const idx = indexGraph(graph);
   const pids = computePedigreeIds(nodes || []);
-  const people = graph.individuals.filter((p) => !p.pregnancyLoss && !p.stillbirth);
+  const people = graph.individuals.filter((p) => !isPregnancy(p));
   const used = new Set();
   const idOf = new Map();
   people.forEach((p, k) => {

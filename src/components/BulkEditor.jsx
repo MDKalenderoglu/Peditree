@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { FindingGlyph, StylePicker } from './FindingsPalette';
 import { normLabel, suggestStyle, styleTaken, KEY_FULL_MESSAGE } from '../graph/conditionKey';
+import { isPregnancy } from '../graph/model';
 
 const findingState = (p, label) => {
   const c = (Array.isArray(p.conditions) ? p.conditions : []).find(x => normLabel(x.label) === normLabel(label));
@@ -17,7 +18,7 @@ export default function BulkEditor({ nodes, conditionKey = [], onUpdateMany, onS
   const [draft, setDraft] = useState('');
   const [style, setStyle] = useState(null);
   const ids = nodes.map(n => n.id);
-  const living = nodes.filter(n => !n.pregnancyLoss && !n.stillbirth);
+  const living = nodes.filter(n => !isPregnancy(n));
   const flag = (key, list = nodes) => {
     const on = list.filter(n => !!n[key]).length;
     return on === 0 ? 'none' : on === list.length ? 'all' : 'some';

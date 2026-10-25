@@ -401,6 +401,8 @@ export const usePedigreeStore = create((zSet, get) => {
     setFindingStatus: (personId, label, status) => apply(findings.setFindingStatus(get().doc, personId, label, status)),
     setFindingStyle: (label, style) => apply(findings.setFindingStyle(get().doc, label, style)),
     renameFinding: (oldLabel, newLabel) => apply(findings.renameFinding(get().doc, oldLabel, newLabel)),
+    setPregnancyKind: (id, kind) => apply(ops.setPregnancyKind(get().doc, id, kind)),
+    setGestationWeeks: (id, weeks) => apply(ops.setGestationWeeks(get().doc, id, weeks)),
     setFindingOnset: (personId, label, onset) => apply(findings.setFindingOnset(get().doc, personId, label, onset)),
     setChildlessness: (unionId, kind, reason) => apply(ops.setChildlessness(get().doc, unionId, kind, reason)),
 
@@ -426,7 +428,7 @@ export const usePedigreeStore = create((zSet, get) => {
 
     // ── person editor ──
     addSpouseTo: (targetId, spouseSex = 'unknown') => apply(ops.addPartner(get().doc, targetId, { sex: spouseSex })),
-    // extra: { pregnancyLoss: true } or { stillbirth: true } for a pregnancy outcome
+    // extra: { pregnancyLoss | stillbirth | ongoingPregnancy | termination | ectopic: true } for a pregnancy outcome
     addChildToUnion: (unionId, sex = 'unknown', extra = {}) => apply(ops.addChild(get().doc, unionId, { sex, ...extra })),
     addChildTo: (targetId, childSex = 'unknown', extra = {}) => apply(ops.addChildToPerson(get().doc, targetId, { sex: childSex, ...extra })),
     addParentsTo: (targetId, opts = {}) => applyGuarded(ops.addParents(get().doc, targetId, opts)),
