@@ -474,6 +474,19 @@ export function setUnionConsanguineous(doc, unionId, value, extra = {}) {
   });
 }
 
+/**
+ * Which partner of a couple is drawn on the left (the clinician moved one to
+ * the other side). Placement only: the layout keeps it, no meaning changes.
+ */
+export function setLeftPartner(doc, unionId, personId) {
+  return commit(doc, (d) => {
+    const u = d.graph.unions.find((x) => x.id === unionId);
+    if (!u) block('Birliktelik grafikte bulunamadı.');
+    if (!u.partners.includes(personId)) block('Bu kişi bu çiftin eşlerinden biri değil.');
+    u.leftPartner = personId;
+  });
+}
+
 /** Explicit birth order for one sibship (NSGC: oldest → youngest, left → right). */
 export function setChildOrder(doc, unionId, order) {
   return commit(doc, (d) => {

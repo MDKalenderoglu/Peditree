@@ -26,6 +26,7 @@ const KEY_HELP = [
   ['Enter / Boşluk', 'odaktaki kişiyi seç (simit açılır)'],
   ['← →', 'aynı satırdaki komşu kişi'],
   ['↑ ↓', 'ebeveyn / çocuk'],
+  ['Shift + ← →', 'seçili kişiyi taşı: eşiyle yer değiştirir ya da kardeşler arasında kayar (sürükleyerek de olur)'],
   ['A', 'anne ve baba ekle'],
   ['E', 'eş ekle'],
   ['K', 'kardeş seçenekleri'],
@@ -54,7 +55,7 @@ function App() {
     reorderChild, setUnionRelationshipBackground, setUnionStatus,
     setMultipleBirth, addMultipleSibling, setMultipleZygosity, leaveMultipleBirth,
     addFinding, setFindingStatus, setFindingStyle, renameFinding, wizardData, updateWizardData,
-    addParentsTo, addSiblingTo,
+    addParentsTo, addSiblingTo, moveSideways, dropOnto,
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
     actionNotice, dismissActionNotice, autosaveFailed,
@@ -289,7 +290,7 @@ function App() {
   // Keyboard shortcuts (clinician request 2026-10-25); never while typing
   const keyRef = React.useRef(null);
   React.useEffect(() => {
-    keyRef.current = { undo, redo, handleSaveProject, handlePrint, clearSelection, deleteIndividual, selectedNodes, pedigreeData, selectIndividual, addParentsTo, addSpouseTo };
+    keyRef.current = { undo, redo, handleSaveProject, handlePrint, clearSelection, deleteIndividual, selectedNodes, pedigreeData, selectIndividual, addParentsTo, addSpouseTo, moveSideways };
   });
   React.useEffect(() => {
     const onKey = (e) => {
@@ -319,6 +320,12 @@ function App() {
       if (k.selectedNodes.length !== 1) return;
       const [me] = k.selectedNodes;
       const dir = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }[e.key];
+      if (dir && e.shiftKey && (dir === 'left' || dir === 'right')) {
+        e.preventDefault();
+        k.moveSideways(me.id, dir); // with the partner or among siblings
+        setFocusTick((n) => n + 1);
+        return;
+      }
       if (dir) {
         e.preventDefault();
         const next = nextPerson(k.pedigreeData, me.id, dir);
@@ -519,6 +526,7 @@ function App() {
           selectedNodeId2={selectedId2}
           selectedIds={selectedIds || []}
           multiSelect={multiSelect}
+          onNodeDrop={dropOnto}
           focusTick={focusTick}
           onNodeSelect={handleNodeSelect}
           onUnionSelect={selectUnion}

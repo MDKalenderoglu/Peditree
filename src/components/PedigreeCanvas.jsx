@@ -125,7 +125,7 @@ function drawStroke(g, edge, dx = 0, dy = 0) {
 // belt-and-suspenders fallback for exportUtils.js and for tests/tools
 // that query the DOM directly.
 const PedigreeCanvas = forwardRef(function PedigreeCanvas(
-  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar, patientName = '', onEditText, multiSelect = false, focusTick = 0 },
+  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar, patientName = '', onEditText, multiSelect = false, focusTick = 0, onNodeDrop },
   forwardedRef
 ) {
   const svgRef = useRef(null);
@@ -470,6 +470,29 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         onNodeSelect(d.id, { additive: event.shiftKey || multiSelect });
       });
 
+    // the selected person can be dragged left / right (mouse, finger, pen):
+    // dropped on their partner they swap sides, on a sibling they take that
+    // place in the birth order (sidewaysMove.js); any other person still pans
+    // the drawing when touched
+    if (onNodeDrop && selectedNodeId) {
+      const rowOf = (n) => nodes.filter(o => o.id !== n.id && Math.abs(o.y - n.y) < 1);
+      let target = null;
+      nodeGroups.filter(d => d.id === selectedNodeId).call(d3.drag()
+        .clickDistance(6)
+        .on('drag', function (event, d) {
+          d3.select(this).attr('transform', `translate(${event.x},${d.y})`).classed('dragging', true);
+          const near = rowOf(d).reduce((best, o) => (!best || Math.abs(o.x - event.x) < Math.abs(best.x - event.x) ? o : best), null);
+          target = near && Math.abs(near.x - event.x) < 45 ? near : null;
+          nodeGroups.classed('drop-target', o => !!target && o.id === target.id);
+        })
+        .on('end', function (event, d) {
+          nodeGroups.classed('drop-target', false);
+          d3.select(this).attr('transform', `translate(${d.x},${d.y})`).classed('dragging', false);
+          if (target && Math.abs(event.x - d.x) > 8) onNodeDrop(d.id, target.id);
+          target = null;
+        }));
+    }
+
     nodeGroups.each(function (d, nodeIndex) {
       const el = d3.select(this);
       const isSmall = d.pregnancyLoss || d.stillbirth;
@@ -744,7 +767,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // Store for external reset
     svg.node().__zoom_ref = zoom;
 
-  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar, patientName, startEdit, multiSelect, focusTick]);
+  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar, patientName, startEdit, multiSelect, focusTick, onNodeDrop]);
 
   // a menu around the selected person that needs more room slides the
   // drawing by (dx, dy) screen pixels (a narrow tablet screen)

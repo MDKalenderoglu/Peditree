@@ -164,6 +164,13 @@ export function buildStructure(graph) {
   // the side can matter (KI-8, below); man-left stays the default and the
   // tie-breaker (ordering.js W_SIDE).
   const sexOf = (id) => (indById.get(id) || {}).sex;
+  // which partner of a couple the clinician placed on the left, if any
+  const leftPartnerOf = (a, b) => {
+    const uid = (partnerUnions.get(a) || []).find(x => partnerIn(x, a) === b);
+    const lp = uid && unionById.get(uid).leftPartner;
+    return lp === a || lp === b ? lp : null;
+  };
+  const sideChosen = (p) => (spousesOf.get(p) || []).some(s => leftPartnerOf(p, s));
   const blockOf = new Map();
   const mirroredBlockOf = new Map();
   // A married-in spouse's own married-in partners (e.g. the second wife of a
@@ -179,7 +186,9 @@ export function buildStructure(graph) {
       const mult = multipleOf.get(p);
       const outward = mult && mult.index === 0 ? 'left' : mult && mult.index === mult.members.length - 1 ? 'right' : null;
       sp.forEach((s, k) => {
-        const goLeft = outward ? outward === 'left' : (k % 2 === 0 ? prefLeft : !prefLeft);
+        // the clinician moved one of the two to the other side (union.leftPartner)
+        const chosen = leftPartnerOf(p, s);
+        const goLeft = outward ? outward === 'left' : chosen ? chosen === s : (k % 2 === 0 ? prefLeft : !prefLeft);
         (goLeft ? left : right).push(s);
       });
       blockOf.set(p, [...left.reverse().flatMap(expandLeft), p, ...right.flatMap(expandRight)]);
@@ -248,7 +257,7 @@ export function buildStructure(graph) {
   const MAX_SIDE_FLEX = 4;
   const MAX_ARRANGEMENTS = 64;
   const sideVariants = (atom, core) => {
-    const flex = core.filter((p) => (spousesOf.get(p) || []).length > 0 && directLink(p) && !multipleOf.has(p)).slice(0, MAX_SIDE_FLEX);
+    const flex = core.filter((p) => (spousesOf.get(p) || []).length > 0 && directLink(p) && !multipleOf.has(p) && !sideChosen(p)).slice(0, MAX_SIDE_FLEX);
     const out = [];
     for (let mask = 0; mask < (1 << flex.length); mask++) {
       const mirrored = new Set(flex.filter((_, k) => mask & (1 << k)));

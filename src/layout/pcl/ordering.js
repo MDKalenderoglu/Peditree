@@ -31,6 +31,9 @@ const W_SIDE = 1.5;        // a couple drawn woman-left-of-man (soft NSGC
                            // otherwise cost the same and the drawing could flip
                            // left/right after an unrelated edit; this keeps the
                            // orientation fixed (father left ⇒ paternal side left).
+const W_CHOSEN_SIDE = 20; // the clinician moved one partner to the other side
+                           // (union.leftPartner): stronger than the convention
+                           // and than a few slots of line, so it is kept
 const W_LANE_SPAN = 1.5;   // per slot of a relationship lane: a line running
                            // across much of the drawing is hard to follow
 const W_XLINK = 2;         // per slot between a cross-generation partner and
@@ -107,7 +110,7 @@ export function orderingCost(S, order) {
       cost += W_SPAN * span;
     }
     // the man-left convention is about drawn couples, not a stand-in
-    if (!S.indById.get(a).crossGenerationGhost && !S.indById.get(b).crossGenerationGhost) cost += sideCost(S, a, b, pos);
+    if (!S.indById.get(a).crossGenerationGhost && !S.indById.get(b).crossGenerationGhost) cost += sideCost(S, a, b, pos, u);
   }
   for (const { ghost, upper } of S.crossLinks || []) {
     if (pos.has(ghost) && pos.has(upper)) cost += W_XLINK * Math.abs(pos.get(ghost) - pos.get(upper));
@@ -115,7 +118,9 @@ export function orderingCost(S, order) {
   return cost;
 }
 
-function sideCost(S, a, b, pos) {
+function sideCost(S, a, b, pos, u) {
+  const chosen = u && (u.leftPartner === a || u.leftPartner === b) ? u.leftPartner : null;
+  if (chosen) return pos.get(chosen) > pos.get(chosen === a ? b : a) ? W_CHOSEN_SIDE : 0;
   const sa = S.indById.get(a).sex, sb = S.indById.get(b).sex;
   if (sa === 'male' && sb === 'female') return pos.get(a) > pos.get(b) ? W_SIDE : 0;
   if (sa === 'female' && sb === 'male') return pos.get(b) > pos.get(a) ? W_SIDE : 0;
@@ -236,7 +241,7 @@ class CostModel {
       } else {
         cost += W_SPAN * span;
       }
-      if (!S.indById.get(a).crossGenerationGhost && !S.indById.get(b).crossGenerationGhost) cost += sideCost(S, a, b, pos);
+      if (!S.indById.get(a).crossGenerationGhost && !S.indById.get(b).crossGenerationGhost) cost += sideCost(S, a, b, pos, u);
     }
     return cost;
   }

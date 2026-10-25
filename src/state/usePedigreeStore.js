@@ -33,6 +33,7 @@ import { validateDocument } from '../graph/validate';
 import { displayParentage } from '../graph/model';
 import * as ops from '../graph/ops';
 import { fromPed } from '../graph/ped';
+import { sidewaysMove, dropMove, againstAges } from '../utils/sidewaysMove';
 import { wizardOps, deriveWizardView } from '../graph/wizardAdapter';
 import * as multiples from '../graph/multiples';
 import * as findings from '../graph/findings';
@@ -186,6 +187,45 @@ export const usePedigreeStore = create((zSet, get) => {
    * a no-op (same document) changes nothing; a real change pushes the
    * previous document on the undo stack and clears redo.
    */
+  // a move from sidewaysMove.js / dropMove: one undo step; a birth order
+  // that now contradicts known ages is said (the drawing follows the clinician)
+  const applyMove = (m, id) => {
+    if (m.kind === 'none') {
+      if (m.reason) zSet({ actionNotice: { message: m.reason, kind: 'info', at: Date.now() } });
+      return { ok: false, reason: m.reason };
+    }
+    if (m.kind === 'partner') {
+      const res = apply(ops.setLeftPartner(get().doc, m.unionId, m.leftPartner));
+      // the edit-local drawing keeps people in place; when the two stand in
+      // different families the whole branches swap, so draw it afresh
+      const st = get();
+      const u = st.doc.graph.unions.find((x) => x.id === m.unionId);
+      const xOf = (pid) => (st.pedigreeData.nodes.find((n) => n.id === pid) || {}).x;
+      const other = u && u.partners.find((p) => p !== m.leftPartner);
+      if (res.ok && u && !(xOf(m.leftPartner) < xOf(other))) {
+        zSet(deriveAll(st.doc, st.ui, { tidy: true, reason: 'Eşler yer değiştirdi' }));
+      }
+      return res;
+    }
+    let d = get().doc;
+    const children = (doc) => doc.graph.parentChildRelationships.find((r) => r.unionId === m.unionId).children;
+    for (let i = 0; i < children(d).length; i++) {
+      const r = ops.moveChild(d, m.unionId, id, m.dir);
+      if (!r.ok) return apply(r);
+      if (r.doc === d) break;
+      d = r.doc;
+      if (!m.target) break;
+      const c = children(d);
+      if (m.dir === 'left' ? c.indexOf(id) < c.indexOf(m.target) : c.indexOf(id) > c.indexOf(m.target)) break;
+    }
+    const result = apply({ ok: true, doc: d });
+    const st = get();
+    if (result.ok && againstAges({ ...st.pedigreeData, parentChildRelationships: st.doc.graph.parentChildRelationships }, m.unionId)) {
+      zSet({ actionNotice: { message: 'Bu doğum sırası bilinen yaşlarla uyuşmuyor; çizim elle verdiğiniz sırayı gösteriyor.', kind: 'info', at: Date.now() } });
+    }
+    return result;
+  };
+
   const apply = (result, extra = {}, derived = null) => {
     if (!result || !result.ok) {
       zSet({ actionNotice: { message: (result && result.reason) || 'İşlem uygulanamadı.', at: Date.now() } });
@@ -376,6 +416,11 @@ export const usePedigreeStore = create((zSet, get) => {
     setChildOrder: (unionId, order) => apply(ops.setChildOrder(get().doc, unionId, order)),
     clearChildOrder: (unionId) => apply(ops.clearChildOrder(get().doc, unionId)),
     reorderChild: (unionId, childId, direction) => apply(ops.moveChild(get().doc, unionId, childId, direction)),
+
+    // ── moving a person left / right (Shift+arrows, dragging) ──
+    setLeftPartner: (unionId, personId) => apply(ops.setLeftPartner(get().doc, unionId, personId)),
+    moveSideways: (id, dir) => applyMove(sidewaysMove(get().pedigreeData, id, dir), id),
+    dropOnto: (id, targetId) => applyMove(dropMove(get().pedigreeData, id, targetId), id),
 
     // ── person editor ──
     addSpouseTo: (targetId, spouseSex = 'unknown') => apply(ops.addPartner(get().doc, targetId, { sex: spouseSex })),

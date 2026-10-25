@@ -351,3 +351,7 @@ textarea.input { height: auto; min-height: 56px; padding: 6px 8px; resize: verti
   #print-root svg { flex: 1; width: 100%; min-height: 0; }
   .print-foot { font: 9pt system-ui, -apple-system, sans-serif; color: #64748b; text-align: right; padding-top: 2mm; }
 }
+
+/* dragging the selected person (PedigreeCanvas.jsx) */
+#pedigree-svg .node-group.dragging { opacity: 0.75; cursor: grabbing; }
+#pedigree-svg .node-group.drop-target > .pedigree-shape { stroke: var(--accent); stroke-width: 3.5; stroke-dasharray: 4 3; }

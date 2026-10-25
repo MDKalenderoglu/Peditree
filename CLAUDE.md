@@ -27,7 +27,9 @@ Individual   { id, sex, age, generation, relation, label, displayLabel,
                          // compared in days; birthDate 'YYYY-MM-DD' (the proband's, top bar) sets the age as of today
 
 Union        { id, partners: [id, id], status, consanguineous, consanguinityDegree,
-               consanguinityStatus, relationshipBackground }
+               consanguinityStatus, relationshipBackground, leftPartner? }
+                         // leftPartner: the partner the clinician moved to the left (placement only;
+                         // structure.js / ordering.js keep it) — src/utils/sidewaysMove.js
 
 ParentChildRelationship  { unionId, children: string[],      // BIOLOGICAL, ≤ 1 per child
                            birthOrderExplicit?, orderPolicy: 'byAge' | 'insertion' }
