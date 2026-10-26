@@ -310,5 +310,6 @@ Onay sonrası her kural için:
 | 2026-10-25 | etkilenmiş + taşıyıcı (bulgu adı yok) | sağ yarı siyah (etkilenmiş), sol yarıda NSGC taşıyıcı noktası; adlandırılmış taşınan bulgu siyahsa ve kişi "etkilenmiş"se o bulgu herkes için başka dolguya geçer; ayırt edilemeyecek birleşim (16 imza dolu) gerekçeyle reddedilir (uygulandı) | kullanıcı (klinisyen) / ikinci denetim |
 | 2026-10-25 | bulguda "bilinmiyor" | klinisyen emin değilse bulgu "?" (bilinmiyor) işaretlenir; notlarda "Bulgu: bilinmiyor"; PED'de 0 (bilinmiyor); girilmemiş bulgu 1 (yok) (uygulandı) | kullanıcı (klinisyen) |
 | 2026-10-25 | doğum haftası | devam eden gebelik "Doğdu" ile kişiye çevrilince gebelik haftası doğum haftası olarak kalır; notlarda "doğum: 32 hf" (uygulandı) | kullanıcı (klinisyen) |
+| 2026-10-26 | gebelik sonucunun akrabaları | düşük / ölü doğum / TOP / ECT / devam eden gebeliğe ebeveyn ve kardeş eklenebilir (fetüs proband olabilir); eş ve çocuk eklenemez (uygulandı) | kullanıcı (klinisyen) |
 | | K2–K4, K6–K9, K13 | bekliyor (K10 danışan: şimdilik yok; K11 gebelik ve K12 ikizler: yukarıda karara bağlandı) | |
 | | §4 "Standart" özetleri (orijinal yayına karşı) | bekliyor | |

@@ -234,7 +234,7 @@ describe('v0.3a.1 round 2 — computeSiblingCreationPlan ("Kardeş Yap" safety)'
     expect(plan.ok).toBe(false);
   });
 
-  it('blocks when either individual is a pregnancy loss or stillbirth', () => {
+  it('a pregnancy outcome may be made a sibling (clinician decision 2026-10-25)', () => {
     // Construct minimal pedigreeData by hand for this structural case.
     const pedigreeData = {
       individuals: [
@@ -245,7 +245,7 @@ describe('v0.3a.1 round 2 — computeSiblingCreationPlan ("Kardeş Yap" safety)'
       parentChildRelationships: [],
     };
     const plan = computeSiblingCreationPlan(pedigreeData, 'a', 'b');
-    expect(plan.ok).toBe(false);
+    expect(plan.ok).toBe(true);
   });
 
   it('blocks when either individual is the proband', () => {

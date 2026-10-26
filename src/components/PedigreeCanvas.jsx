@@ -132,6 +132,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
 ) {
   const svgRef = useRef(null);
   const focusTickRef = useRef(0);
+  const lastNodesRef = useRef(null);
   const boxRef = useRef(null);
   // where the quick-add bar sits: under the single selected person's symbol
   // Every text on the page can be corrected where it stands (clinician
@@ -504,6 +505,19 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         event.stopPropagation();
         onNodeSelect(d.id, { additive: event.shiftKey || multiSelect });
       });
+
+    // after an edit the drawing may rearrange: the person being worked on
+    // pulses (blue) and anyone just added (green), so nobody is lost in a big
+    // family (clinician request 2026-10-25); screen only, never exported
+    const prevNodes = lastNodesRef.current;
+    if (prevNodes && prevNodes !== nodes) {
+      const before = new Set(prevNodes.map(n => n.id));
+      nodeGroups.filter(d => d.id === selectedNodeId || !before.has(d.id))
+        .insert('circle', ':first-child')
+        .attr('class', d => `ui-only pulse-halo${d.id === selectedNodeId ? '' : ' pulse-new'}`)
+        .attr('r', d => (isSmallSymbol(d) ? LOSS_SIZE : HALF) + 10);
+    }
+    lastNodesRef.current = nodes;
 
     // the selected person can be dragged left / right (mouse, finger, pen):
     // dropped on their partner they swap sides, on a sibling they take that
@@ -880,7 +894,6 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         width="100%"
         height="100%"
         style={{ cursor: 'grab', background: '#f8fafc' }}
-        onClick={() => onNodeSelect(null)}
       />
       {anchor && renderQuickBar && !editing && renderQuickBar(anchor, panBy)}
       {editing && (

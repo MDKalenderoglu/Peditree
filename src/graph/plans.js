@@ -106,6 +106,8 @@ export function computeUnionCreationPlan(pedigreeData, id1, id2) {
   if (!ind1 || !ind2) {
     return { ok: false, reason: 'Bireylerden biri grafikte bulunamadı.' };
   }
+  // a pregnancy outcome can have parents and siblings (a fetus may be the
+  // proband), never a partner or children (clinician 2026-10-25)
   if (isPregnancy(ind1) || isPregnancy(ind2)) {
     return { ok: false, reason: 'Düşük/ölü doğum kaydı bir bireyle eş yapılamaz.' };
   }
@@ -235,9 +237,6 @@ export function computeSiblingCreationPlan(pedigreeData, id1, id2) {
   if (!ind1 || !ind2) {
     return { ok: false, reason: 'Bireylerden biri grafikte bulunamadı.' };
   }
-  if (isPregnancy(ind1) || isPregnancy(ind2)) {
-    return { ok: false, reason: 'Düşük/ölü doğum kaydı bir bireyle kardeş bağı kurulamaz.' };
-  }
   if (ind1.proband || ind2.proband) {
     return { ok: false, reason: 'Proband için bu yoldan kardeş bağı kurulamaz.' };
   }
@@ -299,9 +298,6 @@ export function computeAddParentsPlan(pedigreeData, targetId) {
   if (!target) {
     return { ok: false, reason: 'Birey grafikte bulunamadı.' };
   }
-  if (isPregnancy(target)) {
-    return { ok: false, reason: 'Düşük/ölü doğum kaydına ebeveyn eklenemez.' };
-  }
   const alreadyHasParent = pcrs.some(rel => rel.children.includes(targetId));
   if (alreadyHasParent) {
     return { ok: false, reason: 'Bu bireyin zaten ebeveyni var — tekrar eklenemez (yinelenen ebeveyn oluşturulmaz).' };
@@ -326,9 +322,6 @@ export function computeAddSiblingPlan(pedigreeData, targetId) {
   const target = individuals.find(i => i.id === targetId);
   if (!target) {
     return { ok: false, reason: 'Birey grafikte bulunamadı.' };
-  }
-  if (isPregnancy(target)) {
-    return { ok: false, reason: 'Düşük/ölü doğum kaydına kardeş eklenemez.' };
   }
   const parentRel = pcrs.find(rel => rel.children.includes(targetId));
   if (!parentRel) {

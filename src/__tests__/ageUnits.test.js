@@ -113,3 +113,22 @@ describe('ages in the pedigree', () => {
     expect(P('proband').age).toBe(ageFromBirthDate('2015-03-01', new Date()));
   });
 });
+
+describe('a birth date typed the quick way (clinician request 2026-10-25)', () => {
+  it('day first, with dots, slashes, dashes, spaces or none; two-digit years', async () => {
+    const { parseTypedDate, formatDate } = await import('../utils/age');
+    const today = new Date(2026, 9, 25);
+    expect(parseTypedDate('3.5.25', today)).toBe('2025-05-03');
+    expect(parseTypedDate('3/05/2025', today)).toBe('2025-05-03');
+    expect(parseTypedDate('03.05.2022', today)).toBe('2022-05-03');
+    expect(parseTypedDate('3-5-2025', today)).toBe('2025-05-03');
+    expect(parseTypedDate('3 5 25', today)).toBe('2025-05-03');
+    expect(parseTypedDate('030525', today)).toBe('2025-05-03');
+    expect(parseTypedDate('03052025', today)).toBe('2025-05-03');
+    expect(parseTypedDate('2025-05-03', today)).toBe('2025-05-03');
+    expect(parseTypedDate('1.1.90', today)).toBe('1990-01-01'); // 2090 would be in the future
+    expect(parseTypedDate('31.2.2025', today)).toBeNull();
+    expect(parseTypedDate('ocak 2025', today)).toBeNull();
+    expect(formatDate('2025-05-03')).toBe('03.05.2025');
+  });
+});

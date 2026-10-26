@@ -365,3 +365,13 @@ textarea.input { height: auto; min-height: 56px; padding: 6px 8px; resize: verti
 .template-item { text-align: left; font: inherit; font-size: 12.5px; padding: 7px 9px; border: 1px solid transparent; border-radius: 7px; background: none; color: var(--ink); cursor: pointer; }
 .template-item:hover, .template-item:focus-visible { background: var(--accent-soft); border-color: rgba(37, 99, 235, 0.25); outline: none; }
 @media (pointer: coarse) { .template-item { padding: 11px 10px; font-size: 14px; } }
+
+/* the person being worked on pulses after an edit, people just added in green (PedigreeCanvas.jsx) */
+#pedigree-svg .pulse-halo { fill: none; stroke: var(--accent); stroke-width: 3; opacity: 0; transform-box: fill-box; transform-origin: center; animation: pedigree-pulse 0.75s ease-out 3; pointer-events: none; }
+#pedigree-svg .pulse-halo.pulse-new { stroke: #16a34a; }
+@keyframes pedigree-pulse { 0% { opacity: 0.95; transform: scale(0.75); } 100% { opacity: 0; transform: scale(1.45); } }
+@media (prefers-reduced-motion: reduce) { #pedigree-svg .pulse-halo { animation: none; opacity: 0.7; } }
+.suggest-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; }
+.suggest-chip { font: inherit; font-size: 11.5px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--sunken); color: var(--ink-2); cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.suggest-chip:hover { background: var(--accent-soft); color: var(--accent-ink); border-color: rgba(37, 99, 235, 0.3); }
+@media (pointer: coarse) { .suggest-chip { padding: 7px 11px; font-size: 13px; } }

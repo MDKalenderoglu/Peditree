@@ -255,7 +255,7 @@ export function setBirthDate(doc, id, iso, today = new Date()) {
     const age = ageFromBirthDate(iso, today);
     if (age === null) {
       block(/^\d{4}-\d{2}-\d{2}$/.test(iso) && ageFromBirthDate(iso, new Date(9999, 0, 1)) !== null
-        ? 'Doğum tarihi bugünden sonra olamaz.' : 'Doğum tarihi anlaşılamadı.');
+        ? 'Doğum tarihi bugünden sonra olamaz.' : `Doğum tarihi anlaşılamadı: "${iso}" (ör. 3.5.25 ya da 03.05.2025).`);
     }
     if (Number(iso.slice(0, 4)) < 1900) block('Doğum tarihi 1900 öncesi olamaz.');
     p.birthDate = iso;

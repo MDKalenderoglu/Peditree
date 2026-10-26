@@ -177,10 +177,11 @@ export default function RadialAddMenu({
   const twinGroup = groupOf(pedigreeData, node.id);
 
   const disabled = {
-    top: isLoss ? 'Düşük / ölü doğuma ebeveyn eklenmez.' : hasParents ? 'Anne-baba zaten çizili.' : null,
-    right: isLoss ? 'Düşük / ölü doğuma eş eklenmez.' : sexKnown ? null : 'Eş eklemek için önce cinsiyeti seçin (Durum).',
-    bottom: isLoss ? 'Düşük / ölü doğuma çocuk eklenmez.' : !lastUnion && !sexKnown ? 'Çocuk eklemek için önce cinsiyeti seçin.' : null,
-    left: isLoss ? 'Düşük / ölü doğuma kardeş buradan eklenmez.' : null,
+    // a pregnancy outcome takes parents and siblings, never a partner or children (clinician 2026-10-25)
+    top: hasParents ? 'Anne-baba zaten çizili.' : null,
+    right: isLoss ? 'Bir gebelik sonucuna eş eklenmez.' : sexKnown ? null : 'Eş eklemek için önce cinsiyeti seçin (Durum).',
+    bottom: isLoss ? 'Bir gebelik sonucuna çocuk eklenmez.' : !lastUnion && !sexKnown ? 'Çocuk eklemek için önce cinsiyeti seçin.' : null,
+    left: null,
   };
   // one click: parents = a mother and a father; spouse = the opposite sex
   // (clinician decision 2026-10-24) — no choices to open
@@ -289,7 +290,7 @@ export default function RadialAddMenu({
       </div>
     ),
     note: (
-      <DraftField key={`${node.id}-note`} as="textarea" className="input radial-note" value={node.notes || ''} placeholder="Klinik not"
+      <DraftField key={`${node.id}-note`} as="textarea" className="input radial-note" value={node.notes || ''} placeholder="Klinik not (yeni satır: Shift+Enter)"
         onCommit={v => onUpdate(node.id, { notes: v })} autoFocus />
     ),
   };

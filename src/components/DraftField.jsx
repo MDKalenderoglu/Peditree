@@ -50,6 +50,13 @@ export default function DraftField({ value, onCommit, as = 'input', ...rest }) {
       onFocus={() => setFocused(true)}
       onChange={(e) => { setDraft(e.target.value); schedule(e.target.value); }}
       onBlur={() => { commitNow(); setFocused(false); }}
-      onKeyDown={(e) => { if (e.key === 'Enter' && as === 'input') commitNow(); }} />
+      // Enter saves and leaves the box (clinician request 2026-10-25); in a
+      // note, Shift+Enter starts a new line
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter' || (as !== 'input' && e.shiftKey)) return;
+        e.preventDefault();
+        commitNow();
+        e.currentTarget.blur();
+      }} />
   );
 }

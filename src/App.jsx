@@ -9,6 +9,7 @@ import PedigreeCanvas from './components/PedigreeCanvas';
 import IndividualEditor from './components/IndividualEditor';
 import RadialAddMenu from './components/RadialAddMenu';
 import { flushDrafts } from './utils/drafts';
+import { parseTypedDate, formatDate } from './utils/age';
 import DraftField from './components/DraftField';
 import { nextPerson, RING_KEYS } from './utils/keyboardNav';
 import { toPed } from './graph/ped';
@@ -16,11 +17,6 @@ import { TEMPLATE_GROUPS } from './graph/templates';
 import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2, MoreHorizontal, Printer } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
-
-const todayIso = () => {
-  const t = new Date();
-  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
-};
 
 const KEY_HELP = [
   ['Tab', 'çizimdeki kişiler arasında gez'],
@@ -380,9 +376,10 @@ function App() {
           {/* optional: the proband's age follows it, as of today (clinician decision 2026-10-25) */}
           <label className="toolbar-field" title="Probandın doğum tarihi (isteğe bağlı): yaşı bugüne göre hesaplanır">
             <span>Doğum</span>
-            <DraftField key={probandNode ? probandNode.id : 'none'} type="date" className="input birth-date"
-              value={(probandNode && probandNode.birthDate) || ''} max={todayIso()} disabled={!probandNode}
-              aria-label="Probandın doğum tarihi" onCommit={setProbandBirthDate} />
+            {/* typed the quick way: 3.5.25, 3/05/2025, 030525 … (clinician request 2026-10-25) */}
+            <DraftField key={probandNode ? probandNode.id : 'none'} type="text" inputMode="numeric" className="input birth-date"
+              value={formatDate(probandNode && probandNode.birthDate)} placeholder="gg.aa.yyyy" disabled={!probandNode}
+              aria-label="Probandın doğum tarihi" onCommit={v => setProbandBirthDate(v.trim() ? (parseTypedDate(v) || v.trim()) : '')} />
           </label>
           <div className="toolbar-sep" />
           <div className="toolbar-group">

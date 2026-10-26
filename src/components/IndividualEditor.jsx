@@ -374,6 +374,9 @@ export default function IndividualEditor({
   const kind = pregnancyKind(node) ? PREGNANCY_LABEL[pregnancyKind(node)] : SEX_WORD[node.sex || 'unknown'];
   const sub = [kind, node.age ? `${node.age} yaş` : null, node.proband ? 'proband' : null].filter(Boolean).join(' · ');
   const set = (patch) => onUpdate(node.id, patch);
+  const familyNotes = [...new Set((pedigreeData?.individuals || [])
+    .filter(i => i.id !== node.id && i.geneticNote && i.geneticNote !== node.geneticNote)
+    .map(i => i.geneticNote))].slice(0, 6);
 
   return (
     <>
@@ -460,6 +463,15 @@ export default function IndividualEditor({
               {(node.geneticTest || node.geneticNote) && (
                 <DraftField key={`${node.id}-gnote`} type="text" className="input input-wide" value={node.geneticNote || ''}
                   placeholder="Varyant ya da açıklama, ör. FBN1 c.1585C>T het" onCommit={v => set({ geneticNote: v.trim() })} />
+              )}
+              {/* what was written for relatives, one tap away (clinician request 2026-10-25) */}
+              {familyNotes.length > 0 && (
+                <div className="suggest-row">
+                  <span className="field-hint">Ailede girilen:</span>
+                  {familyNotes.map(t => (
+                    <button key={t} className="suggest-chip" title="Bu kişiye de yaz" onClick={() => set({ geneticNote: t })}>{t}</button>
+                  ))}
+                </div>
               )}
             </div>
             {node.condition && (

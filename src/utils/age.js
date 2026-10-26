@@ -64,3 +64,34 @@ export function ageFromBirthDate(iso, today = new Date()) {
   if (months < 24) return `${months} ay`;
   return String(Math.floor(months / 12));
 }
+
+/**
+ * A date typed the quick way (clinician request 2026-10-25), day first:
+ * "3.5.25", "3/05/2025", "03.05.2022", "3-5-2025", "3 5 25", "030525",
+ * "03052025", or "2025-05-03". A two-digit year is this century unless that
+ * would be in the future (then the last one). Returns 'YYYY-MM-DD' or null.
+ */
+export function parseTypedDate(raw, today = new Date()) {
+  const s = String(raw ?? '').trim();
+  if (!s) return null;
+  let d, m, y;
+  let k = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
+  if (k) [, y, m, d] = k;
+  else if ((k = /^(\d{1,2})[./\-\s]+(\d{1,2})[./\-\s]+(\d{2}|\d{4})$/.exec(s))) [, d, m, y] = k;
+  else if ((k = /^(\d{2})(\d{2})(\d{2}|\d{4})$/.exec(s))) [, d, m, y] = k;
+  else return null;
+  let year = Number(y);
+  if (String(y).length === 2) {
+    year += 2000;
+    if (year > today.getFullYear()) year -= 100;
+  }
+  const iso = `${year}-${String(Number(m)).padStart(2, '0')}-${String(Number(d)).padStart(2, '0')}`;
+  const t = new Date(year, Number(m) - 1, Number(d));
+  return t.getFullYear() === year && t.getMonth() === Number(m) - 1 && t.getDate() === Number(d) ? iso : null;
+}
+
+/** 'YYYY-MM-DD' → '03.05.2025' (how the clinician writes it). */
+export function formatDate(iso) {
+  const k = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+  return k ? `${k[3]}.${k[2]}.${k[1]}` : '';
+}

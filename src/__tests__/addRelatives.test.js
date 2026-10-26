@@ -28,10 +28,10 @@ describe('v0.3a.3 — computeAddParentsPlan', () => {
     expect(plan.ok).toBe(false);
   });
 
-  it('blocks adding parents to a pregnancy-loss/stillbirth individual', () => {
+  it('a pregnancy outcome may get parents (clinician decision 2026-10-25: a fetus can be the proband)', () => {
     const pedigreeData = { individuals: [{ id: 'a', pregnancyLoss: true }], unions: [], parentChildRelationships: [] };
     const plan = computeAddParentsPlan(pedigreeData, 'a');
-    expect(plan.ok).toBe(false);
+    expect(plan.ok).toBe(true);
   });
 
   it('blocks for a nonexistent individual', () => {
