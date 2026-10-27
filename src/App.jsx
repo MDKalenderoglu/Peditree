@@ -50,6 +50,23 @@ const KEY_HELP = [
   ]],
 ];
 
+// the mark: one G-banded chromosome, the violet of the Giemsa stain (also public/favicon.svg)
+function BrandMark() {
+  return (
+    <svg className="brand-mark" width="16" height="32" viewBox="0 0 16 32" aria-hidden="true">
+      <defs>
+        <clipPath id="brand-arms"><rect x="2" y="1" width="12" height="12" rx="6" /><rect x="2" y="15" width="12" height="16" rx="6" /></clipPath>
+      </defs>
+      <g clipPath="url(#brand-arms)" fill="currentColor">
+        <rect x="0" y="0" width="16" height="32" opacity="0.16" />
+        <rect x="0" y="4" width="16" height="2.5" /><rect x="0" y="9" width="16" height="1.5" />
+        <rect x="0" y="18" width="16" height="3" /><rect x="0" y="23" width="16" height="1.5" /><rect x="0" y="26.5" width="16" height="2" />
+      </g>
+      <path d="M5 13.2 Q8 14.6 11 13.2 M5 14.8 Q8 13.4 11 14.8" fill="none" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
 function App() {
   const {
     pedigreeData, warnings, integrityIssues,
@@ -97,10 +114,6 @@ function App() {
   const visibleWarningIssues = withStableIdsExcludingDismissed(warningIssues, dismissedWarningIds);
   const visibleWarnings = withStableIdsExcludingDismissed(warnings, dismissedWarningIds);
   const notices = clinicalNotices({ errorIssues: visibleErrorIssues, warningIssues: visibleWarningIssues, warnings: visibleWarnings }, pedigreeData);
-  const dismissBtnStyle = {
-    background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8',
-    fontSize: '1rem', lineHeight: 1, padding: '0 2px', flexShrink: 0,
-  };
 
   /**
    * Severity-tiered export gate, run before both SVG and PNG export:
@@ -425,170 +438,175 @@ function App() {
     <>
     <div className={`app-shell${selectedNode || selectedNode2 ? ' has-editor' : ''}`}>
 
-      <div className="canvas-container">
-        {/* KI-5/KI-6: toolbar and notices sit in normal flow ABOVE the canvas —
-            they can no longer cover pedigree symbols, and the toolbar wraps on
-            narrow windows instead of overlapping the canvas controls. */}
-        <div className="canvas-toolbar toolbar">
-          <div className="brand toolbar-brand">
+      {/* KI-5/KI-6: toolbar and notices sit in normal flow ABOVE the canvas —
+          they can no longer cover pedigree symbols, and the toolbar wraps on
+          narrow windows instead of overlapping the canvas controls. The
+          toolbar spans the person panel too, so selecting someone never
+          changes its height (and never moves the drawing). */}
+      <div className="canvas-toolbar toolbar">
+        <div className="brand toolbar-brand">
+          <BrandMark />
+          <span className="brand-text">
             <span className="brand-name">Peditree</span>
             <span className="brand-sub">Klinik pedigri</span>
-          </div>
-          <div className="toolbar-sep" />
-          <input className="input patient-name" value={doc.patientName || ''} placeholder="Hasta adı soyadı"
-            aria-label="Hasta adı soyadı" onChange={e => setPatientName(e.target.value)} />
-          {/* optional: the proband's age follows it, as of today (clinician decision 2026-10-25) */}
-          <label className="toolbar-field" title="Probandın doğum tarihi (isteğe bağlı). Yazarsanız probandın yaşı bugüne göre kendiliğinden hesaplanır. Kısa da yazabilirsiniz: 3.5.25">
-            <span>Doğum</span>
-            {/* typed the quick way: 3.5.25, 3/05/2025, 030525 … (clinician request 2026-10-25) */}
-            <DraftField key={probandNode ? probandNode.id : 'none'} type="text" inputMode="numeric" className="input birth-date"
-              value={formatDate(probandNode && probandNode.birthDate)} placeholder="gg.aa.yyyy" disabled={!probandNode}
-              aria-label="Probandın doğum tarihi" onCommit={v => setProbandBirthDate(v.trim() ? (parseTypedDate(v) || v.trim()) : '')} />
-          </label>
-          <div className="toolbar-sep" />
-          <div className="toolbar-group">
-            <div className="keys-wrap" data-popup="new">
-              <button className="ui-btn" onClick={() => setNewMenu(v => !v)} aria-expanded={newMenu} title="Yeni bir pedigri başlat: boş bir aileyle ya da hazır bir akraba evliliği şablonuyla"><FilePlus2 size={15} /> Yeni</button>
-              {newMenu && (
-                <div className="keys-popover share-popover new-popover" role="dialog" aria-label="Yeni pedigri">
-                  <button className="ui-btn ui-btn-primary" onClick={() => handleNewPedigree(null)}>Proband, anne ve baba ile başla</button>
-                  <div className="more-title">Ya da anne-babası akraba olan hazır bir aileyle başlayın:</div>
-                  <div className="segmented segmented-wrap" role="tablist" aria-label="Akrabalık derecesi">
-                    {TEMPLATE_GROUPS.map(g => (
-                      <button key={g.id} role="tab" aria-selected={tplGroup === g.id} className={tplGroup === g.id ? 'on' : undefined}
-                        onClick={() => setTplGroup(g.id)}>{g.label}</button>
-                    ))}
-                  </div>
-                  <div className="template-list" role="list">
-                    {TEMPLATE_GROUPS.find(g => g.id === tplGroup).items.map(i => (
-                      <button key={i.id} className="template-item" role="listitem" onClick={() => handleNewPedigree(i.spec)}>{i.label}</button>
-                    ))}
-                  </div>
+          </span>
+        </div>
+        <div className="toolbar-sep" />
+        <input className="input patient-name" value={doc.patientName || ''} placeholder="Hasta adı soyadı"
+          aria-label="Hasta adı soyadı" onChange={e => setPatientName(e.target.value)} />
+        {/* optional: the proband's age follows it, as of today (clinician decision 2026-10-25) */}
+        <label className="toolbar-field" title="Probandın doğum tarihi (isteğe bağlı). Yazarsanız probandın yaşı bugüne göre kendiliğinden hesaplanır. Kısa da yazabilirsiniz: 3.5.25">
+          <span>Doğum</span>
+          {/* typed the quick way: 3.5.25, 3/05/2025, 030525 … (clinician request 2026-10-25) */}
+          <DraftField key={probandNode ? probandNode.id : 'none'} type="text" inputMode="numeric" className="input birth-date"
+            value={formatDate(probandNode && probandNode.birthDate)} placeholder="gg.aa.yyyy" disabled={!probandNode}
+            aria-label="Probandın doğum tarihi" onCommit={v => setProbandBirthDate(v.trim() ? (parseTypedDate(v) || v.trim()) : '')} />
+        </label>
+        <div className="toolbar-sep" />
+        <div className="toolbar-group">
+          <div className="keys-wrap" data-popup="new">
+            <button className="ui-btn" onClick={() => setNewMenu(v => !v)} aria-expanded={newMenu} title="Yeni bir pedigri başlat: boş bir aileyle ya da hazır bir akraba evliliği şablonuyla"><FilePlus2 size={15} /> Yeni</button>
+            {newMenu && (
+              <div className="keys-popover share-popover new-popover" role="dialog" aria-label="Yeni pedigri">
+                <button className="ui-btn ui-btn-primary" onClick={() => handleNewPedigree(null)}>Proband, anne ve baba ile başla</button>
+                <div className="more-title">Ya da anne-babası akraba olan hazır bir aileyle başlayın:</div>
+                <div className="segmented segmented-wrap" role="tablist" aria-label="Akrabalık derecesi">
+                  {TEMPLATE_GROUPS.map(g => (
+                    <button key={g.id} role="tab" aria-selected={tplGroup === g.id} className={tplGroup === g.id ? 'on' : undefined}
+                      onClick={() => setTplGroup(g.id)}>{g.label}</button>
+                  ))}
                 </div>
-              )}
-            </div>
-            <button className="ui-btn" onClick={() => fileInputRef.current && fileInputRef.current.click()} title="Daha önce kaydettiğiniz bir pedigri dosyasını (.peditree.json) ya da bir PED dosyasını açar"><FolderOpen size={15} /> Aç</button>
-            <button className="ui-btn" onClick={handleSaveProject} title="Pedigriyi bilgisayarınıza dosya olarak kaydeder (.peditree.json). Sonra “Aç” ile açıp kaldığınız yerden devam edebilirsiniz."><Save size={15} /> Kaydet</button>
-            <input ref={fileInputRef} type="file" accept=".json,application/json,.ped,.fam,.txt,text/plain" onChange={handleOpenProject} style={{ display: 'none' }} aria-label="Proje ya da PED dosyası seç" />
-          </div>
-          <div className="toolbar-sep" />
-          <div className="toolbar-group">
-            <button className="ui-btn ui-btn-icon" onClick={handleUndo} disabled={!_history || _history.length === 0}
-              title={_history && _history.length > 0 ? `Geri al (${_history.length} adım)` : 'Geri alınacak adım yok'} aria-label="Geri al"><Undo2 size={15} /></button>
-            <button className="ui-btn ui-btn-icon" onClick={handleRedo} disabled={!_future || _future.length === 0}
-              title={_future && _future.length > 0 ? `Yinele (${_future.length} adım)` : 'Yinelenecek adım yok'} aria-label="Yinele"><Redo2 size={15} /></button>
-            <button className="ui-btn" onClick={relayout} title="Kişilerin çizimdeki yerlerini baştan hesaplar; kimin kiminle akraba olduğu değişmez. Geri alınabilir."><LayoutGrid size={15} /> Yeniden Düzenle</button>
-          </div>
-          <div className="toolbar-spacer" />
-          <button className={`ui-btn touch-only${multiSelect ? ' ui-btn-primary' : ''}`} aria-pressed={multiSelect}
-            onClick={() => setMultiSelect(v => !v)} title="Açıkken dokunduğunuz her kişi seçime eklenir; yeniden dokunursanız çıkarılır. Birden çok kişiyi birlikte değiştirmek için.">
-            <CheckSquare size={15} /> Çoklu seçim
-          </button>
-          <div className="keys-wrap" data-popup="keys">
-            <button className="ui-btn ui-btn-icon ui-btn-ghost" aria-label="Klavye kısayolları" aria-expanded={showKeys}
-              title="Klavye kısayolları" onClick={() => setShowKeys(v => !v)}>
-              <Keyboard size={15} />
-            </button>
-            {showKeys && (
-              <div className="keys-popover" role="dialog" aria-label="Klavye kısayolları">
-                <div className="keys-title">Klavye kısayolları</div>
-                {KEY_HELP.map(([group, rows]) => (
-                  <table key={group}>
-                    <caption>{group}</caption>
-                    <tbody>
-                      {rows.map(([k, t]) => <tr key={k}><td><kbd>{k}</kbd></td><td>{t}</td></tr>)}
-                    </tbody>
-                  </table>
-                ))}
+                <div className="template-list" role="list">
+                  {TEMPLATE_GROUPS.find(g => g.id === tplGroup).items.map(i => (
+                    <button key={i.id} className="template-item" role="listitem" onClick={() => handleNewPedigree(i.spec)}>{i.label}</button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
-          <div className="toolbar-group">
-            <button className="ui-btn" onClick={handleExportSVG} title="Çizimi SVG olarak indirir: büyütünce bozulmayan resim (yayın, Word, PowerPoint için)"><Download size={15} /> SVG</button>
-            <button className="ui-btn ui-btn-primary" onClick={handleExportPNG} title="Çizimi PNG resmi olarak indirir"><ImageIcon size={15} /> PNG</button>
-            <div className="keys-wrap" data-popup="share">
-              <button className="ui-btn" onClick={openShare} aria-expanded={!!share} title="Pedigri resmini WhatsApp, Gmail gibi bir uygulamayla gönderir">
-                <Share2 size={15} /> Paylaş
-              </button>
-              {share && (
-                <div className="keys-popover share-popover" role="dialog" aria-label="Paylaş">
-                  <p className="share-note">Dikkat: resim, seçeceğiniz uygulamayla bu cihazın dışına gönderilir ve hasta bilgilerini içerir.</p>
-                  {share.busy ? <p className="share-note">Resim hazırlanıyor…</p> : (
-                    <div className="share-actions">
-                      {share.withName && (
-                        <button className="ui-btn ui-btn-primary" onClick={() => doShare(share.withName)}>Adıyla paylaş</button>
-                      )}
-                      <button className={`ui-btn${share.withName ? '' : ' ui-btn-primary'}`} onClick={() => doShare(share.noName)}>
-                        {share.withName ? 'Hasta adı olmadan' : 'Paylaş'}
-                      </button>
-                    </div>
-                  )}
-                  {share.withName && <p className="share-note">“Hasta adı olmadan” seçilirse yalnızca en üstteki hasta adı resimden çıkarılır. Sembollerin altındaki etiketler ve notlar resimde kalır.</p>}
-                </div>
-              )}
+          <button className="ui-btn" onClick={() => fileInputRef.current && fileInputRef.current.click()} title="Daha önce kaydettiğiniz bir pedigri dosyasını (.peditree.json) ya da bir PED dosyasını açar"><FolderOpen size={15} /> Aç</button>
+          <button className="ui-btn ui-btn-primary" onClick={handleSaveProject} title="Pedigriyi bilgisayarınıza dosya olarak kaydeder (.peditree.json). Sonra “Aç” ile açıp kaldığınız yerden devam edebilirsiniz."><Save size={15} /> Kaydet</button>
+          <input ref={fileInputRef} type="file" accept=".json,application/json,.ped,.fam,.txt,text/plain" onChange={handleOpenProject} style={{ display: 'none' }} aria-label="Proje ya da PED dosyası seç" />
+        </div>
+        <div className="toolbar-sep" />
+        <div className="toolbar-group">
+          <button className="ui-btn ui-btn-icon" onClick={handleUndo} disabled={!_history || _history.length === 0}
+            title={_history && _history.length > 0 ? `Geri al (${_history.length} adım)` : 'Geri alınacak adım yok'} aria-label="Geri al"><Undo2 size={15} /></button>
+          <button className="ui-btn ui-btn-icon" onClick={handleRedo} disabled={!_future || _future.length === 0}
+            title={_future && _future.length > 0 ? `Yinele (${_future.length} adım)` : 'Yinelenecek adım yok'} aria-label="Yinele"><Redo2 size={15} /></button>
+          <button className="ui-btn" onClick={relayout} title="Kişilerin çizimdeki yerlerini baştan hesaplar; kimin kiminle akraba olduğu değişmez. Geri alınabilir."><LayoutGrid size={15} /> Yeniden Düzenle</button>
+        </div>
+        <div className="toolbar-spacer" />
+        <button className={`ui-btn touch-only${multiSelect ? ' ui-btn-primary' : ''}`} aria-pressed={multiSelect}
+          onClick={() => setMultiSelect(v => !v)} title="Açıkken dokunduğunuz her kişi seçime eklenir; yeniden dokunursanız çıkarılır. Birden çok kişiyi birlikte değiştirmek için.">
+          <CheckSquare size={15} /> Çoklu seçim
+        </button>
+        <div className="keys-wrap" data-popup="keys">
+          <button className="ui-btn ui-btn-icon ui-btn-ghost" aria-label="Klavye kısayolları" aria-expanded={showKeys}
+            title="Klavye kısayolları" onClick={() => setShowKeys(v => !v)}>
+            <Keyboard size={15} />
+          </button>
+          {showKeys && (
+            <div className="keys-popover" role="dialog" aria-label="Klavye kısayolları">
+              <div className="keys-title">Klavye kısayolları</div>
+              {KEY_HELP.map(([group, rows]) => (
+                <table key={group}>
+                  <caption>{group}</caption>
+                  <tbody>
+                    {rows.map(([k, t]) => <tr key={k}><td><kbd>{k}</kbd></td><td>{t}</td></tr>)}
+                  </tbody>
+                </table>
+              ))}
             </div>
-            <div className="keys-wrap" data-popup="more">
-              <button className="ui-btn ui-btn-icon" onClick={() => setMore(v => !v)} aria-expanded={more} aria-label="Diğer" title="Diğer: yazdırma ve PED dosyası">
-                <MoreHorizontal size={15} />
-              </button>
-              {more && (
-                <div className="keys-popover share-popover" role="dialog" aria-label="Diğer">
-                  <button className="ui-btn" onClick={handlePrint}><Printer size={15} /> Yazdır (A4)</button>
-                  <div className="more-title">PED dosyası</div>
-                  <p className="share-note">PED, genetik analiz programlarının ve laboratuvarların okuduğu bir dosya türüdür. İçinde yalnızca her kişinin annesi, babası, cinsiyeti ve hasta olup olmadığı bulunur. Kişiler pedigri numarasıyla (ör. II-3) yazılır; hasta adı ne dosyaya ne dosyanın adına yazılır.</p>
-                  <label className="field-col">
-                    <span className="field-label">Dosyada kim “hasta” olarak yazılsın?</span>
-                    <select className="select" value={pedPhenotype} onChange={e => setPedPhenotype(e.target.value)}>
-                      <option value="affected">Durum’da “Etkilenmiş” işaretlenen kişiler</option>
-                      {(pedigreeData.conditionKey || []).map(e => <option key={e.id} value={e.label}>“{e.label}” bulgusu olanlar</option>)}
-                    </select>
-                  </label>
-                  <button className="ui-btn ui-btn-primary" onClick={handleExportPed}><Download size={15} /> PED indir</button>
-                  <p className="share-note">Bir PED dosyasını açmak için üstteki “Aç” düğmesini kullanın.</p>
-                </div>
-              )}
-            </div>
+          )}
+        </div>
+        <div className="toolbar-group">
+          <button className="ui-btn" onClick={handleExportSVG} title="Çizimi SVG olarak indirir: büyütünce bozulmayan resim (yayın, Word, PowerPoint için)"><Download size={15} /> SVG</button>
+          <button className="ui-btn" onClick={handleExportPNG} title="Çizimi PNG resmi olarak indirir"><ImageIcon size={15} /> PNG</button>
+          <div className="keys-wrap" data-popup="share">
+            <button className="ui-btn" onClick={openShare} aria-expanded={!!share} title="Pedigri resmini WhatsApp, Gmail gibi bir uygulamayla gönderir">
+              <Share2 size={15} /> Paylaş
+            </button>
+            {share && (
+              <div className="keys-popover share-popover" role="dialog" aria-label="Paylaş">
+                <p className="share-note">Dikkat: resim, seçeceğiniz uygulamayla bu cihazın dışına gönderilir ve hasta bilgilerini içerir.</p>
+                {share.busy ? <p className="share-note">Resim hazırlanıyor…</p> : (
+                  <div className="share-actions">
+                    {share.withName && (
+                      <button className="ui-btn ui-btn-primary" onClick={() => doShare(share.withName)}>Adıyla paylaş</button>
+                    )}
+                    <button className={`ui-btn${share.withName ? '' : ' ui-btn-primary'}`} onClick={() => doShare(share.noName)}>
+                      {share.withName ? 'Hasta adı olmadan' : 'Paylaş'}
+                    </button>
+                  </div>
+                )}
+                {share.withName && <p className="share-note">“Hasta adı olmadan” seçilirse yalnızca en üstteki hasta adı resimden çıkarılır. Sembollerin altındaki etiketler ve notlar resimde kalır.</p>}
+              </div>
+            )}
+          </div>
+          <div className="keys-wrap" data-popup="more">
+            <button className="ui-btn ui-btn-icon" onClick={() => setMore(v => !v)} aria-expanded={more} aria-label="Diğer" title="Diğer: yazdırma ve PED dosyası">
+              <MoreHorizontal size={15} />
+            </button>
+            {more && (
+              <div className="keys-popover share-popover" role="dialog" aria-label="Diğer">
+                <button className="ui-btn" onClick={handlePrint}><Printer size={15} /> Yazdır (A4)</button>
+                <div className="more-title">PED dosyası</div>
+                <p className="share-note">PED, genetik analiz programlarının ve laboratuvarların okuduğu bir dosya türüdür. İçinde yalnızca her kişinin annesi, babası, cinsiyeti ve hasta olup olmadığı bulunur. Kişiler pedigri numarasıyla (ör. II-3) yazılır; hasta adı ne dosyaya ne dosyanın adına yazılır.</p>
+                <label className="field-col">
+                  <span className="field-label">Dosyada kim “hasta” olarak yazılsın?</span>
+                  <select className="select" value={pedPhenotype} onChange={e => setPedPhenotype(e.target.value)}>
+                    <option value="affected">Durum’da “Etkilenmiş” işaretlenen kişiler</option>
+                    {(pedigreeData.conditionKey || []).map(e => <option key={e.id} value={e.label}>“{e.label}” bulgusu olanlar</option>)}
+                  </select>
+                </label>
+                <button className="ui-btn ui-btn-primary" onClick={handleExportPed}><Download size={15} /> PED indir</button>
+                <p className="share-note">Bir PED dosyasını açmak için üstteki “Aç” düğmesini kullanın.</p>
+              </div>
+            )}
           </div>
         </div>
+      </div>
 
+      <div className="canvas-container">
         <div className="canvas-notices">
         {autosaveFailed && (
-          <div className="warning-panel" role="alert" style={{ borderColor: '#dc2626', background: '#fef2f2' }}>
-            <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '5px', color: '#dc2626' }}>
+          <div className="warning-panel" data-tone="error" role="alert">
+            <h4 className="notice-title">
               <AlertTriangle size={16} /> Otomatik kayıt yapılamıyor
             </h4>
-            <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: '#991b1b' }}>
+            <p className="notice-text">
               Tarayıcı depolaması dolu ya da kapalı. Sayfa yenilenirse son değişiklikler kaybolabilir; çalışmanızı “Kaydet” ile dosyaya indirin.
             </p>
           </div>
         )}
         {actionNotice && (
-          <div className="warning-panel" role="status" style={{ borderColor: '#2563eb', background: '#eff6ff' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-              <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '5px', color: '#1d4ed8' }}>
+          <div className="warning-panel" data-tone="info" role="status">
+            <div className="notice-head">
+              <h4 className="notice-title">
                 <AlertTriangle size={16} /> {actionNotice.kind === 'info' ? 'Bilgi' : 'İşlem uygulanmadı'}
               </h4>
-              <button onClick={dismissActionNotice} title="Kapat" style={dismissBtnStyle}>×</button>
+              <button className="notice-dismiss" onClick={dismissActionNotice} title="Kapat" aria-label="Kapat">×</button>
             </div>
-            <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: '#1e3a8a', whiteSpace: 'pre-line' }}>{actionNotice.message}</p>
+            <p className="notice-text">{actionNotice.message}</p>
           </div>
         )}
 
         {exportError && (
-          <div className="warning-panel" style={{ borderColor: '#dc2626', background: '#fef2f2' }}>
-            <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '5px', color: '#dc2626' }}>
+          <div className="warning-panel" data-tone="error" role="alert">
+            <h4 className="notice-title">
               <AlertTriangle size={16} /> Dışa aktarma hatası
             </h4>
-            <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: '#991b1b', whiteSpace: 'pre-line' }}>{exportError}</p>
+            <p className="notice-text">{exportError}</p>
           </div>
         )}
 
         {exportNotice && (
-          <div className="warning-panel" style={{ borderColor: '#d97706', background: '#fffbeb' }}>
-            <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '5px', color: '#b45309' }}>
+          <div className="warning-panel" data-tone="warn" role="status">
+            <h4 className="notice-title">
               <AlertTriangle size={16} /> Dışa aktarma uyarısı
             </h4>
-            <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: '#92400e', whiteSpace: 'pre-line' }}>{exportNotice}</p>
+            <p className="notice-text">{exportNotice}</p>
           </div>
         )}
 
@@ -604,7 +622,7 @@ function App() {
                 {notices.map(n => (
                   <li key={n.ids[0]} className={n.level === 'error' ? 'notice-error' : undefined}>
                     <span>{n.text}</span>
-                    <button onClick={() => n.ids.forEach(dismissWarning)} title="Bu notu gizle" style={dismissBtnStyle}>×</button>
+                    <button className="notice-dismiss" onClick={() => n.ids.forEach(dismissWarning)} title="Bu notu gizle" aria-label="Bu notu gizle">×</button>
                   </li>
                 ))}
               </ul>

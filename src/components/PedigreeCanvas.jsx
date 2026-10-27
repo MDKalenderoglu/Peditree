@@ -902,7 +902,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         ref={attachSvgRef}
         width="100%"
         height="100%"
-        style={{ cursor: 'grab', background: '#f8fafc' }}
+        style={{ cursor: 'grab' }}
       />
       {anchor && renderQuickBar && !editing && renderQuickBar(anchor, panBy)}
       {editing && (

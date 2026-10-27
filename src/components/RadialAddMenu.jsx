@@ -235,7 +235,7 @@ export default function RadialAddMenu({
     right: { left: R + 10, top: 0, transform: 'translate(0, -50%)' },
   }[k]);
   const satPos = (angle) => [sat * Math.cos((angle * Math.PI) / 180), sat * Math.sin((angle * Math.PI) / 180)];
-  const PANEL_W = 300;
+  const PANEL_W = 340; // .radial-panel width in ui.css
   const panelStyle = (s) => {
     const [x, y] = satPos(s.angle);
     // open towards the side with room in the drawing area
