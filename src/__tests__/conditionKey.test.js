@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { usePedigreeStore } from '../state/usePedigreeStore';
 import { deriveConditionKey, fillFor, suggestStyle, keyEntry } from '../graph/conditionKey';
+import { keyGrid } from '../utils/keyGrid';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
 
@@ -222,5 +223,34 @@ describe('a carrier with two findings: the two right quadrants differ in fill', 
     const [x, y, z] = ['X', 'Y', 'Z'].map(l => keyEntry(key(), l));
     expect(new Set([x.fill, y.fill, z.fill]).size).toBe(3);
     expect([y.region, z.region].sort()).toEqual(['q2', 'q3']); // upper and lower right, as the key shows them
+  });
+});
+
+describe('the findings key runs in columns (clinician request 2026-10-27)', () => {
+  it('short entries stand side by side in one row when the drawing is wide enough', () => {
+    const g = keyGrid([100, 80, 90], [20, 20, 20], 1000, 10);
+    expect(g.cols).toBe(3);
+    expect(g.height).toBe(20);
+    expect(g.cells).toEqual([{ x: 0, y: 0 }, { x: 110, y: 0 }, { x: 200, y: 0 }]);
+  });
+  it('a narrow drawing gets fewer columns; entries keep their order left to right, then down', () => {
+    const g = keyGrid([100, 100, 100, 100, 100], [20, 35, 20, 20, 20], 320, 10);
+    expect(g.cols).toBe(3);
+    expect(g.width).toBe(320);
+    expect(g.cells.map(c => c.y)).toEqual([0, 0, 0, 35, 35]); // a row is as tall as its tallest entry
+    expect(g.cells[3].x).toBe(0);
+    expect(g.height).toBe(55);
+  });
+  it('an entry wider than the drawing still gets its own column, nothing is dropped', () => {
+    const g = keyGrid([500, 50], [20, 20], 300, 10);
+    expect(g.cols).toBe(1);
+    expect(g.cells).toHaveLength(2);
+    expect(keyGrid([], [], 300, 10).cells).toEqual([]);
+  });
+  it('the canvas places each key entry from the grid', () => {
+    const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
+    expect(src).toMatch(/const grid = keyGrid\(/);
+    expect(src).toMatch(/const keyBlock = shownKey\.length \? grid\.height/);
+    expect(src).toMatch(/grid\.cells\[row\]/);
   });
 });

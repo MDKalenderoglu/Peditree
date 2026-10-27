@@ -31,6 +31,7 @@ import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { annotationAge, pregnancyLine } from '../utils/annotations';
 import { isSmallSymbol, isPregnancy, pregnancyKind, PREGNANCY_LABEL, GENETIC_TESTED, TESTED_TEXT, geneticLines } from '../graph/model';
 import { packLines } from '../utils/textWrap';
+import { keyGrid } from '../utils/keyGrid';
 
 const EDGE_COLOR = '#64748b';
 const NODE_STROKE = '#1e293b';
@@ -230,7 +231,6 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const KEY_LINE = 15 * LK, HEAD_LINE = 17 * LK, KEY_CHARS = 40;
     const keyLines = shownKey.map(e => packLines([{ text: e.text }], KEY_CHARS));
     const keyRowH = keyLines.map(l => KEY_ROW + (l.length - 1) * KEY_LINE);
-    const keyBlock = shownKey.length ? d3.sum(keyRowH) + 14 * LK : 0;
 
     // --- ViewBox ---
     const pad = 100;
@@ -272,6 +272,17 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       ...(k ? [{ text: ', ' }] : []), { text: label, kind: 'finding', target: label, value: label },
     ]), KEY_CHARS);
     const headBlock = probandNode && (name || probandFindings.length) ? 30 * LK + Math.max(0, headLines.length - 1) * HEAD_LINE : 0;
+    // the key's columns: [name] [symbol] [text]; the findings run side by
+    // side under the proband's line, as many as the drawing's width allows
+    // (clinician request 2026-10-27: one under another wasted the top)
+    const KS = 8 * LK, KEY_GAP = 28 * LK;
+    const lineLen = (l) => l.reduce((n, p) => n + p.text.length, 0);
+    const textW = (lines) => Math.max(40, ...lines.map(l => lineLen(l) * 7.2 * LK));
+    const nameW = headBlock && name ? name.length * 8.4 * LK + 12 * LK : 0;
+    const entryW = keyLines.map(lines => 2 * KS + 12 * LK + textW(lines));
+    const keyRight = minX + Math.max(600, maxX - minX) - 10 * LK; // the picture's right edge (vw below)
+    const grid = keyGrid(entryW, keyRowH, keyRight - minX - 10 * LK - nameW, KEY_GAP);
+    const keyBlock = shownKey.length ? grid.height + 14 * LK : 0;
     const minY = d3.min(nodes, d => d.y) - pad - headBlock - keyBlock;
     // how far the lines under a symbol reach (age, pregnancy, E, wrapped
     // note, label, older text, note number) — the same rules as below; the
@@ -726,14 +737,11 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     //     is which finding ---
     if (headBlock || shownKey.length) {
       const keyG = svg.append('g').attr('class', 'condition-legend');
-      const s = 8 * LK;
-      const lineLen = (l) => l.reduce((n, p) => n + p.text.length, 0);
-      const nameW = headBlock && name ? name.length * 8.4 * LK + 12 * LK : 0;
-      // columns: [name] [symbols] [texts] — the rows below line up with the
-      // proband's symbol and findings (clinician request 2026-10-25)
-      const textsW = Math.max(...headLines.map(l => lineLen(l) * 7.2 * LK), ...keyLines.flat().map(l => lineLen(l) * 7.2 * LK), 40);
-      const width = nameW + 2 * s + 12 * LK + textsW;
-      const kx = Math.max(minX + 10, maxX - width - 10 * LK);
+      const s = KS;
+      // the findings start under the proband's symbol (clinician request 2026-10-25)
+      const headW = headBlock ? 2 * s + 12 * LK + textW(headLines) : 0;
+      const width = nameW + Math.max(headW, grid.width);
+      const kx = Math.max(minX + 10, keyRight - width);
       const symX = kx + nameW;              // symbol column
       const textX = symX + 2 * s + 12 * LK; // text column
       let ky = minY + 10 * LK;
@@ -768,18 +776,18 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         ky += headBlock;
       }
       shownKey.forEach((entry, row) => {
-        const cell = keyG.append('g').attr('transform', `translate(${symX + s},${ky + s})`);
+        const ex = symX + grid.cells[row].x, ey = ky + grid.cells[row].y;
+        const cell = keyG.append('g').attr('transform', `translate(${ex + s},${ey + s})`);
         const box = cell.append('rect').attr('x', -s).attr('y', -s).attr('width', 2 * s).attr('height', 2 * s)
           .attr('fill', NODE_FILL).attr('stroke', NODE_STROKE).attr('stroke-width', 1.5);
         const [a0, a1] = entry.carrier ? [90, 270] : (REGION_ANGLES[entry.region] || REGION_ANGLES.q1);
         drawRegions(cell, defs, `key-region-${row}`, box, [{ fill: entry.fill, a0, a1, carrier: entry.carrier }], s);
         keyLines[row].forEach((line, li) => {
           editable(keyG.append('text')
-            .attr('x', textX).attr('y', ky + s + 4.5 * LK + li * KEY_LINE)
+            .attr('x', ex + 2 * s + 12 * LK).attr('y', ey + s + 4.5 * LK + li * KEY_LINE)
             .attr('font-size', `${12.5 * LK}px`).attr('fill', '#334155')
             .text(line.map(p => p.text).join('')), 'finding', entry.label, entry.label);
         });
-        ky += keyRowH[row];
       });
     }
     const legendX = minX + 10;
