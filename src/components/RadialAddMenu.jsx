@@ -187,9 +187,9 @@ export default function RadialAddMenu({
 
   const disabled = {
     // a pregnancy outcome takes parents and siblings, never a partner or children (clinician 2026-10-25)
-    top: hasParents ? 'Anne-baba zaten çizili.' : null,
-    right: isLoss ? 'Bir gebelik sonucuna eş eklenmez.' : sexKnown ? null : 'Eş eklemek için önce cinsiyeti seçin (Durum).',
-    bottom: isLoss ? 'Bir gebelik sonucuna çocuk eklenmez.' : !lastUnion && !sexKnown ? 'Çocuk eklemek için önce cinsiyeti seçin.' : null,
+    top: hasParents ? 'Bu kişinin annesi ve babası zaten çizili.' : null,
+    right: isLoss ? 'Düşüğe, ölü doğuma ya da süren gebeliğe eş eklenemez.' : sexKnown ? null : 'Eş eklemek için önce bu kişinin cinsiyetini seçin: Durum düğmesi → Erkek ya da Kadın.',
+    bottom: isLoss ? 'Düşüğe, ölü doğuma ya da süren gebeliğe çocuk eklenemez.' : !lastUnion && !sexKnown ? 'Çocuk eklemek için önce bu kişinin cinsiyetini seçin: Durum düğmesi → Erkek ya da Kadın.' : null,
     left: null,
   };
   // one click: parents = a mother and a father; spouse = the opposite sex
@@ -264,10 +264,10 @@ export default function RadialAddMenu({
         label: t, on: (node.sex || 'unknown') === v, onClick: () => onUpdate(node.id, { sex: v }),
       }));
       const outer = [
-        { label: 'Etkilenmiş', on: !!node.affected, onClick: () => onUpdate(node.id, { affected: !node.affected }), title: 'Bulgu belirtmeden etkilenmiş (tam dolgu)' },
-        { label: 'Taşıyıcı', on: !!node.carrier, onClick: () => onUpdate(node.id, { carrier: !node.carrier }) },
-        ...(isLoss ? [] : [{ label: 'Vefat', on: !!node.deceased, onClick: () => onUpdate(node.id, { deceased: !node.deceased }) }]),
-        { label: 'Proband', on: !!node.proband, onClick: () => (node.proband ? onClearProband() : onSetProband(node.id)) },
+        { label: 'Etkilenmiş', on: !!node.affected, onClick: () => onUpdate(node.id, { affected: !node.affected }), title: 'Kişi hasta (etkilenmiş): sembolün içi tamamen dolar. Hastalığın adını yazmak için Bulgu düğmesini kullanın.' },
+        { label: 'Taşıyıcı', on: !!node.carrier, onClick: () => onUpdate(node.id, { carrier: !node.carrier }), title: 'Kişi hasta değil ama hastalığa yol açan geni taşıyor' },
+        ...(isLoss ? [] : [{ label: 'Vefat', on: !!node.deceased, onClick: () => onUpdate(node.id, { deceased: !node.deceased }), title: 'Kişi hayatta değil: sembolün üzerine çapraz çizgi çekilir' }]),
+        { label: 'Proband', on: !!node.proband, onClick: () => (node.proband ? onClearProband() : onSetProband(node.id)), title: 'Ailede incelemeye yol açan ilk kişi: yanında ok ve P harfi çizilir' },
       ];
       return [...band(-135, inner, B1, 40), ...band(-135, outer, B2, 33)];
     },
@@ -287,10 +287,10 @@ export default function RadialAddMenu({
         onSetStatus={onSetFindingStatus} onAdd={onAddFinding} onSetStyle={onSetFindingStyle} onSetOnset={onSetFindingOnset} />
     ),
     twins: !hasParents || isLoss || !onAddTwin ? (
-      <span className="radial-hint">İkiz eklemek için anne ve baba çizili olmalı.</span>
+      <span className="radial-hint">{isLoss ? 'Düşük, ölü doğum ya da süren gebelik kaydına buradan ikiz eklenemez.' : 'İkiz eklemek için önce bu kişinin anne ve babasını ekleyin (yukarıdaki Ebeveyn düğmesi).'}</span>
     ) : (
       <div className="radial-panel-col">
-        <span className="radial-hint">{twinGroup ? `${multipleName(twinGroup.group.children.length + 1)} yap — bir kardeş daha:` : 'İkizini ekle:'}</span>
+        <span className="radial-hint">{twinGroup ? `${multipleName(twinGroup.group.children.length + 1)} yap: aynı gruba bir kardeş daha ekleyin. Türü:` : 'Bu kişiye bir ikiz kardeş ekleyin. İkizlik türü:'}</span>
         <div className="btn-row">
           {[['monozygotic', 'Tek yumurta'], ['dizygotic', 'Çift yumurta'], ['unknown', 'Bilinmiyor']].map(([z, t]) => (
             <button key={z} className="ui-btn ui-btn-sm" onClick={() => onAddTwin(node.id, { sex: node.sex, zygosity: z })}>{t}</button>
@@ -299,7 +299,7 @@ export default function RadialAddMenu({
       </div>
     ),
     note: (
-      <DraftField key={`${node.id}-note`} as="textarea" className="input radial-note" value={node.notes || ''} placeholder="Klinik not (yeni satır: Shift+Enter)"
+      <DraftField key={`${node.id}-note`} as="textarea" className="input radial-note" value={node.notes || ''} placeholder="Bu kişiyle ilgili notunuz. Not, pedigrinin altındaki “Notlar” bölümünde çıkar. Alt satır için Shift+Enter."
         onCommit={v => onUpdate(node.id, { notes: v })} autoFocus />
     ),
   };

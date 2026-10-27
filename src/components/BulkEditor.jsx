@@ -28,7 +28,7 @@ export default function BulkEditor({ nodes, conditionKey = [], onUpdateMany, onS
     const st = flag(key, list);
     return (
       <button key={key} className={`chip${st === 'all' ? ' on' : st === 'some' ? ' chip-carrier' : ''}`} aria-pressed={st === 'all'}
-        title={st === 'some' ? 'Bazılarında var — tıklayınca hepsine' : undefined} onClick={() => toggle(key, list)} disabled={!list.length}>
+        title={st === 'some' ? 'Seçilenlerin bazılarında var; tıklarsanız hepsine uygulanır' : undefined} onClick={() => toggle(key, list)} disabled={!list.length}>
         {label}{st === 'some' ? ' (bazıları)' : ''}
       </button>
     );
@@ -72,7 +72,7 @@ export default function BulkEditor({ nodes, conditionKey = [], onUpdateMany, onS
         <>
         <div className="finding-new">
           <FindingGlyph region={suggested.region} fill={suggested.fill} />
-          <input type="text" className="input" value={draft} placeholder="Yeni bulgu (hepsine)"
+          <input type="text" className="input" value={draft} placeholder="Yeni bulgu adı (seçili herkese eklenir)"
             onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }} />
           <button className="ui-btn ui-btn-sm ui-btn-primary" disabled={!draft.trim()} onClick={add}>Ekle</button>
         </div>

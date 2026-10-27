@@ -109,3 +109,23 @@ describe('childlessness and infertility', () => {
     expect(U(u).childlessReason).toBeUndefined();
   });
 });
+
+describe('pop-up windows and help text (clinician request 2026-10-27)', () => {
+  const app = readFileSync(join(process.cwd(), 'src/App.jsx'), 'utf8');
+  it('every toolbar pop-up closes on a click outside it or Escape, and that click does nothing else', () => {
+    for (const name of ['new', 'keys', 'share', 'more']) expect(app).toContain(`data-popup="${name}"`);
+    expect(app).toMatch(/document\.addEventListener\('pointerdown', onDown, true\)/);
+    expect(app).toMatch(/e\.key !== 'Escape'/);
+    expect(app).toMatch(/performance\.now\(\) - popupClosedAt\.current < 1000/);
+  });
+  it('the keyboard help is grouped and written in full sentences', () => {
+    expect(app).toContain("['Kişiler arasında gezinmek', [");
+    expect(app).toContain("['Seçili kişi için (önce bir kişiye tıklayın)', [");
+    expect(app).not.toMatch(/'simit açılır'|odaktaki kişiyi seç/);
+  });
+  it('the editor tip says where the buttons are and how to bring them back', () => {
+    const ed = readFileSync(join(process.cwd(), 'src/components/IndividualEditor.jsx'), 'utf8');
+    expect(ed).toContain('Düğmeler görünmüyorsa kişinin sembolüne yeniden tıklayın.');
+    expect(ed).not.toContain('etrafındaki halkayı');
+  });
+});

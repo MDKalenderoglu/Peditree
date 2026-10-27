@@ -115,7 +115,7 @@ export function draftAddUnion(draft, id, a, b, fields = {}) {
 export function draftAddChild(draft, unionId, childId, { orderPolicy = 'byAge' } = {}) {
   const idx = indexGraph(draft.graph);
   const existing = idx.bioParentUnion.get(childId);
-  if (existing && existing !== unionId) block('Bu kişinin zaten bir biyolojik ebeveyn birliği var; ikinci bir biyolojik ebeveyn birliği eklenemez.');
+  if (existing && existing !== unionId) block('Bu kişinin annesi ve babası zaten çizili; bir kişinin yalnızca bir biyolojik anne-babası olabilir.');
   if (existing === unionId) return;
   let rel = idx.pcrByUnion.get(unionId);
   if (!rel) {
@@ -292,7 +292,7 @@ export function addPartner(doc, personId, opts = {}) {
     const target = d.graph.individuals.find((i) => i.id === personId);
     if (!target) block('Birey grafikte bulunamadı.');
     const sex = opts.sex || 'unknown';
-    if (target.sex === 'unknown') block('Eş eklemek için önce bu bireyin cinsiyeti belirtilmeli (birey düzenleme panelinden).');
+    if (target.sex === 'unknown') block('Eş eklemek için önce bu kişinin cinsiyetini seçin: kişinin çevresindeki Durum düğmesi → Erkek ya da Kadın.');
     if (sex === 'unknown' || sex === target.sex) block('Eş/birliktelik yalnızca kadın ve erkek arasında kurulabilir.');
     let spouseId = opts.spouseId;
     let unionId = opts.unionId;

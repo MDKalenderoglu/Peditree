@@ -93,7 +93,7 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
             const st = stateOf(e.label);
             return (
               <div key={e.id} className="finding-row">
-                <button className="finding-glyph" title="Bölge ve dolguyu değiştir (herkes için)"
+                <button className="finding-glyph" title="Bu bulgunun sembolde gösterildiği yeri ve deseni değiştir (bu bulgusu olan herkeste değişir)"
                   onClick={() => setEditing(editing === e.id ? null : e.id)}>
                   <FindingGlyph region={e.region} fill={e.fill} shape={shape} carrier={st === 'carrier'} />
                 </button>
@@ -101,7 +101,7 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
                 <div className="segmented finding-state" role="radiogroup" aria-label={e.label}>
                   {[['none', 'Yok'], ['affected', 'Var'], ['carrier', 'Taşıyıcı'], ['unknown', '?']].map(([v, t]) => (
                     <button key={v} className={st === v ? 'on' : undefined} role="radio" aria-checked={st === v}
-                      title={v === 'unknown' ? 'Bilinmiyor (emin değilim)' : undefined} aria-label={v === 'unknown' ? 'Bilinmiyor' : undefined}
+                      title={{ none: 'Bu kişide bu bulgu yok', affected: 'Bu kişide bu bulgu var (hasta)', carrier: 'Bu kişi hasta değil, taşıyıcı', unknown: 'Bilinmiyor: bu kişide olup olmadığından emin değilim' }[v]} aria-label={v === 'unknown' ? 'Bilinmiyor' : undefined}
                       onClick={() => onSetStatus(node.id, e.label, v)}>{t}</button>
                   ))}
                 </div>
@@ -109,7 +109,7 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
                 {onSetOnset && (st === 'affected' || st === 'carrier') && (
                   <label className="finding-onset">
                     <span>Tanı yaşı</span>
-                    <DraftField key={`${node.id}-${e.id}-onset`} type="text" className="input input-age" placeholder="3 ay…"
+                    <DraftField key={`${node.id}-${e.id}-onset`} type="text" className="input input-age" placeholder="ör. 12 ya da 3 ay"
                       value={(conds.find(x => normLabel(x.label) === normLabel(e.label)) || {}).onsetAge || ''}
                       onCommit={v => onSetOnset(node.id, e.label, v.trim())} />
                   </label>
@@ -128,7 +128,7 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
         <>
         <div className="finding-new">
           <FindingGlyph region={suggested.region} fill={suggested.fill} shape={shape} />
-          <input type="text" className="input" value={draft} placeholder="Yeni bulgu, örn. miyop"
+          <input type="text" className="input" value={draft} placeholder="Yeni bulgu adı, ör. miyop (Enter ile ekle)"
             onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }} />
           <button className="ui-btn ui-btn-sm ui-btn-primary" disabled={!draft.trim()} onClick={add}>Ekle</button>
         </div>

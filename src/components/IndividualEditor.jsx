@@ -106,14 +106,14 @@ function RelationshipChoice({ u, onSetBackground, parentsCons, graph }) {
   // informational, for counselling and homozygosity comparison (clinician request 2026-10-25)
   const cousinName = graph ? cousinMarriageName(graph, u.partners[0], u.partners[1]) : null;
   const F = graph ? childInbreeding(graph, u.id) : 0;
-  const inbreeding = F > 0 && <span className="field-hint">Çocuklarında akrabalık katsayısı: <b>F = {formatCoefficient(F)}</b></span>;
+  const inbreeding = F > 0 && <span className="field-hint">Bu çiftin çocuklarında akrabalık (inbreeding) katsayısı: <b>F = {formatCoefficient(F)}</b></span>;
   if (drawn) {
     const nameOf = parentsCons ? parentsCons.nameOf : (x) => x;
     return (
       <div className="field-col">
         <span className="field-label">Akrabalık: var</span>
         <span className="field-hint">
-          Çizime göre: {degreeLabel(isParents ? kin.degree : u.consanguinityDegree) || 'akraba'}
+          Çizimden anlaşılan akrabalık: {degreeLabel(isParents ? kin.degree : u.consanguinityDegree) || 'akraba'}
           {cousinName ? ` (${cousinName})` : ''}
           {isParents && PATH_TEXT[parents.consanguinityPath] ? ` — ${PATH_TEXT[parents.consanguinityPath]}` : ''}.
         </span>
@@ -141,7 +141,7 @@ function RelationshipChoice({ u, onSetBackground, parentsCons, graph }) {
           <button key={v} className={value === v ? 'on' : undefined} role="radio" aria-checked={value === v} onClick={() => choose(v)}>{t}</button>
         ))}
       </div>
-      {value === 'village' && <span className="field-hint">Aynı köy / bölge: akrabalık değildir, tek çizgi kalır.</span>}
+      {value === 'village' && <span className="field-hint">Aynı köyden ya da bölgeden olmak akrabalık sayılmaz; eşleri bağlayan çizgi tek kalır.</span>}
       {isParents && value === 'yes' && (
         <>
           <select className="select input-wide" value={parents.consanguinityDegree} aria-label="Akrabalık derecesi"
@@ -151,18 +151,18 @@ function RelationshipChoice({ u, onSetBackground, parentsCons, graph }) {
           {parents.consanguinityDegree === 'first_cousin' && (
             <select className="select input-wide" value={parents.consanguinityPath} aria-label="Ortak atalar kimin üzerinden"
               onChange={e => parentsCons.onSet('consanguinityPath', e.target.value)}>
-              <option value="unknown">Ortak atalar kimin üzerinden? (bilinmiyor)</option>
+              <option value="unknown">Ortak ata hangi taraftan? (bilinmiyor)</option>
               {Object.entries(PATH_TEXT).map(([v, t]) => <option key={v} value={v}>{t}</option>)}
             </select>
           )}
           {kin
-            ? <span className="field-hint">Ortak atalar çizildi: {kin.ancestors.map(parentsCons.nameOf).join(', ')}</span>
-            : <span className="field-hint">Derece (1. kuzende yol da) seçilince ortak atalar otomatik çizilir; seçilmezse yalnız çift çizgi.</span>}
+            ? <span className="field-hint">Ortak atalar çizime eklendi: {kin.ancestors.map(parentsCons.nameOf).join(', ')}</span>
+            : <span className="field-hint">Akrabalık derecesini seçin (1. kuzenlerde ortak atanın hangi taraftan olduğunu da). Ortak atalar çizime kendiliğinden eklenir. Seçmezseniz eşlerin arasına yalnızca çift çizgi çizilir.</span>}
           {kin && cousinName && <span className="field-hint">Eşler {cousinName}.</span>}
           {inbreeding}
         </>
       )}
-      {!isParents && value === 'yes' && <span className="field-hint">Ortak atalar çizimde yok; çift çizgi bildirime dayanır.</span>}
+      {!isParents && value === 'yes' && <span className="field-hint">Ortak atalar çizimde yok; çift çizgi yalnızca ailenin söylediğine dayanıyor.</span>}
     </div>
   );
 }
@@ -198,7 +198,7 @@ function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelati
             <DraftField key={`${u.id}-childless`} type="text" className="input input-wide" value={u.childlessReason || ''}
               placeholder="Nedeni (isteğe bağlı), ör. azospermi" onCommit={v => onSetChildlessness(u.id, undefined, v)} />
           )}
-          <span className="field-hint">{u.childless === 'infertile' ? 'Çift çizgi: infertilite.' : u.childless ? 'Tek çizgi: bilerek çocuksuz ya da nedeni bilinmiyor.' : 'NSGC: tek çizgi çocuksuz, çift çizgi infertil.'}</span>
+          <span className="field-hint">{u.childless === 'infertile' ? 'Çizimde çift kısa çizgi: kısırlık (infertilite).' : u.childless ? 'Çizimde tek kısa çizgi: kendi isteğiyle çocuksuz ya da nedeni bilinmiyor.' : 'Çiftin çocuğu yoksa nedenini seçin: “Çocuksuz” tek kısa çizgiyle, “İnfertil” çift kısa çizgiyle çizilir.'}</span>
         </div>
       )}
       {withChildren && (
@@ -271,7 +271,7 @@ function PairKinship({ a, b, graph }) {
     <div className="card">
       <div className="card-title">Akrabalık</div>
       <span className="field-hint">{what}</span>
-      <span className="field-hint">Ortak gen oranı: <b>{formatCoefficient(2 * phi)}</b></span>
+      <span className="field-hint">Ortak gen oranı (ortak atalardan gelen aynı genlerin beklenen oranı): <b>{formatCoefficient(2 * phi)}</b></span>
     </div>
   );
 }
@@ -315,7 +315,7 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
                 </button>
               ))}
             </div>
-            <span className="field-hint">Biri zaten ikizse diğeri gruba katılır (üçüz olur).</span>
+            <span className="field-hint">Biri zaten ikizse diğeri de aynı gruba katılır ve üçüz olurlar.</span>
           </div>
         )}
         {!couple && (
@@ -333,7 +333,7 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
         </div>
         )}
         {bulk}
-        <div className="field-hint">İpucu: Cmd/Ctrl ile tıklayarak birden çok kişi seçilir; bir ilişki çizgisine tıklamak o çifti seçer.</div>
+        <div className="field-hint">İpucu: Cmd (Mac) ya da Ctrl (Windows) tuşuna basılı tutup kişilere tıklarsanız birden çok kişi seçilir. İki eşi bağlayan çizgiye tıklarsanız o çift seçilir.</div>
       </div>
     </>
   );
@@ -366,7 +366,7 @@ export default function IndividualEditor({
         <Header title={`${selectedNodes.length} kişi seçili`} sub={selectedNodes.map(n => ids.get(n.id)?.displayId || '—').join(', ')} onClose={onClearSelection} />
         <div className="editor-body">
           {bulk}
-          <div className="field-hint">Cmd/Ctrl ile tıklayarak kişi ekleyip çıkarabilirsiniz.</div>
+          <div className="field-hint">Seçime kişi eklemek ya da çıkarmak için Cmd (Mac) ya da Ctrl (Windows) tuşuna basılı tutup o kişiye tıklayın.</div>
         </div>
       </>
     );
@@ -414,11 +414,11 @@ export default function IndividualEditor({
       <Header title={pedigreeId || '—'} sub={node.placeholder ? 'Belirtilmemiş ebeveyn' : sub} onClose={onClearSelection} />
       <div className="editor-body">
         {node.placeholder && (
-          <div className="field-hint">Bu kişi silinen ya da bilinmeyen diğer ebeveynin yerini tutar.</div>
+          <div className="field-hint">Bu boş sembol, silinen ya da bilinmeyen bir ebeveynin yerini tutar; çocuklar ebeveynsiz kalmasın diye çizilir.</div>
         )}
 
         {!node.placeholder && (
-          <div className="field-hint editor-tip">Eklemek, bulgu, durum, ikiz ve not için sembolün etrafındaki halkayı kullanın.</div>
+          <div className="field-hint editor-tip">Akraba eklemek, bulgu, durum, ikiz ya da not girmek için çizimde bu kişinin çevresindeki düğmeleri kullanın. Düğmeler görünmüyorsa kişinin sembolüne yeniden tıklayın.</div>
         )}
 
         {/* a pregnancy outcome (NSGC; clinician decision 2026-10-25): its kind, the week, born */}
@@ -437,7 +437,7 @@ export default function IndividualEditor({
                 onCommit={v => onSetGestationWeeks(node.id, v)} />
             </label>
             {node.ongoingPregnancy && (
-              <button className="ui-btn" onClick={() => onSetPregnancyKind(node.id, '')}>Doğdu — kişiye çevir</button>
+              <button className="ui-btn" onClick={() => onSetPregnancyKind(node.id, '')}>Bebek doğdu: gebelik yerine kişi olarak göster</button>
             )}
           </div>
         )}
@@ -447,7 +447,7 @@ export default function IndividualEditor({
             <div className="card-title">Bilgiler</div>
             <label className="field-col">
               <span className="field-label">Etiket (çizimde görünür)</span>
-              <DraftField key={`${node.id}-label`} type="text" className="input input-wide" value={node.displayLabel || ''} placeholder="Boşsa gösterilmez"
+              <DraftField key={`${node.id}-label`} type="text" className="input input-wide" value={node.displayLabel || ''} placeholder="ör. ad ya da kısaltma (boş bırakılabilir)"
                 onCommit={v => set({ displayLabel: v })} />
             </label>
             {!isLoss && (
@@ -455,7 +455,7 @@ export default function IndividualEditor({
                 <span className="field-label">Yaş</span>
                 <DraftField key={`${node.id}-age`} type="text" className="input input-age" value={node.age || ''} placeholder="35, 3 ay…"
                   disabled={!!node.birthDate}
-                  title={node.birthDate ? 'Yaş doğum tarihinden hesaplanıyor (üst çubuk)' : `Yıl, ay ya da gün — ${AGE_EXAMPLE}`}
+                  title={node.birthDate ? 'Yaş, üstteki doğum tarihinden bugüne göre hesaplanıyor; değiştirmek için doğum tarihini düzeltin' : `Yıl, ay ya da gün — ${AGE_EXAMPLE}`}
                   onCommit={v => set({ age: v.trim() })} />
               </label>
             )}
@@ -497,9 +497,9 @@ export default function IndividualEditor({
                 ))}
               </div>
               <span className="field-hint">
-                <b>−</b> genetik test yapılmadı, <b>+</b> yapıldı. "+" seçince isterseniz varyantı ya da sonucu
-                (ör. "sonuç bekleniyor") yazın: her satır pedigride sembolün altında ayrı bir satır olur.
-                Bir şey yazılmazsa sembolün altında "test yapıldı" görünür.
+                <b>−</b>: genetik test yapılmadı. <b>+</b>: genetik test yapıldı. "+" seçtiyseniz bulunan varyantı ya da
+                sonucu (ör. "sonuç bekleniyor") aşağıya yazıp Enter'a basabilirsiniz; yazmak zorunlu değil. Her satır
+                pedigride sembolün altında ayrı bir satırda görünür. Hiçbir şey yazmazsanız sembolün altında "test yapıldı" yazar.
               </span>
               {tested && (
                 <div className="genetic-lines">
@@ -530,7 +530,7 @@ export default function IndividualEditor({
             {node.condition && (
               // older free-text field: still shown under the symbol, editable/clearable here
               <label className="field-col">
-                <span className="field-label">Sembol altı yazı</span>
+                <span className="field-label">Sembolün altındaki yazı (eski kayıt)</span>
                 <DraftField key={`${node.id}-condition`} type="text" className="input input-wide" value={node.condition || ''}
                   onCommit={v => set({ condition: v })} />
               </label>
@@ -568,10 +568,10 @@ export default function IndividualEditor({
         {/* anyone but the proband can be deleted; children stay with the other parent */}
         {onDeleteIndividual && !node.placeholder && (
           node.proband ? (
-            <div className="field-hint">Proband silinemez — önce başka bir kişiyi proband yapın.</div>
+            <div className="field-hint">Proband silinemez. Silmek için önce başka bir kişiyi proband yapın (Durum → Proband).</div>
           ) : (
             <button className="ui-btn ui-btn-danger" onClick={() => {
-              if (window.confirm(`"${displayNameFor(node.id)}" silinsin mi?\n\nÇocukları silinmez ve diğer ebeveynle bağlı kalır; silinen kişinin yerinde "belirtilmemiş ebeveyn" gösterilir. Çocuğu olmayan birliktelikleri kaldırılır.\n\nBu işlem "Geri Al" ile geri alınabilir.`)) {
+              if (window.confirm(`"${displayNameFor(node.id)}" silinsin mi?\n\nÇocukları silinmez; diğer ebeveynlerine bağlı kalırlar ve silinen kişinin yerinde boş bir "belirtilmemiş ebeveyn" sembolü görünür. Bu kişinin çocuğu olmayan eş ilişkileri de kaldırılır.\n\nYanlışlıkla sildiyseniz "Geri Al" ile geri getirebilirsiniz.`)) {
                 onDeleteIndividual(node.id);
               }
             }}>

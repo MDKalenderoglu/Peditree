@@ -59,7 +59,7 @@ export function addFinding(doc, personId, label, style = null) {
     if (!keyEntry(d.graph.conditionKey, name) && keyFull(d.graph.conditionKey)) block(KEY_FULL_MESSAGE);
     if (style && !keyEntry(d.graph.conditionKey, name)) {
       if (!REGIONS.includes(style.region) || !FILLS.includes(style.fill)) block('Geçersiz bölge ya da dolgu.');
-      if (styleTaken(d.graph.conditionKey, style)) block('Bu bölge ve dolgu başka bir bulguda kullanılıyor; başka bir seçim yapın.');
+      if (styleTaken(d.graph.conditionKey, style)) block('Bu yer ve desen başka bir bulguyu gösteriyor; iki bulgu karışmasın diye başka bir yer ya da desen seçin.');
       const n = Math.max(0, ...d.graph.conditionKey.map((e) => Number(String(e.id).replace(/^k/, '')) || 0)) + 1;
       d.graph.conditionKey.push({ id: `k${n}`, label: name, region: style.region, fill: style.fill });
     }
@@ -73,7 +73,7 @@ export function setFindingStyle(doc, label, style) {
     const e = keyEntry(d.graph.conditionKey, label);
     if (!e) block('Bu bulgu açıklamada yok.');
     if (!REGIONS.includes(style.region) || !FILLS.includes(style.fill)) block('Geçersiz bölge ya da dolgu.');
-    if (styleTaken(d.graph.conditionKey, style, label)) block('Bu bölge ve dolgu başka bir bulguda kullanılıyor; başka bir seçim yapın.');
+    if (styleTaken(d.graph.conditionKey, style, label)) block('Bu yer ve desen başka bir bulguyu gösteriyor; iki bulgu karışmasın diye başka bir yer ya da desen seçin.');
     const beside = rightSideFindings(d.graph).get(normLabel(label));
     if (beside && !['q2', 'q3'].includes(style.region)) {
       block('Bu bulgu taşıyıcı bir kişide de var; taşıyıcılık sembolün sol yarısında çizildiği için bulgu sağ üst ya da sağ alt çeyrekte olmalı.');

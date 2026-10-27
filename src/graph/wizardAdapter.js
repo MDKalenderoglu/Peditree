@@ -289,7 +289,7 @@ function insertByRank(d, unionId, childId, anchorId) {
 
 function draftAddSibling(d, category) {
   const r = rolesOf(d.graph, d.wizardAnchorId);
-  if (!r.parentsUnion) block('Kardeş eklemek için önce probandın anne ve babası olmalı.');
+  if (!r.parentsUnion) block('Kardeş eklemek için önce probandın anne ve babasını ekleyin.');
   const kind = SIB_KIND[category];
   if (!kind) block(`Bilinmeyen kardeş türü: ${category}`);
   const { id } = alloc(d, kind.prefix);
@@ -450,7 +450,7 @@ function buildTemplate(d, degree, path) {
 
 function draftSetParentsConsanguinity(d, { consanguineous, degree, path }) {
   const r = rolesOf(d.graph, d.wizardAnchorId);
-  if (!r.parentsUnion || !r.mother || !r.father) block('Akraba evliliği için anne ve baba çizili olmalı.');
+  if (!r.parentsUnion || !r.mother || !r.father) block('Akraba evliliğini işaretlemek için önce anne ve babayı ekleyin.');
   teardownTemplate(d);
   const u = d.graph.unions.find((x) => x.id === r.parentsUnion);
   delete u.consanguinityFromStructure; // the clinician's own statement
@@ -544,7 +544,7 @@ function ensureUnionFor(d, personId, spouseProps, unionBase) {
   const existing = firstUnionOf(idx, personId);
   if (existing) return existing;
   const p = idx.byId.get(personId);
-  if (p.sex !== 'male' && p.sex !== 'female') block('Çocuk eklemek için önce bu kişinin cinsiyeti belirtilmeli.');
+  if (p.sex !== 'male' && p.sex !== 'female') block('Çocuk eklemek için önce bu kişinin cinsiyetini seçin: kişinin çevresindeki Durum düğmesi → Erkek ya da Kadın.');
   const spouseId = freeId(d, `${personId}_sp`);
   draftAddPerson(d, { id: spouseId, sex: p.sex === 'male' ? 'female' : 'male', generation: p.generation, ...spouseProps });
   const uid = freeId(d, unionBase);
@@ -587,8 +587,8 @@ export const wizardOps = {
         for (const uid of r.idx.unionsOf.get(p.id) || []) {
           const partner = r.idx.byId.get(r.idx.partnerOf(uid, p.id));
           if (!partner || partner.placeholder) continue;
-          if (value === 'unknown') block('Bu bireyin bir eşi/birlikteliği var; cinsiyet "bilinmiyor" olarak değiştirilemez.');
-          if (partner.sex === value) block('Bu cinsiyet değişikliği mevcut bir birlikteliği aynı cinsiyetli yapar; değişiklik uygulanmadı.');
+          if (value === 'unknown') block('Bu kişinin bir eşi var; cinsiyeti "bilinmiyor" yapılamaz.');
+          if (partner.sex === value) block('Cinsiyet değiştirilmedi: bu kişi ile eşi aynı cinsiyette olurdu.');
         }
       }
       if (field !== 'sex' && field !== 'age') block(`Bilinmeyen proband alanı: ${field}`);

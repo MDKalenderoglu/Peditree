@@ -19,27 +19,35 @@ import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, S
 import './styles/app.css';
 import './styles/ui.css';
 
+// written for a clinician who has never used the program (clinician request 2026-10-27)
 const KEY_HELP = [
-  ['Tab', 'çizimdeki kişiler arasında gez'],
-  ['Enter / Boşluk', 'odaktaki kişiyi seç (simit açılır)'],
-  ['← →', 'aynı satırdaki komşu kişi'],
-  ['↑ ↓', 'ebeveyn / çocuk'],
-  ['Shift + ← →', 'seçili kişiyi taşı: eşiyle yer değiştirir ya da kardeşler arasında kayar (sürükleyerek de olur)'],
-  ['A', 'anne ve baba ekle'],
-  ['E', 'eş ekle'],
-  ['K', 'kardeş seçenekleri'],
-  ['C / Ç', 'çocuk seçenekleri'],
-  ['B', 'bulgular'],
-  ['D', 'durum (cinsiyet, etkilenmiş, vefat …)'],
-  ['İ / I', 'ikiz'],
-  ['N', 'not'],
-  ['Esc', 'seçimi kapat'],
-  ['Delete', 'seçili kişiyi sil'],
-  ['Cmd/Ctrl+Z', 'geri al (Shift ile: yinele)'],
-  ['Cmd/Ctrl+S', 'kaydet'],
-  ['Cmd/Ctrl+P', 'yazdır (A4)'],
-  ['+ / − / 0', 'yakınlaştır / uzaklaştır / sığdır'],
-  ['Cmd/Ctrl/Shift+tık', 'birden çok kişi seç (tablette: “Çoklu seçim”)'],
+  ['Kişiler arasında gezinmek', [
+    ['Tab', 'Sıradaki kişiye geçer.'],
+    ['Enter veya Boşluk', 'Üzerinde durduğunuz kişiyi seçer; kişinin çevresinde düğmeler açılır.'],
+    ['← →', 'Aynı kuşakta soldaki ya da sağdaki kişiye geçer.'],
+    ['↑', 'Kişinin annesine ya da babasına geçer.'],
+    ['↓', 'Kişinin çocuğuna geçer.'],
+    ['Esc', 'Bir adım geri gider: önce açık paneli, sonra kişinin çevresindeki düğmeleri, en son seçimi kapatır. Çizimde boş bir yere tıklamak da aynısını yapar.'],
+    ['Cmd veya Ctrl + tıklama', 'Birden çok kişiyi birlikte seçer (Mac’te Cmd, Windows’ta Ctrl). Tablette üstteki “Çoklu seçim” düğmesini kullanın.'],
+  ]],
+  ['Seçili kişi için (önce bir kişiye tıklayın)', [
+    ['A', 'Annesini ve babasını ekler.'],
+    ['E', 'Eşini ekler.'],
+    ['K', 'Kardeş ekler: kız, erkek, düşük … seçenekleri açılır.'],
+    ['C veya Ç', 'Çocuk ekler: kız, erkek, düşük … seçenekleri açılır.'],
+    ['B', 'Bulgu (hastalık ya da özellik) ekler ya da değiştirir.'],
+    ['D', 'Durumunu değiştirir: cinsiyet, hasta (etkilenmiş), taşıyıcı, vefat, proband.'],
+    ['İ veya I', 'İkiz kardeş ekler.'],
+    ['N', 'Kişi için not yazar.'],
+    ['Shift + ← →', 'Kişiyi yana kaydırır: eşiyle yer değiştirir ya da kardeşlerinin arasında bir sıra kayar. Kişiyi fareyle sürükleyerek de yapılır.'],
+    ['Delete', 'Kişiyi siler (önce sorar).'],
+  ]],
+  ['Genel', [
+    ['Cmd/Ctrl + Z', 'Son işlemi geri alır. Shift ile birlikte: geri alınan işlemi yeniden yapar.'],
+    ['Cmd/Ctrl + S', 'Pedigriyi bilgisayarınıza dosya olarak kaydeder.'],
+    ['Cmd/Ctrl + P', 'Pedigriyi A4 sayfaya yazdırır.'],
+    ['+  −  0', 'Yakınlaştırır, uzaklaştırır, tüm pedigriyi ekrana sığdırır.'],
+  ]],
 ];
 
 function App() {
@@ -238,7 +246,7 @@ function App() {
   const [tplGroup, setTplGroup] = React.useState(TEMPLATE_GROUPS[0].id);
   const handleNewPedigree = (spec = null) => {
     setNewMenu(false);
-    if (window.confirm('Yeni pedigri başlatılsın mı?\n\nŞu anki pedigriyi indirmediyseniz (Kaydet / SVG / PNG) kaybolur.')) {
+    if (window.confirm('Yeni pedigri başlatılsın mı?\n\nŞu anki pedigriyi “Kaydet” ile dosyaya kaydetmediyseniz kaybolur ve geri getirilemez.')) {
       // resetPedigree() / newFromTemplate() clear selection and the undo
       // stack — see usePedigreeStore.js. Only export-banner state (local to
       // App.jsx) is cleared here.
@@ -247,6 +255,36 @@ function App() {
       setExportNotice(null);
     }
   };
+
+  // the toolbar's pop-up windows (Yeni, Paylaş, Diğer, keyboard help) close
+  // on a click anywhere outside them, or Escape (clinician request 2026-10-27)
+  const popupOpen = showKeys || newMenu || more || !!share;
+  const popupClosedAt = React.useRef(-Infinity);
+  React.useEffect(() => {
+    if (!popupOpen) return;
+    const close = (except) => {
+      if (except !== 'keys') setShowKeys(false);
+      if (except !== 'new') setNewMenu(false);
+      if (except !== 'more') setMore(false);
+      if (except !== 'share') setShare(null);
+    };
+    const onDown = (e) => {
+      const inside = e.target.closest && e.target.closest('[data-popup]');
+      close(inside ? inside.dataset.popup : null);
+      popupClosedAt.current = performance.now();
+    };
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      e.stopImmediatePropagation(); // Escape closes the window, not the selection
+      close(null);
+    };
+    document.addEventListener('pointerdown', onDown, true);
+    window.addEventListener('keydown', onKey, true);
+    return () => {
+      document.removeEventListener('pointerdown', onDown, true);
+      window.removeEventListener('keydown', onKey, true);
+    };
+  }, [popupOpen]);
 
   const handleUndo = () => {
     undo();
@@ -324,7 +362,7 @@ function App() {
         const [only] = k.selectedNodes;
         if (k.selectedNodes.length !== 1 || only.proband || only.placeholder) return;
         e.preventDefault();
-        if (window.confirm('Seçili kişi silinsin mi?\n\nÇocukları silinmez ve diğer ebeveynle bağlı kalır. "Geri Al" (Cmd/Ctrl+Z) ile geri alınabilir.')) k.deleteIndividual(only.id);
+        if (window.confirm('Seçili kişi silinsin mi?\n\nÇocukları silinmez; diğer ebeveynlerine bağlı kalırlar. Yanlışlıkla sildiyseniz "Geri Al" (Cmd/Ctrl+Z) ile geri getirebilirsiniz.')) k.deleteIndividual(only.id);
         return;
       }
       const zoom = { '+': 'Yakınlaştır', '=': 'Yakınlaştır', '-': 'Uzaklaştır', '0': 'Sığdır' }[e.key];
@@ -377,7 +415,11 @@ function App() {
   // one function for the drawing's lifetime, so a click handler never forces a redraw
   const stepBackRef = React.useRef(stepBack);
   stepBackRef.current = stepBack;
-  const onBackgroundClick = React.useCallback(() => stepBackRef.current(), []);
+  // the tap that closed a pop-up window does only that
+  const onBackgroundClick = React.useCallback(() => {
+    if (performance.now() - popupClosedAt.current < 1000) return;
+    stepBackRef.current();
+  }, []);
 
   return (
     <>
@@ -396,7 +438,7 @@ function App() {
           <input className="input patient-name" value={doc.patientName || ''} placeholder="Hasta adı soyadı"
             aria-label="Hasta adı soyadı" onChange={e => setPatientName(e.target.value)} />
           {/* optional: the proband's age follows it, as of today (clinician decision 2026-10-25) */}
-          <label className="toolbar-field" title="Probandın doğum tarihi (isteğe bağlı): yaşı bugüne göre hesaplanır">
+          <label className="toolbar-field" title="Probandın doğum tarihi (isteğe bağlı). Yazarsanız probandın yaşı bugüne göre kendiliğinden hesaplanır. Kısa da yazabilirsiniz: 3.5.25">
             <span>Doğum</span>
             {/* typed the quick way: 3.5.25, 3/05/2025, 030525 … (clinician request 2026-10-25) */}
             <DraftField key={probandNode ? probandNode.id : 'none'} type="text" inputMode="numeric" className="input birth-date"
@@ -405,12 +447,12 @@ function App() {
           </label>
           <div className="toolbar-sep" />
           <div className="toolbar-group">
-            <div className="keys-wrap">
-              <button className="ui-btn" onClick={() => setNewMenu(v => !v)} aria-expanded={newMenu} title="Yeni pedigri: çekirdek aile ya da hazır şablon"><FilePlus2 size={15} /> Yeni</button>
+            <div className="keys-wrap" data-popup="new">
+              <button className="ui-btn" onClick={() => setNewMenu(v => !v)} aria-expanded={newMenu} title="Yeni bir pedigri başlat: boş bir aileyle ya da hazır bir akraba evliliği şablonuyla"><FilePlus2 size={15} /> Yeni</button>
               {newMenu && (
                 <div className="keys-popover share-popover new-popover" role="dialog" aria-label="Yeni pedigri">
-                  <button className="ui-btn ui-btn-primary" onClick={() => handleNewPedigree(null)}>Çekirdek aile ile başla</button>
-                  <div className="more-title">Anne-baba akraba evliliği</div>
+                  <button className="ui-btn ui-btn-primary" onClick={() => handleNewPedigree(null)}>Proband, anne ve baba ile başla</button>
+                  <div className="more-title">Ya da anne-babası akraba olan hazır bir aileyle başlayın:</div>
                   <div className="segmented segmented-wrap" role="tablist" aria-label="Akrabalık derecesi">
                     {TEMPLATE_GROUPS.map(g => (
                       <button key={g.id} role="tab" aria-selected={tplGroup === g.id} className={tplGroup === g.id ? 'on' : undefined}
@@ -425,8 +467,8 @@ function App() {
                 </div>
               )}
             </div>
-            <button className="ui-btn" onClick={() => fileInputRef.current && fileInputRef.current.click()} title="Proje dosyası (.peditree.json) ya da PED dosyası aç"><FolderOpen size={15} /> Aç</button>
-            <button className="ui-btn" onClick={handleSaveProject} title="Pedigriyi proje dosyası olarak kaydet (.peditree.json)"><Save size={15} /> Kaydet</button>
+            <button className="ui-btn" onClick={() => fileInputRef.current && fileInputRef.current.click()} title="Daha önce kaydettiğiniz bir pedigri dosyasını (.peditree.json) ya da bir PED dosyasını açar"><FolderOpen size={15} /> Aç</button>
+            <button className="ui-btn" onClick={handleSaveProject} title="Pedigriyi bilgisayarınıza dosya olarak kaydeder (.peditree.json). Sonra “Aç” ile açıp kaldığınız yerden devam edebilirsiniz."><Save size={15} /> Kaydet</button>
             <input ref={fileInputRef} type="file" accept=".json,application/json,.ped,.fam,.txt,text/plain" onChange={handleOpenProject} style={{ display: 'none' }} aria-label="Proje ya da PED dosyası seç" />
           </div>
           <div className="toolbar-sep" />
@@ -435,38 +477,42 @@ function App() {
               title={_history && _history.length > 0 ? `Geri al (${_history.length} adım)` : 'Geri alınacak adım yok'} aria-label="Geri al"><Undo2 size={15} /></button>
             <button className="ui-btn ui-btn-icon" onClick={handleRedo} disabled={!_future || _future.length === 0}
               title={_future && _future.length > 0 ? `Yinele (${_future.length} adım)` : 'Yinelenecek adım yok'} aria-label="Yinele"><Redo2 size={15} /></button>
-            <button className="ui-btn" onClick={relayout} title="Çizimi baştan düzenle: tüm pedigriyi yeniden yerleştirir (geri alınabilir)"><LayoutGrid size={15} /> Yeniden Düzenle</button>
+            <button className="ui-btn" onClick={relayout} title="Kişilerin çizimdeki yerlerini baştan hesaplar; kimin kiminle akraba olduğu değişmez. Geri alınabilir."><LayoutGrid size={15} /> Yeniden Düzenle</button>
           </div>
           <div className="toolbar-spacer" />
           <button className={`ui-btn touch-only${multiSelect ? ' ui-btn-primary' : ''}`} aria-pressed={multiSelect}
-            onClick={() => setMultiSelect(v => !v)} title="Açıkken her dokunuş kişiyi seçime ekler ya da çıkarır">
+            onClick={() => setMultiSelect(v => !v)} title="Açıkken dokunduğunuz her kişi seçime eklenir; yeniden dokunursanız çıkarılır. Birden çok kişiyi birlikte değiştirmek için.">
             <CheckSquare size={15} /> Çoklu seçim
           </button>
-          <div className="keys-wrap">
+          <div className="keys-wrap" data-popup="keys">
             <button className="ui-btn ui-btn-icon ui-btn-ghost" aria-label="Klavye kısayolları" aria-expanded={showKeys}
               title="Klavye kısayolları" onClick={() => setShowKeys(v => !v)}>
               <Keyboard size={15} />
             </button>
             {showKeys && (
               <div className="keys-popover" role="dialog" aria-label="Klavye kısayolları">
-                <table>
-                  <tbody>
-                    {KEY_HELP.map(([k, t]) => <tr key={k}><td><kbd>{k}</kbd></td><td>{t}</td></tr>)}
-                  </tbody>
-                </table>
+                <div className="keys-title">Klavye kısayolları</div>
+                {KEY_HELP.map(([group, rows]) => (
+                  <table key={group}>
+                    <caption>{group}</caption>
+                    <tbody>
+                      {rows.map(([k, t]) => <tr key={k}><td><kbd>{k}</kbd></td><td>{t}</td></tr>)}
+                    </tbody>
+                  </table>
+                ))}
               </div>
             )}
           </div>
           <div className="toolbar-group">
-            <button className="ui-btn" onClick={handleExportSVG} title="SVG olarak indir"><Download size={15} /> SVG</button>
-            <button className="ui-btn ui-btn-primary" onClick={handleExportPNG} title="PNG olarak indir"><ImageIcon size={15} /> PNG</button>
-            <div className="keys-wrap">
-              <button className="ui-btn" onClick={openShare} aria-expanded={!!share} title="Resmi WhatsApp, Gmail … ile gönder">
+            <button className="ui-btn" onClick={handleExportSVG} title="Çizimi SVG olarak indirir: büyütünce bozulmayan resim (yayın, Word, PowerPoint için)"><Download size={15} /> SVG</button>
+            <button className="ui-btn ui-btn-primary" onClick={handleExportPNG} title="Çizimi PNG resmi olarak indirir"><ImageIcon size={15} /> PNG</button>
+            <div className="keys-wrap" data-popup="share">
+              <button className="ui-btn" onClick={openShare} aria-expanded={!!share} title="Pedigri resmini WhatsApp, Gmail gibi bir uygulamayla gönderir">
                 <Share2 size={15} /> Paylaş
               </button>
               {share && (
                 <div className="keys-popover share-popover" role="dialog" aria-label="Paylaş">
-                  <p className="share-note">Resim bu cihazdan çıkar ve hasta bilgileri içerir.</p>
+                  <p className="share-note">Dikkat: resim, seçeceğiniz uygulamayla bu cihazın dışına gönderilir ve hasta bilgilerini içerir.</p>
                   {share.busy ? <p className="share-note">Resim hazırlanıyor…</p> : (
                     <div className="share-actions">
                       {share.withName && (
@@ -477,28 +523,28 @@ function App() {
                       </button>
                     </div>
                   )}
-                  {share.withName && <p className="share-note">“Hasta adı olmadan”: üstteki ad resimden çıkarılır; etiketler ve notlar olduğu gibi kalır.</p>}
+                  {share.withName && <p className="share-note">“Hasta adı olmadan” seçilirse yalnızca en üstteki hasta adı resimden çıkarılır. Sembollerin altındaki etiketler ve notlar resimde kalır.</p>}
                 </div>
               )}
             </div>
-            <div className="keys-wrap">
-              <button className="ui-btn ui-btn-icon" onClick={() => setMore(v => !v)} aria-expanded={more} aria-label="Diğer" title="Diğer: yazdır, PED dosyası">
+            <div className="keys-wrap" data-popup="more">
+              <button className="ui-btn ui-btn-icon" onClick={() => setMore(v => !v)} aria-expanded={more} aria-label="Diğer" title="Diğer: yazdırma ve PED dosyası">
                 <MoreHorizontal size={15} />
               </button>
               {more && (
                 <div className="keys-popover share-popover" role="dialog" aria-label="Diğer">
                   <button className="ui-btn" onClick={handlePrint}><Printer size={15} /> Yazdır (A4)</button>
                   <div className="more-title">PED dosyası</div>
-                  <p className="share-note">Analiz programları ve laboratuvarlar için: kişi, anne, baba, cinsiyet ve tek bir etkilenme durumu. Kimlik olarak pedigri numaraları yazılır; hasta adı ne dosyaya ne dosya adına yazılır.</p>
+                  <p className="share-note">PED, genetik analiz programlarının ve laboratuvarların okuduğu bir dosya türüdür. İçinde yalnızca her kişinin annesi, babası, cinsiyeti ve hasta olup olmadığı bulunur. Kişiler pedigri numarasıyla (ör. II-3) yazılır; hasta adı ne dosyaya ne dosyanın adına yazılır.</p>
                   <label className="field-col">
-                    <span className="field-label">Etkilenmiş sayılacak</span>
+                    <span className="field-label">Dosyada kim “hasta” olarak yazılsın?</span>
                     <select className="select" value={pedPhenotype} onChange={e => setPedPhenotype(e.target.value)}>
-                      <option value="affected">“Etkilenmiş” işaretli kişiler</option>
-                      {(pedigreeData.conditionKey || []).map(e => <option key={e.id} value={e.label}>{e.label}</option>)}
+                      <option value="affected">Durum’da “Etkilenmiş” işaretlenen kişiler</option>
+                      {(pedigreeData.conditionKey || []).map(e => <option key={e.id} value={e.label}>“{e.label}” bulgusu olanlar</option>)}
                     </select>
                   </label>
                   <button className="ui-btn ui-btn-primary" onClick={handleExportPed}><Download size={15} /> PED indir</button>
-                  <p className="share-note">PED dosyası açmak için “Aç” düğmesini kullanın.</p>
+                  <p className="share-note">Bir PED dosyasını açmak için üstteki “Aç” düğmesini kullanın.</p>
                 </div>
               )}
             </div>
@@ -550,7 +596,7 @@ function App() {
           <div className={`notice-strip${notices.some(n => n.level === 'error') ? ' notice-strip-error' : ''}`}>
             <button className="notice-strip-toggle" onClick={() => setWarningsOpen(o => !o)} aria-expanded={warningsOpen}>
               <AlertTriangle size={14} />
-              {notices.some(n => n.level === 'error') ? 'Düzeltilmesi gereken' : 'Not'}: {notices.length}
+              {notices.some(n => n.level === 'error') ? 'Düzeltilmesi gereken' : 'Uyarı'}: {notices.length}
               {!notices.some(n => n.level === 'error') && <span className="notice-strip-hint">{warningsOpen ? 'gizle' : 'göster'}</span>}
             </button>
             {(warningsOpen || notices.some(n => n.level === 'error')) && (
