@@ -14,7 +14,7 @@ import DraftField from './components/DraftField';
 import { nextPerson, RING_KEYS } from './utils/keyboardNav';
 import { toPed } from './graph/ped';
 import { TEMPLATE_GROUPS } from './graph/templates';
-import { parseGeneticTest } from './graph/ops';
+import { withGeneticLine } from './graph/model';
 import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2, MoreHorizontal, Printer } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
@@ -65,6 +65,10 @@ function App() {
   const [showKeys, setShowKeys] = React.useState(false);
   const [focusTick, setFocusTick] = React.useState(0);
   const ringRef = React.useRef(null);
+  // the ring can be put away while the person stays selected (clinician
+  // request 2026-10-27); selecting a person, the same one too, brings it back
+  const [ringHidden, setRingHidden] = React.useState(false);
+  React.useEffect(() => { setRingHidden(false); }, [selectedId]);
   const [exportError, setExportError] = React.useState(null);
   const [exportNotice, setExportNotice] = React.useState(null);
   const svgRef = React.useRef(null);
@@ -299,7 +303,7 @@ function App() {
   // Keyboard shortcuts (clinician request 2026-10-25); never while typing
   const keyRef = React.useRef(null);
   React.useEffect(() => {
-    keyRef.current = { undo, redo, handleSaveProject, handlePrint, clearSelection, deleteIndividual, selectedNodes, pedigreeData, selectIndividual, addParentsTo, addSpouseTo, moveSideways };
+    keyRef.current = { undo, redo, handleSaveProject, handlePrint, stepBack, deleteIndividual, selectedNodes, pedigreeData, selectIndividual, addParentsTo, addSpouseTo, moveSideways };
   });
   React.useEffect(() => {
     const onKey = (e) => {
@@ -315,7 +319,7 @@ function App() {
       if (mod && key === 'z') { e.preventDefault(); if (e.shiftKey) k.redo(); else k.undo(); return; }
       if (mod && key === 'y') { e.preventDefault(); k.redo(); return; }
       if (mod || e.altKey) return;
-      if (e.key === 'Escape') { k.clearSelection(); return; }
+      if (e.key === 'Escape') { k.stepBack(); return; }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const [only] = k.selectedNodes;
         if (k.selectedNodes.length !== 1 || only.proband || only.placeholder) return;
@@ -348,15 +352,32 @@ function App() {
       e.preventDefault();
       if (action === 'parents') { k.addParentsTo(me.id, {}); return; }
       if (action === 'spouse') { k.addSpouseTo(me.id, me.sex === 'female' ? 'male' : 'female'); return; }
-      ringRef.current?.open(action); // its first control takes the focus
+      // its first control takes the focus; a put-away ring comes back first
+      if (ringRef.current) ringRef.current.open(action);
+      else { setRingHidden(false); requestAnimationFrame(() => ringRef.current?.open(action)); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   const handleNodeSelect = (id, opts) => {
+    setRingHidden(false);
     selectIndividual(id, opts);
   };
+
+  // a tap on an empty part of the drawing (or Escape) steps back one level:
+  // an open ring menu closes back to the ring, then the ring goes while the
+  // person stays selected, then the selection goes (clinician request 2026-10-27)
+  const ringShown = !!selectedNode && !selectedNode.placeholder && !selectedNode2 && (selectedIds || []).length <= 1 && !ringHidden;
+  function stepBack() {
+    if (ringShown && ringRef.current?.back()) return;
+    if (ringShown) { setRingHidden(true); return; }
+    clearSelection();
+  }
+  // one function for the drawing's lifetime, so a click handler never forces a redraw
+  const stepBackRef = React.useRef(stepBack);
+  stepBackRef.current = stepBack;
+  const onBackgroundClick = React.useCallback(() => stepBackRef.current(), []);
 
   return (
     <>
@@ -558,6 +579,7 @@ function App() {
           onNodeDrop={dropOnto}
           focusTick={focusTick}
           onNodeSelect={handleNodeSelect}
+          onBackgroundClick={onBackgroundClick}
           onUnionSelect={selectUnion}
           conditionKey={pedigreeData.conditionKey || []}
           patientName={doc.patientName || ''}
@@ -566,11 +588,12 @@ function App() {
             if (kind === 'patientName') setPatientName(v.trim());
             else if (kind === 'finding') renameFinding(target, v);
             else if (kind === 'note') updateIndividual(target, { notes: v });
-            else if (kind === 'geneticTest') {
-              const code = parseGeneticTest(v);
-              updateIndividual(target, { geneticTest: code === undefined ? v.trim() : code });
+            else if (kind === 'geneticLine') {
+              // one line of a genetic test result, edited on the drawing (empty removes it)
+              const [pid, k] = String(target).split('\u0001');
+              const person = pedigreeData.individuals.find(i => i.id === pid);
+              if (person) updateIndividual(pid, { geneticNote: withGeneticLine(person.geneticNote, Number(k), v) });
             }
-            else if (kind === 'geneticNote') updateIndividual(target, { geneticNote: v.trim() });
             else if (kind === 'onset') { const [pid, label] = String(target).split('\u0001'); setFindingOnset(pid, label, v.trim()); }
             else if (kind === 'childlessReason') setChildlessness(target, undefined, v);
             else if (kind === 'gestationWeeks') setGestationWeeks(target, v.replace(/[^\d.,]/g, ''));
@@ -578,7 +601,7 @@ function App() {
             else if (kind === 'ageAtDeath') updateIndividual(target, { ageAtDeath: v.trim() });
             else updateIndividual(target, { [kind]: v }); // displayLabel, condition, causeOfDeath
           }}
-          renderQuickBar={(anchor, panBy) => (
+          renderQuickBar={(anchor, panBy) => ringHidden ? null : (
             <RadialAddMenu ref={ringRef} anchor={anchor} node={selectedNode} pedigreeData={pedigreeData} onNeedRoom={panBy}
               onAddSibling={addSiblingTo} onAddSpouse={addSpouseTo} onAddParents={addParentsTo} onAddTwin={addMultipleSibling}
               onUpdate={updateIndividual} onSetProband={setProband} onClearProband={clearProband}

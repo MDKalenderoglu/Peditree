@@ -15,7 +15,7 @@
  * so behaviour does not change for the clinician; what changes is that the
  * result is stored as graph, not replayed from instructions.
  */
-import { cloneGraph, indexGraph, makePerson, SOCIAL_LINK_KINDS, PREGNANCY_FIELDS, PREGNANCY_KINDS, PREGNANCY_LABEL, isPregnancy, pregnancyKind } from './model';
+import { cloneGraph, indexGraph, makePerson, SOCIAL_LINK_KINDS, PREGNANCY_FIELDS, PREGNANCY_KINDS, PREGNANCY_LABEL, isPregnancy, pregnancyKind, GENETIC_TESTED } from './model';
 import { allocateEditNumber, retire } from './ids';
 import { finalizeGraph, ageOrder } from './finalize';
 import { validateDocument, errorsOf } from './validate';
@@ -225,8 +225,9 @@ export function updatePerson(doc, id, fields) {
     for (const [k, v] of Object.entries(fields)) {
       if (PROTECTED_FIELDS.has(k)) continue;
       if (k === 'geneticTest') {
-        if (v && !GENETIC_TEST[v]) block('Genetik test sonucu pozitif, negatif, VUS ya da test edildi olmalı.');
-        if (v) p.geneticTest = v; else delete p.geneticTest;
+        if (v && v !== GENETIC_TESTED) block('Genetik test "+" (yapıldı) ya da "−" (yapılmadı) olmalı.');
+        // "−": no test, so nothing written for it stays
+        if (v) p.geneticTest = v; else { delete p.geneticTest; delete p.geneticNote; }
         continue;
       }
       if (k === 'age' || k === 'ageAtDeath') {
@@ -517,26 +518,6 @@ export function setGestationWeeks(doc, id, weeks) {
     if (!Number.isFinite(n) || n <= 0 || n > 45) block(`Gebelik haftası anlaşılamadı: "${w}" (1–45 arası bir sayı).`);
     p.gestationWeeks = String(n).replace('.', ',');
   });
-}
-
-// Genetic test result below the symbol, written out without the former "E"
-// prefix (NSGC 2022 §4.2 eliminated it; clinician decision 2026-10-27);
-// geneticNote is free text under it (the variant, "het", "sonuç belgesi yok" …)
-export const GENETIC_TEST = { positive: 'pozitif', negative: 'negatif', vus: 'VUS', tested: 'test edildi' };
-
-// what the clinician types over the drawn result; the old E+ / E− / E VUS / E
-// spellings still read
-const GENETIC_TEST_TYPED = {
-  'pozitif': 'positive', 'poz': 'positive', '+': 'positive', 'e+': 'positive',
-  'negatif': 'negative', 'neg': 'negative', '-': 'negative', '−': 'negative', 'e-': 'negative', 'e−': 'negative',
-  'vus': 'vus', 'e vus': 'vus',
-  'test edildi': 'tested', 'e': 'tested',
-  '': '',
-};
-
-/** The stored code for a typed result, or undefined when it is not one. */
-export function parseGeneticTest(text) {
-  return GENETIC_TEST_TYPED[String(text).trim().toLocaleLowerCase('tr').replace(/ı/g, 'i').replace(/\s+/g, ' ')];
 }
 
 /** A couple without children: 'by_choice' (one bar, NSGC) or 'infertile' (two bars), with the reason written below. */

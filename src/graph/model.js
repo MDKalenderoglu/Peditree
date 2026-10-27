@@ -50,6 +50,40 @@ export const pregnancyKind = (p) => (!p ? null : p.ongoingPregnancy ? 'ongoing' 
 /** Drawn as a small triangle (NSGC: SAB, TOP, ECT). */
 export const isSmallSymbol = (p) => ['loss', 'termination', 'ectopic'].includes(pregnancyKind(p));
 
+// Genetic testing (clinician decision 2026-10-27): geneticTest 'tested' = "+"
+// (a test was done), absent = "−" (none); geneticNote holds the clinician's
+// own lines, one per variant or result ("FBN1 c.1585C>T het", "sonuç
+// bekleniyor" …), drawn one under another below the symbol with no "E"
+// prefix (NSGC 2022 §4.2). A test with no line written shows TESTED_TEXT.
+export const GENETIC_TESTED = 'tested';
+export const TESTED_TEXT = 'test yapıldı';
+export const geneticLines = (p) => String((p && p.geneticNote) || '').split('\n').map((s) => s.trim()).filter(Boolean);
+/** The note with line `index` replaced by `text` (appended past the end; an empty text removes the line). */
+export function withGeneticLine(note, index, text) {
+  const lines = geneticLines({ geneticNote: note });
+  const t = String(text ?? '').trim();
+  if (!t) lines.splice(index, 1);
+  else if (index >= lines.length) lines.push(t);
+  else lines[index] = t;
+  return lines.join('\n');
+}
+// results stored before 2026-10-27 (E+ / E− / E VUS) become the first line,
+// so nothing the clinician entered is lost
+const OLD_RESULT = { positive: 'pozitif', negative: 'negatif', vus: 'VUS' };
+/** Bring a person's genetic test fields to the current form (in place). */
+export function normalizeGenetics(p) {
+  if (OLD_RESULT[p.geneticTest]) {
+    p.geneticNote = [OLD_RESULT[p.geneticTest], ...geneticLines(p)].join('\n');
+    p.geneticTest = GENETIC_TESTED;
+  }
+  if (p.geneticNote !== undefined) {
+    const note = geneticLines(p).join('\n');
+    if (note) p.geneticNote = note; else delete p.geneticNote;
+  }
+  // a written result means a test was done
+  if (p.geneticNote && !p.geneticTest) p.geneticTest = GENETIC_TESTED;
+}
+
 /**
  * Fields a clinician enters about a person. A person with any of these set
  * must never be removed as a side effect (e.g. lowering a wizard count).

@@ -23,6 +23,7 @@
 import { STORAGE_KEY as V1_KEY } from '../utils/persistence';
 import { migrateV1ToV2 } from './migrate';
 import { isDocumentV2 } from './document';
+import { normalizeGenetics } from './model';
 import { validateDocument, errorsOf } from './validate';
 
 export const STORAGE_KEY_V2 = 'clinical_pedigree_app.session.v2';
@@ -74,7 +75,7 @@ export function loadDocument() {
   if (raw) {
     try {
       const parsed = JSON.parse(raw);
-      if (isDocumentV2(parsed)) return { doc: parsed, source: 'v2' };
+      if (isDocumentV2(parsed)) return { doc: currentGenetics(parsed), source: 'v2' };
     } catch { /* fall through */ }
     return { doc: null, source: null, notice: 'Kayıtlı pedigri okunamadı (biçim tanınmadı); temiz başlatıldı. Eski veriler silinmedi.' };
   }
@@ -113,6 +114,14 @@ export function clearAllSessions() {
       try { st.removeItem(k); } catch { /* ignore */ }
     }
   }
+}
+
+// genetic test results saved before 2026-10-27 (E+ / E− / E VUS) open as
+// "+" with the result as the first written line (graph/model.js)
+function currentGenetics(doc) {
+  const people = doc && doc.graph && Array.isArray(doc.graph.individuals) ? doc.graph.individuals : [];
+  people.forEach((p) => { if (p && typeof p === 'object') normalizeGenetics(p); });
+  return doc;
 }
 
 export function serializeDocument(doc) {
@@ -187,6 +196,7 @@ function parseChecked(text) {
     if (!Array.isArray(doc.graph.conditionKey)) doc.graph.conditionKey = [];
     if (!doc.ids) doc.ids = { counters: {}, retired: [] };
     if (!doc.wizardAnchorId) doc.wizardAnchorId = 'proband';
+    currentGenetics(doc);
   } else {
     const wizardData = parsed && parsed.schemaVersion === 1 && parsed.wizardData ? parsed.wizardData
       : (parsed && parsed.proband && parsed.parents ? parsed : null);

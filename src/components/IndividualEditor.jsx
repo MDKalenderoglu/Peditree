@@ -5,6 +5,7 @@
  * the same store operations as before. The store re-validates every action
  * independently of what this panel offers.
  */
+import { useEffect, useRef, useState } from 'react';
 import { X, Trash2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { computeSiblingCreationPlan, computeUnionCreationPlan } from '../state/usePedigreeStore';
 import { AGE_EXAMPLE } from '../utils/age';
@@ -12,12 +13,38 @@ import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { degreeLabel, kinshipOf, kinshipCoefficient, childInbreeding, formatCoefficient, cousinMarriageName } from '../graph/kinship';
 import { groupOf, multipleName, zygosityLabel, ZYGOSITY } from '../graph/multiples';
 import BulkEditor from './BulkEditor';
-import { isPregnancy, pregnancyKind, PREGNANCY_LABEL } from '../graph/model';
+import { isPregnancy, pregnancyKind, PREGNANCY_LABEL, GENETIC_TESTED, geneticLines, withGeneticLine } from '../graph/model';
 import DraftField from './DraftField';
+import { pendingDrafts } from '../utils/drafts';
 
 const SEX_WORD = { male: 'Erkek', female: 'Kadın', unknown: 'Cinsiyet bilinmiyor' };
 // same options and wording as the wizard; an older 'separated' shows as the combined one
 const STATUS_OPTIONS = [['together', 'Birlikte'], ['divorced', 'Boşanmış/Ayrılmış'], ['unknown', 'Bilinmiyor']];
+
+/**
+ * A box that adds one line: Enter (or leaving the box) writes it and the box
+ * empties for the next one, keeping the focus (several variants in a row).
+ * Never written mid-word; a half-typed line is written when the person
+ * changes or the page is left.
+ */
+function AddLineField({ onAdd, ...rest }) {
+  const [text, setText] = useState('');
+  const latest = useRef({ text, onAdd });
+  latest.current = { text, onAdd };
+  const flush = useRef(() => {
+    const t = latest.current.text.trim();
+    pendingDrafts.delete(flush.current);
+    if (t) latest.current.onAdd(t);
+  });
+  useEffect(() => () => flush.current(), []);
+  const add = () => { flush.current(); setText(''); latest.current.text = ''; };
+  return (
+    <input {...rest} value={text}
+      onChange={(e) => { setText(e.target.value); if (e.target.value.trim()) pendingDrafts.add(flush.current); else pendingDrafts.delete(flush.current); }}
+      onBlur={add}
+      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} />
+  );
+}
 
 function Header({ title, sub, onClose }) {
   return (
@@ -374,9 +401,13 @@ export default function IndividualEditor({
   const kind = pregnancyKind(node) ? PREGNANCY_LABEL[pregnancyKind(node)] : SEX_WORD[node.sex || 'unknown'];
   const sub = [kind, node.age ? `${node.age} yaş` : null, node.proband ? 'proband' : null].filter(Boolean).join(' · ');
   const set = (patch) => onUpdate(node.id, patch);
+  // genetic test: "+" done / "−" not; the clinician's lines, one per variant or result
+  const tested = node.geneticTest === GENETIC_TESTED;
+  const gLines = geneticLines(node);
+  const setGeneticLine = (k, text) => set({ geneticNote: withGeneticLine(node.geneticNote, k, text) });
   const familyNotes = [...new Set((pedigreeData?.individuals || [])
-    .filter(i => i.id !== node.id && i.geneticNote && i.geneticNote !== node.geneticNote)
-    .map(i => i.geneticNote))].slice(0, 6);
+    .filter(i => i.id !== node.id).flatMap(geneticLines))]
+    .filter(t => !gLines.includes(t)).slice(0, 6);
 
   return (
     <>
@@ -450,26 +481,48 @@ export default function IndividualEditor({
                   onCommit={v => onSetGestationWeeks(node.id, v)} />
               </label>
             )}
-            {/* test result below the symbol, no "E" prefix (NSGC 2022; clinician decision 2026-10-27) */}
+            {/* genetic test (clinician decision 2026-10-27): "−" none, "+" done; what
+                is written goes under the symbol line by line, no "E" (NSGC 2022) */}
             <div className="field-col">
               <span className="field-label">Genetik test</span>
               <div className="segmented" role="radiogroup" aria-label="Genetik test">
-                {[['', '—'], ['positive', 'Pozitif'], ['negative', 'Negatif'], ['vus', 'VUS'], ['tested', 'Test edildi']].map(([v, t]) => (
-                  <button key={v} role="radio" aria-checked={(node.geneticTest || '') === v} className={(node.geneticTest || '') === v ? 'on' : undefined}
-                    title={{ '': 'Test yok', positive: 'Pozitif', negative: 'Negatif', vus: 'Önemi belirsiz varyant', tested: 'Test edildi / değerlendirildi, sonuç yok ya da belirsiz' }[v]}
-                    onClick={() => set({ geneticTest: v })}>{t}</button>
+                {[['', '−', 'Genetik test yapılmadı'], [GENETIC_TESTED, '+', 'Genetik test yapıldı']].map(([v, t, title]) => (
+                  <button key={v} role="radio" aria-checked={(node.geneticTest || '') === v} className={`seg-sign${(node.geneticTest || '') === v ? ' on' : ''}`}
+                    title={title} aria-label={title}
+                    onClick={() => {
+                      if ((node.geneticTest || '') === v) return;
+                      if (!v && gLines.length && !window.confirm(`Genetik test "−" yapılırsa yazılan ${gLines.length} satır da silinir. Devam edilsin mi?\n\n"Geri Al" (Cmd/Ctrl+Z) ile geri alınabilir.`)) return;
+                      set({ geneticTest: v });
+                    }}>{t}</button>
                 ))}
               </div>
-              {(node.geneticTest || node.geneticNote) && (
-                <DraftField key={`${node.id}-gnote`} type="text" className="input input-wide" value={node.geneticNote || ''}
-                  placeholder="Varyant ya da açıklama, ör. FBN1 c.1585C>T het" onCommit={v => set({ geneticNote: v.trim() })} />
+              <span className="field-hint">
+                <b>−</b> genetik test yapılmadı, <b>+</b> yapıldı. "+" seçince isterseniz varyantı ya da sonucu
+                (ör. "sonuç bekleniyor") yazın: her satır pedigride sembolün altında ayrı bir satır olur.
+                Bir şey yazılmazsa sembolün altında "test yapıldı" görünür.
+              </span>
+              {tested && (
+                <div className="genetic-lines">
+                  {gLines.map((line, k) => (
+                    <div key={`${node.id}-gl-${k}`} className="genetic-line">
+                      <DraftField type="text" className="input input-wide" value={line} aria-label={`Genetik sonuç ${k + 1}`}
+                        onCommit={v => setGeneticLine(k, v)} />
+                      <button className="ui-btn ui-btn-ghost ui-btn-icon" title="Bu satırı sil" aria-label={`Genetik sonuç ${k + 1} sil`}
+                        onClick={() => setGeneticLine(k, '')}><X size={14} /></button>
+                    </div>
+                  ))}
+                  <AddLineField key={`${node.id}-gadd`} type="text" className="input input-wide"
+                    aria-label="Varyant ya da sonuç ekle"
+                    placeholder={gLines.length ? 'Bir varyant / sonuç daha (Enter)' : 'Varyant ya da sonuç, ör. FBN1 c.1585C>T het'}
+                    onAdd={t => setGeneticLine(Infinity, t)} />
+                </div>
               )}
               {/* what was written for relatives, one tap away (clinician request 2026-10-25) */}
               {familyNotes.length > 0 && (
                 <div className="suggest-row">
                   <span className="field-hint">Ailede girilen:</span>
                   {familyNotes.map(t => (
-                    <button key={t} className="suggest-chip" title="Bu kişiye de yaz" onClick={() => set({ geneticNote: t })}>{t}</button>
+                    <button key={t} className="suggest-chip" title="Bu kişiye de ekle" onClick={() => setGeneticLine(Infinity, t)}>{t}</button>
                   ))}
                 </div>
               )}

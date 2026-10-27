@@ -24,7 +24,8 @@ Individual   { id, sex, age, generation, relation, label, displayLabel,
                pregnancyLoss, stillbirth, ongoingPregnancy?, termination?, ectopic?, gestationWeeks?,
                notes, condition?, conditions?,
                ageAtDeath?, causeOfDeath?, birthDate?, geneticTest?, geneticNote? }
-                         // geneticTest: 'positive' | 'negative' | 'vus' | 'tested' → pozitif / negatif / VUS / test edildi under the symbol (no "E" prefix, NSGC 2022);
+                         // geneticTest: 'tested' ("+"; absent = "−"); geneticNote: the clinician's lines (one per variant / result),
+                         // drawn one under another below the symbol, no "E" prefix (NSGC 2022); old positive/negative/vus open as a line;
                          // conditions[].onsetAge: diagnosis age (shown in the notes)
                          // age / ageAtDeath: "35" (years), "2,5", "3 ay", "12 gün" — src/utils/age.js,
                          // compared in days; birthDate 'YYYY-MM-DD' (the proband's, top bar) sets the age as of today

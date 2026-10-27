@@ -1,12 +1,12 @@
 /**
  * clinicalNotation2.test.js — clinician decisions 2026-10-25: genetic test
- * status below the symbol with free text (written out, no "E" prefix —
+ * "+" / "−" with the clinician's lines under the symbol (no "E" prefix —
  * NSGC 2022, clinician decision 2026-10-27), the age a
  * finding was diagnosed at (in the notes), childlessness and infertility.
  */
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { usePedigreeStore } from '../state/usePedigreeStore';
-import { GENETIC_TEST, parseGeneticTest } from '../graph/ops';
+import { geneticLines, withGeneticLine, normalizeGenetics, TESTED_TEXT } from '../graph/model';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -15,43 +15,70 @@ const S = () => usePedigreeStore.getState();
 const P = (id) => S().doc.graph.individuals.find(i => i.id === id);
 const U = (id) => S().doc.graph.unions.find(u => u.id === id);
 
-describe('genetic test status', () => {
-  it('positive / negative / VUS / tested with a free note; cleared with an empty value; survives save and open', () => {
+describe('genetic test status (clinician decision 2026-10-27: "−" none, "+" done, lines under the symbol)', () => {
+  it('"+" or "−" only; "−" removes what was written; survives save and open', () => {
     S().resetPedigree();
-    S().updateIndividual('mother', { geneticTest: 'positive', geneticNote: 'FBN1 c.1585C>T het' });
-    expect(P('mother').geneticTest).toBe('positive');
-    S().updateIndividual('father', { geneticTest: 'tested', geneticNote: 'sonuç belgesi yok' });
+    S().updateIndividual('mother', { geneticTest: 'tested', geneticNote: 'FBN1 c.1585C>T het\nTGFBR2 c.1609C>T het' });
+    expect(P('mother').geneticTest).toBe('tested');
+    expect(geneticLines(P('mother'))).toEqual(['FBN1 c.1585C>T het', 'TGFBR2 c.1609C>T het']);
     const before = S().doc;
-    S().updateIndividual('father', { geneticTest: 'maybe' });
+    S().updateIndividual('mother', { geneticTest: 'positive' }); // the old codes are refused
     expect(S().doc).toBe(before);
     const saved = JSON.stringify(S().doc);
+    S().resetPedigree();
     S().openProjectFile(saved);
-    expect(P('father').geneticNote).toBe('sonuç belgesi yok');
+    expect(geneticLines(P('mother'))).toHaveLength(2);
     S().updateIndividual('mother', { geneticTest: '' });
     expect(P('mother').geneticTest).toBeUndefined();
+    expect(P('mother').geneticNote).toBeUndefined();
   });
-  it('the drawing writes the result out under the symbol, with no "E" prefix and no "E:" line in the notes (NSGC 2022)', () => {
-    expect(GENETIC_TEST).toEqual({ positive: 'pozitif', negative: 'negatif', vus: 'VUS', tested: 'test edildi' });
+  it('a written line means a test was done; blank lines are dropped', () => {
+    S().resetPedigree();
+    S().updateIndividual('father', { geneticNote: '  sonuç bekleniyor \n\n' });
+    expect(P('father').geneticTest).toBe('tested');
+    expect(P('father').geneticNote).toBe('sonuç bekleniyor');
+  });
+  it('one line is replaced, added or removed without touching the others', () => {
+    const note = 'A\nB\nC';
+    expect(withGeneticLine(note, 1, 'b2')).toBe('A\nb2\nC');
+    expect(withGeneticLine(note, Infinity, 'D')).toBe('A\nB\nC\nD');
+    expect(withGeneticLine(note, 0, '  ')).toBe('B\nC');
+    expect(withGeneticLine('', 0, 'ilk')).toBe('ilk');
+  });
+  it('a result saved before the change (E+ / E− / E VUS) opens as "+" with the result as the first line', () => {
+    S().resetPedigree();
+    const doc = JSON.parse(JSON.stringify(S().doc));
+    const mother = doc.graph.individuals.find(i => i.id === 'mother');
+    Object.assign(mother, { geneticTest: 'vus', geneticNote: 'MYH7 c.1988G>A' });
+    doc.graph.individuals.find(i => i.id === 'father').geneticTest = 'negative';
+    S().openProjectFile(JSON.stringify(doc));
+    expect(P('mother').geneticTest).toBe('tested');
+    expect(geneticLines(P('mother'))).toEqual(['VUS', 'MYH7 c.1988G>A']);
+    expect(geneticLines(P('father'))).toEqual(['negatif']);
+    const p = { geneticTest: 'positive' };
+    normalizeGenetics(p);
+    expect(p).toEqual({ geneticTest: 'tested', geneticNote: 'pozitif' });
+  });
+  it('the drawing writes each line under the symbol, "test yapıldı" when none, no "E" anywhere', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
-    expect(src).toMatch(/GENETIC_TEST\[d\.geneticTest\]/);
+    expect(src).toMatch(/geneticRows\(d\)\.forEach/);
+    expect(src).toMatch(/'geneticLine'/);
+    expect(src).toMatch(/TESTED_TEXT/);
     expect(src).not.toMatch(/'E: '/);
-    expect(src).not.toMatch(/E\+ pozitif/);
+    expect(TESTED_TEXT).toBe('test yapıldı');
   });
-  it('typing over the drawn result reads the new words and the old E spellings', () => {
-    for (const [typed, code] of [['pozitif', 'positive'], ['Negatif', 'negative'], ['vus', 'vus'], ['TEST EDİLDİ', 'tested'], ['TEST EDILDI', 'tested'], ['test  edildi', 'tested'],
-      ['E+', 'positive'], ['E-', 'negative'], ['E−', 'negative'], ['E VUS', 'vus'], ['E', 'tested'], ['', '']]) {
-      expect(parseGeneticTest(typed)).toBe(code);
-    }
-    expect(parseGeneticTest('belki')).toBeUndefined();
-  });
-  it('a file saved with a test result before the change opens with the same stored code', () => {
-    S().resetPedigree();
-    S().updateIndividual('mother', { geneticTest: 'vus', geneticNote: 'MYH7 c.1988G>A' });
-    const saved = JSON.stringify(S().doc);
-    S().resetPedigree();
-    S().openProjectFile(saved);
-    expect(P('mother').geneticTest).toBe('vus');
-    expect(GENETIC_TEST[P('mother').geneticTest]).toBe('VUS');
+});
+
+describe('ring and selection step back on an empty click (clinician request 2026-10-27)', () => {
+  it('open menu → ring → selection, one level per click; selecting a person brings the ring back', () => {
+    const app = readFileSync(join(process.cwd(), 'src/App.jsx'), 'utf8');
+    expect(app).toMatch(/if \(ringShown && ringRef\.current\?\.back\(\)\) return;\s*if \(ringShown\) \{ setRingHidden\(true\); return; \}\s*clearSelection\(\);/);
+    expect(app).toMatch(/const handleNodeSelect = \(id, opts\) => \{\s*setRingHidden\(false\);/);
+    expect(app).toMatch(/onBackgroundClick=\{onBackgroundClick\}/);
+    const canvas = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
+    expect(canvas).toMatch(/svg\.on\('click\.background'/);
+    const ring = readFileSync(join(process.cwd(), 'src/components/RadialAddMenu.jsx'), 'utf8');
+    expect(ring).toMatch(/back: \(\) => \{/);
   });
 });
 

@@ -29,9 +29,8 @@ import * as d3 from 'd3';
 import { fillFor, REGION_ANGLES } from '../graph/conditionKey';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { annotationAge, pregnancyLine } from '../utils/annotations';
-import { isSmallSymbol, isPregnancy, pregnancyKind, PREGNANCY_LABEL } from '../graph/model';
+import { isSmallSymbol, isPregnancy, pregnancyKind, PREGNANCY_LABEL, GENETIC_TESTED, TESTED_TEXT, geneticLines } from '../graph/model';
 import { packLines } from '../utils/textWrap';
-import { GENETIC_TEST } from '../graph/ops';
 
 const EDGE_COLOR = '#64748b';
 const NODE_STROKE = '#1e293b';
@@ -39,6 +38,7 @@ const NODE_FILL = '#ffffff';
 const NODE_SIZE = 40;
 const HALF = NODE_SIZE / 2;
 const LOSS_SIZE = 14; // smaller triangle for pregnancy loss
+const GENETIC_ROW = 11; // one line of a genetic test result under a symbol
 
 const JUMP_R = 5;
 
@@ -127,7 +127,7 @@ function drawStroke(g, edge, dx = 0, dy = 0) {
 // belt-and-suspenders fallback for exportUtils.js and for tests/tools
 // that query the DOM directly.
 const PedigreeCanvas = forwardRef(function PedigreeCanvas(
-  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar, patientName = '', onEditText, multiSelect = false, focusTick = 0, onNodeDrop },
+  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar, patientName = '', onEditText, multiSelect = false, focusTick = 0, onNodeDrop, onBackgroundClick },
   forwardedRef
 ) {
   const svgRef = useRef(null);
@@ -277,10 +277,19 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // note, label, older text, note number) — the same rules as below; the
     // frame and the notes start under the lowest one (second audit 2026-10-25:
     // a long note could leave the picture)
+    // the genetic test lines under a symbol, each wrapped, never cut
+    const geneticRows = (d) => {
+      if (d.geneticTest !== GENETIC_TESTED) return [];
+      const lines = geneticLines(d);
+      if (!lines.length) return [{ text: TESTED_TEXT, k: 0, value: '', placeholder: true }];
+      // ~20 characters fit between two siblings (100 apart), so a variant with
+      // its zygosity ("TGFBR2 c.1609C>T het") stays on one line
+      return lines.flatMap((line, k) => packLines([{ text: line }], d.proband ? 17 : 20)
+        .map(part => ({ text: part.map(x => x.text).join(''), k, value: line })));
+    };
     const annotationBottom = (d) => {
-      const lines = [annotationAge(d), pregnancyLine(d), GENETIC_TEST[d.geneticTest], d.displayLabel, d.condition, notedNodes.includes(d)].filter(Boolean).length;
-      const noteLines = d.geneticNote ? packLines([{ text: d.geneticNote }], d.proband ? 15 : 18).length : 0;
-      return (isSmallSymbol(d) ? LOSS_SIZE : HALF) + 14 + lines * 13 + noteLines * 11;
+      const lines = [annotationAge(d), pregnancyLine(d), d.displayLabel, d.condition, notedNodes.includes(d)].filter(Boolean).length;
+      return (isSmallSymbol(d) ? LOSS_SIZE : HALF) + 14 + lines * 13 + geneticRows(d).length * GENETIC_ROW;
     };
     const lowest = d3.max(nodes, d => d.y + annotationBottom(d));
     const legendTop = Math.max(d3.max(nodes, d => d.y) + 70, lowest + 18); // clear of the age / label lines
@@ -670,24 +679,16 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         lineY += LINE_H;
       }
 
-      // the test result written out (no "E" prefix, NSGC 2022), then the clinician's own text
-      // (variant, "het", "sonuç belgesi yok" …) wrapped, never cut
-      if (GENETIC_TEST[d.geneticTest]) {
+      // genetic test (clinician decision 2026-10-27): the clinician's lines one
+      // under another, no "E" prefix (NSGC 2022); each line is edited where it stands
+      geneticRows(d).forEach(row => {
         editable(ann.append('text')
-          .attr('y', lineY).attr('text-anchor', 'middle')
-          .attr('font-size', '11px').attr('font-weight', '600').attr('fill', '#334155')
-          .text(GENETIC_TEST[d.geneticTest]), 'geneticTest', d.id, GENETIC_TEST[d.geneticTest]);
-        lineY += LINE_H;
-      }
-      if (d.geneticNote) {
-        packLines([{ text: d.geneticNote }], d.proband ? 15 : 18).forEach(line => {
-          editable(ann.append('text')
-            .attr('y', lineY - 1).attr('text-anchor', 'middle')
-            .attr('font-size', '9.5px').attr('fill', '#475569')
-            .text(line.map(p => p.text).join('')), 'geneticNote', d.id, d.geneticNote);
-          lineY += 11;
-        });
-      }
+          .attr('y', lineY - 1).attr('text-anchor', 'middle')
+          .attr('font-size', '9px').attr('fill', row.placeholder ? '#64748b' : '#334155')
+          .attr('font-style', row.placeholder ? 'italic' : null)
+          .text(row.text), 'geneticLine', `${d.id}\u0001${row.k}`, row.value);
+        lineY += GENETIC_ROW;
+      });
 
       // Display label
       if (d.displayLabel) {
@@ -829,6 +830,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     svg.call(zoom);
     // a quick second tap on a tablet selects again; it must not zoom
     svg.on('dblclick.zoom', null);
+    // a click on the empty drawing (people, lines and texts stop theirs; a
+    // pan never ends in a click) — App steps back one level
+    svg.on('click.background', () => onBackgroundClick && onBackgroundClick());
     // keep the clinician's zoom/pan across edits (it used to jump back after
     // every change); "Sığdır" resets it
     svg.call(zoom.transform, d3.zoomTransform(svg.node()));
@@ -854,7 +858,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // Store for external reset
     svg.node().__zoom_ref = zoom;
 
-  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar, patientName, startEdit, multiSelect, focusTick, onNodeDrop]);
+  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar, patientName, startEdit, multiSelect, focusTick, onNodeDrop, onBackgroundClick]);
 
   // a menu around the selected person that needs more room slides the
   // drawing by (dx, dy) screen pixels (a narrow tablet screen)

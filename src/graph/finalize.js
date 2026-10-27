@@ -20,7 +20,7 @@
  * Mutates the (already cloned) graph in place and returns it.
  */
 import { computeGenerations } from '../utils/graphTraversal';
-import { indexGraph, displayParentage, isPregnancy } from './model';
+import { indexGraph, displayParentage, isPregnancy, normalizeGenetics } from './model';
 import { kinshipOf } from './kinship';
 import { deriveConditionKey } from './conditionKey';
 import { normalizeMultiples } from './multiples';
@@ -40,6 +40,7 @@ export function finalizeGraph(graph, { anchorId = 'proband' } = {}) {
   }
   // twins / multiple births stand together whatever the order rule did
   normalizeMultiples(graph);
+  graph.individuals.forEach(normalizeGenetics);
 
   const anchor = idx0.byId.has(anchorId)
     ? anchorId

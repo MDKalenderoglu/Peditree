@@ -145,7 +145,16 @@ export default function RadialAddMenu({
       kbOpen.current = true;
       if (SECTORS[key]) { setPanel(null); setActive(key); } else { setActive(null); setPanel(key); }
     },
-  }), []);
+    // back to the bare ring; false when nothing was open
+    back: () => {
+      if (!active && !panel) return false;
+      clearTimeout(closeTimer.current);
+      clearTimeout(panelTimer.current);
+      setActive(null);
+      setPanel(null);
+      return true;
+    },
+  }), [active, panel]);
   // the rainbow bands around the person must fit on screen: if they stick
   // out, the drawing slides by that much (a narrow tablet screen)
   useLayoutEffect(() => {
