@@ -18,6 +18,9 @@ import { withGeneticLine } from './graph/model';
 import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2, MoreHorizontal, Printer } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
+// the clinician's logo (docs/brand/peditree-logo.webp): the tree, and the name in its own lettering
+import logoMark from './assets/logo-mark.png';
+import logoWordmark from './assets/logo-wordmark.png';
 
 // written for a clinician who has never used the program (clinician request 2026-10-27)
 const KEY_HELP = [
@@ -49,23 +52,6 @@ const KEY_HELP = [
     ['+  −  0', 'Yakınlaştırır, uzaklaştırır, tüm pedigriyi ekrana sığdırır.'],
   ]],
 ];
-
-// the mark: one G-banded chromosome, the violet of the Giemsa stain (also public/favicon.svg)
-function BrandMark() {
-  return (
-    <svg className="brand-mark" width="16" height="32" viewBox="0 0 16 32" aria-hidden="true">
-      <defs>
-        <clipPath id="brand-arms"><rect x="2" y="1" width="12" height="12" rx="6" /><rect x="2" y="15" width="12" height="16" rx="6" /></clipPath>
-      </defs>
-      <g clipPath="url(#brand-arms)" fill="currentColor">
-        <rect x="0" y="0" width="16" height="32" opacity="0.16" />
-        <rect x="0" y="4" width="16" height="2.5" /><rect x="0" y="9" width="16" height="1.5" />
-        <rect x="0" y="18" width="16" height="3" /><rect x="0" y="23" width="16" height="1.5" /><rect x="0" y="26.5" width="16" height="2" />
-      </g>
-      <path d="M5 13.2 Q8 14.6 11 13.2 M5 14.8 Q8 13.4 11 14.8" fill="none" stroke="currentColor" strokeWidth="1.2" />
-    </svg>
-  );
-}
 
 function App() {
   const {
@@ -230,7 +216,7 @@ function App() {
     root.replaceChildren(clone);
     const foot = document.createElement('div');
     foot.className = 'print-foot';
-    foot.textContent = `Peditree · ${new Date().toLocaleDateString('tr-TR')}`;
+    foot.textContent = `PediTree · ${new Date().toLocaleDateString('tr-TR')}`;
     root.appendChild(foot);
     let page = document.getElementById('print-page');
     if (!page) { page = document.createElement('style'); page.id = 'print-page'; document.head.appendChild(page); }
@@ -445,9 +431,9 @@ function App() {
           changes its height (and never moves the drawing). */}
       <div className="canvas-toolbar toolbar">
         <div className="brand toolbar-brand">
-          <BrandMark />
+          <img className="brand-mark" src={logoMark} alt="" width="40" height="40" />
           <span className="brand-text">
-            <span className="brand-name">Peditree</span>
+            <img className="brand-wordmark" src={logoWordmark} alt="PediTree" height="20" />
             <span className="brand-sub">Klinik pedigri</span>
           </span>
         </div>

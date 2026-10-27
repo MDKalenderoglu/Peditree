@@ -1,10 +1,11 @@
 /*
- * ui.css — Peditree interface (2026-10-27 redesign, "Giemsa").
+ * ui.css — PediTree interface (2026-10-27 redesign, "Giemsa").
  * The drawing is the paper: white, untouched. The tools around it sit on a
  * quiet grey frame. One accent, the violet of the Giemsa stain that bands
  * chromosomes, marks what is selected or chosen. Atkinson Hyperlegible Next
  * keeps I, l and 1 apart (pedigree numbers like III-1). Selection colours live
- * only here, never in an exported drawing.
+ * only here, never in an exported drawing. Violet and navy are taken from
+ * the clinician's logo (docs/brand/peditree-logo.webp).
  */
 @import '@fontsource/atkinson-hyperlegible-next/400.css';
 @import '@fontsource/atkinson-hyperlegible-next/600.css';
@@ -16,7 +17,7 @@
   /* the drawing keeps the font it is exported with */
   --font-drawing: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
-  --ink: #18212c;
+  --ink: #151c33;
   --ink-2: #3a4552;
   --muted: #5d6774;
   --faint: #8a939e;
@@ -27,11 +28,11 @@
   --frame: #f6f7f8;
   --paper: #ffffff;
 
-  --accent: #56398a;
-  --accent-ink: #432c6d;
+  --accent: #533783;
+  --accent-ink: #412a68;
   --accent-soft: #f2edf9;
-  --accent-line: rgba(86, 57, 138, 0.32);
-  --focus: 0 0 0 3px rgba(86, 57, 138, 0.22);
+  --accent-line: rgba(83, 55, 131, 0.32);
+  --focus: 0 0 0 3px rgba(83, 55, 131, 0.22);
   --select: #6d45b8;
   --select-2: #0e7a72;
   --added: #1e8e3e;
@@ -73,17 +74,17 @@ button, input, select, textarea { font-family: inherit; }
 .side-right { border-left: 1px solid var(--line); }
 .app-shell:not(.has-editor) .side-right { visibility: hidden; }
 
-/* ── brand: a G-banded chromosome and the name ── */
-.brand { display: flex; align-items: center; gap: 9px; line-height: 1.1; }
-.brand-mark { flex: none; color: var(--accent); }
-.brand-text { display: flex; flex-direction: column; }
-.brand-name { font-size: 16px; font-weight: 700; color: var(--ink); letter-spacing: -0.005em; }
+/* ── brand: the logo's tree and its name ── */
+.brand { display: flex; align-items: center; gap: 8px; line-height: 1.1; }
+.brand-mark { flex: none; display: block; width: 40px; height: 40px; }
+.brand-text { display: flex; flex-direction: column; gap: 2px; }
+.brand-wordmark { display: block; height: 20px; width: auto; }
 .brand-sub { font-size: 12px; color: var(--muted); }
 
 /* ── toolbar: the case on the left, the file in the middle, what goes out on the right ── */
 .toolbar {
-  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-  padding: 8px 14px; min-height: 56px; box-sizing: border-box;
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+  padding: 8px 12px; min-height: 56px; box-sizing: border-box;
   background: var(--frame); border-bottom: 1px solid var(--line);
 }
 .toolbar-brand { margin-right: 6px; }
@@ -96,7 +97,7 @@ button, input, select, textarea { font-family: inherit; }
 .toolbar .ui-btn[aria-expanded="true"]:not(.ui-btn-primary) { background: var(--surface); border-color: var(--line); color: var(--ink); }
 /* the patient's name reads as the line of a record, not one more box */
 .toolbar .patient-name {
-  width: 200px; height: 34px; font-size: 15px; font-weight: 600;
+  width: 180px; height: 34px; font-size: 15px; font-weight: 600;
   background: transparent; border: none; border-bottom: 1.5px solid var(--line); border-radius: 0; padding: 0 2px;
 }
 .toolbar .patient-name:hover { border-bottom-color: var(--faint); }
