@@ -1,10 +1,12 @@
 /**
  * clinicalNotation2.test.js — clinician decisions 2026-10-25: genetic test
- * status below the symbol (E+, E−, E VUS, E) with free text, the age a
+ * status below the symbol with free text (written out, no "E" prefix —
+ * NSGC 2022, clinician decision 2026-10-27), the age a
  * finding was diagnosed at (in the notes), childlessness and infertility.
  */
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { usePedigreeStore } from '../state/usePedigreeStore';
+import { GENETIC_TEST, parseGeneticTest } from '../graph/ops';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -14,7 +16,7 @@ const P = (id) => S().doc.graph.individuals.find(i => i.id === id);
 const U = (id) => S().doc.graph.unions.find(u => u.id === id);
 
 describe('genetic test status', () => {
-  it('E+ / E− / E VUS / E with a free note; cleared with an empty value; survives save and open', () => {
+  it('positive / negative / VUS / tested with a free note; cleared with an empty value; survives save and open', () => {
     S().resetPedigree();
     S().updateIndividual('mother', { geneticTest: 'positive', geneticNote: 'FBN1 c.1585C>T het' });
     expect(P('mother').geneticTest).toBe('positive');
@@ -28,10 +30,28 @@ describe('genetic test status', () => {
     S().updateIndividual('mother', { geneticTest: '' });
     expect(P('mother').geneticTest).toBeUndefined();
   });
-  it('the drawing writes E+ under the symbol and explains E in the notes', () => {
+  it('the drawing writes the result out under the symbol, with no "E" prefix and no "E:" line in the notes (NSGC 2022)', () => {
+    expect(GENETIC_TEST).toEqual({ positive: 'pozitif', negative: 'negatif', vus: 'VUS', tested: 'test edildi' });
     const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
     expect(src).toMatch(/GENETIC_TEST\[d\.geneticTest\]/);
-    expect(src).toMatch(/E\+ pozitif/);
+    expect(src).not.toMatch(/'E: '/);
+    expect(src).not.toMatch(/E\+ pozitif/);
+  });
+  it('typing over the drawn result reads the new words and the old E spellings', () => {
+    for (const [typed, code] of [['pozitif', 'positive'], ['Negatif', 'negative'], ['vus', 'vus'], ['TEST EDİLDİ', 'tested'], ['TEST EDILDI', 'tested'], ['test  edildi', 'tested'],
+      ['E+', 'positive'], ['E-', 'negative'], ['E−', 'negative'], ['E VUS', 'vus'], ['E', 'tested'], ['', '']]) {
+      expect(parseGeneticTest(typed)).toBe(code);
+    }
+    expect(parseGeneticTest('belki')).toBeUndefined();
+  });
+  it('a file saved with a test result before the change opens with the same stored code', () => {
+    S().resetPedigree();
+    S().updateIndividual('mother', { geneticTest: 'vus', geneticNote: 'MYH7 c.1988G>A' });
+    const saved = JSON.stringify(S().doc);
+    S().resetPedigree();
+    S().openProjectFile(saved);
+    expect(P('mother').geneticTest).toBe('vus');
+    expect(GENETIC_TEST[P('mother').geneticTest]).toBe('VUS');
   });
 });
 

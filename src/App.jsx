@@ -14,6 +14,7 @@ import DraftField from './components/DraftField';
 import { nextPerson, RING_KEYS } from './utils/keyboardNav';
 import { toPed } from './graph/ped';
 import { TEMPLATE_GROUPS } from './graph/templates';
+import { parseGeneticTest } from './graph/ops';
 import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2, MoreHorizontal, Printer } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
@@ -566,7 +567,7 @@ function App() {
             else if (kind === 'finding') renameFinding(target, v);
             else if (kind === 'note') updateIndividual(target, { notes: v });
             else if (kind === 'geneticTest') {
-              const code = { 'E+': 'positive', 'E-': 'negative', 'E−': 'negative', 'E VUS': 'vus', VUS: 'vus', E: 'tested', '': '' }[v.trim().toUpperCase().replace(/\s+/g, ' ')];
+              const code = parseGeneticTest(v);
               updateIndividual(target, { geneticTest: code === undefined ? v.trim() : code });
             }
             else if (kind === 'geneticNote') updateIndividual(target, { geneticNote: v.trim() });

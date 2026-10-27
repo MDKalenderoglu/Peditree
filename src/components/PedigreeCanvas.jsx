@@ -221,7 +221,6 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const unsureOf = (n) => (n.conditions || []).filter(c => c && c.label && c.status === 'unknown');
     const bornWeek = (n) => (!isPregnancy(n) && n.gestationWeeks ? n.gestationWeeks : null);
     const notedNodes = nodes.filter(n => n.notes || n.condition || (n.deceased && n.causeOfDeath) || onsetsOf(n).length || unsureOf(n).length || bornWeek(n));
-    const hasTests = nodes.some(n => GENETIC_TEST[n.geneticTest]);
     // legends grow with a wide pedigree, so they read at the same size once
     // the drawing is fitted to the screen (clinician feedback 2026-10-24)
     const LK = Math.max(1.2, (d3.max(nodes, d => d.x) - d3.min(nodes, d => d.x) + 200) / 900);
@@ -263,8 +262,6 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       });
       return packLines(segs, noteChars);
     });
-    // what E means, once, when anyone has a test result (NSGC: defined in the key)
-    if (hasTests) noteLines.unshift(packLines([{ text: 'E: ', head: true }, { text: 'genetik değerlendirme / test — E+ pozitif, E− negatif, E VUS önemi belirsiz varyant' }], noteChars));
     const notesBlock = noteLines.length ? TITLE_ROW + d3.sum(noteLines, l => l.length) * NOTE_ROW + 10 * LK : 0;
     // the key's first line (clinician request 2026-10-25): the patient's
     // name, the proband's own symbol, the proband's findings
@@ -673,7 +670,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         lineY += LINE_H;
       }
 
-      // NSGC evaluation: E+ / E− / E VUS / E, then the clinician's own text
+      // the test result written out (no "E" prefix, NSGC 2022), then the clinician's own text
       // (variant, "het", "sonuç belgesi yok" …) wrapped, never cut
       if (GENETIC_TEST[d.geneticTest]) {
         editable(ann.append('text')

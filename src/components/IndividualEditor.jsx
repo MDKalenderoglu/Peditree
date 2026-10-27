@@ -450,11 +450,11 @@ export default function IndividualEditor({
                   onCommit={v => onSetGestationWeeks(node.id, v)} />
               </label>
             )}
-            {/* NSGC evaluation below the symbol (clinician decision 2026-10-25) */}
+            {/* test result below the symbol, no "E" prefix (NSGC 2022; clinician decision 2026-10-27) */}
             <div className="field-col">
               <span className="field-label">Genetik test</span>
               <div className="segmented" role="radiogroup" aria-label="Genetik test">
-                {[['', '—'], ['positive', 'E+'], ['negative', 'E−'], ['vus', 'E VUS'], ['tested', 'E']].map(([v, t]) => (
+                {[['', '—'], ['positive', 'Pozitif'], ['negative', 'Negatif'], ['vus', 'VUS'], ['tested', 'Test edildi']].map(([v, t]) => (
                   <button key={v} role="radio" aria-checked={(node.geneticTest || '') === v} className={(node.geneticTest || '') === v ? 'on' : undefined}
                     title={{ '': 'Test yok', positive: 'Pozitif', negative: 'Negatif', vus: 'Önemi belirsiz varyant', tested: 'Test edildi / değerlendirildi, sonuç yok ya da belirsiz' }[v]}
                     onClick={() => set({ geneticTest: v })}>{t}</button>
