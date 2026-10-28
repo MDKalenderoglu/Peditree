@@ -1,52 +1,34 @@
 /**
  * drawingStyleSvg.js — puts a drawing style (drawingStyle.js drawingSpec) on
  * a finished pedigree <svg>: the typeface of its text and, for the
- * hand-drawn look, a slight waver on lines and symbols. Runs on the screen
+ * hand-drawn look, a pen-drawn version of every stroke. Runs on the screen
  * drawing after every redraw, and on an export copy (so an export can be
  * standard while the screen is hand-drawn). Never adds, removes or moves a
  * symbol or a line; text is never wavered (it must stay legible).
  *
- * Connecting lines waver by their geometry: each straight piece becomes a
- * gentle curve whose ends stay exactly where they were (lines still meet),
- * and the curve depends only on where the piece runs along its length, so
- * the two strokes of a double line (consanguinity) bend alike and keep their
- * gap. Symbols waver through an SVG filter; the regions of findings inside a
- * symbol are left out, so their white separating gap stays whole.
+ * Every stroke is drawn again by geometry, never by a pixel filter (a filter
+ * broke outlines into dashes — clinician feedback 2026-10-28): connecting
+ * lines, twins' diagonals, "//", slashes, brackets, the proband's arrow, the
+ * childless bars, symbol outlines and the key's symbols.
+ * - Straight pieces become gentle curves; their end points stay exactly
+ *   where they were, so lines still meet and corners stay corners.
+ * - The bend depends only on where a piece runs along its length, so
+ *   parallel strokes (a double line, the two bars of "infertile") bend alike
+ *   and keep their gap.
+ * - A symbol keeps its exact fill; only its outline is drawn by hand (the
+ *   original outline is hidden, never removed). The regions of findings, their
+ *   white separating gap and all text are left exactly as they are.
  *
- * Idempotent: the original font size of every text is kept in data-fs, the
- * original path of every line in data-d.
+ * Idempotent and reversible: original font sizes are kept in data-fs, original
+ * paths in data-d; hand-drawn outlines carry the class hand-stroke.
  */
-import { HAND_FILTER_ID, HAND_WAVER } from './drawingStyle';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const NODE_FILTERS = 5; // a few noise patterns, so neighbouring symbols do not waver alike
-const nodeFilter = (i) => `${HAND_FILTER_ID}-node-${i % NODE_FILTERS}`;
 
-function makeFilter(doc, id, seed, region) {
-  const f = doc.createElementNS(SVG_NS, 'filter');
-  f.setAttribute('id', id);
-  f.setAttribute('class', 'hand-filter');
-  // user space, not the bounding box: a straight line has a box of height 0
-  f.setAttribute('filterUnits', 'userSpaceOnUse');
-  for (const [k, v] of Object.entries(region)) f.setAttribute(k, String(v));
-  const t = doc.createElementNS(SVG_NS, 'feTurbulence');
-  t.setAttribute('type', 'fractalNoise');
-  t.setAttribute('baseFrequency', String(HAND_WAVER.baseFrequency));
-  t.setAttribute('numOctaves', String(HAND_WAVER.numOctaves));
-  t.setAttribute('seed', String(seed));
-  t.setAttribute('result', 'noise');
-  const d = doc.createElementNS(SVG_NS, 'feDisplacementMap');
-  d.setAttribute('in', 'SourceGraphic');
-  d.setAttribute('in2', 'noise');
-  d.setAttribute('scale', String(HAND_WAVER.scale));
-  d.setAttribute('xChannelSelector', 'R');
-  d.setAttribute('yChannelSelector', 'G');
-  f.append(t, d);
-  return f;
-}
-
-const wavers = (el) => el.tagName.toLowerCase() !== 'text'
-  && !['annotations', 'ui-only', 'pulse-halo', 'condition-regions'].some((c) => el.classList.contains(c));
+/** Largest sideways bow of a hand-drawn line piece, px (a double line's strokes are 4 px apart, and bend alike). */
+export const MAX_BOW = 2.2;
+/** Largest bow of a symbol's outline, px (outline width 2). */
+export const SHAPE_BOW = 1.2;
 
 // a small, fixed pseudo-random number in [-1, 1] for a place on the drawing
 function wobbleAt(a, b, salt) {
@@ -55,56 +37,130 @@ function wobbleAt(a, b, salt) {
   return ((h >>> 0) / 0xffffffff) * 2 - 1;
 }
 
-/** Largest sideways bow of a hand-drawn line piece, px (a double line's strokes are 4 px apart). */
-export const MAX_BOW = 2.2;
+const f2 = (v) => +v.toFixed(2);
+
+/** One straight piece (x0,y0)→(x1,y1) as cubic curves, ends fixed. */
+function sketchPiece(x0, y0, x1, y1, { maxBow, salt }) {
+  const len = Math.hypot(x1 - x0, y1 - y0);
+  if (len < 8) return `L${f2(x1)},${f2(y1)}`;
+  const ux = (x1 - x0) / len, uy = (y1 - y0) / len;
+  // the side a bow goes to: one fixed normal per direction (the same for parallel strokes)
+  let nx = -uy, ny = ux;
+  if (nx < 0 || (nx === 0 && ny < 0)) { nx = -nx; ny = -ny; }
+  // where the piece runs along its length (not across it): equal for parallel strokes
+  const along = Math.min(x0 * Math.abs(ux) + y0 * Math.abs(uy), x1 * Math.abs(ux) + y1 * Math.abs(uy));
+  const n = Math.max(1, Math.round(len / 55));
+  const seg = len / n;
+  const amp = Math.min(maxBow, len * 0.05);
+  let out = '';
+  for (let k = 0; k < n; k++) {
+    const p0 = [x0 + (x1 - x0) * (k / n), y0 + (y1 - y0) * (k / n)];
+    const p1 = [x0 + (x1 - x0) * ((k + 1) / n), y0 + (y1 - y0) * ((k + 1) / n)];
+    const key = along + Math.round(seg * k);
+    const o1 = amp * wobbleAt(key, len, salt + 1), o2 = amp * wobbleAt(key, len, salt + 2);
+    const at = (t, o) => [p0[0] + (p1[0] - p0[0]) * t + nx * o, p0[1] + (p1[1] - p0[1]) * t + ny * o];
+    const [c1, c2] = [at(1 / 3, o1), at(2 / 3, o2)];
+    out += `C${f2(c1[0])},${f2(c1[1])} ${f2(c2[0])},${f2(c2[1])} ${f2(p1[0])},${f2(p1[1])}`;
+  }
+  return out;
+}
 
 /**
- * The hand-drawn version of a connector path (PedigreeCanvas connectorPath:
- * "M x,y L x,y …" with line-jump arcs "A …"). Straight pieces of 14 px or
- * more become cubic curves, one per ~55 px, bowing at most MAX_BOW px; arcs
- * and every end point stay exactly where they were.
+ * The hand-drawn version of a path of straight pieces and arcs ("M", "L",
+ * "A", "Z" — connectors, brackets, the proband's arrow, diamonds,
+ * triangles). Arcs (line jumps) and every point stay where they were.
+ * Returns the path unchanged when it holds anything else.
  */
-export function sketchPath(d) {
-  const tokens = String(d).match(/[MLA]|-?\d*\.?\d+(?:e-?\d+)?/gi);
+export function sketchPath(d, { maxBow = MAX_BOW, salt = 0 } = {}) {
+  const tokens = String(d).match(/[MLAZ]|-?\d*\.?\d+(?:e-?\d+)?/gi);
   if (!tokens) return d;
-  const out = [];
-  let i = 0, cx = 0, cy = 0;
+  let out = '';
+  let i = 0, cx = 0, cy = 0, sx = 0, sy = 0;
   const num = () => Number(tokens[i++]);
-  const f = (v) => +v.toFixed(2);
   while (i < tokens.length) {
     const cmd = tokens[i++];
-    if (cmd === 'M') { cx = num(); cy = num(); out.push(`M${f(cx)},${f(cy)}`); }
+    if (cmd === 'M') { cx = sx = num(); cy = sy = num(); out += `M${f2(cx)},${f2(cy)}`; }
+    else if (cmd === 'L') { const x = num(), y = num(); out += sketchPiece(cx, cy, x, y, { maxBow, salt }); cx = x; cy = y; }
     else if (cmd === 'A') {
-      const args = [num(), num(), num(), num(), num(), num(), num()];
-      cx = args[5]; cy = args[6];
-      out.push(`A${args.slice(0, 5).join(' ')} ${f(cx)},${f(cy)}`);
-    } else if (cmd === 'L') {
-      const x = num(), y = num();
-      const len = Math.hypot(x - cx, y - cy);
-      if ((x !== cx && y !== cy) || len < 14) { out.push(`L${f(x)},${f(y)}`); cx = x; cy = y; continue; }
-      const horiz = y === cy;
-      // where the piece runs along its length: the same for both strokes of a double line
-      const along0 = horiz ? Math.min(cx, x) : Math.min(cy, y);
-      const n = Math.max(1, Math.round(len / 55));
-      const seg = len / n;
-      const amp = Math.min(MAX_BOW, len * 0.05);
-      for (let k = 0; k < n; k++) {
-        const t0 = k / n, t1 = (k + 1) / n;
-        const p0 = [cx + (x - cx) * t0, cy + (y - cy) * t0];
-        const p1 = [cx + (x - cx) * t1, cy + (y - cy) * t1];
-        const key = along0 + Math.round(seg * k);
-        // sideways offsets of the two control points (perpendicular to the piece)
-        const o1 = amp * wobbleAt(key, len, 1), o2 = amp * wobbleAt(key, len, 2);
-        const at = (t, o) => [p0[0] + (p1[0] - p0[0]) * t + (horiz ? 0 : o), p0[1] + (p1[1] - p0[1]) * t + (horiz ? o : 0)];
-        const c1 = at(1 / 3, o1), c2 = at(2 / 3, o2);
-        out.push(`C${f(c1[0])},${f(c1[1])} ${f(c2[0])},${f(c2[1])} ${f(p1[0])},${f(p1[1])}`);
-      }
-      cx = x; cy = y;
-    } else {
-      return d; // a path this function does not know: left as it is
-    }
+      const a = [num(), num(), num(), num(), num(), num(), num()];
+      out += `A${a.slice(0, 5).join(' ')} ${f2(a[5])},${f2(a[6])}`;
+      cx = a[5]; cy = a[6];
+    } else if (cmd === 'Z' || cmd === 'z') {
+      out += `${sketchPiece(cx, cy, sx, sy, { maxBow, salt })}Z`;
+      cx = sx; cy = sy;
+    } else return d;
   }
-  return out.join('');
+  return out;
+}
+
+/** A hand-drawn circle: closed, its radius never more than SHAPE_BOW from the true one. */
+export function sketchCircle(cx, cy, r, salt = 0) {
+  const N = 16;
+  const ph1 = Math.PI * wobbleAt(r, salt, 3), ph2 = Math.PI * wobbleAt(r, salt, 4);
+  const a1 = 0.6 + 0.4 * wobbleAt(r, salt, 5), a2 = 0.4 * wobbleAt(r, salt, 6);
+  const amp = Math.min(SHAPE_BOW, r * 0.06) / (Math.abs(a1) + Math.abs(a2));
+  const pts = [];
+  for (let k = 0; k < N; k++) {
+    const t = (2 * Math.PI * k) / N;
+    const rr = r + amp * (a1 * Math.sin(2 * t + ph1) + a2 * Math.sin(3 * t + ph2));
+    pts.push([cx + rr * Math.cos(t), cy + rr * Math.sin(t)]);
+  }
+  // a closed Catmull-Rom curve through the points, as cubic Béziers
+  let out = `M${f2(pts[0][0])},${f2(pts[0][1])}`;
+  for (let k = 0; k < N; k++) {
+    const p0 = pts[(k - 1 + N) % N], p1 = pts[k], p2 = pts[(k + 1) % N], p3 = pts[(k + 2) % N];
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    out += `C${f2(c1[0])},${f2(c1[1])} ${f2(c2[0])},${f2(c2[1])} ${f2(p2[0])},${f2(p2[1])}`;
+  }
+  return `${out}Z`;
+}
+
+const num = (el, a) => Number(el.getAttribute(a) || 0);
+
+/** The hand-drawn outline of a symbol or a straight line element, as path data. */
+export function sketchElement(el, salt = 0) {
+  const tag = el.tagName.toLowerCase();
+  if (tag === 'circle') return sketchCircle(num(el, 'cx'), num(el, 'cy'), num(el, 'r'), salt);
+  if (tag === 'rect') {
+    const x = num(el, 'x'), y = num(el, 'y'), w = num(el, 'width'), h = num(el, 'height');
+    return sketchPath(`M${x},${y}L${x + w},${y}L${x + w},${y + h}L${x},${y + h}Z`, { maxBow: SHAPE_BOW, salt });
+  }
+  if (tag === 'line') {
+    return sketchPath(`M${num(el, 'x1')},${num(el, 'y1')}L${num(el, 'x2')},${num(el, 'y2')}`, { maxBow: SHAPE_BOW, salt });
+  }
+  if (tag === 'path') return sketchPath(el.getAttribute('d'), { maxBow: SHAPE_BOW, salt });
+  return null;
+}
+
+// where a symbol stands (its group's translate): every symbol gets its own hand
+function placeSalt(el) {
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const m = /translate\(\s*(-?[\d.]+)[,\s]+(-?[\d.]+)/.exec(p.getAttribute?.('transform') || '');
+    if (m) return Math.round(Number(m[1]) * 7 + Number(m[2]) * 13) | 0;
+  }
+  return 0;
+}
+
+const SKIP = ['ui-only', 'pulse-halo', 'condition-regions', 'annotations', 'hand-stroke'];
+const skipped = (el) => {
+  for (let p = el; p && p.tagName && p.tagName.toLowerCase() !== 'svg'; p = p.parentElement) {
+    const tag = p.tagName.toLowerCase();
+    if (tag === 'defs' || tag === 'text' || tag === 'clippath' || tag === 'pattern') return true;
+    if (SKIP.some((c) => p.classList?.contains(c))) return true;
+  }
+  return false;
+};
+const stroked = (el) => {
+  const s = el.getAttribute('stroke');
+  return !!s && s !== 'none' && s !== 'transparent' && Number(el.getAttribute('stroke-width') ?? 1) > 0;
+};
+
+/** Everything the hand-drawn look redraws: each stroked line or outline of the drawing and its key. */
+export function handDrawnTargets(svg) {
+  const roots = [...svg.querySelectorAll('.pedigree-viewport, .condition-legend')];
+  return roots.flatMap((r) => [...r.querySelectorAll('path, rect, circle, line, polyline, ellipse')])
+    .filter((el) => stroked(el) && !skipped(el));
 }
 
 /** @param {SVGSVGElement} svg  @param {ReturnType<import('./drawingStyle').drawingSpec>} spec */
@@ -126,38 +182,53 @@ export function applyDrawingStyle(svg, spec) {
     else t.removeAttribute('font-family');
   });
 
-  // --- the hand-drawn waver: connecting lines ---
-  const viewport = svg.querySelector('.pedigree-viewport');
-  const connectors = viewport
-    ? [...viewport.children].filter((el) => el.tagName.toLowerCase() === 'path' && !el.classList.contains('ui-only'))
-    : [];
-  connectors.forEach((p) => {
-    const d = p.getAttribute('data-d') ?? p.getAttribute('d');
-    p.setAttribute('data-d', d);
-    p.setAttribute('d', spec.hand ? sketchPath(d) : d);
-  });
-
-  // --- the hand-drawn waver: symbols ---
-  svg.querySelectorAll('.hand-filter').forEach((f) => f.remove());
-  svg.querySelectorAll(`[filter^="url(#${HAND_FILTER_ID}"]`).forEach((el) => el.removeAttribute('filter'));
+  // --- back to the drawing as the renderer made it ---
+  svg.querySelectorAll('.hand-stroke').forEach((el) => el.remove());
+  svg.querySelectorAll('[data-d]').forEach((p) => p.setAttribute('d', p.getAttribute('data-d')));
+  svg.querySelectorAll('[data-hand-hidden]').forEach((el) => { el.removeAttribute('stroke-opacity'); el.removeAttribute('data-hand-hidden'); });
   if (!spec.hand) return;
-  let defs = svg.querySelector('defs');
-  if (!defs) { defs = doc.createElementNS(SVG_NS, 'defs'); svg.insertBefore(defs, svg.firstChild); }
-  for (let i = 0; i < NODE_FILTERS; i++) {
-    defs.append(makeFilter(doc, nodeFilter(i), HAND_WAVER.seed + 11 * (i + 1), { x: -90, y: -90, width: 180, height: 180 }));
+
+  // --- every stroke drawn by hand ---
+  for (const el of handDrawnTargets(svg)) {
+    const tag = el.tagName.toLowerCase();
+    const inSymbol = !!el.closest('.node-group, .condition-legend');
+    const salt = inSymbol ? placeSalt(el) : 0;
+    const fill = el.getAttribute('fill');
+    if (tag === 'path' && !inSymbol) {
+      // a connector: the line itself takes the hand-drawn path (fill none)
+      const d = el.getAttribute('data-d') ?? el.getAttribute('d');
+      el.setAttribute('data-d', d);
+      el.setAttribute('d', sketchPath(d, { salt }));
+      continue;
+    }
+    if (tag === 'path' && (fill === 'none' || fill == null) && !el.classList.contains('pedigree-shape') && !el.classList.contains('pedigree-shape-outline')) {
+      // brackets, the proband's arrow: an open stroke, redrawn in place
+      const d = el.getAttribute('data-d') ?? el.getAttribute('d');
+      el.setAttribute('data-d', d);
+      el.setAttribute('d', sketchPath(d, { maxBow: SHAPE_BOW, salt }));
+      continue;
+    }
+    // a symbol, a slash or a bar: its exact shape keeps its fill; a hand-drawn outline goes on top
+    const d = sketchElement(el, salt);
+    if (!d) continue;
+    const pen = doc.createElementNS(SVG_NS, 'path');
+    pen.setAttribute('d', d);
+    pen.setAttribute('fill', 'none');
+    for (const a of ['stroke', 'stroke-width', 'stroke-dasharray', 'stroke-linecap', 'stroke-linejoin', 'transform']) {
+      if (el.hasAttribute(a)) pen.setAttribute(a, el.getAttribute(a));
+    }
+    pen.setAttribute('stroke-linejoin', 'round');
+    const isShape = el.classList.contains('pedigree-shape');
+    pen.setAttribute('class', `hand-stroke${isShape ? ' pedigree-shape-sketch' : ''}`);
+    el.setAttribute('stroke-opacity', '0');
+    el.setAttribute('data-hand-hidden', '1');
+    el.after(pen);
   }
-  // everything of a person but its text and the regions of its findings
-  svg.querySelectorAll('.node-group').forEach((n, i) => {
-    [...n.children].filter(wavers).forEach((el) => el.setAttribute('filter', `url(#${nodeFilter(i)})`));
-  });
-  // the symbols of the key
-  svg.querySelectorAll('.condition-legend > g').forEach((cell, i) => {
-    [...cell.children].filter(wavers).forEach((el) => el.setAttribute('filter', `url(#${nodeFilter(i + 2)})`));
-  });
 }
 
 /** An export copy keeps no helper attributes. */
 export function stripStyleHelpers(svg) {
   svg.querySelectorAll?.('[data-fs]').forEach((t) => t.removeAttribute('data-fs'));
   svg.querySelectorAll?.('[data-d]').forEach((p) => p.removeAttribute('data-d'));
+  svg.querySelectorAll?.('[data-hand-hidden]').forEach((p) => p.removeAttribute('data-hand-hidden'));
 }

@@ -356,7 +356,7 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 
 /* ── keyboard focus, visible only when the keyboard moves it ── */
 #pedigree-svg .node-group:focus { outline: none; }
-#pedigree-svg .node-group:focus-visible > .pedigree-shape { stroke: var(--select); stroke-width: 3.5; }
+#pedigree-svg .node-group:focus-visible > .pedigree-shape, #pedigree-svg .node-group:focus-visible > .pedigree-shape-sketch { stroke: var(--select); stroke-width: 3.5; }
 .radial-sector:focus, .radial-arc:focus { outline: none; }
 .radial-sector:focus-visible path, .radial-arc:focus-visible path { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
 .radial-sat:focus-visible, .quick-btn:focus-visible, .quick-text:focus-visible, .chip:focus-visible, .suggest-chip:focus-visible, .finding-glyph:focus-visible, .style-opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -399,7 +399,7 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 
 /* dragging the selected person (PedigreeCanvas.jsx) */
 #pedigree-svg .node-group.dragging { opacity: 0.75; cursor: grabbing; }
-#pedigree-svg .node-group.drop-target > .pedigree-shape { stroke: var(--select); stroke-width: 3.5; stroke-dasharray: 4 3; }
+#pedigree-svg .node-group.drop-target > .pedigree-shape, #pedigree-svg .node-group.drop-target > .pedigree-shape-sketch { stroke: var(--select); stroke-width: 3.5; stroke-dasharray: 4 3; }
 
 /* the person being worked on pulses after an edit, people just added in green (PedigreeCanvas.jsx) */
 #pedigree-svg .pulse-halo { fill: none; stroke: var(--select); stroke-width: 3; opacity: 0; transform-box: fill-box; transform-origin: center; animation: pedigree-pulse 0.75s ease-out 3; pointer-events: none; }

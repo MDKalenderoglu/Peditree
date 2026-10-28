@@ -9,13 +9,13 @@ import { join } from 'node:path';
 import {
   DRAWING_FONTS, DEFAULT_VIEW, STANDARD_FAMILY, normalizeView, applyViewChange, drawingSpec, exportSpec, STANDARD_SPEC,
 } from '../utils/drawingStyle';
-import { sketchPath, MAX_BOW } from '../utils/drawingStyleSvg';
+import { sketchPath, sketchCircle, MAX_BOW, SHAPE_BOW } from '../utils/drawingStyleSvg';
 
 const src = (p) => readFileSync(join(process.cwd(), p), 'utf8');
 
 /** Points along a path made of M / L / C / A commands (curves sampled). */
 function samplePath(d, steps = 20) {
-  const t = d.match(/[MLCA]|-?\d*\.?\d+(?:e-?\d+)?/gi);
+  const t = d.match(/[MLCAZ]|-?\d*\.?\d+(?:e-?\d+)?/gi);
   const pts = [];
   let i = 0, cx = 0, cy = 0;
   const n = () => Number(t[i++]);
@@ -23,6 +23,7 @@ function samplePath(d, steps = 20) {
     const c = t[i++];
     if (c === 'M' || c === 'L') { cx = n(); cy = n(); pts.push([cx, cy]); }
     else if (c === 'A') { for (let k = 0; k < 5; k++) n(); cx = n(); cy = n(); pts.push([cx, cy]); }
+    else if (c === 'Z') { /* closes back to the start */ }
     else if (c === 'C') {
       const [x1, y1, x2, y2, x, y] = [n(), n(), n(), n(), n(), n()];
       for (let s = 1; s <= steps; s++) {
@@ -126,11 +127,48 @@ describe('hand-drawn lines keep their meaning', () => {
     expect(sketchPath('M0,0L500,0')).toBe(sketchPath('M0,0L500,0'));
   });
 
-  it('dashed lines stay dashed and texts never waver (the renderer keeps them as they are)', () => {
+  it('slanted lines (twins, slashes, "//") bend too, ends fixed, within MAX_BOW', () => {
+    const d = 'M200,100L140,180';
+    const s = sketchPath(d);
+    expect(s.startsWith('M200,100')).toBe(true);
+    expect(s.endsWith(' 140,180')).toBe(true);
+    expect(s).toMatch(/C/);
+    // distance of every point from the straight line
+    const len = Math.hypot(60, 80);
+    for (const [x, y] of samplePath(s)) expect(Math.abs((x - 200) * 80 - (y - 100) * -60) / len).toBeLessThanOrEqual(MAX_BOW + 1e-9);
+  });
+
+  it('closed outlines (squares, diamonds, triangles) keep their corners and close', () => {
+    const s = sketchPath('M-15,-15L15,-15L15,15L-15,15Z', { maxBow: SHAPE_BOW, salt: 3 });
+    for (const corner of ['M-15,-15', ' 15,-15', ' 15,15', ' -15,15']) expect(s).toContain(corner);
+    expect(s.endsWith(' -15,-15Z')).toBe(true);
+  });
+
+  it('a hand-drawn circle is closed and never more than SHAPE_BOW from the true circle; symbols differ', () => {
+    const s = sketchCircle(0, 0, 15, 42);
+    expect(s.endsWith('Z')).toBe(true);
+    for (const [x, y] of samplePath(s, 40)) expect(Math.abs(Math.hypot(x, y) - 15)).toBeLessThanOrEqual(SHAPE_BOW + 0.15);
+    expect(sketchCircle(0, 0, 15, 42)).toBe(s);
+    expect(sketchCircle(0, 0, 15, 43)).not.toBe(s);
+  });
+
+  it('two parallel bars (infertile) bend alike', () => {
+    const a = samplePath(sketchPath('M90,224L112,224', { maxBow: SHAPE_BOW })), b = samplePath(sketchPath('M90,229L112,229', { maxBow: SHAPE_BOW }));
+    a.forEach(([x, y], k) => { expect(b[k][0]).toBeCloseTo(x, 6); expect(b[k][1] - y).toBeCloseTo(5, 6); });
+  });
+
+  it('drawn by geometry, never a pixel filter (a filter broke outlines into dashes); fills, regions and text untouched', () => {
     const svgSrc = src('src/utils/drawingStyleSvg.js');
-    expect(svgSrc).not.toMatch(/stroke-dasharray/);
-    expect(svgSrc).toMatch(/tagName\.toLowerCase\(\) !== 'text'/);
-    expect(svgSrc).toMatch(/'condition-regions'/); // the white gap between findings is not wavered
+    expect(svgSrc).not.toMatch(/feTurbulence|feDisplacementMap|setAttribute\('filter'/);
+    expect(svgSrc).toMatch(/'condition-regions'/); // the white gap between findings is not redrawn
+    expect(svgSrc).toMatch(/tag === 'text'/);
+    // the original outline is hidden, never removed; its fill stays exact
+    expect(svgSrc).toMatch(/setAttribute\('stroke-opacity', '0'\)/);
+    // a dashed line keeps its dashes
+    expect(svgSrc).toMatch(/'stroke-dasharray'/);
+    // selection, focus and drop styles reach the hand-drawn outline
+    expect(src('src/styles/app.css')).toMatch(/\.node-selected > \.pedigree-shape-sketch/);
+    expect(src('src/styles/ui.css')).toMatch(/focus-visible > \.pedigree-shape-sketch/);
   });
 
   it('the renderer applies the style after drawing; exports apply the export style to their copy', () => {

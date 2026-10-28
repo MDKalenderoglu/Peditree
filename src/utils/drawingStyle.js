@@ -5,9 +5,9 @@
  * a viewing preference, never patient data); the pedigree file is unchanged.
  *
  * Meaning never changes (CLAUDE.md constraint 9, notation spec): the hand-drawn
- * look only makes the edges of lines and symbols waver a little. Positions,
- * fills, solid / dashed / double lines and "//" stay as they are, and the
- * waver is far smaller than the gap of a double line.
+ * look only redraws lines and outlines as if by pen (drawingStyleSvg.js).
+ * Positions, fills, solid / dashed / double lines and "//" stay as they are;
+ * parallel strokes bend alike, so a double line keeps its gap.
  *
  * Text: the layout reserves room for text by its number of characters
  * (pedigree numbers, notes, the key), measured for the standard typeface.
@@ -148,6 +148,3 @@ export async function embeddedFontCss(fontId) {
   return rules.join('\n');
 }
 
-/** The waver of the symbols in the hand-drawn look: an SVG filter, the same every time (fixed seed). */
-export const HAND_FILTER_ID = 'hand-drawn';
-export const HAND_WAVER = { baseFrequency: 0.04, numOctaves: 2, seed: 7, scale: 3.2 };
