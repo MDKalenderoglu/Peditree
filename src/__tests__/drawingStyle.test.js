@@ -3,11 +3,11 @@
  * 2026-10-28): standard or hand-drawn, a choice of typefaces, kept per device.
  * The hand-drawn look must never change what the drawing says.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  DRAWING_FONTS, DEFAULT_VIEW, STANDARD_FAMILY, normalizeView, applyViewChange, drawingSpec, exportSpec, STANDARD_SPEC,
+  DRAWING_FONTS, DEFAULT_VIEW, STANDARD_FAMILY, normalizeView, applyViewChange, drawingSpec, exportSpec, STANDARD_SPEC, embeddedFontCss,
 } from '../utils/drawingStyle';
 import { sketchPath, sketchCircle, MAX_BOW, SHAPE_BOW, MARK_BOW, REGION_BOW, junctionSplitter, pathPieces } from '../utils/drawingStyleSvg';
 
@@ -234,5 +234,30 @@ describe('hand-drawn lines keep their meaning', () => {
     const ex = src('src/utils/exportUtils.js');
     expect(ex).toMatch(/if \(spec\) applyDrawingStyle\(clone, spec\)/);
     expect(ex).toMatch(/stripStyleHelpers\(clone\)/);
+  });
+});
+
+describe('the typeface inside an exported file', () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => { globalThis.fetch = realFetch; });
+
+  it('a font file that cannot be fetched is an error, never a file with a broken typeface', async () => {
+    globalThis.fetch = async () => ({ ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(8) });
+    await expect(embeddedFontCss('kalam')).rejects.toThrow(/404/);
+  });
+
+  it('a fetched font is embedded; the standard typeface needs none', async () => {
+    globalThis.fetch = async () => ({ ok: true, status: 200, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer });
+    const css = await embeddedFontCss('kalam');
+    expect(css).toMatch(/@font-face\{font-family:'Kalam'/);
+    expect(css).toMatch(/data:font\/woff2;base64,AQID/);
+    expect(await embeddedFontCss('standard')).toBe('');
+  });
+
+  it('the clinician is told when the typeface could not be put in the file (App.jsx)', () => {
+    const app = readFileSync(join(process.cwd(), 'src/App.jsx'), 'utf8');
+    expect(app).toMatch(/catch \{ fontMissing = true; \}/);
+    expect(app).toMatch(/if \(opts\.fontMissing\) lines\.push\(FONT_MISSING_TEXT\)/);
+    expect(app).toMatch(/if \(opts\.fontMissing\) setExportNotice\(FONT_MISSING_TEXT\)/);
   });
 });

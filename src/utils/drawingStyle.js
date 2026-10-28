@@ -135,7 +135,9 @@ export async function embeddedFontCss(fontId) {
   const font = fontById(fontId);
   if (!font.files) return '';
   const toData = async (url) => {
-    const buf = new Uint8Array(await (await fetch(url)).arrayBuffer());
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`font ${url}: ${res.status}`); // the caller warns the clinician (App.jsx)
+    const buf = new Uint8Array(await res.arrayBuffer());
     let bin = '';
     for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
     return `data:font/woff2;base64,${btoa(bin)}`;

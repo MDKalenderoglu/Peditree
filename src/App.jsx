@@ -86,12 +86,21 @@ function App() {
   const { view, setView } = useViewSettings();
   const drawing = React.useMemo(() => drawingSpec(view), [view]);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
-  // an export in the style the clinician chose for exports, the typeface inside the file
+  // an export in the style the clinician chose for exports, the typeface inside the file;
+  // fontMissing: the typeface could not be put in (the file then shows a system typeface elsewhere)
   const exportOpts = async (extra = {}) => {
     const spec = exportSpec(view);
     let fontCss = '';
-    try { fontCss = await embeddedFontCss(spec.fontId); } catch { /* the file falls back to a system typeface */ }
-    return { ...extra, spec, fontCss };
+    let fontMissing = false;
+    try { fontCss = await embeddedFontCss(spec.fontId); } catch { fontMissing = true; }
+    return { ...extra, spec, fontCss, fontMissing };
+  };
+  const FONT_MISSING_TEXT = 'Seçtiğiniz yazı tipi dosyaya eklenemedi. Dosya başka bir bilgisayarda açılırsa yazılar o bilgisayarın yazı tipiyle görünür.';
+  const exportNoticeFor = (assessment, opts) => {
+    const lines = [];
+    if (assessment.warnings.length > 0) lines.push(`Dışa aktarıldı — dikkat edilmesi gerekenler:\n${assessment.warnings.join('\n')}`);
+    if (opts.fontMissing) lines.push(FONT_MISSING_TEXT);
+    return lines.length ? lines.join('\n') : null;
   };
   const [exportError, setExportError] = React.useState(null);
   const [exportNotice, setExportNotice] = React.useState(null);
@@ -153,12 +162,11 @@ function App() {
     const assessment = gateExport();
     if (!assessment) return;
     try {
-      exportSVG(svgRef.current, exportFileName(doc.patientName, 'svg'), await exportOpts());
+      const opts = await exportOpts();
+      exportSVG(svgRef.current, exportFileName(doc.patientName, 'svg'), opts);
       markDownloaded();
       setExportError(null);
-      setExportNotice(assessment.warnings.length > 0
-        ? `Dışa aktarıldı — dikkat edilmesi gerekenler:\n${assessment.warnings.join('\n')}`
-        : null);
+      setExportNotice(exportNoticeFor(assessment, opts));
     } catch (err) {
       setExportNotice(null);
       setExportError(err.message || 'SVG dışa aktarılamadı.');
@@ -169,12 +177,11 @@ function App() {
     const assessment = gateExport();
     if (!assessment) return;
     try {
-      await exportPNG(svgRef.current, exportFileName(doc.patientName, 'png'), await exportOpts());
+      const opts = await exportOpts();
+      await exportPNG(svgRef.current, exportFileName(doc.patientName, 'png'), opts);
       markDownloaded();
       setExportError(null);
-      setExportNotice(assessment.warnings.length > 0
-        ? `Dışa aktarıldı — dikkat edilmesi gerekenler:\n${assessment.warnings.join('\n')}`
-        : null);
+      setExportNotice(exportNoticeFor(assessment, opts));
     } catch (err) {
       setExportNotice(null);
       setExportError(err.message || 'PNG dışa aktarılamadı.');
@@ -192,9 +199,11 @@ function App() {
     setShare({ busy: true });
     try {
       const name = (doc.patientName || '').trim();
-      const noName = new File([await pngBlob(svgRef.current, await exportOpts({ withoutPatientName: true }))], exportFileName('', 'png'), { type: 'image/png' });
-      const withName = name ? new File([await pngBlob(svgRef.current, await exportOpts())], exportFileName(name, 'png'), { type: 'image/png' }) : null;
+      const opts = await exportOpts();
+      const noName = new File([await pngBlob(svgRef.current, { ...opts, withoutPatientName: true })], exportFileName('', 'png'), { type: 'image/png' });
+      const withName = name ? new File([await pngBlob(svgRef.current, opts)], exportFileName(name, 'png'), { type: 'image/png' }) : null;
       setShare({ withName, noName, busy: false });
+      if (opts.fontMissing) setExportNotice(FONT_MISSING_TEXT);
     } catch (err) {
       setShare(null);
       setExportError(err.message || 'Paylaşım için resim hazırlanamadı.');
