@@ -14,6 +14,7 @@
  * That failure mode is why this now throws instead of returning early:
  * a missing svg is surfaced to the caller, not swallowed.
  */
+import { applyDrawingStyle, stripStyleHelpers } from './drawingStyleSvg';
 
 export class ExportError extends Error {
   constructor(message) {
@@ -47,9 +48,13 @@ function readViewBox(svg) {
  * size) and a light-grey screen background. Selection highlighting is page
  * CSS only (app.css), so it is not part of the serialized markup at all.
  *
+ * `spec` (drawingStyle.js) draws the copy in that style — the screen's, or the
+ * standard drawing when the clinician wants exports plain; `fontCss` carries
+ * the chosen typeface inside the file, so it looks the same on any computer.
+ *
  * Falls back to the element itself when it cannot be cloned (non-DOM stubs).
  */
-export function prepareExportSvg(svg, { withoutPatientName = false } = {}) {
+export function prepareExportSvg(svg, { withoutPatientName = false, spec = null, fontCss = '' } = {}) {
   if (!svg || typeof svg.cloneNode !== 'function') return svg;
   const clone = svg.cloneNode(true);
   // keyboard / screen-reader helpers of the screen are not part of the file
@@ -69,6 +74,13 @@ export function prepareExportSvg(svg, { withoutPatientName = false } = {}) {
   clone.querySelectorAll?.('.ui-only').forEach((n) => n.remove());
   const viewport = clone.querySelector('.pedigree-viewport');
   if (viewport) viewport.removeAttribute('transform');
+  if (spec) applyDrawingStyle(clone, spec);
+  stripStyleHelpers(clone);
+  if (fontCss && clone.ownerDocument) {
+    const style = clone.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'style');
+    style.textContent = fontCss;
+    (clone.querySelector('defs') || clone).prepend(style);
+  }
   if (vb && clone.ownerDocument) {
     const bg = clone.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'rect');
     bg.setAttribute('x', String(vb.x));
@@ -120,9 +132,9 @@ export function exportFileName(patientName, ext, date = new Date()) {
  * @param {SVGSVGElement} [svgElement] - the live svg node (preferred). Falls back to #pedigree-svg.
  * @throws {ExportError} if no svg element can be found.
  */
-export function exportSVG(svgElement, filename = 'pedigree.svg') {
+export function exportSVG(svgElement, filename = 'pedigree.svg', opts = {}) {
   const svg = resolveSvgElement(svgElement);
-  const source = serializeSvg(svg);
+  const source = serializeSvg(svg, opts);
   const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(source);
   triggerDownload(url, filename);
 }
@@ -187,8 +199,8 @@ export function pngBlob(svgElement, opts = {}) {
  * @param {SVGSVGElement} [svgElement] - the live svg node (preferred). Falls back to #pedigree-svg.
  * @returns {Promise<void>} resolves once the download has been triggered, rejects with ExportError on failure.
  */
-export async function exportPNG(svgElement, filename = 'pedigree.png') {
-  const blob = await pngBlob(svgElement);
+export async function exportPNG(svgElement, filename = 'pedigree.png', opts = {}) {
+  const blob = await pngBlob(svgElement, opts);
   downloadBlob(blob, filename);
 }
 

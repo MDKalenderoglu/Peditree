@@ -28,6 +28,7 @@ import { useEffect, useRef, useState, useCallback, forwardRef } from 'react';
 import * as d3 from 'd3';
 import { fillFor, REGION_ANGLES } from '../graph/conditionKey';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
+import { applyDrawingStyle } from '../utils/drawingStyleSvg';
 import { annotationAge, pregnancyLine } from '../utils/annotations';
 import { isSmallSymbol, isPregnancy, pregnancyKind, PREGNANCY_LABEL, GENETIC_TESTED, TESTED_TEXT, geneticLines } from '../graph/model';
 import { packLines } from '../utils/textWrap';
@@ -128,7 +129,7 @@ function drawStroke(g, edge, dx = 0, dy = 0) {
 // belt-and-suspenders fallback for exportUtils.js and for tests/tools
 // that query the DOM directly.
 const PedigreeCanvas = forwardRef(function PedigreeCanvas(
-  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar, patientName = '', onEditText, multiSelect = false, focusTick = 0, onNodeDrop, onBackgroundClick },
+  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar, patientName = '', onEditText, multiSelect = false, focusTick = 0, onNodeDrop, onBackgroundClick, drawing = null, cornerSlot = null },
   forwardedRef
 ) {
   const svgRef = useRef(null);
@@ -575,7 +576,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       if (pedigreeId) {
         // corner chosen above (labelAt): clear of connectors and other numbers
         const at = labelAt.get(d.id);
-        el.append('text')
+        el.append('text').attr('class', 'pedigree-number')
           .attr('x', at.dx).attr('y', at.dy).attr('text-anchor', at.anchor)
           .attr('font-size', '10px').attr('fill', '#64748b')
           .text(pedigreeId.displayId);
@@ -816,6 +817,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       });
     }
 
+    // the viewer's drawing style (standard / hand-drawn, typeface), drawingStyle.js
+    applyDrawingStyle(svgRef.current, drawing);
+
     // the arrow keys moved the selection: the focus follows it; otherwise a
     // focused person keeps the focus across the redraw
     const follow = focusTick !== focusTickRef.current && selectedNodeId;
@@ -866,7 +870,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // Store for external reset
     svg.node().__zoom_ref = zoom;
 
-  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar, patientName, startEdit, multiSelect, focusTick, onNodeDrop, onBackgroundClick]);
+  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar, patientName, startEdit, multiSelect, focusTick, onNodeDrop, onBackgroundClick, drawing]);
 
   // a menu around the selected person that needs more room slides the
   // drawing by (dx, dy) screen pixels (a narrow tablet screen)
@@ -893,6 +897,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
   return (
     <div ref={boxRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
       <div className="zoom-controls" style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 10 }}>
+        {cornerSlot}
         <button onClick={() => zoomBy(1.25)} title="Yakınlaştır" aria-label="Yakınlaştır">+</button>
         <button onClick={() => zoomBy(0.8)} title="Uzaklaştır" aria-label="Uzaklaştır">−</button>
         <button onClick={fitZoom} title="Tüm pedigriyi ekrana sığdır (0)" aria-label="Sığdır">Sığdır</button>

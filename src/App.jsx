@@ -15,7 +15,8 @@ import { nextPerson, RING_KEYS } from './utils/keyboardNav';
 import { toPed } from './graph/ped';
 import { TEMPLATE_GROUPS } from './graph/templates';
 import { withGeneticLine } from './graph/model';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2, MoreHorizontal, Printer } from 'lucide-react';
+import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, DRAWING_FONTS } from './utils/drawingStyle';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2, MoreHorizontal, Printer, SlidersHorizontal } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
 // the clinician's logo (docs/brand/peditree-logo.webp): the tree, and the name in its own lettering
@@ -80,6 +81,18 @@ function App() {
   // request 2026-10-27); selecting a person, the same one too, brings it back
   const [ringHidden, setRingHidden] = React.useState(false);
   React.useEffect(() => { setRingHidden(false); }, [selectedId]);
+  // how the drawing looks: chosen by whoever looks at it, kept on this device
+  // (clinician request 2026-10-28; drawingStyle.js)
+  const { view, setView } = useViewSettings();
+  const drawing = React.useMemo(() => drawingSpec(view), [view]);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  // an export in the style the clinician chose for exports, the typeface inside the file
+  const exportOpts = async (extra = {}) => {
+    const spec = exportSpec(view);
+    let fontCss = '';
+    try { fontCss = await embeddedFontCss(spec.fontId); } catch { /* the file falls back to a system typeface */ }
+    return { ...extra, spec, fontCss };
+  };
   const [exportError, setExportError] = React.useState(null);
   const [exportNotice, setExportNotice] = React.useState(null);
   const svgRef = React.useRef(null);
@@ -136,11 +149,11 @@ function App() {
     return assessment;
   };
 
-  const handleExportSVG = () => {
+  const handleExportSVG = async () => {
     const assessment = gateExport();
     if (!assessment) return;
     try {
-      exportSVG(svgRef.current, exportFileName(doc.patientName, 'svg'));
+      exportSVG(svgRef.current, exportFileName(doc.patientName, 'svg'), await exportOpts());
       markDownloaded();
       setExportError(null);
       setExportNotice(assessment.warnings.length > 0
@@ -156,7 +169,7 @@ function App() {
     const assessment = gateExport();
     if (!assessment) return;
     try {
-      await exportPNG(svgRef.current, exportFileName(doc.patientName, 'png'));
+      await exportPNG(svgRef.current, exportFileName(doc.patientName, 'png'), await exportOpts());
       markDownloaded();
       setExportError(null);
       setExportNotice(assessment.warnings.length > 0
@@ -179,8 +192,8 @@ function App() {
     setShare({ busy: true });
     try {
       const name = (doc.patientName || '').trim();
-      const noName = new File([await pngBlob(svgRef.current, { withoutPatientName: true })], exportFileName('', 'png'), { type: 'image/png' });
-      const withName = name ? new File([await pngBlob(svgRef.current)], exportFileName(name, 'png'), { type: 'image/png' }) : null;
+      const noName = new File([await pngBlob(svgRef.current, await exportOpts({ withoutPatientName: true }))], exportFileName('', 'png'), { type: 'image/png' });
+      const withName = name ? new File([await pngBlob(svgRef.current, await exportOpts())], exportFileName(name, 'png'), { type: 'image/png' }) : null;
       setShare({ withName, noName, busy: false });
     } catch (err) {
       setShare(null);
@@ -207,7 +220,7 @@ function App() {
   const handlePrint = () => {
     const assessment = gateExport();
     if (!assessment || !svgRef.current || !printRef.current) return;
-    const clone = prepareExportSvg(svgRef.current);
+    const clone = prepareExportSvg(svgRef.current, { spec: exportSpec(view) });
     clone.removeAttribute('width');
     clone.removeAttribute('height');
     clone.setAttribute('preserveAspectRatio', 'xMidYMid meet');
@@ -257,7 +270,7 @@ function App() {
 
   // the toolbar's pop-up windows (Yeni, Paylaş, Diğer, keyboard help) close
   // on a click anywhere outside them, or Escape (clinician request 2026-10-27)
-  const popupOpen = showKeys || newMenu || more || !!share;
+  const popupOpen = showKeys || newMenu || more || !!share || settingsOpen;
   const popupClosedAt = React.useRef(-Infinity);
   React.useEffect(() => {
     if (!popupOpen) return;
@@ -266,6 +279,7 @@ function App() {
       if (except !== 'new') setNewMenu(false);
       if (except !== 'more') setMore(false);
       if (except !== 'share') setShare(null);
+      if (except !== 'settings') setSettingsOpen(false);
     };
     const onDown = (e) => {
       const inside = e.target.closest && e.target.closest('[data-popup]');
@@ -630,6 +644,59 @@ function App() {
           focusTick={focusTick}
           onNodeSelect={handleNodeSelect}
           onBackgroundClick={onBackgroundClick}
+          drawing={drawing}
+          cornerSlot={(
+            <div className="keys-wrap" data-popup="settings">
+              <button className={settingsOpen ? 'on' : undefined} onClick={() => setSettingsOpen(v => !v)} aria-expanded={settingsOpen}
+                title="Ayarlar: çizimin görünümü, yazı tipi ve indirilen resimler">
+                <SlidersHorizontal size={15} /> Ayarlar
+              </button>
+              {settingsOpen && (
+                <div className="keys-popover share-popover settings-popover" role="dialog" aria-label="Ayarlar">
+                  <div className="keys-title">Ayarlar</div>
+                  <div className="settings-group">
+                    <div className="more-title">Çizimin görünümü</div>
+                    <div className="segmented" role="radiogroup" aria-label="Çizimin görünümü">
+                      {[['standard', 'Standart'], ['hand', 'El çizimi']].map(([v, t]) => (
+                        <button key={v} role="radio" aria-checked={view.drawStyle === v} className={view.drawStyle === v ? 'on' : undefined}
+                          onClick={() => setView({ drawStyle: v })}>{t}</button>
+                      ))}
+                    </div>
+                    <p className="share-note">El çiziminde çizgiler ve semboller kalemle çizilmiş gibi hafifçe titrer. Sembollerin ve çizgilerin anlamı değişmez.</p>
+                  </div>
+                  <div className="settings-group">
+                    <div className="more-title">Çizimdeki yazıların yazı tipi</div>
+                    {[['plain', 'Düz yazı tipleri'], ['hand', 'El yazısı tipleri']].map(([group, title]) => (
+                      <div key={group} className="font-list" role="radiogroup" aria-label={title}>
+                        <span className="field-hint">{title}</span>
+                        {DRAWING_FONTS.filter(f => f.group === group).map(f => (
+                          <button key={f.id} role="radio" aria-checked={view.fontId === f.id} className={`font-option${view.fontId === f.id ? ' on' : ''}`}
+                            onClick={() => setView({ fontId: f.id })}>
+                            <span className="font-sample" style={{ fontFamily: f.family }}>II-3 · 45 y · Ayşe Gül</span>
+                            <span className="font-name">{f.label}{f.note ? ` — ${f.note}` : ''}</span>
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                    <label className="check">
+                      <input type="checkbox" checked={view.plainNumbers} onChange={e => setView({ plainNumbers: e.target.checked })} />
+                      Pedigri numaraları (I-1, II-3) el yazısında da düz yazılsın
+                    </label>
+                  </div>
+                  <div className="settings-group">
+                    <div className="more-title">İndirme, paylaşma ve yazdırma</div>
+                    <div className="segmented" role="radiogroup" aria-label="İndirilen resmin görünümü">
+                      {[['screen', 'Ekrandaki gibi'], ['standard', 'Her zaman standart']].map(([v, t]) => (
+                        <button key={v} role="radio" aria-checked={view.exportAs === v} className={view.exportAs === v ? 'on' : undefined}
+                          onClick={() => setView({ exportAs: v })}>{t}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="share-note">Bu ayarlar yalnızca bu cihazda saklanır. Pedigri dosyası değişmez; dosyayı açan başka biri kendi ayarıyla görür.</p>
+                </div>
+              )}
+            </div>
+          )}
           onUnionSelect={selectUnion}
           conditionKey={pedigreeData.conditionKey || []}
           patientName={doc.patientName || ''}
