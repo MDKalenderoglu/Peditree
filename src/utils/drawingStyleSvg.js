@@ -335,7 +335,9 @@ export function applyDrawingStyle(svg, spec) {
     pen.setAttribute('d', sketchCircle(num(c, 'cx'), num(c, 'cy'), num(c, 'r'), placeSalt(c)));
     pen.setAttribute('fill', c.getAttribute('fill'));
     pen.setAttribute('class', `hand-stroke ${c.getAttribute('class') || ''}`.trim());
+    // its outline too: the page stylesheet strokes every circle of a symbol (app.css)
     c.setAttribute('fill-opacity', '0');
+    c.setAttribute('stroke-opacity', '0');
     c.setAttribute('data-hand-hidden', '1');
     c.after(pen);
   });

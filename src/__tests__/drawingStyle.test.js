@@ -219,6 +219,8 @@ describe('hand-drawn lines keep their meaning', () => {
     expect(svgSrc).toMatch(/setAttribute\('stroke-opacity', '0'\)/);
     // a carrier's dot: a hand-drawn dot of the same fill, the original hidden
     expect(svgSrc).toMatch(/setAttribute\('fill-opacity', '0'\)/);
+    // the original dot's outline (page stylesheet) is hidden too, or a stiff ring stays around the hand-drawn dot
+    expect(svgSrc).toMatch(/setAttribute\('fill-opacity', '0'\);\n\s*c\.setAttribute\('stroke-opacity', '0'\)/);
     expect(src('src/styles/app.css')).toMatch(/\.condition-regions path\.region-divider-sketch \{\s*stroke: #1e293b;/);
     // a dashed line keeps its dashes
     expect(svgSrc).toMatch(/'stroke-dasharray'/);
