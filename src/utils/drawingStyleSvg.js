@@ -16,8 +16,12 @@
  *   parallel strokes (a double line, the two bars of "infertile") bend alike
  *   and keep their gap.
  * - A symbol keeps its exact fill; only its outline is drawn by hand (the
- *   original outline is hidden, never removed). The regions of findings, their
- *   white separating gap and all text are left exactly as they are.
+ *   original outline is hidden, never removed). The lines dividing a symbol
+ *   into findings and the edges of the findings' sectors are drawn alike, so
+ *   the white gap between two findings runs along its divider; a carrier's
+ *   dot is a hand-drawn dot of the same fill. Text is left as it is.
+ * - Every piece bends visibly (at least 1 px); slashes across a symbol or a
+ *   relationship line up to MARK_BOW.
  *
  * Idempotent and reversible: original font sizes are kept in data-fs, original
  * paths in data-d; hand-drawn outlines carry the class hand-stroke.
@@ -29,6 +33,12 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 export const MAX_BOW = 2.2;
 /** Largest bow of a symbol's outline, px (outline width 2). */
 export const SHAPE_BOW = 1.2;
+/** Largest bow of a mark across or beside a symbol: the deceased / TOP slash, "//" of a separation. */
+export const MARK_BOW = 2.4;
+/** Largest bow of the lines dividing a symbol into findings, and of the white gap that runs with them. */
+export const REGION_BOW = 1;
+/** Every piece of 5 px or more bends at least this much (or its largest bow, if smaller): visibly drawn by hand. */
+const MIN_BOW = 1;
 
 // a small, fixed pseudo-random number in [-1, 1] for a place on the drawing
 function wobbleAt(a, b, salt) {
@@ -40,29 +50,48 @@ function wobbleAt(a, b, salt) {
 const f2 = (v) => +v.toFixed(2);
 
 /** One straight piece (x0,y0)→(x1,y1) as cubic curves, ends fixed. */
-function sketchPiece(x0, y0, x1, y1, { maxBow, salt }) {
+function sketchPiece(x0, y0, x1, y1, { maxBow, salt, rel = 0.06 }) {
   const len = Math.hypot(x1 - x0, y1 - y0);
-  if (len < 8) return `L${f2(x1)},${f2(y1)}`;
+  if (len < 5) return `L${f2(x1)},${f2(y1)}`;
+  // drawn the same whichever end it starts from (a region's edge and the line dividing it coincide)
+  const EPS = 1e-6;
+  if (x1 - x0 < -EPS || (Math.abs(x1 - x0) <= EPS && y1 < y0)) {
+    const back = sketchPiece(x1, y1, x0, y0, { maxBow, salt, rel });
+    return reverseCurves(x1, y1, back);
+  }
   const ux = (x1 - x0) / len, uy = (y1 - y0) / len;
   // the side a bow goes to: one fixed normal per direction (the same for parallel strokes)
   let nx = -uy, ny = ux;
-  if (nx < 0 || (nx === 0 && ny < 0)) { nx = -nx; ny = -ny; }
+  if (nx < -1e-9 || (Math.abs(nx) <= 1e-9 && ny < 0)) { nx = -nx; ny = -ny; }
   // where the piece runs along its length (not across it): equal for parallel strokes
   const along = Math.min(x0 * Math.abs(ux) + y0 * Math.abs(uy), x1 * Math.abs(ux) + y1 * Math.abs(uy));
-  const n = Math.max(1, Math.round(len / 55));
+  const n = Math.max(1, Math.round(len / 45));
   const seg = len / n;
-  const amp = Math.min(maxBow, len * 0.05);
+  const amp = Math.min(maxBow, Math.max(MIN_BOW, len * rel));
   let out = '';
   for (let k = 0; k < n; k++) {
     const p0 = [x0 + (x1 - x0) * (k / n), y0 + (y1 - y0) * (k / n)];
     const p1 = [x0 + (x1 - x0) * ((k + 1) / n), y0 + (y1 - y0) * ((k + 1) / n)];
     const key = along + Math.round(seg * k);
-    const o1 = amp * wobbleAt(key, len, salt + 1), o2 = amp * wobbleAt(key, len, salt + 2);
+    // a bow of at least 2/3 of amp, at most amp (a cubic's peak is 3/4 of its larger control offset)
+    const w1 = wobbleAt(key, len, salt + 1), w2 = wobbleAt(key, len, salt + 2);
+    const peak = amp * (0.66 + 0.34 * Math.abs(w1));
+    const o1 = (w1 < 0 ? -1 : 1) * peak / 0.75;
+    const o2 = o1 * (0.55 + 0.45 * Math.abs(w2));
     const at = (t, o) => [p0[0] + (p1[0] - p0[0]) * t + nx * o, p0[1] + (p1[1] - p0[1]) * t + ny * o];
     const [c1, c2] = [at(1 / 3, o1), at(2 / 3, o2)];
     out += `C${f2(c1[0])},${f2(c1[1])} ${f2(c2[0])},${f2(c2[1])} ${f2(p1[0])},${f2(p1[1])}`;
   }
   return out;
+}
+
+// "C c1 c2 p …" from (sx, sy), traversed backwards
+function reverseCurves(sx, sy, d) {
+  const n = (d.match(/-?\d*\.?\d+(?:e-?\d+)?/g) || []).map(Number);
+  const curves = [];
+  let px = sx, py = sy;
+  for (let i = 0; i + 5 < n.length; i += 6) { curves.push([px, py, n[i], n[i + 1], n[i + 2], n[i + 3], n[i + 4], n[i + 5]]); px = n[i + 4]; py = n[i + 5]; }
+  return curves.reverse().map(([ax, ay, c1x, c1y, c2x, c2y]) => `C${f2(c2x)},${f2(c2y)} ${f2(c1x)},${f2(c1y)} ${f2(ax)},${f2(ay)}`).join('');
 }
 
 /** A straight piece split at its junctions (fractions 0 < t < 1, ascending), each part bent on its own. */
@@ -84,7 +113,7 @@ function sketchPieceThrough(x0, y0, x1, y1, ts, opts) {
  * stay exactly in place (where another line meets it), as fractions along it.
  * Returns the path unchanged when it holds anything else.
  */
-export function sketchPath(d, { maxBow = MAX_BOW, salt = 0, splitsFor = null } = {}) {
+export function sketchPath(d, { maxBow = MAX_BOW, salt = 0, splitsFor = null, rel = 0.06 } = {}) {
   const tokens = String(d).match(/[MLAZ]|-?\d*\.?\d+(?:e-?\d+)?/gi);
   if (!tokens) return d;
   let out = '';
@@ -95,7 +124,7 @@ export function sketchPath(d, { maxBow = MAX_BOW, salt = 0, splitsFor = null } =
     if (cmd === 'M') { cx = sx = num(); cy = sy = num(); out += `M${f2(cx)},${f2(cy)}`; }
     else if (cmd === 'L') {
       const x = num(), y = num();
-      out += sketchPieceThrough(cx, cy, x, y, splitsFor ? splitsFor(cx, cy, x, y) : [], { maxBow, salt });
+      out += sketchPieceThrough(cx, cy, x, y, splitsFor ? splitsFor(cx, cy, x, y) : [], { maxBow, salt, rel });
       cx = x; cy = y;
     }
     else if (cmd === 'A') {
@@ -103,7 +132,7 @@ export function sketchPath(d, { maxBow = MAX_BOW, salt = 0, splitsFor = null } =
       out += `A${a.slice(0, 5).join(' ')} ${f2(a[5])},${f2(a[6])}`;
       cx = a[5]; cy = a[6];
     } else if (cmd === 'Z' || cmd === 'z') {
-      out += `${sketchPiece(cx, cy, sx, sy, { maxBow, salt })}Z`;
+      out += `${sketchPiece(cx, cy, sx, sy, { maxBow, salt, rel })}Z`;
       cx = sx; cy = sy;
     } else return d;
   }
@@ -201,7 +230,8 @@ export function sketchElement(el, salt = 0) {
     return sketchPath(`M${x},${y}L${x + w},${y}L${x + w},${y + h}L${x},${y + h}Z`, { maxBow: SHAPE_BOW, salt });
   }
   if (tag === 'line') {
-    return sketchPath(`M${num(el, 'x1')},${num(el, 'y1')}L${num(el, 'x2')},${num(el, 'y2')}`, { maxBow: SHAPE_BOW, salt });
+    // a slash is short: it bends relatively more, to read as drawn by hand
+    return sketchPath(`M${num(el, 'x1')},${num(el, 'y1')}L${num(el, 'x2')},${num(el, 'y2')}`, { maxBow: MARK_BOW, salt, rel: 0.1 });
   }
   if (tag === 'path') return sketchPath(el.getAttribute('d'), { maxBow: SHAPE_BOW, salt });
   return null;
@@ -259,7 +289,7 @@ export function applyDrawingStyle(svg, spec) {
   // --- back to the drawing as the renderer made it ---
   svg.querySelectorAll('.hand-stroke').forEach((el) => el.remove());
   svg.querySelectorAll('[data-d]').forEach((p) => p.setAttribute('d', p.getAttribute('data-d')));
-  svg.querySelectorAll('[data-hand-hidden]').forEach((el) => { el.removeAttribute('stroke-opacity'); el.removeAttribute('data-hand-hidden'); });
+  svg.querySelectorAll('[data-hand-hidden]').forEach((el) => { el.removeAttribute('stroke-opacity'); el.removeAttribute('fill-opacity'); el.removeAttribute('data-hand-hidden'); });
   if (!spec.hand) return;
 
   // --- every stroke drawn by hand ---
@@ -271,6 +301,45 @@ export function applyDrawingStyle(svg, spec) {
       ? [[num(el, 'x1'), num(el, 'y1'), num(el, 'x2'), num(el, 'y2')]]
       : pathPieces(el.getAttribute('data-d') ?? el.getAttribute('d'))));
   const splitsFor = junctionSplitter(connectorPieces);
+  // the regions of findings: their dividing lines and the edges of their sectors
+  // are the same lines, drawn alike, so the white gap runs along the divider
+  svg.querySelectorAll('.condition-regions').forEach((group) => {
+    const salt = placeSalt(group);
+    const dividers = [...group.querySelectorAll(':scope > line')];
+    const sectors = [...group.querySelectorAll(':scope > path')];
+    const pieces = [
+      ...dividers.map((l) => [num(l, 'x1'), num(l, 'y1'), num(l, 'x2'), num(l, 'y2')]),
+      ...sectors.flatMap((p) => pathPieces(p.getAttribute('data-d') ?? p.getAttribute('d'))),
+    ];
+    const local = junctionSplitter(pieces);
+    sectors.forEach((p) => {
+      const d = p.getAttribute('data-d') ?? p.getAttribute('d');
+      p.setAttribute('data-d', d);
+      p.setAttribute('d', sketchPath(d, { maxBow: REGION_BOW, salt, splitsFor: local }));
+    });
+    dividers.forEach((l) => {
+      const pen = doc.createElementNS(SVG_NS, 'path');
+      pen.setAttribute('d', sketchPath(`M${num(l, 'x1')},${num(l, 'y1')}L${num(l, 'x2')},${num(l, 'y2')}`, { maxBow: REGION_BOW, salt, splitsFor: local }));
+      pen.setAttribute('fill', 'none');
+      for (const a of ['stroke', 'stroke-width']) if (l.hasAttribute(a)) pen.setAttribute(a, l.getAttribute(a));
+      pen.setAttribute('class', 'hand-stroke region-divider-sketch');
+      l.setAttribute('stroke-opacity', '0');
+      l.setAttribute('data-hand-hidden', '1');
+      l.after(pen);
+    });
+  });
+  // filled marks without an outline (the carrier's dot): a hand-drawn dot of the same fill
+  svg.querySelectorAll('.node-group > circle:not([stroke]), .condition-legend circle:not([stroke])').forEach((c) => {
+    if (skipped(c) || !c.getAttribute('fill') || c.getAttribute('fill') === 'none') return;
+    const pen = doc.createElementNS(SVG_NS, 'path');
+    pen.setAttribute('d', sketchCircle(num(c, 'cx'), num(c, 'cy'), num(c, 'r'), placeSalt(c)));
+    pen.setAttribute('fill', c.getAttribute('fill'));
+    pen.setAttribute('class', `hand-stroke ${c.getAttribute('class') || ''}`.trim());
+    c.setAttribute('fill-opacity', '0');
+    c.setAttribute('data-hand-hidden', '1');
+    c.after(pen);
+  });
+
   for (const el of handDrawnTargets(svg)) {
     const tag = el.tagName.toLowerCase();
     const inSymbol = !!el.closest('.node-group, .condition-legend');
@@ -291,9 +360,10 @@ export function applyDrawingStyle(svg, spec) {
       continue;
     }
     // a symbol, a slash or a bar: its exact shape keeps its fill; a hand-drawn outline goes on top
+    // childless bars meet their stem: junction-aware; slashes and symbols: on their own
     const d = tag === 'line' && isConnector(el) && !el.classList.contains('relationship-ended')
       ? sketchPath(`M${num(el, 'x1')},${num(el, 'y1')}L${num(el, 'x2')},${num(el, 'y2')}`, { maxBow: SHAPE_BOW, splitsFor })
-      : sketchElement(el, salt);
+      : sketchElement(el, el.classList.contains('relationship-ended') ? Math.round(num(el, 'x1') * 3 + num(el, 'y1')) : salt);
     if (!d) continue;
     const pen = doc.createElementNS(SVG_NS, 'path');
     pen.setAttribute('d', d);

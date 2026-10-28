@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import {
   DRAWING_FONTS, DEFAULT_VIEW, STANDARD_FAMILY, normalizeView, applyViewChange, drawingSpec, exportSpec, STANDARD_SPEC,
 } from '../utils/drawingStyle';
-import { sketchPath, sketchCircle, MAX_BOW, SHAPE_BOW, junctionSplitter, pathPieces } from '../utils/drawingStyleSvg';
+import { sketchPath, sketchCircle, MAX_BOW, SHAPE_BOW, MARK_BOW, REGION_BOW, junctionSplitter, pathPieces } from '../utils/drawingStyleSvg';
 
 const src = (p) => readFileSync(join(process.cwd(), p), 'utf8');
 
@@ -99,7 +99,7 @@ describe('hand-drawn lines keep their meaning', () => {
     expect(s).toContain('A6 6 0 0 1 102,50'); // the line jump, as it was
     expect(s.endsWith(' 300,50')).toBe(true);
     expect(s).toMatch(/C/);
-    expect(sketchPath('M0,0L5,0')).toBe('M0,0L5,0'); // too short to bend
+    expect(sketchPath('M0,0L4,0')).toBe('M0,0L4,0'); // too short to bend (under 5 px)
   });
 
   it('bends at most MAX_BOW px sideways', () => {
@@ -182,13 +182,44 @@ describe('hand-drawn lines keep their meaning', () => {
     expect(pts.some(([x, y]) => Math.hypot(x - 175, y - 130) < 1e-6)).toBe(true);
   });
 
+  it('every piece visibly bends: at least 2/3 of its allowed bow (slashes of deceased, TOP and separation too)', () => {
+    const bowOf = (d, [x0, y0, x1, y1]) => {
+      const L = Math.hypot(x1 - x0, y1 - y0);
+      return Math.max(...samplePath(d, 60).map(([x, y]) => Math.abs((x - x0) * (y1 - y0) - (y - y0) * (x1 - x0)) / L));
+    };
+    // a deceased slash (68 px, two pieces) and a separation slash (20 px), as sketchElement draws them
+    const slash = sketchPath('M-24,-24L24,24', { maxBow: MARK_BOW, rel: 0.1 });
+    expect(bowOf(slash, [-24, -24, 24, 24])).toBeGreaterThan(1.2);
+    expect(bowOf(slash, [-24, -24, 24, 24])).toBeLessThanOrEqual(MARK_BOW + 1e-9);
+    const sep = sketchPath('M274.5,408L286.5,392', { maxBow: MARK_BOW, rel: 0.1 });
+    expect(bowOf(sep, [274.5, 408, 286.5, 392])).toBeGreaterThan(1);
+    // a union line
+    expect(bowOf(sketchPath('M100,50L170,50'), [100, 50, 170, 50])).toBeGreaterThan(0.6);
+  });
+
+  it("a finding's sector edge and the line dividing the symbol bend alike: the white gap stays on the divider", () => {
+    const R = 30.6;
+    const sector = `M0,0L${R * Math.cos(-Math.PI / 2)},${R * Math.sin(-Math.PI / 2)}A${R},${R} 0 0 1 ${R},0Z`;
+    const dividers = [`M0,${-R}L0,${R}`, `M${-R},0L${R},0`];
+    const splitsFor = junctionSplitter([...dividers, sector].flatMap(pathPieces));
+    const sec = samplePath(sketchPath(sector, { maxBow: REGION_BOW, salt: 9, splitsFor }), 30);
+    const div = dividers.flatMap(d => samplePath(sketchPath(d, { maxBow: REGION_BOW, salt: 9, splitsFor }), 60));
+    // every point of the sector's straight edges lies on a divider (the arc is outside the symbol)
+    for (const [x, y] of sec.filter(([x, y]) => Math.hypot(x, y) < 17)) {
+      expect(Math.min(...div.map(([a, b]) => Math.hypot(a - x, b - y)))).toBeLessThan(0.15);
+    }
+  });
+
   it('drawn by geometry, never a pixel filter (a filter broke outlines into dashes); fills, regions and text untouched', () => {
     const svgSrc = src('src/utils/drawingStyleSvg.js');
     expect(svgSrc).not.toMatch(/feTurbulence|feDisplacementMap|setAttribute\('filter'/);
-    expect(svgSrc).toMatch(/'condition-regions'/); // the white gap between findings is not redrawn
+    expect(svgSrc).toMatch(/querySelectorAll\('\.condition-regions'\)/); // regions: divider and sector edges drawn alike
     expect(svgSrc).toMatch(/tag === 'text'/);
     // the original outline is hidden, never removed; its fill stays exact
     expect(svgSrc).toMatch(/setAttribute\('stroke-opacity', '0'\)/);
+    // a carrier's dot: a hand-drawn dot of the same fill, the original hidden
+    expect(svgSrc).toMatch(/setAttribute\('fill-opacity', '0'\)/);
+    expect(src('src/styles/app.css')).toMatch(/\.condition-regions path\.region-divider-sketch \{\s*stroke: #1e293b;/);
     // a dashed line keeps its dashes
     expect(svgSrc).toMatch(/'stroke-dasharray'/);
     // selection, focus and drop styles reach the hand-drawn outline

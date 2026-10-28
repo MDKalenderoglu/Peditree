@@ -109,6 +109,11 @@ body {
   stroke: #ffffff;
   stroke-width: 2.4px;
 }
+/* …but the hand-drawn dividing lines (drawingStyleSvg.js) stay dark and thin, as the lines they redraw */
+.node-group .condition-regions path.region-divider-sketch {
+  stroke: #1e293b;
+  stroke-width: 1px;
+}
 
 .node-affected rect,
 .node-affected circle,
