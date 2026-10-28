@@ -335,8 +335,10 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // (clinician feedback 2026-10-28).
     const DOUBLE_OFFSET = 2;
     const doubleLevels = edges.filter(e => (e.type === 'consanguineousUnion' || e.type === 'consanguineousUnionUnresolved') && e.y1 === e.y2);
-    const onDouble = (x, y) => doubleLevels.some(e => Math.abs(e.y1 - y) < 0.5 && x >= Math.min(e.x1, e.x2) - 0.5 && x <= Math.max(e.x1, e.x2) + 0.5);
-    const belowDouble = (x, y) => (onDouble(x, y) ? y + DOUBLE_OFFSET : y);
+    // only the line's own union counts (unionId; the fallback engines may leave it out)
+    const sameUnion = (e, unionId) => !unionId || !e.unionId || e.unionId === unionId;
+    const onDouble = (x, y, unionId) => doubleLevels.some(e => sameUnion(e, unionId) && Math.abs(e.y1 - y) < 0.5 && x >= Math.min(e.x1, e.x2) - 0.5 && x <= Math.max(e.x1, e.x2) + 0.5);
+    const belowDouble = (x, y, unionId) => (onDouble(x, y, unionId) ? y + DOUBLE_OFFSET : y);
     edges.forEach(edge => {
       switch (edge.type) {
         case 'union':
@@ -376,8 +378,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         case 'childlessDrop':
           // from the relationship line down: from its lower stroke when it is double
           drawStroke(g, edge.y1 <= edge.y2
-            ? { ...edge, y1: belowDouble(edge.x1, edge.y1) }
-            : { ...edge, y2: belowDouble(edge.x2, edge.y2) });
+            ? { ...edge, y1: belowDouble(edge.x1, edge.y1, edge.unionId) }
+            : { ...edge, y2: belowDouble(edge.x2, edge.y2, edge.unionId) });
           break;
 
         case 'sibship':
@@ -420,7 +422,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // No children (one bar) / infertile (two bars), NSGC; the reason below
     edges.filter(e => e.type === 'childless').forEach(e => {
       const m = g.append('g').attr('class', 'childless-mark');
-      m.append('line').attr('x1', e.x).attr('y1', belowDouble(e.x, e.y)).attr('x2', e.x).attr('y2', e.y + 24).attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5);
+      m.append('line').attr('x1', e.x).attr('y1', belowDouble(e.x, e.y, e.unionId)).attr('x2', e.x).attr('y2', e.y + 24).attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5);
       m.append('line').attr('x1', e.x - 11).attr('y1', e.y + 24).attr('x2', e.x + 11).attr('y2', e.y + 24).attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5);
       if (e.kind === 'infertile') m.append('line').attr('x1', e.x - 11).attr('y1', e.y + 29).attr('x2', e.x + 11).attr('y2', e.y + 29).attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5);
       if (e.reason) {

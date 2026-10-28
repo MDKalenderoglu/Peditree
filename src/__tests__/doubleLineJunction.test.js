@@ -23,15 +23,20 @@ describe('lines leaving a double line', () => {
   it('a line of descent starts at the lower stroke of a double line', () => {
     const block = src.slice(src.indexOf("case 'parentChildDrop':"), src.indexOf("case 'sibship':"));
     expect(block).toMatch(/case 'childlessDrop':/);
-    expect(block).toMatch(/belowDouble\(edge\.x1, edge\.y1\)/);
+    expect(block).toMatch(/belowDouble\(edge\.x1, edge\.y1, edge\.unionId\)/);
   });
 
   it('the childless / infertile mark starts there too', () => {
-    expect(src).toMatch(/m\.append\('line'\)\.attr\('x1', e\.x\)\.attr\('y1', belowDouble\(e\.x, e\.y\)\)/);
+    expect(src).toMatch(/m\.append\('line'\)\.attr\('x1', e\.x\)\.attr\('y1', belowDouble\(e\.x, e\.y, e\.unionId\)\)/);
+  });
+
+  it('only the line\'s own union counts: another couple\'s double line at the same point moves nothing (review finding)', () => {
+    expect(src).toMatch(/const sameUnion = \(e, unionId\) => !unionId \|\| !e\.unionId \|\| e\.unionId === unionId;/);
+    expect(src).toMatch(/doubleLevels\.some\(e => sameUnion\(e, unionId\) &&/);
   });
 
   it('only a point on a horizontal double line moves; every other line stays where the layout put it', () => {
-    expect(src).toMatch(/const belowDouble = \(x, y\) => \(onDouble\(x, y\) \? y \+ DOUBLE_OFFSET : y\);/);
+    expect(src).toMatch(/const belowDouble = \(x, y, unionId\) => \(onDouble\(x, y, unionId\) \? y \+ DOUBLE_OFFSET : y\);/);
     expect(src).toMatch(/consanguineousUnionUnresolved'\) && e\.y1 === e\.y2\)/);
   });
 });
