@@ -329,6 +329,14 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // =====================
     // DRAW EDGES
     // =====================
+    // A double line's strokes lie 2 px above and below the relationship
+    // line's level. A line leaving it downwards (line of descent, childless
+    // mark) starts at the lower stroke, never in the gap between the two
+    // (clinician feedback 2026-10-28).
+    const DOUBLE_OFFSET = 2;
+    const doubleLevels = edges.filter(e => (e.type === 'consanguineousUnion' || e.type === 'consanguineousUnionUnresolved') && e.y1 === e.y2);
+    const onDouble = (x, y) => doubleLevels.some(e => Math.abs(e.y1 - y) < 0.5 && x >= Math.min(e.x1, e.x2) - 0.5 && x <= Math.max(e.x1, e.x2) + 0.5);
+    const belowDouble = (x, y) => (onDouble(x, y) ? y + DOUBLE_OFFSET : y);
     edges.forEach(edge => {
       switch (edge.type) {
         case 'union':
@@ -360,14 +368,20 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           // The two strokes are offset perpendicular to the segment, so a
           // vertical piece of a routed relationship line stays a visible
           // double line too.
-          if (edge.x1 === edge.x2) { drawStroke(g, edge, -2, 0); drawStroke(g, edge, 2, 0); }
-          else { drawStroke(g, edge, 0, -2); drawStroke(g, edge, 0, 2); }
+          if (edge.x1 === edge.x2) { drawStroke(g, edge, -DOUBLE_OFFSET, 0); drawStroke(g, edge, DOUBLE_OFFSET, 0); }
+          else { drawStroke(g, edge, 0, -DOUBLE_OFFSET); drawStroke(g, edge, 0, DOUBLE_OFFSET); }
+          break;
+
+        case 'parentChildDrop':
+        case 'childlessDrop':
+          // from the relationship line down: from its lower stroke when it is double
+          drawStroke(g, edge.y1 <= edge.y2
+            ? { ...edge, y1: belowDouble(edge.x1, edge.y1) }
+            : { ...edge, y2: belowDouble(edge.x2, edge.y2) });
           break;
 
         case 'sibship':
-        case 'parentChildDrop':
         case 'childStem':
-        case 'childlessDrop':
         case 'childlessBar':
           drawStroke(g, edge);
           break;
@@ -406,7 +420,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // No children (one bar) / infertile (two bars), NSGC; the reason below
     edges.filter(e => e.type === 'childless').forEach(e => {
       const m = g.append('g').attr('class', 'childless-mark');
-      m.append('line').attr('x1', e.x).attr('y1', e.y).attr('x2', e.x).attr('y2', e.y + 24).attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5);
+      m.append('line').attr('x1', e.x).attr('y1', belowDouble(e.x, e.y)).attr('x2', e.x).attr('y2', e.y + 24).attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5);
       m.append('line').attr('x1', e.x - 11).attr('y1', e.y + 24).attr('x2', e.x + 11).attr('y2', e.y + 24).attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5);
       if (e.kind === 'infertile') m.append('line').attr('x1', e.x - 11).attr('y1', e.y + 29).attr('x2', e.x + 11).attr('y2', e.y + 29).attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5);
       if (e.reason) {
