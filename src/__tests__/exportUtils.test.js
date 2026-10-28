@@ -74,3 +74,25 @@ describe('exportUtils.js (v0.2)', () => {
     expect(requestedId).toBe('pedigree-svg');
   });
 });
+
+describe('the export copy carries no selection (print shows it inside the page)', () => {
+  it('selection and dragging classes are removed from the copy, not from the screen', async () => {
+    const { prepareExportSvg } = await import('../utils/exportUtils');
+    const classList = (names) => {
+      const set = new Set(names);
+      return { remove: (...n) => n.forEach(x => set.delete(x)), has: (x) => set.has(x), get size() { return set.size; } };
+    };
+    const groups = [classList(['node-group', 'node-selected']), classList(['node-group', 'node-selected-secondary', 'drop-target']), classList(['node-group', 'dragging'])];
+    const nodes = groups.map(classList => ({ classList }));
+    const clone = {
+      setAttribute() {}, removeAttribute() {}, getAttribute: () => null, querySelector: () => null,
+      querySelectorAll: (sel) => (sel === '.node-group' ? nodes : []),
+    };
+    const svg = { cloneNode: () => clone, getAttribute: () => null };
+    prepareExportSvg(svg);
+    for (const g of groups) {
+      expect(['node-selected', 'node-selected-secondary', 'dragging', 'drop-target'].some(c => g.has(c))).toBe(false);
+      expect(g.has('node-group')).toBe(true);
+    }
+  });
+});

@@ -46,7 +46,8 @@ function readViewBox(svg) {
  * live on-screen state. The live <svg> carries the current zoom/pan transform
  * (which could crop the pedigree), a responsive `width="100%"` (no intrinsic
  * size) and a light-grey screen background. Selection highlighting is page
- * CSS only (app.css), so it is not part of the serialized markup at all.
+ * CSS only (app.css); the copy also loses the selection classes, so a print,
+ * which shows the copy inside the page, has none either.
  *
  * `spec` (drawingStyle.js) draws the copy in that style — the screen's, or the
  * standard drawing when the clinician wants exports plain; `fontCss` carries
@@ -60,6 +61,11 @@ export function prepareExportSvg(svg, { withoutPatientName = false, spec = null,
   // keyboard / screen-reader helpers of the screen are not part of the file
   clone.querySelectorAll?.('[data-node-id]').forEach((n) => {
     ['data-node-id', 'tabindex', 'role', 'aria-label'].forEach((a) => n.removeAttribute(a));
+  });
+  // selection and dragging marks: the page stylesheet colours them, and a
+  // printed copy sits in the page (App.jsx handlePrint), so they go too
+  clone.querySelectorAll?.('.node-group').forEach((n) => {
+    n.classList?.remove('node-selected', 'node-selected-secondary', 'dragging', 'drop-target');
   });
   // sharing without the patient's name (labels and notes stay as they are)
   if (withoutPatientName) clone.querySelectorAll?.('.patient-header').forEach((n) => n.remove());
