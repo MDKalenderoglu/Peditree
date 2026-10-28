@@ -217,6 +217,13 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 
 /* settings (App.jsx): opens upwards from the corner of the drawing */
 .keys-popover.settings-popover { top: auto; bottom: calc(100% + 10px); right: -4px; width: 360px; max-height: calc(100vh - 150px); overflow-y: auto; gap: 14px; }
+/* it opens above the whole zoom bar, flush with its right end, and never wider
+   than the drawing area (a narrow window with the side panel open) */
+.zoom-controls > .keys-wrap { position: static; }
+.canvas-container { container-type: inline-size; }
+.keys-popover.settings-popover { max-width: calc(100cqw - 16px); }
+/* open, it lies over the ring menu of the selected person (the bar's inline z-index is 10) */
+.zoom-controls:has(.settings-popover) { z-index: 25 !important; }
 .settings-group { display: flex; flex-direction: column; gap: 7px; }
 .settings-group + .settings-group { border-top: 1px solid var(--line-2); padding-top: 12px; }
 .settings-group .more-title { margin-top: 0; }
