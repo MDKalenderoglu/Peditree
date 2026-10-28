@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import {
   DRAWING_FONTS, DEFAULT_VIEW, STANDARD_FAMILY, normalizeView, applyViewChange, drawingSpec, exportSpec, STANDARD_SPEC,
 } from '../utils/drawingStyle';
-import { sketchPath, sketchCircle, MAX_BOW, SHAPE_BOW } from '../utils/drawingStyleSvg';
+import { sketchPath, sketchCircle, MAX_BOW, SHAPE_BOW, junctionSplitter, pathPieces } from '../utils/drawingStyleSvg';
 
 const src = (p) => readFileSync(join(process.cwd(), p), 'utf8');
 
@@ -155,6 +155,31 @@ describe('hand-drawn lines keep their meaning', () => {
   it('two parallel bars (infertile) bend alike', () => {
     const a = samplePath(sketchPath('M90,224L112,224', { maxBow: SHAPE_BOW })), b = samplePath(sketchPath('M90,229L112,229', { maxBow: SHAPE_BOW }));
     a.forEach(([x, y], k) => { expect(b[k][0]).toBeCloseTo(x, 6); expect(b[k][1] - y).toBeCloseTo(5, 6); });
+  });
+
+  it('where one line ends on another, the bend passes exactly through that point (no poke, no gap)', () => {
+    // a relationship line, its line of descent, the sibship line, two children's lines
+    const paths = ['M100,200L300,200', 'M200,200L200,260', 'M120,260L280,260', 'M120,260L120,300', 'M280,260L280,300'];
+    const splitsFor = junctionSplitter(paths.flatMap(pathPieces));
+    const host = (d, x, y) => samplePath(sketchPath(d, { splitsFor }), 40).some(([px, py]) => Math.hypot(px - x, py - y) < 1e-6);
+    expect(host(paths[0], 200, 200)).toBe(true); // the line of descent leaves the relationship line
+    expect(host(paths[2], 200, 260)).toBe(true); // and reaches the sibship line
+  });
+
+  it('a double line keeps its strokes parallel when a line of descent leaves the lower one', () => {
+    const paths = ['M120,398L240,398', 'M120,402L240,402', 'M180,402L180,460'];
+    const splitsFor = junctionSplitter(paths.flatMap(pathPieces));
+    const top = samplePath(sketchPath(paths[0], { splitsFor })), bottom = samplePath(sketchPath(paths[1], { splitsFor }));
+    expect(top.length).toBe(bottom.length);
+    top.forEach(([x, y], k) => { expect(bottom[k][0]).toBeCloseTo(x, 6); expect(bottom[k][1] - y).toBeCloseTo(4, 6); });
+    expect(bottom.some(([x, y]) => x === 180 && y === 402)).toBe(true);
+  });
+
+  it("the twins' bar ends exactly on the twins' slanted lines", () => {
+    const paths = ['M200,100L150,160', 'M200,100L250,160', 'M175,130L225,130'];
+    const splitsFor = junctionSplitter(paths.flatMap(pathPieces));
+    const pts = samplePath(sketchPath(paths[0], { splitsFor }), 40);
+    expect(pts.some(([x, y]) => Math.hypot(x - 175, y - 130) < 1e-6)).toBe(true);
   });
 
   it('drawn by geometry, never a pixel filter (a filter broke outlines into dashes); fills, regions and text untouched', () => {

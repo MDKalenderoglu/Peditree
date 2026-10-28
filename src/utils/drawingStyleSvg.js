@@ -65,13 +65,26 @@ function sketchPiece(x0, y0, x1, y1, { maxBow, salt }) {
   return out;
 }
 
+/** A straight piece split at its junctions (fractions 0 < t < 1, ascending), each part bent on its own. */
+function sketchPieceThrough(x0, y0, x1, y1, ts, opts) {
+  let out = '', px = x0, py = y0;
+  for (const t of [...ts, 1]) {
+    const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t;
+    out += sketchPiece(px, py, x, y, opts);
+    px = x; py = y;
+  }
+  return out;
+}
+
 /**
  * The hand-drawn version of a path of straight pieces and arcs ("M", "L",
  * "A", "Z" — connectors, brackets, the proband's arrow, diamonds,
  * triangles). Arcs (line jumps) and every point stay where they were.
+ * `splitsFor(x0, y0, x1, y1)` may name further points of a piece that must
+ * stay exactly in place (where another line meets it), as fractions along it.
  * Returns the path unchanged when it holds anything else.
  */
-export function sketchPath(d, { maxBow = MAX_BOW, salt = 0 } = {}) {
+export function sketchPath(d, { maxBow = MAX_BOW, salt = 0, splitsFor = null } = {}) {
   const tokens = String(d).match(/[MLAZ]|-?\d*\.?\d+(?:e-?\d+)?/gi);
   if (!tokens) return d;
   let out = '';
@@ -80,7 +93,11 @@ export function sketchPath(d, { maxBow = MAX_BOW, salt = 0 } = {}) {
   while (i < tokens.length) {
     const cmd = tokens[i++];
     if (cmd === 'M') { cx = sx = num(); cy = sy = num(); out += `M${f2(cx)},${f2(cy)}`; }
-    else if (cmd === 'L') { const x = num(), y = num(); out += sketchPiece(cx, cy, x, y, { maxBow, salt }); cx = x; cy = y; }
+    else if (cmd === 'L') {
+      const x = num(), y = num();
+      out += sketchPieceThrough(cx, cy, x, y, splitsFor ? splitsFor(cx, cy, x, y) : [], { maxBow, salt });
+      cx = x; cy = y;
+    }
     else if (cmd === 'A') {
       const a = [num(), num(), num(), num(), num(), num(), num()];
       out += `A${a.slice(0, 5).join(' ')} ${f2(a[5])},${f2(a[6])}`;
@@ -117,6 +134,63 @@ export function sketchCircle(cx, cy, r, salt = 0) {
 }
 
 const num = (el, a) => Number(el.getAttribute(a) || 0);
+
+/** The straight pieces of a path of M / L / A commands (arcs left out). */
+export function pathPieces(d) {
+  const tokens = String(d).match(/[MLAZ]|-?\d*\.?\d+(?:e-?\d+)?/gi) || [];
+  const pieces = [];
+  let i = 0, cx = 0, cy = 0;
+  const n = () => Number(tokens[i++]);
+  while (i < tokens.length) {
+    const c = tokens[i++];
+    if (c === 'M') { cx = n(); cy = n(); }
+    else if (c === 'L') { const x = n(), y = n(); pieces.push([cx, cy, x, y]); cx = x; cy = y; }
+    else if (c === 'A') { for (let k = 0; k < 5; k++) n(); cx = n(); cy = n(); }
+  }
+  return pieces;
+}
+
+const TOL = 0.6;
+/**
+ * Where lines meet: every end of every piece. A piece is split wherever
+ * another line ends on it (a line of descent on a relationship line, a child's
+ * line on the sibship line, the twins' bar on their lines), so the bend
+ * passes exactly through the meeting point: no poke, no gap. Parallel pieces
+ * (the strokes of a double line, the bars of "infertile") share their splits,
+ * so they keep bending alike.
+ */
+export function junctionSplitter(allPieces) {
+  const ends = allPieces.flatMap(([x0, y0, x1, y1]) => [[x0, y0], [x1, y1]]);
+  const own = (x0, y0, x1, y1) => {
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    if (len < 1) return [];
+    const ux = (x1 - x0) / len, uy = (y1 - y0) / len;
+    const ts = [];
+    for (const [px, py] of ends) {
+      const along = (px - x0) * ux + (py - y0) * uy;
+      const off = Math.abs((px - x0) * uy - (py - y0) * ux);
+      if (off <= TOL && along > TOL && along < len - TOL) ts.push(along / len);
+    }
+    return ts;
+  };
+  return (x0, y0, x1, y1) => {
+    const ts = own(x0, y0, x1, y1);
+    const horiz = Math.abs(y1 - y0) < 0.01, vert = Math.abs(x1 - x0) < 0.01;
+    if (horiz || vert) {
+      // the parallel partners: the same span, at most 6 px away
+      for (const [a0, b0, a1, b1] of allPieces) {
+        const same = horiz
+          ? Math.abs(b1 - b0) < 0.01 && Math.abs(b0 - y0) > 0.01 && Math.abs(b0 - y0) <= 6 && Math.min(a0, a1) === Math.min(x0, x1) && Math.max(a0, a1) === Math.max(x0, x1)
+          : Math.abs(a1 - a0) < 0.01 && Math.abs(a0 - x0) > 0.01 && Math.abs(a0 - x0) <= 6 && Math.min(b0, b1) === Math.min(y0, y1) && Math.max(b0, b1) === Math.max(y0, y1);
+        if (!same) continue;
+        // its splits, carried over to this piece (same direction of travel)
+        const flip = horiz ? (a1 - a0) * (x1 - x0) < 0 : (b1 - b0) * (y1 - y0) < 0;
+        for (const t of own(a0, b0, a1, b1)) ts.push(flip ? 1 - t : t);
+      }
+    }
+    return [...new Set(ts.map((t) => +t.toFixed(6)))].sort((p, q) => p - q);
+  };
+}
 
 /** The hand-drawn outline of a symbol or a straight line element, as path data. */
 export function sketchElement(el, salt = 0) {
@@ -189,6 +263,14 @@ export function applyDrawingStyle(svg, spec) {
   if (!spec.hand) return;
 
   // --- every stroke drawn by hand ---
+  // the connecting lines meet each other: their pieces, to keep every meeting point in place
+  const viewport = svg.querySelector('.pedigree-viewport');
+  const isConnector = (el) => el.parentElement === viewport || el.parentElement?.classList.contains('childless-mark');
+  const connectorPieces = handDrawnTargets(svg).filter((el) => isConnector(el) && !el.classList.contains('relationship-ended'))
+    .flatMap((el) => (el.tagName.toLowerCase() === 'line'
+      ? [[num(el, 'x1'), num(el, 'y1'), num(el, 'x2'), num(el, 'y2')]]
+      : pathPieces(el.getAttribute('data-d') ?? el.getAttribute('d'))));
+  const splitsFor = junctionSplitter(connectorPieces);
   for (const el of handDrawnTargets(svg)) {
     const tag = el.tagName.toLowerCase();
     const inSymbol = !!el.closest('.node-group, .condition-legend');
@@ -198,7 +280,7 @@ export function applyDrawingStyle(svg, spec) {
       // a connector: the line itself takes the hand-drawn path (fill none)
       const d = el.getAttribute('data-d') ?? el.getAttribute('d');
       el.setAttribute('data-d', d);
-      el.setAttribute('d', sketchPath(d, { salt }));
+      el.setAttribute('d', sketchPath(d, { salt, splitsFor }));
       continue;
     }
     if (tag === 'path' && (fill === 'none' || fill == null) && !el.classList.contains('pedigree-shape') && !el.classList.contains('pedigree-shape-outline')) {
@@ -209,7 +291,9 @@ export function applyDrawingStyle(svg, spec) {
       continue;
     }
     // a symbol, a slash or a bar: its exact shape keeps its fill; a hand-drawn outline goes on top
-    const d = sketchElement(el, salt);
+    const d = tag === 'line' && isConnector(el) && !el.classList.contains('relationship-ended')
+      ? sketchPath(`M${num(el, 'x1')},${num(el, 'y1')}L${num(el, 'x2')},${num(el, 'y2')}`, { maxBow: SHAPE_BOW, splitsFor })
+      : sketchElement(el, salt);
     if (!d) continue;
     const pen = doc.createElementNS(SVG_NS, 'path');
     pen.setAttribute('d', d);
