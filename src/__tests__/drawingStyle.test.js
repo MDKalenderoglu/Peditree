@@ -7,7 +7,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  DRAWING_FONTS, DEFAULT_VIEW, STANDARD_FAMILY, normalizeView, applyViewChange, drawingSpec, exportSpec, STANDARD_SPEC, embeddedFontCss,
+  LEGEND_SIZES, DRAWING_FONTS, DEFAULT_VIEW, STANDARD_FAMILY, normalizeView, applyViewChange, drawingSpec, exportSpec, STANDARD_SPEC, embeddedFontCss,
 } from '../utils/drawingStyle';
 import { sketchPath, sketchCircle, MAX_BOW, SHAPE_BOW, MARK_BOW, REGION_BOW, junctionSplitter, pathPieces } from '../utils/drawingStyleSvg';
 
@@ -38,7 +38,7 @@ function samplePath(d, steps = 20) {
 
 describe('drawing style settings', () => {
   it('starts standard, with plain pedigree numbers and exports as on screen', () => {
-    expect(DEFAULT_VIEW).toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true });
+    expect(DEFAULT_VIEW).toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal' });
     expect(drawingSpec(DEFAULT_VIEW)).toMatchObject({ hand: false, family: STANDARD_FAMILY, k: 1, numberK: 1 });
   });
 
@@ -55,8 +55,8 @@ describe('drawing style settings', () => {
   });
 
   it('keeps only known values from storage', () => {
-    expect(normalizeView({ drawStyle: 'crayon', fontId: 'comic', plainNumbers: 'no', exportAs: 'x', openHelp: 'maybe' }))
-      .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true });
+    expect(normalizeView({ drawStyle: 'crayon', fontId: 'comic', plainNumbers: 'no', exportAs: 'x', openHelp: 'maybe', legendSize: 'huge' }))
+      .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal' });
     // "Bir daha gösterme" (Aç) is kept
     expect(normalizeView({ openHelp: false }).openHelp).toBe(false);
     expect(normalizeView(null)).toEqual(DEFAULT_VIEW);
@@ -281,5 +281,18 @@ describe('"Aç" explains which files it opens (clinician decision 2026-10-30)', 
     expect(app).toMatch(/openFile\(e\.dataTransfer\.files && e\.dataTransfer\.files\[0\]\)/);
     const open = app.slice(app.indexOf('function openFile(file)'));
     expect(open.slice(0, 400)).toMatch(/needsLeaveWarning\(doc, downloadedDoc\.current\) && !window\.confirm/);
+  });
+});
+
+describe('text size of the name, key and notes (clinician request 2026-10-30)', () => {
+  it('four sizes, normal by default; the renderer scales only the legends by it', () => {
+    expect(LEGEND_SIZES.map(z => z.id)).toEqual(['small', 'normal', 'large', 'xlarge']);
+    expect(drawingSpec(DEFAULT_VIEW).legendScale).toBe(1);
+    expect(drawingSpec({ ...DEFAULT_VIEW, legendSize: 'xlarge' }).legendScale).toBeGreaterThan(1.3);
+    const canvas = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
+    // LK is the legends' size unit only: the symbols and the text under them never use it
+    expect(canvas).toMatch(/\* \(\(drawing && drawing\.legendScale\) \|\| 1\)/);
+    const nodeBlock = canvas.slice(canvas.indexOf('// --- Nodes') > 0 ? canvas.indexOf('// --- Nodes') : canvas.indexOf("attr('class', 'annotations')"), canvas.indexOf("attr('class', 'condition-legend')"));
+    expect(nodeBlock).not.toMatch(/\bLK\b/);
   });
 });

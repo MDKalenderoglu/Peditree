@@ -66,7 +66,20 @@ export const DRAWING_FONTS = [
 export const fontById = (id) => DRAWING_FONTS.find(f => f.id === id) || DRAWING_FONTS[0];
 
 // openHelp: "Aç" first explains which files it opens (clinician decision 2026-10-30; "Bir daha gösterme" turns it off)
-export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true };
+// legendSize: the text of the patient's name, the findings key and the notes (clinician request 2026-10-30)
+export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal' };
+
+/**
+ * Sizes for the name, key and notes. They lie above and below the family,
+ * outside what the layout places, so any size is safe; the text under the
+ * symbols keeps its size (the layout leaves room for it).
+ */
+export const LEGEND_SIZES = [
+  { id: 'small', label: 'Küçük', scale: 0.85 },
+  { id: 'normal', label: 'Normal', scale: 1 },
+  { id: 'large', label: 'Büyük', scale: 1.2 },
+  { id: 'xlarge', label: 'Çok büyük', scale: 1.45 },
+];
 const VIEW_KEY = 'peditree.view.v1';
 
 function readView() {
@@ -87,6 +100,7 @@ export function normalizeView(v) {
     plainNumbers: o.plainNumbers !== false,
     exportAs: o.exportAs === 'standard' ? 'standard' : 'screen',
     openHelp: o.openHelp !== false,
+    legendSize: LEGEND_SIZES.some(z => z.id === o.legendSize) ? o.legendSize : 'normal',
   };
 }
 
@@ -120,6 +134,7 @@ export function drawingSpec(view) {
     numberFamily: numbersPlain ? STANDARD_FAMILY : font.family,
     numberK: numbersPlain ? 1 : font.k,
     fontId: font.id,
+    legendScale: (LEGEND_SIZES.find(z => z.id === view.legendSize) || LEGEND_SIZES[1]).scale,
   };
 }
 
