@@ -65,7 +65,8 @@ export const DRAWING_FONTS = [
 
 export const fontById = (id) => DRAWING_FONTS.find(f => f.id === id) || DRAWING_FONTS[0];
 
-export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen' };
+// openHelp: "Aç" first explains which files it opens (clinician decision 2026-10-30; "Bir daha gösterme" turns it off)
+export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true };
 const VIEW_KEY = 'peditree.view.v1';
 
 function readView() {
@@ -85,6 +86,7 @@ export function normalizeView(v) {
     fontId: DRAWING_FONTS.some(f => f.id === o.fontId) ? o.fontId : 'standard',
     plainNumbers: o.plainNumbers !== false,
     exportAs: o.exportAs === 'standard' ? 'standard' : 'screen',
+    openHelp: o.openHelp !== false,
   };
 }
 

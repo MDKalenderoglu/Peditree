@@ -404,6 +404,10 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 .download-popover > .share-note { margin: 6px 10px 2px; }
 .about-popover { left: 0; right: auto; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 110px); overflow-y: auto; }
 .keys-help-popover { left: 0; right: auto; }
+.open-popover { left: 0; right: auto; width: 340px; max-width: calc(100vw - 24px); }
+.open-popover .download-item-head { padding: 2px 0; }
+/* a file dragged over the drawing */
+.canvas-container.file-drop { outline: 3px dashed var(--accent); outline-offset: -8px; }
 .about-head { display: flex; align-items: center; gap: 12px; }
 .about-head img { flex: none; display: block; }
 .about-cite { margin: 0; padding: 8px 10px; background: var(--sunken); border-radius: var(--radius-sm); font-size: 13px; line-height: 1.5; color: var(--ink); user-select: all; overflow-wrap: anywhere; }
