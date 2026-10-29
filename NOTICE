@@ -1,0 +1,17 @@
+PediTree — clinical pedigree drawing
+Copyright 2026 Muhammed Doğukan Kalenderoğlu
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+Redistributions and derivative works must keep this NOTICE file.
+
+The name "PediTree" and the PediTree logo (docs/brand/, src/assets/logo-*,
+public/*.png icons) are not licensed under the Apache License (Section 6 of
+the License): they may not be used to name or promote a modified version
+without written permission.
+
+PediTree is a drawing tool, not a medical device. Clinical decisions rest on
+clinical assessment, not on the drawing.
+
+Third-party typefaces bundled with the app (Atkinson Hyperlegible Next,
+Source Serif 4, Kalam, Patrick Hand, Caveat) are distributed under the SIL
+Open Font License 1.1 through the @fontsource packages.
