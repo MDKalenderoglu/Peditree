@@ -571,6 +571,9 @@ function App() {
                 </label>
                 <button className="ui-btn ui-btn-primary" onClick={handleExportPed}><Download size={15} /> PED indir</button>
                 <p className="share-note">Bir PED dosyasını açmak için üstteki “Aç” düğmesini kullanın.</p>
+                <div className="more-title">PediTree hakkında</div>
+                <p className="share-note">PediTree bir çizim aracıdır, tıbbi cihaz değildir. Çizimi kullanmadan önce kontrol edin; tanı ve danışmanlık kararı klinik değerlendirmeye dayanır.</p>
+                <p className="share-note">Hasta bilgisi hiçbir sunucuya gönderilmez. Çalışma yalnızca bu sekmede tutulur; “Kaydet” ile indirdiğiniz dosyalar sizin cihazınızda kalır.</p>
               </div>
             )}
           </div>
