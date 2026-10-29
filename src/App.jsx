@@ -17,6 +17,7 @@ import { TEMPLATE_GROUPS } from './graph/templates';
 import { withGeneticLine } from './graph/model';
 import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, DRAWING_FONTS } from './utils/drawingStyle';
 import { versionLine, citationText, REPOSITORY_URL } from './utils/appInfo';
+import { nameCase } from './utils/nameCase';
 import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2 } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
@@ -544,7 +545,8 @@ function App() {
         </div>
         <div className="toolbar-sep" />
         <input className="input patient-name" value={doc.patientName || ''} placeholder="Hasta adı soyadı"
-          aria-label="Hasta adı soyadı" onChange={e => setPatientName(e.target.value)} />
+          aria-label="Hasta adı soyadı" onChange={e => setPatientName(e.target.value)}
+          onBlur={e => setPatientName(nameCase(e.target.value).trim())} />
         {/* optional: the proband's age follows it, as of today (clinician decision 2026-10-25) */}
         <label className="toolbar-field" title="Probandın doğum tarihi (isteğe bağlı). Yazarsanız probandın yaşı bugüne göre kendiliğinden hesaplanır. Kısa da yazabilirsiniz: 3.5.25">
           <span>Doğum</span>
@@ -806,7 +808,7 @@ function App() {
           patientName={doc.patientName || ''}
           onEditText={(kind, target, value) => {
             const v = String(value);
-            if (kind === 'patientName') setPatientName(v.trim());
+            if (kind === 'patientName') setPatientName(nameCase(v).trim());
             else if (kind === 'finding') renameFinding(target, v);
             else if (kind === 'note') updateIndividual(target, { notes: v });
             else if (kind === 'geneticLine') {
