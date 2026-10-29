@@ -104,6 +104,7 @@ button, input, select, textarea { font-family: inherit; }
 .toolbar-group { display: flex; align-items: center; gap: 2px; }
 .toolbar-sep { width: 1px; height: 24px; background: var(--line); margin: 0 6px; }
 .toolbar-spacer { flex: 1; }
+.toolbar-end { display: flex; align-items: center; gap: 5px; margin-left: auto; }
 .toolbar-case { display: flex; align-items: center; gap: 10px; }
 .toolbar .ui-btn:not(.ui-btn-primary) { border-color: transparent; background: transparent; }
 .toolbar .ui-btn:not(.ui-btn-primary):hover:not(:disabled) { background: var(--surface); border-color: var(--line); }
@@ -207,27 +208,18 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 .editor-tip { margin-top: 14px; padding: 2px 0 2px 12px; border-left: 3px solid var(--accent); color: var(--ink-2); }
 .small { font-size: 12.5px; }
 
-/* zoom controls on the canvas, and the settings button beside them */
+/* zoom controls on the canvas */
 .zoom-controls { display: flex; align-items: center; gap: 1px; padding: 3px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
-.zoom-controls > button, .zoom-controls > .keys-wrap > button {
+.zoom-controls > button {
   font: inherit; min-width: 32px; height: 30px; padding: 0 10px; border: none; border-radius: var(--radius-sm);
   background: none; color: var(--ink-2); cursor: pointer; font-size: 15px;
 }
-.zoom-controls > button:last-child, .zoom-controls > .keys-wrap > button { font-size: 13px; font-weight: 600; }
-.zoom-controls > .keys-wrap > button { display: inline-flex; align-items: center; gap: 6px; margin-right: 2px; }
-.zoom-controls > .keys-wrap > button.on { background: var(--accent-soft); color: var(--accent-ink); }
-.zoom-controls > button:hover, .zoom-controls > .keys-wrap > button:hover { background: var(--sunken); color: var(--ink); }
-.zoom-controls > button:focus-visible, .zoom-controls > .keys-wrap > button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.zoom-controls > button:last-child { font-size: 13px; font-weight: 600; }
+.zoom-controls > button:hover { background: var(--sunken); color: var(--ink); }
+.zoom-controls > button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
-/* settings (App.jsx): opens upwards from the corner of the drawing */
-.keys-popover.settings-popover { top: auto; bottom: calc(100% + 10px); right: -4px; width: 360px; max-height: calc(100vh - 150px); overflow-y: auto; gap: 14px; }
-/* it opens above the whole zoom bar, flush with its right end, and never wider
-   than the drawing area (a narrow window with the side panel open) */
-.zoom-controls > .keys-wrap { position: static; }
-.canvas-container { container-type: inline-size; }
-.keys-popover.settings-popover { max-width: calc(100cqw - 16px); }
-/* open, it lies over the ring menu of the selected person (the bar's inline z-index is 10) */
-.zoom-controls:has(.settings-popover) { z-index: 25 !important; }
+/* settings (App.jsx): at the right end of the toolbar */
+.keys-popover.settings-popover { width: 360px; max-width: calc(100vw - 24px); max-height: calc(100vh - 110px); overflow-y: auto; gap: 14px; }
 .settings-group { display: flex; flex-direction: column; gap: 7px; }
 .settings-group + .settings-group { border-top: 1px solid var(--line-2); padding-top: 12px; }
 .settings-group .more-title { margin-top: 0; }
@@ -333,8 +325,10 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 #pedigree-svg { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 /* the multi-select switch is for touch screens (a mouse has Cmd/Ctrl/Shift-click) */
 .touch-only { display: none; }
+/* keyboard help is for a keyboard */
 @media (pointer: coarse) {
   .touch-only { display: inline-flex; }
+  .mouse-only { display: none; }
   .ui-btn { height: 44px; padding: 0 14px; }
   .ui-btn-sm { height: 40px; }
   .ui-btn-icon { width: 44px; }
@@ -361,8 +355,11 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 }
 /* when the toolbar takes two rows a divider would dangle at a row's end */
 @media (max-width: 1340px) {
-  .toolbar { column-gap: 10px; }
+  .toolbar { column-gap: 6px; }
   .toolbar-sep { display: none; }
+  /* a 1280 px laptop keeps the toolbar on one row */
+  .toolbar .ui-btn:not(.ui-btn-icon) { padding: 0 9px; }
+  .toolbar .patient-name { width: 160px; }
 }
 
 /* ── keyboard focus, visible only when the keyboard moves it ── */
@@ -394,7 +391,19 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 .share-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .more-title { font-size: 13.5px; font-weight: 700; color: var(--ink); margin-top: 4px; }
 .new-popover { left: 0; right: auto; width: 420px; max-width: calc(100vw - 32px); }
+/* İndir: one row per file type, what it is for under its name */
+.download-popover { width: 340px; max-width: calc(100vw - 24px); max-height: calc(100vh - 110px); overflow-y: auto; gap: 4px; }
+.download-item, .download-item-head { display: flex; align-items: flex-start; gap: 10px; text-align: left; color: var(--ink-2); }
+.download-item { font: inherit; width: 100%; padding: 8px 10px; background: none; border: none; border-radius: var(--radius-sm); cursor: pointer; }
+.download-item:hover { background: var(--sunken); }
+.download-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.download-item svg, .download-item-head svg { flex: none; margin-top: 2px; color: var(--accent); }
+.download-item b, .download-item-head b { color: var(--ink); }
+.download-item small, .download-item-head small { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+.download-ped { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding: 10px 10px 4px; border-top: 1px solid var(--line-2); }
+.download-popover > .share-note { margin: 6px 10px 2px; }
 .about-popover { left: 0; right: auto; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 110px); overflow-y: auto; }
+.keys-help-popover { left: 0; right: auto; }
 .about-head { display: flex; align-items: center; gap: 12px; }
 .about-head img { flex: none; display: block; }
 .about-cite { margin: 0; padding: 8px 10px; background: var(--sunken); border-radius: var(--radius-sm); font-size: 13px; line-height: 1.5; color: var(--ink); user-select: all; overflow-wrap: anywhere; }

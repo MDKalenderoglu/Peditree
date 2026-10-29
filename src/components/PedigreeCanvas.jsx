@@ -129,7 +129,7 @@ function drawStroke(g, edge, dx = 0, dy = 0) {
 // belt-and-suspenders fallback for exportUtils.js and for tests/tools
 // that query the DOM directly.
 const PedigreeCanvas = forwardRef(function PedigreeCanvas(
-  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar, patientName = '', onEditText, multiSelect = false, focusTick = 0, onNodeDrop, onBackgroundClick, drawing = null, cornerSlot = null },
+  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar, patientName = '', onEditText, multiSelect = false, focusTick = 0, onNodeDrop, onBackgroundClick, drawing = null },
   forwardedRef
 ) {
   const svgRef = useRef(null);
@@ -913,7 +913,6 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
   return (
     <div ref={boxRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
       <div className="zoom-controls" style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 10 }}>
-        {cornerSlot}
         <button onClick={() => zoomBy(1.25)} title="Yakınlaştır" aria-label="Yakınlaştır">+</button>
         <button onClick={() => zoomBy(0.8)} title="Uzaklaştır" aria-label="Uzaklaştır">−</button>
         <button onClick={fitZoom} title="Tüm pedigriyi ekrana sığdır (0)" aria-label="Sığdır">Sığdır</button>

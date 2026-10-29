@@ -111,9 +111,9 @@ function layoutFor(graph, ctx) {
     return { nodes: r.nodes, edges: r.edges, layoutInfo: r.meta.stability };
   }
   if (ctx && ctx.tidy && selectedPacker() === 'pcl') {
-    // "Yeniden Düzenle": the layout with the fewest bends (tidy.js)
+    // "Konumlandır": the layout with the fewest bends (tidy.js)
     const t = computeTidyLayout(graph);
-    return { nodes: t.nodes, edges: t.edges, layoutInfo: { level: 'full', reason: `Yeniden Düzenle (en az kırılma: ${t.variant})` } };
+    return { nodes: t.nodes, edges: t.edges, layoutInfo: { level: 'full', reason: `Konumlandır (en az kırılma: ${t.variant})` } };
   }
   const l = computePedigreeLayout(graph, ctx && ctx.straightStart ? { straightStart: true } : {});
   return { nodes: l.nodes, edges: l.edges, layoutInfo: { level: 'full', reason: ctx && ctx.reason ? ctx.reason : 'fresh layout' } };
@@ -513,7 +513,7 @@ export const usePedigreeStore = create((zSet, get) => {
     exportProjectFile: () => serializeDocument({ ...get().doc, layoutHints: hintsFromNodes(get().pedigreeData.nodes) }),
 
     /**
-     * "Yeniden Düzenle": a fresh layout of the whole pedigree, ignoring the
+     * "Konumlandır": a fresh layout of the whole pedigree, ignoring the
      * previous drawing. Undoable (restores the previous drawing).
      */
     relayout: () => zSet((state) => ({

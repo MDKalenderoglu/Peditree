@@ -17,7 +17,7 @@ import { TEMPLATE_GROUPS } from './graph/templates';
 import { withGeneticLine } from './graph/model';
 import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, DRAWING_FONTS } from './utils/drawingStyle';
 import { versionLine, citationText, REPOSITORY_URL } from './utils/appInfo';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2, MoreHorizontal, Printer, SlidersHorizontal } from 'lucide-react';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2 } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
 // the clinician's logo (docs/brand/peditree-logo.webp): the tree, and the name in its own lettering
@@ -253,11 +253,11 @@ function App() {
     const done = () => { root.replaceChildren(); window.removeEventListener('afterprint', done); };
     window.addEventListener('afterprint', done);
     window.print();
-    setMore(false);
+    setDownloadOpen(false);
   };
 
-  // "Diğer": PED file and printing
-  const [more, setMore] = React.useState(false);
+  // "İndir": files for other programs — PNG, SVG, PED (the PediTree file itself is "Kaydet")
+  const [downloadOpen, setDownloadOpen] = React.useState(false);
   const [pedPhenotype, setPedPhenotype] = React.useState('affected');
   const handleExportPed = () => {
     flushDrafts();
@@ -265,7 +265,7 @@ function App() {
     const text = toPed(st.doc.graph, st.pedigreeData.nodes, { phenotype: pedPhenotype });
     // no patient name in the file, nor in its name (it goes to a lab)
     downloadBlob(new Blob([text], { type: 'text/plain' }), exportFileName('', 'ped'));
-    setMore(false);
+    setDownloadOpen(false);
   };
 
   // "Yeni": the nuclear family, or a ready-made consanguinity template
@@ -286,14 +286,14 @@ function App() {
 
   // the toolbar's pop-up windows (Yeni, Paylaş, Diğer, keyboard help) close
   // on a click anywhere outside them, or Escape (clinician request 2026-10-27)
-  const popupOpen = showKeys || newMenu || more || !!share || settingsOpen || aboutOpen;
+  const popupOpen = showKeys || newMenu || downloadOpen || !!share || settingsOpen || aboutOpen;
   const popupClosedAt = React.useRef(-Infinity);
   React.useEffect(() => {
     if (!popupOpen) return;
     const close = (except) => {
       if (except !== 'keys') setShowKeys(false);
       if (except !== 'new') setNewMenu(false);
-      if (except !== 'more') setMore(false);
+      if (except !== 'download') setDownloadOpen(false);
       if (except !== 'share') setShare(null);
       if (except !== 'settings') setSettingsOpen(false);
       if (except !== 'about') { setAboutOpen(false); setCiteCopied(false); }
@@ -488,8 +488,25 @@ function App() {
               <div className="more-title">Lisans</div>
               <p className="share-note">Kaynak kodu Apache 2.0 lisansıyla açıktır: <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">{REPOSITORY_URL.replace('https://', '')}</a>. PediTree adı ve logosu lisansa dahil değildir.</p>
               <p className="share-note">© 2026 Muhammed Doğukan Kalenderoğlu</p>
+              <button className="ui-btn mouse-only" onClick={() => { setAboutOpen(false); setShowKeys(true); }}><Keyboard size={15} /> Klavye kısayolları</button>
             </div>
           )}
+          {/* keyboard help: opened from this window (clinician decision 2026-10-30) */}
+          <div data-popup="keys">
+            {showKeys && (
+              <div className="keys-popover keys-help-popover" role="dialog" aria-label="Klavye kısayolları">
+                <div className="keys-title">Klavye kısayolları</div>
+                {KEY_HELP.map(([group, rows]) => (
+                  <table key={group}>
+                    <caption>{group}</caption>
+                    <tbody>
+                      {rows.map(([k, t]) => <tr key={k}><td><kbd>{k}</kbd></td><td>{t}</td></tr>)}
+                    </tbody>
+                  </table>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <div className="toolbar-sep" />
         <input className="input patient-name" value={doc.patientName || ''} placeholder="Hasta adı soyadı"
@@ -534,35 +551,44 @@ function App() {
             title={_history && _history.length > 0 ? `Geri al (${_history.length} adım)` : 'Geri alınacak adım yok'} aria-label="Geri al"><Undo2 size={15} /></button>
           <button className="ui-btn ui-btn-icon" onClick={handleRedo} disabled={!_future || _future.length === 0}
             title={_future && _future.length > 0 ? `Yinele (${_future.length} adım)` : 'Yinelenecek adım yok'} aria-label="Yinele"><Redo2 size={15} /></button>
-          <button className="ui-btn" onClick={relayout} title="Kişilerin çizimdeki yerlerini baştan hesaplar; kimin kiminle akraba olduğu değişmez. Geri alınabilir."><LayoutGrid size={15} /> Yeniden Düzenle</button>
+          <button className="ui-btn" onClick={relayout} title="Konumlandır: kişileri çizimde baştan yerleştirir; kimin kiminle akraba olduğu değişmez. Geri alınabilir."><LayoutGrid size={15} /> Konumlandır</button>
         </div>
-        <div className="toolbar-spacer" />
+        {/* the right end: it stays at the right edge, also when the toolbar takes two rows */}
+        <div className="toolbar-end">
         <button className={`ui-btn touch-only${multiSelect ? ' ui-btn-primary' : ''}`} aria-pressed={multiSelect}
           onClick={() => setMultiSelect(v => !v)} title="Açıkken dokunduğunuz her kişi seçime eklenir; yeniden dokunursanız çıkarılır. Birden çok kişiyi birlikte değiştirmek için.">
           <CheckSquare size={15} /> Çoklu seçim
         </button>
-        <div className="keys-wrap" data-popup="keys">
-          <button className="ui-btn ui-btn-icon ui-btn-ghost" aria-label="Klavye kısayolları" aria-expanded={showKeys}
-            title="Klavye kısayolları" onClick={() => setShowKeys(v => !v)}>
-            <Keyboard size={15} />
-          </button>
-          {showKeys && (
-            <div className="keys-popover" role="dialog" aria-label="Klavye kısayolları">
-              <div className="keys-title">Klavye kısayolları</div>
-              {KEY_HELP.map(([group, rows]) => (
-                <table key={group}>
-                  <caption>{group}</caption>
-                  <tbody>
-                    {rows.map(([k, t]) => <tr key={k}><td><kbd>{k}</kbd></td><td>{t}</td></tr>)}
-                  </tbody>
-                </table>
-              ))}
-            </div>
-          )}
-        </div>
         <div className="toolbar-group">
-          <button className="ui-btn" onClick={handleExportSVG} title="Çizimi SVG olarak indirir: büyütünce bozulmayan resim (yayın, Word, PowerPoint için)"><Download size={15} /> SVG</button>
-          <button className="ui-btn" onClick={handleExportPNG} title="Çizimi PNG resmi olarak indirir"><ImageIcon size={15} /> PNG</button>
+          <div className="keys-wrap" data-popup="download">
+            <button className="ui-btn" onClick={() => setDownloadOpen(v => !v)} aria-expanded={downloadOpen}
+              title="Çizimi başka programlar için dosya olarak indirir: resim (PNG, SVG) ya da PED">
+              <Download size={15} /> İndir <ChevronDown size={14} />
+            </button>
+            {downloadOpen && (
+              <div className="keys-popover share-popover download-popover" role="dialog" aria-label="İndir">
+                <button className="download-item" onClick={() => { setDownloadOpen(false); handleExportPNG(); }}>
+                  <ImageIcon size={18} /><span><b>PNG</b> resim<small>Sunum, mesaj ve belgeler için</small></span>
+                </button>
+                <button className="download-item" onClick={() => { setDownloadOpen(false); handleExportSVG(); }}>
+                  <FileCode2 size={18} /><span><b>SVG</b> çizim<small>Büyütülünce bozulmaz; yayın, Word ve PowerPoint için</small></span>
+                </button>
+                <div className="download-ped">
+                  <div className="download-item-head"><Table2 size={18} /><span><b>PED</b> dosyası<small>Genetik analiz programları ve laboratuvarlar için. Yalnızca anne, baba, cinsiyet ve hasta olup olmadığı yazılır; kişiler pedigri numarasıyla (ör. II-3) geçer, hasta adı yazılmaz.</small></span></div>
+                  <label className="field-col">
+                    <span className="field-label">Dosyada kim “hasta” olarak yazılsın?</span>
+                    <select className="select" value={pedPhenotype} onChange={e => setPedPhenotype(e.target.value)}>
+                      <option value="affected">Durum’da “Etkilenmiş” işaretlenen kişiler</option>
+                      {(pedigreeData.conditionKey || []).map(e => <option key={e.id} value={e.label}>“{e.label}” bulgusu olanlar</option>)}
+                    </select>
+                  </label>
+                  <button className="ui-btn" onClick={handleExportPed}><Download size={15} /> PED indir</button>
+                </div>
+                <p className="share-note">Pedigriyi sonra PediTree’de açıp düzenlemek için “Kaydet”i kullanın.</p>
+              </div>
+            )}
+          </div>
+          <button className="ui-btn" onClick={handlePrint} title="Çizimi tek bir A4 sayfaya yazdırır (Cmd/Ctrl+P)"><Printer size={15} /> Yazdır</button>
           <div className="keys-wrap" data-popup="share">
             <button className="ui-btn" onClick={openShare} aria-expanded={!!share} title="Pedigri resmini WhatsApp, Gmail gibi bir uygulamayla gönderir">
               <Share2 size={15} /> Paylaş
@@ -584,24 +610,55 @@ function App() {
               </div>
             )}
           </div>
-          <div className="keys-wrap" data-popup="more">
-            <button className="ui-btn ui-btn-icon" onClick={() => setMore(v => !v)} aria-expanded={more} aria-label="Diğer" title="Diğer: yazdırma ve PED dosyası">
-              <MoreHorizontal size={15} />
+        </div>
+        <div className="toolbar-sep" />
+          <div className="keys-wrap" data-popup="settings">
+            <button className="ui-btn" onClick={() => setSettingsOpen(v => !v)} aria-expanded={settingsOpen}
+              title="Ayarlar: çizimin görünümü, yazı tipi ve indirilen resimler">
+              <SlidersHorizontal size={15} /> Ayarlar
             </button>
-            {more && (
-              <div className="keys-popover share-popover" role="dialog" aria-label="Diğer">
-                <button className="ui-btn" onClick={handlePrint}><Printer size={15} /> Yazdır (A4)</button>
-                <div className="more-title">PED dosyası</div>
-                <p className="share-note">PED, genetik analiz programlarının ve laboratuvarların okuduğu bir dosya türüdür. İçinde yalnızca her kişinin annesi, babası, cinsiyeti ve hasta olup olmadığı bulunur. Kişiler pedigri numarasıyla (ör. II-3) yazılır; hasta adı ne dosyaya ne dosyanın adına yazılır.</p>
-                <label className="field-col">
-                  <span className="field-label">Dosyada kim “hasta” olarak yazılsın?</span>
-                  <select className="select" value={pedPhenotype} onChange={e => setPedPhenotype(e.target.value)}>
-                    <option value="affected">Durum’da “Etkilenmiş” işaretlenen kişiler</option>
-                    {(pedigreeData.conditionKey || []).map(e => <option key={e.id} value={e.label}>“{e.label}” bulgusu olanlar</option>)}
-                  </select>
-                </label>
-                <button className="ui-btn ui-btn-primary" onClick={handleExportPed}><Download size={15} /> PED indir</button>
-                <p className="share-note">Bir PED dosyasını açmak için üstteki “Aç” düğmesini kullanın.</p>
+            {settingsOpen && (
+              <div className="keys-popover share-popover settings-popover" role="dialog" aria-label="Ayarlar">
+                <div className="keys-title">Ayarlar</div>
+                <div className="settings-group">
+                  <div className="more-title">Çizimin görünümü</div>
+                  <div className="segmented" role="radiogroup" aria-label="Çizimin görünümü">
+                    {[['standard', 'Standart'], ['hand', 'El çizimi']].map(([v, t]) => (
+                      <button key={v} role="radio" aria-checked={view.drawStyle === v} className={view.drawStyle === v ? 'on' : undefined}
+                        onClick={() => setView({ drawStyle: v })}>{t}</button>
+                    ))}
+                  </div>
+                  <p className="share-note">El çiziminde çizgiler ve semboller kalemle çizilmiş gibi hafifçe titrer. Sembollerin ve çizgilerin anlamı değişmez.</p>
+                </div>
+                <div className="settings-group">
+                  <div className="more-title">Çizimdeki yazıların yazı tipi</div>
+                  {[['plain', 'Düz yazı tipleri'], ['hand', 'El yazısı tipleri']].map(([group, title]) => (
+                    <div key={group} className="font-list" role="radiogroup" aria-label={title}>
+                      <span className="field-hint">{title}</span>
+                      {DRAWING_FONTS.filter(f => f.group === group).map(f => (
+                        <button key={f.id} role="radio" aria-checked={view.fontId === f.id} className={`font-option${view.fontId === f.id ? ' on' : ''}`}
+                          onClick={() => setView({ fontId: f.id })}>
+                          <span className="font-sample" style={{ fontFamily: f.family }}>II-3 · 45 y · Ayşe Gül</span>
+                          <span className="font-name">{f.label}{f.note ? ` — ${f.note}` : ''}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                  <label className="check">
+                    <input type="checkbox" checked={view.plainNumbers} onChange={e => setView({ plainNumbers: e.target.checked })} />
+                    Pedigri numaraları (I-1, II-3) el yazısında da düz yazılsın
+                  </label>
+                </div>
+                <div className="settings-group">
+                  <div className="more-title">İndirme, paylaşma ve yazdırma</div>
+                  <div className="segmented" role="radiogroup" aria-label="İndirilen resmin görünümü">
+                    {[['screen', 'Ekrandaki gibi'], ['standard', 'Her zaman standart']].map(([v, t]) => (
+                      <button key={v} role="radio" aria-checked={view.exportAs === v} className={view.exportAs === v ? 'on' : undefined}
+                        onClick={() => setView({ exportAs: v })}>{t}</button>
+                    ))}
+                  </div>
+                </div>
+                <p className="share-note">Bu ayarlar yalnızca bu cihazda saklanır. Pedigri dosyası değişmez; dosyayı açan başka biri kendi ayarıyla görür.</p>
               </div>
             )}
           </div>
@@ -685,58 +742,6 @@ function App() {
           onNodeSelect={handleNodeSelect}
           onBackgroundClick={onBackgroundClick}
           drawing={drawing}
-          cornerSlot={(
-            <div className="keys-wrap" data-popup="settings">
-              <button className={settingsOpen ? 'on' : undefined} onClick={() => setSettingsOpen(v => !v)} aria-expanded={settingsOpen}
-                title="Ayarlar: çizimin görünümü, yazı tipi ve indirilen resimler">
-                <SlidersHorizontal size={15} /> Ayarlar
-              </button>
-              {settingsOpen && (
-                <div className="keys-popover share-popover settings-popover" role="dialog" aria-label="Ayarlar">
-                  <div className="keys-title">Ayarlar</div>
-                  <div className="settings-group">
-                    <div className="more-title">Çizimin görünümü</div>
-                    <div className="segmented" role="radiogroup" aria-label="Çizimin görünümü">
-                      {[['standard', 'Standart'], ['hand', 'El çizimi']].map(([v, t]) => (
-                        <button key={v} role="radio" aria-checked={view.drawStyle === v} className={view.drawStyle === v ? 'on' : undefined}
-                          onClick={() => setView({ drawStyle: v })}>{t}</button>
-                      ))}
-                    </div>
-                    <p className="share-note">El çiziminde çizgiler ve semboller kalemle çizilmiş gibi hafifçe titrer. Sembollerin ve çizgilerin anlamı değişmez.</p>
-                  </div>
-                  <div className="settings-group">
-                    <div className="more-title">Çizimdeki yazıların yazı tipi</div>
-                    {[['plain', 'Düz yazı tipleri'], ['hand', 'El yazısı tipleri']].map(([group, title]) => (
-                      <div key={group} className="font-list" role="radiogroup" aria-label={title}>
-                        <span className="field-hint">{title}</span>
-                        {DRAWING_FONTS.filter(f => f.group === group).map(f => (
-                          <button key={f.id} role="radio" aria-checked={view.fontId === f.id} className={`font-option${view.fontId === f.id ? ' on' : ''}`}
-                            onClick={() => setView({ fontId: f.id })}>
-                            <span className="font-sample" style={{ fontFamily: f.family }}>II-3 · 45 y · Ayşe Gül</span>
-                            <span className="font-name">{f.label}{f.note ? ` — ${f.note}` : ''}</span>
-                          </button>
-                        ))}
-                      </div>
-                    ))}
-                    <label className="check">
-                      <input type="checkbox" checked={view.plainNumbers} onChange={e => setView({ plainNumbers: e.target.checked })} />
-                      Pedigri numaraları (I-1, II-3) el yazısında da düz yazılsın
-                    </label>
-                  </div>
-                  <div className="settings-group">
-                    <div className="more-title">İndirme, paylaşma ve yazdırma</div>
-                    <div className="segmented" role="radiogroup" aria-label="İndirilen resmin görünümü">
-                      {[['screen', 'Ekrandaki gibi'], ['standard', 'Her zaman standart']].map(([v, t]) => (
-                        <button key={v} role="radio" aria-checked={view.exportAs === v} className={view.exportAs === v ? 'on' : undefined}
-                          onClick={() => setView({ exportAs: v })}>{t}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <p className="share-note">Bu ayarlar yalnızca bu cihazda saklanır. Pedigri dosyası değişmez; dosyayı açan başka biri kendi ayarıyla görür.</p>
-                </div>
-              )}
-            </div>
-          )}
           onUnionSelect={selectUnion}
           conditionKey={pedigreeData.conditionKey || []}
           patientName={doc.patientName || ''}
