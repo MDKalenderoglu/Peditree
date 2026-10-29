@@ -113,7 +113,11 @@ describe('childlessness and infertility', () => {
 describe('pop-up windows and help text (clinician request 2026-10-27)', () => {
   const app = readFileSync(join(process.cwd(), 'src/App.jsx'), 'utf8');
   it('every toolbar pop-up closes on a click outside it or Escape, and that click does nothing else', () => {
-    for (const name of ['new', 'keys', 'share', 'more']) expect(app).toContain(`data-popup="${name}"`);
+    // "Diğer" became "İndir" (clinician decision 2026-10-30); the logo and Ayarlar open windows too
+    for (const name of ['new', 'keys', 'share', 'download', 'settings', 'about']) {
+      expect(app).toContain(`data-popup="${name}"`);
+      expect(app).toMatch(new RegExp(`except !== '${name}'`));
+    }
     expect(app).toMatch(/document\.addEventListener\('pointerdown', onDown, true\)/);
     expect(app).toMatch(/e\.key !== 'Escape'/);
     expect(app).toMatch(/performance\.now\(\) - popupClosedAt\.current < 1000/);
