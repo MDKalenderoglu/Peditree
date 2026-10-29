@@ -87,6 +87,7 @@ function App() {
   const { view, setView } = useViewSettings();
   const drawing = React.useMemo(() => drawingSpec(view), [view]);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [openHelp, setOpenHelp] = React.useState(false); // "Aç"'s window: which files it opens
   // the logo: what PediTree is, its version, how to cite it, its licence
   const [aboutOpen, setAboutOpen] = React.useState(false);
   const [citeCopied, setCiteCopied] = React.useState(false);
@@ -301,7 +302,7 @@ function App() {
 
   // the toolbar's pop-up windows (Yeni, Paylaş, Diğer, keyboard help) close
   // on a click anywhere outside them, or Escape (clinician request 2026-10-27)
-  const popupOpen = showKeys || newMenu || downloadOpen || !!share || settingsOpen || aboutOpen;
+  const popupOpen = showKeys || newMenu || downloadOpen || !!share || settingsOpen || aboutOpen || openHelp;
   const popupClosedAt = React.useRef(-Infinity);
   React.useEffect(() => {
     if (!popupOpen) return;
@@ -309,6 +310,7 @@ function App() {
       if (except !== 'keys') setShowKeys(false);
       if (except !== 'new') setNewMenu(false);
       if (except !== 'download') setDownloadOpen(false);
+      if (except !== 'open') setOpenHelp(false);
       if (except !== 'share') setShare(null);
       if (except !== 'settings') setSettingsOpen(false);
       if (except !== 'about') { setAboutOpen(false); setCiteCopied(false); }
@@ -356,16 +358,33 @@ function App() {
     a.remove();
     URL.revokeObjectURL(url);
   };
+  // "Aç": explains first which files it opens, unless the clinician turned that off (openHelp: above)
+  const chooseFile = () => { setOpenHelp(false); fileInputRef.current && fileInputRef.current.click(); };
+  const handleOpenClick = () => { if (view.openHelp) setOpenHelp(v => !v); else chooseFile(); };
   const handleOpenProject = (e) => {
     const file = e.target.files && e.target.files[0];
     e.target.value = '';
+    openFile(file);
+  };
+  // a file dropped on the drawing opens as "Aç" would
+  const [dropping, setDropping] = React.useState(false);
+  const dragHasFile = (e) => Array.from(e.dataTransfer?.types || []).includes('Files');
+  const onFileDragOver = (e) => { if (!dragHasFile(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setDropping(true); };
+  const onFileDragLeave = (e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropping(false); };
+  const onFileDrop = (e) => {
+    if (!dragHasFile(e)) return;
+    e.preventDefault();
+    setDropping(false);
+    openFile(e.dataTransfer.files && e.dataTransfer.files[0]);
+  };
+  function openFile(file) {
     if (!file) return;
     // asks whenever work would be replaced, also when only the patient's name was typed
     if (needsLeaveWarning(doc, downloadedDoc.current) && !window.confirm('Açık pedigrinin yerine dosyadaki pedigri yüklensin mi? (Geri Al ile dönebilirsiniz.)')) return;
     // a project file is JSON; anything else is read as a PED file
     file.text().then(text => (/\.(ped|fam|txt)$/i.test(file.name) || !text.trim().startsWith('{') ? importPedFile(text) : openProjectFile(text)))
       .catch(() => openProjectFile(null));
-  };
+  }
 
   // Nothing is stored once the tab closes (session autosave, clinician
   // decision 2026-10-25): leaving with changes not downloaded asks first
@@ -556,7 +575,22 @@ function App() {
               </div>
             )}
           </div>
-          <button className="ui-btn" onClick={() => fileInputRef.current && fileInputRef.current.click()} title="Daha önce kaydettiğiniz bir pedigri dosyasını (.peditree.json) ya da bir PED dosyasını açar"><FolderOpen size={15} /> Aç</button>
+          <div className="keys-wrap" data-popup="open">
+            <button className="ui-btn" onClick={handleOpenClick} aria-expanded={openHelp} title="Daha önce kaydettiğiniz bir pedigri dosyasını (.peditree.json) ya da bir PED dosyasını açar"><FolderOpen size={15} /> Aç</button>
+            {openHelp && (
+              <div className="keys-popover share-popover open-popover" role="dialog" aria-label="Dosya aç">
+                <div className="keys-title">Dosya aç</div>
+                <div className="download-item-head"><Save size={18} /><span><b>PediTree dosyası</b> (.peditree.json)<small>“Kaydet” ile indirdiğiniz dosya. Pedigri bütün bilgileriyle, kaldığınız yerden açılır.</small></span></div>
+                <div className="download-item-head"><Table2 size={18} /><span><b>PED dosyası</b> (.ped, .fam, .txt)<small>Laboratuvarların ve genetik analiz programlarının dosyası. Yalnızca anne-baba, cinsiyet ve hasta olup olmadığı gelir; isim, yaş ve bulgular gelmez.</small></span></div>
+                <p className="share-note mouse-only">Dosyayı çizimin üzerine sürükleyip bırakarak da açabilirsiniz.</p>
+                <button className="ui-btn ui-btn-primary" onClick={chooseFile}><FolderOpen size={15} /> Dosya seç</button>
+                <label className="check">
+                  <input type="checkbox" checked={!view.openHelp} onChange={e => setView({ openHelp: !e.target.checked })} />
+                  Bunu bir daha gösterme (Ayarlar’dan geri açabilirsiniz)
+                </label>
+              </div>
+            )}
+          </div>
           <button className="ui-btn ui-btn-primary" onClick={handleSaveProject} title="Pedigriyi bilgisayarınıza dosya olarak kaydeder (.peditree.json). Sonra “Aç” ile açıp kaldığınız yerden devam edebilirsiniz."><Save size={15} /> Kaydet</button>
           <input ref={fileInputRef} type="file" accept=".json,application/json,.ped,.fam,.txt,text/plain" onChange={handleOpenProject} style={{ display: 'none' }} aria-label="Proje ya da PED dosyası seç" />
         </div>
@@ -676,6 +710,13 @@ function App() {
                     ))}
                   </div>
                 </div>
+                <div className="settings-group">
+                  <div className="more-title">Dosya açma</div>
+                  <label className="check">
+                    <input type="checkbox" checked={view.openHelp} onChange={e => setView({ openHelp: e.target.checked })} />
+                    “Aç”a basınca hangi dosyaların açılabildiğini anlatan pencere görünsün
+                  </label>
+                </div>
                 <p className="share-note">Bu ayarlar yalnızca bu cihazda saklanır. Pedigri dosyası değişmez; dosyayı açan başka biri kendi ayarıyla görür.</p>
               </div>
             )}
@@ -683,7 +724,7 @@ function App() {
         </div>
       </div>
 
-      <div className="canvas-container">
+      <div className={`canvas-container${dropping ? ' file-drop' : ''}`} onDragOver={onFileDragOver} onDragLeave={onFileDragLeave} onDrop={onFileDrop}>
         <div className="canvas-notices">
         {autosaveFailed && (
           <div className="warning-panel" data-tone="error" role="alert">

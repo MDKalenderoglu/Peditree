@@ -38,7 +38,7 @@ function samplePath(d, steps = 20) {
 
 describe('drawing style settings', () => {
   it('starts standard, with plain pedigree numbers and exports as on screen', () => {
-    expect(DEFAULT_VIEW).toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen' });
+    expect(DEFAULT_VIEW).toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true });
     expect(drawingSpec(DEFAULT_VIEW)).toMatchObject({ hand: false, family: STANDARD_FAMILY, k: 1, numberK: 1 });
   });
 
@@ -55,8 +55,10 @@ describe('drawing style settings', () => {
   });
 
   it('keeps only known values from storage', () => {
-    expect(normalizeView({ drawStyle: 'crayon', fontId: 'comic', plainNumbers: 'no', exportAs: 'x' }))
-      .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen' });
+    expect(normalizeView({ drawStyle: 'crayon', fontId: 'comic', plainNumbers: 'no', exportAs: 'x', openHelp: 'maybe' }))
+      .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true });
+    // "Bir daha gösterme" (Aç) is kept
+    expect(normalizeView({ openHelp: false }).openHelp).toBe(false);
     expect(normalizeView(null)).toEqual(DEFAULT_VIEW);
   });
 
@@ -259,5 +261,25 @@ describe('the typeface inside an exported file', () => {
     expect(app).toMatch(/catch \{ fontMissing = true; \}/);
     expect(app).toMatch(/if \(opts\.fontMissing\) lines\.push\(FONT_MISSING_TEXT\)/);
     expect(app).toMatch(/if \(opts\.fontMissing\) setExportNotice\(FONT_MISSING_TEXT\)/);
+  });
+});
+
+describe('"Aç" explains which files it opens (clinician decision 2026-10-30)', () => {
+  const app = readFileSync(join(process.cwd(), 'src/App.jsx'), 'utf8');
+  it('both file kinds are named with what comes back from each', () => {
+    expect(app).toMatch(/<b>PediTree dosyası<\/b> \(\.peditree\.json\)/);
+    expect(app).toMatch(/<b>PED dosyası<\/b> \(\.ped, \.fam, \.txt\)/);
+    expect(app).toMatch(/isim, yaş ve bulgular gelmez/);
+  });
+  it('"Bir daha gösterme" opens the file chooser at once; Ayarlar brings the window back', () => {
+    expect(app).toMatch(/if \(view\.openHelp\) setOpenHelp\(v => !v\); else chooseFile\(\);/);
+    expect(app).toMatch(/onChange=\{e => setView\(\{ openHelp: !e\.target\.checked \}\)\}/);
+    expect(app).toMatch(/onChange=\{e => setView\(\{ openHelp: e\.target\.checked \}\)\}/);
+  });
+  it('a file dropped on the drawing opens the same way, with the same question before replacing work', () => {
+    expect(app).toMatch(/onDrop=\{onFileDrop\}/);
+    expect(app).toMatch(/openFile\(e\.dataTransfer\.files && e\.dataTransfer\.files\[0\]\)/);
+    const open = app.slice(app.indexOf('function openFile(file)'));
+    expect(open.slice(0, 400)).toMatch(/needsLeaveWarning\(doc, downloadedDoc\.current\) && !window\.confirm/);
   });
 });
