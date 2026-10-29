@@ -29,10 +29,12 @@ import * as d3 from 'd3';
 import { fillFor, REGION_ANGLES } from '../graph/conditionKey';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { applyDrawingStyle } from '../utils/drawingStyleSvg';
+import { STANDARD_FAMILY } from '../utils/drawingStyle';
 import { annotationAge, pregnancyLine } from '../utils/annotations';
 import { isSmallSymbol, isPregnancy, pregnancyKind, PREGNANCY_LABEL, GENETIC_TESTED, TESTED_TEXT, geneticLines } from '../graph/model';
 import { packLines } from '../utils/textWrap';
 import { keyGrid } from '../utils/keyGrid';
+import { nameCase } from '../utils/nameCase';
 
 const EDGE_COLOR = '#64748b';
 const NODE_STROKE = '#1e293b';
@@ -157,6 +159,15 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
 
   // where the add menu sits: around the single selected person's symbol
   const [anchor, setAnchor] = useState(null);
+  // the key is placed by the real width of its text: drawn again once a typeface has loaded
+  const [fontsTick, setFontsTick] = useState(0);
+  useEffect(() => {
+    const fonts = typeof document !== 'undefined' && document.fonts;
+    if (!fonts || !fonts.addEventListener) return undefined;
+    const again = () => setFontsTick((n) => n + 1);
+    fonts.addEventListener('loadingdone', again);
+    return () => fonts.removeEventListener('loadingdone', again);
+  }, []);
   // Where the selected person was on screen before a redraw: a relayout
   // (adding relatives) must not carry the person the clinician is working on
   // to another part of the screen (clinician feedback 2026-10-25).
@@ -268,7 +279,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // name, the proband's own symbol, the proband's findings
     const probandNode = nodes.find(n => n.proband);
     const probandFindings = probandNode ? (probandNode.conditions || []).filter(c => c && c.label && c.status === 'affected').map(c => c.label.trim()) : [];
-    const name = patientName.trim();
+    // as names are written, also from an older file (clinician request 2026-10-30)
+    const name = nameCase(patientName).trim();
     const headLines = packLines(probandFindings.flatMap((label, k) => [
       ...(k ? [{ text: ', ' }] : []), { text: label, kind: 'finding', target: label, value: label },
     ]), KEY_CHARS);
@@ -277,10 +289,21 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // side under the proband's line, as many as the drawing's width allows
     // (clinician request 2026-10-27: one under another wasted the top)
     const KS = 8 * LK, KEY_GAP = 28 * LK;
-    const lineLen = (l) => l.reduce((n, p) => n + p.text.length, 0);
-    const textW = (lines) => Math.max(40, ...lines.map(l => lineLen(l) * 7.2 * LK));
-    const nameW = headBlock && name ? name.length * 8.4 * LK + 12 * LK : 0;
-    const entryW = keyLines.map(lines => 2 * KS + 12 * LK + textW(lines));
+    // the text's real width in the drawing's typeface (clinician request
+    // 2026-10-30: equal gaps between the key's entries; a width guessed from
+    // the number of letters left them uneven)
+    const look = drawing || { family: STANDARD_FAMILY, k: 1 };
+    const probe = svg.append('text').attr('visibility', 'hidden').attr('font-family', look.family);
+    const measure = (str, px, weight = null) => {
+      probe.attr('font-size', `${px * look.k}px`).attr('font-weight', weight).text(str);
+      const w = probe.node().getComputedTextLength ? probe.node().getComputedTextLength() : 0;
+      return w > 0 ? w : str.length * px * 0.58 * look.k; // no layout engine (tests): an estimate
+    };
+    const textW = (lines, px) => Math.max(40 * LK, ...lines.map(l => measure(l.map(p => p.text).join(''), px)));
+    const nameW = headBlock && name ? measure(name, 15 * LK, '700') + 12 * LK : 0;
+    const entryW = keyLines.map(lines => 2 * KS + 12 * LK + textW(lines, 12.5 * LK));
+    const headTextW = headBlock ? textW(headLines, 13 * LK) : 0;
+    probe.remove();
     const keyRight = minX + Math.max(600, maxX - minX) - 10 * LK; // the picture's right edge (vw below)
     const grid = keyGrid(entryW, keyRowH, keyRight - minX - 10 * LK - nameW, KEY_GAP);
     const keyBlock = shownKey.length ? grid.height + 14 * LK : 0;
@@ -756,7 +779,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       const keyG = svg.append('g').attr('class', 'condition-legend');
       const s = KS;
       // the findings start under the proband's symbol (clinician request 2026-10-25)
-      const headW = headBlock ? 2 * s + 12 * LK + textW(headLines) : 0;
+      const headW = headBlock ? 2 * s + 12 * LK + headTextW : 0;
       const width = nameW + Math.max(headW, grid.width);
       const kx = Math.max(minX + 10, keyRight - width);
       const symX = kx + nameW;              // symbol column
@@ -886,7 +909,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // Store for external reset
     svg.node().__zoom_ref = zoom;
 
-  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar, patientName, startEdit, multiSelect, focusTick, onNodeDrop, onBackgroundClick, drawing]);
+  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar, patientName, startEdit, multiSelect, focusTick, onNodeDrop, onBackgroundClick, drawing, fontsTick]);
 
   // a menu around the selected person that needs more room slides the
   // drawing by (dx, dy) screen pixels (a narrow tablet screen)
