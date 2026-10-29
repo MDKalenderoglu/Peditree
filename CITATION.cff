@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "PediTree'yi bir yayında, sunumda ya da eğitim materyalinde kullandıysanız lütfen bu şekilde atıf yapın. / If you use PediTree in a publication, presentation or teaching material, please cite it as below."
+title: "PediTree: clinical pedigree drawing for genetic counselling"
+type: software
+authors:
+  - family-names: "Kalenderoğlu"
+    given-names: "Muhammed Doğukan"
+version: "0.9.0"
+date-released: "2026-10-30"
+license: Apache-2.0
+repository-code: "https://github.com/MDKalenderoglu/Peditree"
+keywords:
+  - pedigree
+  - genetic counselling
+  - clinical genetics
+  - NSGC nomenclature

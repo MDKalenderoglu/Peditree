@@ -16,6 +16,7 @@ import { toPed } from './graph/ped';
 import { TEMPLATE_GROUPS } from './graph/templates';
 import { withGeneticLine } from './graph/model';
 import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, DRAWING_FONTS } from './utils/drawingStyle';
+import { versionLine, citationText, REPOSITORY_URL } from './utils/appInfo';
 import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2, MoreHorizontal, Printer, SlidersHorizontal } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
@@ -86,6 +87,12 @@ function App() {
   const { view, setView } = useViewSettings();
   const drawing = React.useMemo(() => drawingSpec(view), [view]);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  // the logo: what PediTree is, its version, how to cite it, its licence
+  const [aboutOpen, setAboutOpen] = React.useState(false);
+  const [citeCopied, setCiteCopied] = React.useState(false);
+  const copyCitation = async () => {
+    try { await navigator.clipboard.writeText(citationText()); setCiteCopied(true); } catch { setCiteCopied(false); }
+  };
   // an export in the style the clinician chose for exports, the typeface inside the file;
   // fontMissing: the typeface could not be put in (the file then shows a system typeface elsewhere)
   const exportOpts = async (extra = {}) => {
@@ -279,7 +286,7 @@ function App() {
 
   // the toolbar's pop-up windows (Yeni, Paylaş, Diğer, keyboard help) close
   // on a click anywhere outside them, or Escape (clinician request 2026-10-27)
-  const popupOpen = showKeys || newMenu || more || !!share || settingsOpen;
+  const popupOpen = showKeys || newMenu || more || !!share || settingsOpen || aboutOpen;
   const popupClosedAt = React.useRef(-Infinity);
   React.useEffect(() => {
     if (!popupOpen) return;
@@ -289,6 +296,7 @@ function App() {
       if (except !== 'more') setMore(false);
       if (except !== 'share') setShare(null);
       if (except !== 'settings') setSettingsOpen(false);
+      if (except !== 'about') { setAboutOpen(false); setCiteCopied(false); }
     };
     const onDown = (e) => {
       const inside = e.target.closest && e.target.closest('[data-popup]');
@@ -453,12 +461,35 @@ function App() {
           toolbar spans the person panel too, so selecting someone never
           changes its height (and never moves the drawing). */}
       <div className="canvas-toolbar toolbar">
-        <div className="brand toolbar-brand">
-          <img className="brand-mark" src={logoMark} alt="" width="40" height="40" />
-          <span className="brand-text">
-            <img className="brand-wordmark" src={logoWordmark} alt="PediTree" height="20" />
-            <span className="brand-sub">Klinik pedigri</span>
-          </span>
+        <div className="keys-wrap" data-popup="about">
+          <button className="brand toolbar-brand brand-btn" onClick={() => setAboutOpen(v => !v)} aria-expanded={aboutOpen}
+            aria-label="PediTree hakkında" title="PediTree hakkında: sürüm, atıf, lisans">
+            <img className="brand-mark" src={logoMark} alt="" width="40" height="40" />
+            <span className="brand-text">
+              <img className="brand-wordmark" src={logoWordmark} alt="PediTree" height="20" />
+              <span className="brand-sub">Klinik pedigri</span>
+            </span>
+          </button>
+          {aboutOpen && (
+            <div className="keys-popover share-popover about-popover" role="dialog" aria-label="PediTree hakkında">
+              <div className="about-head">
+                <img src={logoMark} alt="" width="56" height="56" />
+                <div>
+                  <div className="keys-title">PediTree</div>
+                  <div className="field-hint">Genetik danışmanlık için pedigri çizimi · {versionLine()}</div>
+                </div>
+              </div>
+              <p className="share-note">PediTree bir çizim aracıdır, tıbbi cihaz değildir. Çizimi kullanmadan önce kontrol edin; tanı ve danışmanlık kararı klinik değerlendirmeye dayanır.</p>
+              <p className="share-note">Hasta bilgisi hiçbir sunucuya gönderilmez. Çalışma yalnızca bu sekmede tutulur; “Kaydet” ile indirdiğiniz dosyalar sizin cihazınızda kalır.</p>
+              <div className="more-title">Atıf</div>
+              <p className="share-note">PediTree ile çizdiğiniz pedigriler sizindir. Bir yayında, sunumda ya da eğitim materyalinde kullandıysanız şöyle atıf yapmanız rica edilir:</p>
+              <p className="about-cite">{citationText()}</p>
+              <button className="ui-btn" onClick={copyCitation}>{citeCopied ? 'Kopyalandı' : 'Atfı kopyala'}</button>
+              <div className="more-title">Lisans</div>
+              <p className="share-note">Kaynak kodu Apache 2.0 lisansıyla açıktır: <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">{REPOSITORY_URL.replace('https://', '')}</a>. PediTree adı ve logosu lisansa dahil değildir.</p>
+              <p className="share-note">© 2026 Muhammed Doğukan Kalenderoğlu</p>
+            </div>
+          )}
         </div>
         <div className="toolbar-sep" />
         <input className="input patient-name" value={doc.patientName || ''} placeholder="Hasta adı soyadı"
@@ -571,9 +602,6 @@ function App() {
                 </label>
                 <button className="ui-btn ui-btn-primary" onClick={handleExportPed}><Download size={15} /> PED indir</button>
                 <p className="share-note">Bir PED dosyasını açmak için üstteki “Aç” düğmesini kullanın.</p>
-                <div className="more-title">PediTree hakkında</div>
-                <p className="share-note">PediTree bir çizim aracıdır, tıbbi cihaz değildir. Çizimi kullanmadan önce kontrol edin; tanı ve danışmanlık kararı klinik değerlendirmeye dayanır.</p>
-                <p className="share-note">Hasta bilgisi hiçbir sunucuya gönderilmez. Çalışma yalnızca bu sekmede tutulur; “Kaydet” ile indirdiğiniz dosyalar sizin cihazınızda kalır.</p>
               </div>
             )}
           </div>

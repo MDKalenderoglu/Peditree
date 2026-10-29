@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // shown in "PediTree hakkında" (src/utils/appInfo.js)
+  define: { __BUILD_DATE__: JSON.stringify(new Date().toLocaleDateString('sv-SE')) },
   test: {
     environment: 'node',
     // The layout-fuzz harness (scripts/) is a measurement tool, not part of
