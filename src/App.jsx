@@ -1,7 +1,7 @@
 import React from 'react';
 import * as d3 from 'd3';
 import { usePedigreeStore, needsLeaveWarning, flushAutosave } from './state/usePedigreeStore';
-import { exportSVG, exportPNG, exportFileName, pngBlob, shareFile, downloadBlob, prepareExportSvg } from './utils/exportUtils';
+import { exportSVG, exportPNG, exportPDF, exportFileName, pngBlob, shareFile, downloadBlob, prepareExportSvg } from './utils/exportUtils';
 import { assessExportReadiness } from './utils/exportReadiness';
 import { withStableIdsExcludingDismissed } from './utils/warningIds';
 import { clinicalNotices } from './utils/clinicalNotices';
@@ -192,6 +192,21 @@ function App() {
     } catch (err) {
       setExportNotice(null);
       setExportError(err.message || 'PNG dışa aktarılamadı.');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    const assessment = gateExport();
+    if (!assessment) return;
+    try {
+      const opts = await exportOpts();
+      await exportPDF(svgRef.current, exportFileName(doc.patientName, 'pdf'), opts);
+      markDownloaded();
+      setExportError(null);
+      setExportNotice(exportNoticeFor(assessment, opts));
+    } catch (err) {
+      setExportNotice(null);
+      setExportError(err.message || 'PDF dışa aktarılamadı.');
     }
   };
 
@@ -562,7 +577,7 @@ function App() {
         <div className="toolbar-group">
           <div className="keys-wrap" data-popup="download">
             <button className="ui-btn" onClick={() => setDownloadOpen(v => !v)} aria-expanded={downloadOpen}
-              title="Çizimi başka programlar için dosya olarak indirir: resim (PNG, SVG) ya da PED">
+              title="Çizimi başka programlar için dosya olarak indirir: PNG, SVG, PDF ya da PED">
               <Download size={15} /> İndir <ChevronDown size={14} />
             </button>
             {downloadOpen && (
@@ -572,6 +587,9 @@ function App() {
                 </button>
                 <button className="download-item" onClick={() => { setDownloadOpen(false); handleExportSVG(); }}>
                   <FileCode2 size={18} /><span><b>SVG</b> çizim<small>Büyütülünce bozulmaz; yayın, Word ve PowerPoint için</small></span>
+                </button>
+                <button className="download-item" onClick={() => { setDownloadOpen(false); handleExportPDF(); }}>
+                  <FileText size={18} /><span><b>PDF</b> belge<small>Tek A4 sayfa; yazdırmaya ve hasta dosyasına eklemeye hazır</small></span>
                 </button>
                 <div className="download-ped">
                   <div className="download-item-head"><Table2 size={18} /><span><b>PED</b> dosyası<small>Genetik analiz programları ve laboratuvarlar için. Yalnızca anne, baba, cinsiyet ve hasta olup olmadığı yazılır; kişiler pedigri numarasıyla (ör. II-3) geçer, hasta adı yazılmaz.</small></span></div>

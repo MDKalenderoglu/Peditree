@@ -15,6 +15,7 @@
  * a missing svg is surfaced to the caller, not swallowed.
  */
 import { applyDrawingStyle, stripStyleHelpers } from './drawingStyleSvg';
+import { pageLayout, pdfBlob, rgbaToRgb } from './pdf';
 
 export class ExportError extends Error {
   constructor(message) {
@@ -146,11 +147,11 @@ export function exportSVG(svgElement, filename = 'pedigree.svg', opts = {}) {
 }
 
 /**
- * The pedigree as a PNG image (Blob), 2× for print quality — for download
- * and for sharing. `withoutPatientName` leaves the patient's name out.
- * @returns {Promise<Blob>} rejects with ExportError on failure
+ * The drawing painted on a canvas: `scaleFor(width, height)` gives the pixels
+ * per drawing unit (capped below common browser canvas limits).
+ * @returns {Promise<{ canvas: HTMLCanvasElement, width: number, height: number }>} rejects with ExportError
  */
-export function pngBlob(svgElement, opts = {}) {
+function renderCanvas(svgElement, opts, scaleFor, what) {
   return new Promise((resolve, reject) => {
     let svg;
     try {
@@ -168,13 +169,12 @@ export function pngBlob(svgElement, opts = {}) {
     img.onload = function () {
       try {
         // Size from the drawing itself (viewBox), not from the on-screen panel,
-        // so a large pedigree is not shrunk to the window width (EX-2). Scale
-        // 2× for print quality, capped below common browser canvas limits.
+        // so a large pedigree is not shrunk to the window width (EX-2).
         const vb = readViewBox(svg);
         const width = vb ? vb.width : 800;
         const height = vb ? vb.height : 600;
         const MAX_SIDE = 16000;
-        const scale = Math.max(0.25, Math.min(2, MAX_SIDE / Math.max(width, height)));
+        const scale = Math.max(0.25, Math.min(scaleFor(width, height), MAX_SIDE / Math.max(width, height)));
 
         const canvas = document.createElement('canvas');
         canvas.width = Math.ceil(width * scale);
@@ -184,20 +184,53 @@ export function pngBlob(svgElement, opts = {}) {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         URL.revokeObjectURL(url);
-        canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new ExportError('PNG oluşturulamadı.'))), 'image/png');
+        resolve({ canvas, width, height });
       } catch (err) {
         URL.revokeObjectURL(url);
-        reject(new ExportError(`PNG oluşturulamadı: ${err.message}`));
+        reject(new ExportError(`${what} oluşturulamadı: ${err.message}`));
       }
     };
 
     img.onerror = function () {
       URL.revokeObjectURL(url);
-      reject(new ExportError('PNG oluşturulamadı — SVG görüntüye dönüştürülemedi.'));
+      reject(new ExportError(`${what} oluşturulamadı — SVG görüntüye dönüştürülemedi.`));
     };
 
     img.src = url;
   });
+}
+
+/**
+ * The pedigree as a PNG image (Blob), 2× for print quality — for download
+ * and for sharing. `withoutPatientName` leaves the patient's name out.
+ * @returns {Promise<Blob>} rejects with ExportError on failure
+ */
+export async function pngBlob(svgElement, opts = {}) {
+  const { canvas } = await renderCanvas(svgElement, opts, () => 2, 'PNG');
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new ExportError('PNG oluşturulamadı.'))), 'image/png');
+  });
+}
+
+/**
+ * The pedigree as a one-page A4 PDF (pdf.js): the drawing at 300 dpi,
+ * landscape or portrait by its shape, "PediTree · date" at the foot.
+ * @returns {Promise<Blob>} rejects with ExportError on failure
+ */
+export async function pdfFileBlob(svgElement, opts = {}) {
+  const { canvas, width, height } = await renderCanvas(svgElement, opts, (w, h) => pageLayout(w, h).pixelScale, 'PDF');
+  try {
+    const page = pageLayout(width, height);
+    const rgb = rgbaToRgb(canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data);
+    return await pdfBlob({ width: canvas.width, height: canvas.height, rgb }, page, `PediTree \xb7 ${new Date().toLocaleDateString('tr-TR')}`);
+  } catch (err) {
+    throw new ExportError(`PDF oluşturulamadı: ${err.message}`);
+  }
+}
+
+/** Export the pedigree as a PDF file. */
+export async function exportPDF(svgElement, filename = 'pedigree.pdf', opts = {}) {
+  downloadBlob(await pdfFileBlob(svgElement, opts), filename);
 }
 
 /**
