@@ -1,0 +1,21 @@
+# Cloudflare Pages response headers (docs/PEDITREE_DEPLOYMENT.md).
+# Peditree has no server: the page may load only its own files, and may send
+# nothing anywhere. Patient data never leaves the browser.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
+  Cross-Origin-Opener-Policy: same-origin
+  X-Robots-Tag: noindex, nofollow
+
+# file names carry a content hash: a new version gets new names
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# the page itself is always checked, so an update reaches everyone at once
+/index.html
+  Cache-Control: no-cache
+/
+  Cache-Control: no-cache
