@@ -236,7 +236,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const notedNodes = nodes.filter(n => n.notes || n.condition || (n.deceased && n.causeOfDeath) || onsetsOf(n).length || unsureOf(n).length || bornWeek(n));
     // legends grow with a wide pedigree, so they read at the same size once
     // the drawing is fitted to the screen (clinician feedback 2026-10-24)
-    const LK = Math.max(1.2, (d3.max(nodes, d => d.x) - d3.min(nodes, d => d.x) + 200) / 900);
+    const LK = Math.max(1.2, (d3.max(nodes, d => d.x) - d3.min(nodes, d => d.x) + 200) / 900)
+      * ((drawing && drawing.legendScale) || 1); // the size the clinician chose (Ayarlar)
     const KEY_ROW = 22 * LK, NOTE_ROW = 16 * LK, TITLE_ROW = 20 * LK;
     // long key and note text wraps onto more lines, never cut (audit
     // 2026-10-25); the blocks grow with the lines

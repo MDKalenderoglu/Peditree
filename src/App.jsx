@@ -15,7 +15,7 @@ import { nextPerson, RING_KEYS } from './utils/keyboardNav';
 import { toPed } from './graph/ped';
 import { TEMPLATE_GROUPS } from './graph/templates';
 import { withGeneticLine } from './graph/model';
-import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, DRAWING_FONTS } from './utils/drawingStyle';
+import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, DRAWING_FONTS, LEGEND_SIZES } from './utils/drawingStyle';
 import { versionLine, citationText, REPOSITORY_URL } from './utils/appInfo';
 import { nameCase } from './utils/nameCase';
 import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2 } from 'lucide-react';
@@ -702,6 +702,16 @@ function App() {
                     <input type="checkbox" checked={view.plainNumbers} onChange={e => setView({ plainNumbers: e.target.checked })} />
                     Pedigri numaraları (I-1, II-3) el yazısında da düz yazılsın
                   </label>
+                </div>
+                <div className="settings-group">
+                  <div className="more-title">Hasta adı, bulgular açıklaması ve notların yazı boyutu</div>
+                  <div className="segmented" role="radiogroup" aria-label="Açıklama yazılarının boyutu">
+                    {LEGEND_SIZES.map(z => (
+                      <button key={z.id} role="radio" aria-checked={view.legendSize === z.id} className={view.legendSize === z.id ? 'on' : undefined}
+                        onClick={() => setView({ legendSize: z.id })}>{z.label}</button>
+                    ))}
+                  </div>
+                  <p className="share-note">İndirilen ve yazdırılan çizimde de bu boyutta olur. Sembollerin altındaki yazılar aynı boyutta kalır.</p>
                 </div>
                 <div className="settings-group">
                   <div className="more-title">İndirme, paylaşma ve yazdırma</div>
