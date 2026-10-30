@@ -7,6 +7,14 @@ authors:
   - family-names: "Kalenderoğlu"
     given-names: "Muhammed Doğukan"
 version: "0.9.0"
+doi: "10.5281/zenodo.23791764"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.23791764"
+    description: "All versions (always resolves to the latest)"
+  - type: doi
+    value: "10.5281/zenodo.23791765"
+    description: "Version 0.9.0"
 date-released: "2026-10-30"
 license: Apache-2.0
 repository-code: "https://github.com/MDKalenderoglu/Peditree"

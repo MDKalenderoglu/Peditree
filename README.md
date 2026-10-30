@@ -9,6 +9,10 @@
   <em>Clinical pedigree drawing for genetic counselling</em>
 </p>
 
+<p align="center">
+  <a href="https://doi.org/10.5281/zenodo.23791764"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.23791764.svg" alt="DOI 10.5281/zenodo.23791764"></a>
+</p>
+
 ---
 
 ## Türkçe
@@ -55,7 +59,12 @@ PediTree is a drawing tool, not a medical device.
 ## Atıf / Citation
 
 PediTree'yi bir yayında, sunumda ya da eğitim materyalinde kullandıysanız
-lütfen atıf yapın. Atıf bilgisi [`CITATION.cff`](CITATION.cff) dosyasındadır;
+lütfen atıf yapın:
+
+> Kalenderoğlu MD. PediTree: clinical pedigree drawing for genetic counselling
+> [Software]. Version 0.9.0. 2026. https://doi.org/10.5281/zenodo.23791764
+
+Atıf bilgisi [`CITATION.cff`](CITATION.cff) dosyasındadır;
 GitHub'da sağdaki **"Cite this repository"** bağlantısı hazır biçimler verir.
 
 If you use PediTree in a publication, presentation or teaching material,

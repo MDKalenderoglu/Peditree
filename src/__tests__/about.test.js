@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { APP_VERSION, BUILD_DATE, versionLine, citationText, REPOSITORY_URL } from '../utils/appInfo';
+import { APP_VERSION, BUILD_DATE, versionLine, citationText, REPOSITORY_URL, DOI } from '../utils/appInfo';
 
 const read = (p) => readFileSync(join(process.cwd(), p), 'utf8');
 
@@ -17,11 +17,13 @@ describe('PediTree hakkında', () => {
     expect(versionLine()).toMatch(/^Sürüm \d+\.\d+\.\d+ · \d{2}\.\d{2}\.\d{4}$/);
   });
 
-  it('the citation names the author, version and repository, as CITATION.cff', () => {
+  it('the citation names the author, version and DOI, as CITATION.cff', () => {
     const cff = read('CITATION.cff');
     expect(citationText()).toContain('Kalenderoğlu MD');
-    expect(citationText()).toContain(`Sürüm ${APP_VERSION}`);
-    expect(citationText()).toContain(REPOSITORY_URL);
+    expect(citationText()).toContain(`[Software]. Version ${APP_VERSION}.`);
+    expect(citationText()).toContain(`https://doi.org/${DOI}`);
+    expect(cff).toContain(`doi: "${DOI}"`);
+    expect(read('README.md')).toContain(DOI);
     expect(cff).toMatch(new RegExp(`version: "${APP_VERSION.replace(/\./g, '\\.')}"`));
     expect(cff).toContain(`repository-code: "${REPOSITORY_URL}"`);
   });
