@@ -247,6 +247,11 @@ describe('the findings key runs in columns (clinician request 2026-10-27)', () =
     expect(g.cells).toHaveLength(2);
     expect(keyGrid([], [], 300, 10).cells).toEqual([]);
   });
+  it('every entry is followed by the same gap, whatever the other rows hold (clinician request 2026-10-30)', () => {
+    const g = keyGrid([60, 200, 70, 300, 40], [20, 20, 20, 20, 20], 400, 10);
+    expect(g.cells).toEqual([{ x: 0, y: 0 }, { x: 70, y: 0 }, { x: 280, y: 0 }, { x: 0, y: 20 }, { x: 310, y: 20 }]);
+    expect(g.width).toBe(350);
+  });
   it('the canvas places each key entry from the grid', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
     expect(src).toMatch(/const grid = keyGrid\(/);

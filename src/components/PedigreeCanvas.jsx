@@ -300,7 +300,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       const w = probe.node().getComputedTextLength ? probe.node().getComputedTextLength() : 0;
       return w > 0 ? w : str.length * px * 0.58 * look.k; // no layout engine (tests): an estimate
     };
-    const textW = (lines, px) => Math.max(40 * LK, ...lines.map(l => measure(l.map(p => p.text).join(''), px)));
+    // the text's own width: a floor here left a wider gap after a short word ("OHA")
+    const textW = (lines, px) => Math.max(0, ...lines.map(l => measure(l.map(p => p.text).join(''), px)));
     const nameW = headBlock && name ? measure(name, 15 * LK, '700') + 12 * LK : 0;
     const entryW = keyLines.map(lines => 2 * KS + 12 * LK + textW(lines, 12.5 * LK));
     const headTextW = headBlock ? textW(headLines, 13 * LK) : 0;
