@@ -9,6 +9,9 @@ export const APP_VERSION = pkg.version;
 // eslint-disable-next-line no-undef
 export const BUILD_DATE = typeof __BUILD_DATE__ === 'string' ? __BUILD_DATE__ : '';
 export const REPOSITORY_URL = 'https://github.com/MDKalenderoglu/Peditree';
+// Zenodo's DOI for every version (it always leads to the latest); each
+// release also gets its own (v0.9.0: 10.5281/zenodo.23791765)
+export const DOI = '10.5281/zenodo.23791764';
 
 const trDate = (iso) => {
   const [y, m, d] = (iso || '').split('-');
@@ -18,6 +21,6 @@ const trDate = (iso) => {
 /** "Sürüm 0.9.0 · 30.10.2026" */
 export const versionLine = () => [`Sürüm ${APP_VERSION}`, trDate(BUILD_DATE)].filter(Boolean).join(' · ');
 
-/** The citation (Vancouver style, as CITATION.cff). */
+/** The citation (Vancouver style, as CITATION.cff), in English like the papers it goes into. */
 export const citationText = () =>
-  `Kalenderoğlu MD. PediTree: clinical pedigree drawing for genetic counselling [Yazılım]. Sürüm ${APP_VERSION}. ${(BUILD_DATE || '').slice(0, 4) || new Date().getFullYear()}. ${REPOSITORY_URL}`;
+  `Kalenderoğlu MD. PediTree: clinical pedigree drawing for genetic counselling [Software]. Version ${APP_VERSION}. ${(BUILD_DATE || '').slice(0, 4) || new Date().getFullYear()}. https://doi.org/${DOI}`;
