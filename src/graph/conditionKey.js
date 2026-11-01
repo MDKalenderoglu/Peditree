@@ -21,6 +21,13 @@ export const REGIONS = ['q1', 'q2', 'q3', 'q4'];
 export const REGION_LABEL = { q1: 'Sol üst', q2: 'Sağ üst', q3: 'Sağ alt', q4: 'Sol alt' };
 export const FILLS = ['solid', 'hatch', 'dots', 'grey'];
 export const FILL_LABEL = { solid: 'Siyah', hatch: 'Tarama', dots: 'Noktalı', grey: 'Gri' };
+/**
+ * A carrier without a named finding (person.carrier): the left half in a
+ * pattern of its own, never a finding's, explained in the key as
+ * "Taşıyıcı" (NSGC 2022 §4.5: no carrier dot — a divided symbol, a fill
+ * pattern defined in the legend; clinician decision 2026-11-02).
+ */
+export const CARRIER_FILL = 'cross';
 // angles (degrees, screen: 0 = east, clockwise)
 export const REGION_ANGLES = { q1: [180, 270], q2: [270, 360], q3: [0, 90], q4: [90, 180] };
 
@@ -94,7 +101,7 @@ export function rightSideFindings(graph, key = graph.conditionKey || []) {
     const conds = Array.isArray(p.conditions) ? p.conditions : [];
     const carried = conds.filter((c) => c && c.status === 'carrier' && c.label);
     if (!carried.length && !p.carrier) continue;
-    const leftFills = carried.length ? carried.map((c) => (keyEntry(key, c.label) || {}).fill).filter(Boolean) : ['solid'];
+    const leftFills = carried.length ? carried.map((c) => (keyEntry(key, c.label) || {}).fill).filter(Boolean) : [CARRIER_FILL];
     for (const c of conds) {
       if (!c || c.status !== 'affected' || !c.label) continue;
       const n = normLabel(c.label);
@@ -190,8 +197,8 @@ export function keyIndex(key, label) {
  * findings on the RIGHT side: one finding the whole right half, two the
  * upper and lower right quadrants; "affected" without a named finding fills
  * the right half (clinician decision 2026-10-25, replacing "half of the
- * finding's region"). A person-level carrier with findings has the classic
- * solid left half.
+ * finding's region"). A carrier without a named finding has the left half in
+ * CARRIER_FILL, also alone and also beside "affected" (NSGC 2022: no dot).
  */
 export function fillFor(person, key = []) {
   const conds = (Array.isArray(person.conditions) ? person.conditions : [])
@@ -205,17 +212,18 @@ export function fillFor(person, key = []) {
   const affected = marks.filter((m) => !m.carrier);
   const carried = marks.filter((m) => m.carrier);
   if (person.proband && affected.length) return { mode: 'full' };
-  // affected and a carrier, neither named: affected right half, the NSGC
-  // carrier dot on the left half (second audit 2026-10-25: it was all black)
-  if (person.affected && person.carrier && !affected.length && !carried.length) {
-    return { mode: 'regions', parts: [{ region: 'q2', fill: 'solid', carrier: false, a0: 270, a1: 450 }], carrierDot: true };
+  const plainCarrier = { region: 'q1', fill: CARRIER_FILL, carrier: true, a0: 90, a1: 270 };
+  // a carrier without a named finding: the left half in its own pattern; beside it "affected"
+  // without a name fills the right half (NSGC 2022 — it used to be the 2008 carrier dot)
+  if (person.carrier && !affected.length && !carried.length) {
+    return { mode: 'regions', parts: [plainCarrier, ...(person.affected ? [{ region: 'q2', fill: 'solid', carrier: false, a0: 270, a1: 450 }] : [])] };
   }
   const byKey = (a, b) => keyIndex(key, a.label) - keyIndex(key, b.label);
   const upperFirst = (m) => (m.region === 'q1' || m.region === 'q2' ? 0 : 1);
   if (carried.length || (person.carrier && affected.length)) {
     const parts = [];
     const left = carried.length ? [...carried].sort((a, b) => upperFirst(a) - upperFirst(b) || byKey(a, b))
-      : [{ region: 'q1', fill: 'solid' }];
+      : [{ region: 'q1', fill: CARRIER_FILL }];
     const lstep = 180 / left.length;
     left.forEach((m, k) => parts.push({ region: m.region, fill: m.fill, carrier: true, a0: 270 - (k + 1) * lstep, a1: 270 - k * lstep }));
     const right = [...affected].sort((a, b) => upperFirst(a) - upperFirst(b) || byKey(a, b));

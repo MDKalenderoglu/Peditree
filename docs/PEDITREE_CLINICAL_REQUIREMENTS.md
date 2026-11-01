@@ -29,7 +29,7 @@ birlikte tanımlar. **Standart** ile **geliştirici/klinik tercih** her satırda
 | Cinsiyet kimliği ≠ doğumda atanan cinsiyet | Kimlik sembolü + altında AMAB/AFAB/UAAB | 22, 25 | ❌ | Faz 2b (model alanı) |
 | Etkilenmiş | Dolu sembol, lejantta tanımlı | 08, 22 | ✅ (lejant yalnız `conditions[]` için) | lejant her durumda |
 | Birden fazla durum | Bölünmüş sembol, her bölme ayrı desen, lejant | 08, 22 | ✅ bölünmüş sembol, her bulguya ayrı bölge ve desen, bulgu anahtarında tanımlı | korunur |
-| Taşıyıcı | **22: nokta artık önerilmiyor**; bölünmüş sembol + desen + lejant | 22 §4.5 | Sol yarı dolgu; adı verilmiş taşınan bulgu bulgu anahtarında; etkilenmiş + taşıyıcıda sol yarıda **2008 noktası** (2026-10-25 kararı) — 22 noktayı önermiyor | klinisyen kararı bekliyor (K5) |
+| Taşıyıcı | **22: nokta artık önerilmiyor**; bölünmüş sembol + desen + lejant | 22 §4.5 | ✅ NSGC 2022: nokta yok; adı girilmemiş taşıyıcıda sol yarı çapraz tarama + anahtarda "Taşıyıcı"; adı girilmiş taşınan bulgu kendi deseniyle "… taşıyıcısı" (2026-11-02) | korunur |
 | Asemptomatik/presemptomatik taşıyıcı | Ortadan dikey çizgi | 08, 22 | ❌ | Faz 4 |
 | Ölmüş | Sembolü aşan eğik çizgi; altında "d." + yaş | 08, 22 | ✅ (çizgi) | "d." etiketi doğrulanacak |
 | Proband | Sol altta ok **+ "P"**; **her zaman etkilenmiş** | 08, 22 | ✅ ok + P (K10). En fazla bir; hiç olmayabilir — o zaman kapatılabilen bir not (2026-11-01). PED açılırken etkilenmiş kimse yoksa proband işaretlenmez | etkilenmemiş proband için uyarı **yok** (açık) |
@@ -45,7 +45,7 @@ birlikte tanımlar. **Standart** ile **geliştirici/klinik tercih** her satırda
 | Süren gebelik | Sembol içinde "P"; altında gebelik haftası | 08, 22, 25 | ✅ normal boy, içinde P, altında hafta (K11) | korunur |
 | Spontan düşük (SAB) | Küçük üçgen; etkilenmişse dolu; altında hafta | 08, 22 | ✅ küçük üçgen, altında hafta | korunur |
 | Gebelik sonlandırma (TOP) | Eğik çizgili üçgen | 08, 22 | ✅ eğik çizgili küçük üçgen (K11) | korunur |
-| Ektopik (ECT) | Eğik çizgili üçgen + "ECT" | 08, 25 | Kısmen: küçük üçgen + altında "ECT"; **25'teki eğik çizgi yok** | klinisyen kararı bekliyor |
+| Ektopik (ECT) | Eğik çizgili üçgen + "ECT" | 08, 25 | ✅ küçük üçgen, eğik çizgi ve altında "ECT" (2025 düzeltmesi; 2026-11-02) | korunur |
 | Ölü doğum (SB) | **Normal boy** sembol + eğik çizgi + "SB" + hafta | 08, 22, 25 | ✅ normal boy, eğik çizgi, SB, hafta (K11) | korunur |
 
 `CLAUDE.md` kural 5 (bu türler karıştırılmaz) korunur; dört sonuç türü ayrı model değerleridir.

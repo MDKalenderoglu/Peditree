@@ -42,11 +42,15 @@ describe('#1 undo across opening another patient’s file', () => {
 });
 
 describe('#2 carrier and affected are both read', () => {
-  it('affected and carrier without a named finding: affected right half, the NSGC carrier dot on the left', () => {
+  // NSGC 2022 §4.5 (clinician decision 2026-11-02): no carrier dot — the carrier half in a pattern of its own
+  it('affected and carrier without a named finding: affected right half, the carrier half cross-hatched (no dot)', () => {
     const f = fillFor({ affected: true, carrier: true, conditions: [] }, []);
     expect(f.mode).toBe('regions');
-    expect(f.parts).toEqual([{ region: 'q2', fill: 'solid', carrier: false, a0: 270, a1: 450 }]);
-    expect(f.carrierDot).toBe(true);
+    expect(f.parts).toEqual([
+      { region: 'q1', fill: 'cross', carrier: true, a0: 90, a1: 270 },
+      { region: 'q2', fill: 'solid', carrier: false, a0: 270, a1: 450 },
+    ]);
+    expect(f.carrierDot).toBeUndefined();
   });
   it('a carried finding in black next to a plain "affected": the finding gets another fill for everyone', () => {
     S().resetPedigree();
