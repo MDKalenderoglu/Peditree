@@ -147,8 +147,8 @@ export function relationSpec(paths) {
 
 /** Double first cousins: two pairs of siblings, kept as the two ready-made families. */
 export const DOUBLE_FIRST_COUSINS = [
-  { id: 'double-same', label: 'İki erkek kardeş iki kız kardeşle evli', sub: 'Dedeler kardeş, anneanne ile babaanne kardeş', spec: { pairs: [{ father: ['male'], mother: ['male'] }, { father: ['female'], mother: ['female'] }] } },
-  { id: 'double-cross', label: 'Değişmeli evlilik', sub: 'Babanın babası ile annenin annesi kardeş, babanın annesi ile annenin babası kardeş', spec: { pairs: [{ father: ['male'], mother: ['female'] }, { father: ['female'], mother: ['male'] }] } },
+  { id: 'double-same', label: 'Babaları kardeş, anneleri de kardeş', sub: 'Dedeler kardeş, anneanne ile babaanne kardeş', spec: { pairs: [{ father: ['male'], mother: ['male'] }, { father: ['female'], mother: ['female'] }] } },
+  { id: 'double-cross', label: 'Berdel', sub: 'Babanın babası ile annenin annesi kardeş, babanın annesi ile annenin babası kardeş', spec: { pairs: [{ father: ['male'], mother: ['female'] }, { father: ['female'], mother: ['male'] }] } },
 ];
 
 /** The relatives who were made siblings in a family built from `spec` (the preview marks them). */
