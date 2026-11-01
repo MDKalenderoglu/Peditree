@@ -37,7 +37,23 @@
   const main = document.getElementById('cases');
   for (const [id, name] of CASES) {
     const s = document.createElement('section');
-    s.innerHTML = `<h2>${id} — ${name}</h2><div class="cols">${LABELS.map((l) => `<figure><figcaption>${l}</figcaption><img loading="lazy" src="${l}/${id}.svg" alt="${id} ${l}"></figure>`).join('')}</div>`;
+    // built as elements, never as HTML: the labels come from the address bar
+    const h = document.createElement('h2');
+    h.textContent = `${id} — ${name}`;
+    const cols = document.createElement('div');
+    cols.className = 'cols';
+    for (const l of LABELS.filter((x) => /^[\w-]+$/.test(x))) {
+      const fig = document.createElement('figure');
+      const cap = document.createElement('figcaption');
+      cap.textContent = l;
+      const img = document.createElement('img');
+      img.loading = 'lazy';
+      img.src = `${encodeURIComponent(l)}/${id}.svg`;
+      img.alt = `${id} ${l}`;
+      fig.append(cap, img);
+      cols.append(fig);
+    }
+    s.append(h, cols);
     main.appendChild(s);
   }
 </script>

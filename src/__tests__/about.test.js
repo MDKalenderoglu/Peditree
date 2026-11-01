@@ -25,7 +25,7 @@ describe('PediTree hakkında', () => {
     expect(citationText()).toContain(`https://doi.org/${DOI}`);
     expect(cff).toContain(`doi: "${DOI}"`);
     expect(read('README.md')).toContain(DOI);
-    expect(cff).toMatch(new RegExp(`version: "${APP_VERSION.replace(/\./g, '\\.')}"`));
+    expect(cff).toContain(`version: "${APP_VERSION}"`);
     expect(cff).toContain(`repository-code: "${REPOSITORY_URL}"`);
   });
 
