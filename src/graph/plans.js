@@ -91,7 +91,7 @@ export function computeDeletionPlanFor(pedigreeData, targetId) {
  * partners via a new union (v0.3a.1 multi-select "make partners" action).
  * Exported for direct unit testing.
  *
- * @returns {{ ok: boolean, reason?: string, requiresConsanguineousFlag?: boolean, crossGeneration?: boolean }}
+ * @returns {{ ok: boolean, reason?: string, crossGeneration?: boolean }}
  */
 export function computeUnionCreationPlan(pedigreeData, id1, id2) {
   const individuals = pedigreeData.individuals || [];
@@ -191,9 +191,7 @@ export function computeUnionCreationPlan(pedigreeData, id1, id2) {
   if (sameParentUnion) {
     return {
       ok: false,
-      reason: 'Bu iki birey aynı ebeveyn birliğinin çocukları (kardeş) — akraba evliliği olarak ' +
-        'işaretlenmeden eş yapılamaz.',
-      requiresConsanguineousFlag: true,
+      reason: 'Bu iki kişi kardeş; kardeşler eş olamaz.',
     };
   }
 

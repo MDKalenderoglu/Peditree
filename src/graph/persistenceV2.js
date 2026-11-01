@@ -25,6 +25,7 @@ import { migrateV1ToV2 } from './migrate';
 import { isDocumentV2 } from './document';
 import { normalizeGenetics } from './model';
 import { validateDocument, errorsOf } from './validate';
+import { clearChildlessWithChildren } from './finalize';
 
 export const STORAGE_KEY_V2 = 'clinical_pedigree_app.session.v2';
 export const V1_BACKUP_KEY = 'clinical_pedigree_app.session.v1.backup';
@@ -205,6 +206,9 @@ function parseChecked(text) {
     if (!r.ok) return { ok: false, reason: r.reason };
     doc = r.doc; migrated = true; normalizations = r.normalizations;
   }
+  const cleared = doc.graph.unions.filter((u) => u.childless).length;
+  clearChildlessWithChildren(doc.graph);
+  if (doc.graph.unions.filter((u) => u.childless).length < cleared) normalizations = [...normalizations, 'Çocuğu olan bir çiftteki "çocuksuz / kısır" işareti kaldırıldı.'];
   const errors = errorsOf(validateDocument(doc));
   if (errors.length) return { ok: false, reason: `Dosyadaki pedigri tutarsız, açılmadı: ${errors[0].message}` };
   return { ok: true, doc, migrated, normalizations };

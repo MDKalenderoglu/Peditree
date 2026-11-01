@@ -52,6 +52,7 @@ export function finalizeGraph(graph, { anchorId = 'proband' } = {}) {
 
   deriveConsanguinity(graph);
   deriveConditionKey(graph);
+  clearChildlessWithChildren(graph);
   return graph;
 }
 
@@ -114,4 +115,21 @@ export function deriveConsanguinity(graph) {
     if (JSON.stringify([u.consanguineous, u.consanguinityDegree, u.consanguinityStatus, u.relationshipBackground]) !== before) changed.push(u.id);
   }
   return changed;
+}
+
+/**
+ * "No children" / "infertile" describe a couple without children: once a
+ * child (biological or adopted) is added, the mark goes (Codex audit
+ * 2026-11-01 — it stayed in the file, hidden, and came back when the child
+ * was removed).
+ */
+export function clearChildlessWithChildren(graph) {
+  const withKids = new Set([
+    ...graph.parentChildRelationships.filter((r) => r.children.length).map((r) => r.unionId),
+    ...(graph.socialParentLinks || []).map((l) => l.unionId),
+  ]);
+  for (const u of graph.unions) {
+    if (u.childless && withKids.has(u.id)) { delete u.childless; delete u.childlessReason; }
+  }
+  return graph;
 }
