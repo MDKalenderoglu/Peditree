@@ -9,6 +9,8 @@ import { usePedigreeStore } from '../state/usePedigreeStore';
 import { validateDocument, errorsOf } from '../graph/validate';
 import { adoptionOf } from '../graph/model';
 import { parseProjectFile, serializeDocument } from '../graph/persistenceV2';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
 beforeEach(() => S().resetPedigree());
@@ -71,6 +73,30 @@ describe('adoption', () => {
     const group = g().individuals.find(i => i.count).id;
     expect(S().setAdoption(group, 'out').reason).toMatch(/Tek tek ayır/);
     expect(S().addChildToUnion(parentsUnion(), 'unknown', { adopted: true, pregnancyLoss: true }).ok).toBe(false);
+  });
+
+  it('drawn: adopted by relatives — a dashed line from inside the adoptive couple\'s line to the top of the child, beside the solid stem; brackets for in, out and by relatives', () => {
+    const aunt = auntCouple();
+    S().setAdoption('proband', aunt);
+    const { nodes, edges } = S().pedigreeData;
+    const at = (id) => nodes.find(n => n.id === id);
+    const dashed = edges.filter(e => e.type === 'adoptiveDescent' && e.childId === 'proband');
+    expect(dashed.length).toBeGreaterThanOrEqual(2);
+    expect(dashed.every(e => e.descentKind === 'adoptive')).toBe(true);
+    const [a, b] = g().unions.find(u => u.id === aunt).partners.map(at);
+    const first = dashed[0], last = dashed.at(-1);
+    expect(first.y1).toBe(a.y);
+    expect(first.x1).toBeGreaterThan(Math.min(a.x, b.x) + 20);
+    expect(first.x1).toBeLessThan(Math.max(a.x, b.x) - 20);
+    const p = at('proband');
+    expect(last.y2).toBe(p.y - 20);
+    expect(Math.abs(last.x2 - p.x)).toBe(10);
+    const solid = edges.find(e => e.type === 'childStem' && e.childId === 'proband');
+    expect(solid.descentKind).toBeUndefined();
+    const canvas = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
+    expect(canvas).toMatch(/\.\.\.edges\.filter\(e => e\.descentKind === 'adoptive' && e\.childId\)/);
+    expect(canvas).toMatch(/\.\.\.nodes\.filter\(n => n\.adoptedOut\)/);
+    expect(canvas).toMatch(/case 'adoptiveDescent':/);
   });
 
   it('survives save and open and undo; a file with two adoptive families is refused', () => {

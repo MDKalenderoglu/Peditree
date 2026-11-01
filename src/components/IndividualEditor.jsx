@@ -216,6 +216,44 @@ function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelati
 }
 
 /** Twins / multiple births of this person: zygosity, one more, leave the group. */
+/**
+ * Adoption (model.js adoptionOf; clinician decisions 2026-11-01): none,
+ * "evlat verildi" (adopted out: the adoptive family not drawn), or a drawn
+ * couple as the adoptive family (adopted in, or by relatives).
+ */
+function AdoptionCard({ info, onSet }) {
+  if (!info || !onSet) return null;
+  const { current, couples, hasParents } = info;
+  const kind = current ? current.kind : 'none';
+  return (
+    <div className="card">
+      <div className="card-title">Evlat edinme</div>
+      <div className="segmented" role="radiogroup" aria-label="Evlat edinme">
+        <button role="radio" aria-checked={kind === 'none'} className={kind === 'none' ? 'on' : undefined}
+          disabled={kind === 'in'} title={kind === 'in' ? 'Bu kişinin biyolojik ebeveynleri çizili değil; önce onları ekleyin' : undefined}
+          onClick={() => onSet(null)}>Yok</button>
+        <button role="radio" aria-checked={kind === 'out'} className={kind === 'out' ? 'on' : undefined}
+          disabled={!hasParents} title={!hasParents ? 'Önce biyolojik ebeveynleri ekleyin' : undefined}
+          onClick={() => onSet('out')}>Evlat verildi</button>
+      </div>
+      <label className="field">
+        <span className="field-label">Evlat edinen aile (çizimde)</span>
+        <select className="input" value={current && current.unionId ? current.unionId : ''}
+          onChange={e => e.target.value && onSet(e.target.value)}>
+          <option value="">— seçin —</option>
+          {couples.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+      </label>
+      <span className="field-hint">
+        {kind === 'out' ? 'Evlat verildi: sembol köşeli parantez içinde, biyolojik ailesinden düz çizgi. Evlat edinen aile çizimde yok.'
+          : kind === 'relative' ? 'Akraba tarafından evlat edinildi: biyolojik ailesinden düz, evlat edinen aileden kesikli çizgi.'
+          : kind === 'in' ? 'Evlat edinildi: evlat edinen ailesinin altında, kesikli çizgiyle.'
+          : 'Evlat verildiyse ve evlat edinen aile çizimde yoksa “Evlat verildi”; aile çizimdeyse (ör. teyze ve eşi) listeden seçin.'}
+      </span>
+    </div>
+  );
+}
+
 function MultiplesCard({ node, pedigreeData, displayNameFor, onAddMultiple, onSetZygosity, onLeaveMultiple }) {
   const found = groupOf(pedigreeData, node.id);
   const hasParents = (pedigreeData.parentChildRelationships || []).some(r => r.children.includes(node.id));
@@ -369,7 +407,7 @@ export default function IndividualEditor({
   onClearSelection, onReorderChild, onSetUnionRelationshipBackground, onSetUnionStatus, onSetChildlessness,
   onSetPregnancyKind, onSetGestationWeeks,
   onSetMultipleBirth, onAddMultiple, onSetZygosity, onLeaveMultiple,
-  onSetGroupCount, onSplitGroup, mergeCheck, onMergeGroup,
+  onSetGroupCount, onSplitGroup, mergeCheck, onMergeGroup, adoptionInfo, onSetAdoption,
   wizardParents, onSetParentsField,
   selectedNodes = [], onUpdateMany, onSetFindingStatusMany, onAddFindingMany,
 }) {
@@ -591,6 +629,10 @@ export default function IndividualEditor({
               </label>
             )}
           </div>
+        )}
+
+        {!node.placeholder && !group && !isLoss && (
+          <AdoptionCard info={adoptionInfo} onSet={to => onSetAdoption(node.id, to)} />
         )}
 
         {!node.placeholder && !group && (

@@ -28,6 +28,14 @@ export function Glyph({ kind, label = '' }) {
       {(kind === 'loss' || kind === 'termination' || kind === 'ectopic') && <path d={`M0,${-S + 3} L${S - 2},${S - 3} L${-S + 2},${S - 3} Z`} {...common} />}
       {kind === 'termination' && <path d={`M${-S + 1},${S - 1} L${S - 1},${-S + 1}`} {...common} />}
       {kind === 'ectopic' && <text x="0" y={S + 1} fontSize="5.5" textAnchor="middle" fill="currentColor" stroke="none">ECT</text>}
+      {kind.startsWith('adopted-') && (
+        <>
+          {kind === 'adopted-male' && <rect x={-S + 4} y={-S + 4} width={2 * S - 8} height={2 * S - 8} {...common} />}
+          {kind === 'adopted-female' && <circle r={S - 4} {...common} />}
+          {kind === 'adopted-unknown' && <path d={`M0,${-S + 3} L${S - 3},0 L0,${S - 3} L${-S + 3},0 Z`} {...common} />}
+          <path d={`M${-S + 3},${-S} H${-S} V${S} H${-S + 3} M${S - 3},${-S} H${S} V${S} H${S - 3}`} {...common} />
+        </>
+      )}
       {kind.startsWith('group-') && (
         <>
           {kind === 'group-male' && <rect x={-S + 1} y={-S + 1} width={2 * S - 2} height={2 * S - 2} {...common} />}
@@ -224,6 +232,11 @@ export default function RadialAddMenu({
     bottom: (sex, count) => (lastUnion ? onAddChild(lastUnion.id, sex, null, { count }) : onAddChild(null, sex, node.id, { count })),
   };
 
+  const addAdopted = {
+    left: (sex) => onAddSibling(node.id, sex, { adopted: true, createParents: true }),
+    bottom: (sex) => (lastUnion ? onAddChild(lastUnion.id, sex, null, { adopted: true }) : onAddChild(null, sex, node.id, { adopted: true })),
+  };
+
   const r = Math.max(24, anchor.size / 2 + 8);
   const R = r + 34;
   const box = R + 2;
@@ -375,6 +388,19 @@ export default function RadialAddMenu({
                   ))}
                 </div>
               ))}
+              {/* adopted in (NSGC brackets, dashed line from the adoptive parents; clinician decisions 2026-11-01) */}
+              {addGroup[active] && (
+                <div className="flyout-row">
+                  <span className="flyout-row-label">Evlat edinilmiş</span>
+                  {[['male', 'erkek'], ['female', 'kız'], ['unknown', 'cinsiyeti bilinmeyen']].map(([sex, word]) => {
+                    const title = `${active === 'left' ? 'Kardeş' : 'Çocuk'}: evlat edinilmiş ${word} (köşeli parantez, kesikli iniş çizgisi)`;
+                    return (
+                      <button key={sex} className="quick-btn" title={title} aria-label={title}
+                        onClick={() => { addAdopted[active](sex); setActive(null); }}><Glyph kind={`adopted-${sex}`} /></button>
+                    );
+                  })}
+                </div>
+              )}
               {addGroup[active] && (
                 <div className="flyout-row">
                   <span className="flyout-row-label">Birden çok</span>
