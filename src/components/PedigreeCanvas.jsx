@@ -31,7 +31,7 @@ import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { applyDrawingStyle } from '../utils/drawingStyleSvg';
 import { STANDARD_FAMILY } from '../utils/drawingStyle';
 import { annotationAge, pregnancyLine } from '../utils/annotations';
-import { isSmallSymbol, isPregnancy, pregnancyKind, PREGNANCY_LABEL, GENETIC_TESTED, TESTED_TEXT, geneticLines } from '../graph/model';
+import { isSmallSymbol, isPregnancy, pregnancyKind, PREGNANCY_LABEL, GENETIC_TESTED, TESTED_TEXT, geneticLines, isGroup, groupText } from '../graph/model';
 import { packLines } from '../utils/textWrap';
 import { keyGrid } from '../utils/keyGrid';
 import { nameCase } from '../utils/nameCase';
@@ -566,7 +566,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       .attr('role', 'button')
       .attr('aria-label', d => [
         pedigreeIds.get(d.id)?.displayId, d.displayLabel,
-        pregnancyKind(d) ? PREGNANCY_LABEL[pregnancyKind(d)].toLocaleLowerCase('tr') : { male: 'erkek', female: 'kadın' }[d.sex] || 'cinsiyeti bilinmiyor',
+        isGroup(d) ? `${d.count === 'n' ? 'sayısı bilinmeyen' : d.count} ${{ male: 'erkek', female: 'kadın' }[d.sex] || 'kişi'}`
+          : pregnancyKind(d) ? PREGNANCY_LABEL[pregnancyKind(d)].toLocaleLowerCase('tr') : { male: 'erkek', female: 'kadın' }[d.sex] || 'cinsiyeti bilinmiyor',
         d.proband && 'proband', d.affected && 'etkilenmiş', d.carrier && 'taşıyıcı', d.deceased && 'vefat',
       ].filter(Boolean).join(', '))
       .on('click', (event, d) => {
@@ -692,6 +693,12 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       if (d.ongoingPregnancy) {
         el.append('text').attr('class', 'pregnancy-p').attr('y', 5).attr('text-anchor', 'middle')
           .attr('font-size', '14px').attr('font-weight', '700').attr('fill', filling.mode === 'full' ? NODE_FILL : NODE_STROKE).text('P');
+      }
+      // Several people in one symbol: their number, or "n", inside (NSGC;
+      // clinician decisions 2026-11-01)
+      if (isGroup(d)) {
+        el.append('text').attr('class', 'group-count').attr('y', 6).attr('text-anchor', 'middle')
+          .attr('font-size', groupText(d).length > 1 ? '15px' : '18px').attr('font-weight', '600').attr('fill', NODE_STROKE).text(groupText(d));
       }
       // Termination (TOP): a slash through the triangle (NSGC)
       if (d.termination) {

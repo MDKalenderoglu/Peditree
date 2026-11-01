@@ -12,6 +12,8 @@ import { validateDocument, errorsOf } from '../graph/validate';
 import { isGroup } from '../graph/model';
 import { parseProjectFile, serializeDocument } from '../graph/persistenceV2';
 import { toPed } from '../graph/ped';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
 beforeEach(() => S().resetPedigree());
@@ -124,5 +126,12 @@ describe('several people in one symbol', () => {
     const text = toPed(S().doc.graph, S().pedigreeData.nodes);
     expect(text.trim().split('\n')).toHaveLength(7);
     expect(text).not.toContain(g);
+  });
+
+  it('the drawing writes the number (or n) inside the symbol and reads it out to a screen reader', () => {
+    const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
+    expect(src).toMatch(/if \(isGroup\(d\)\) \{\s*el\.append\('text'\)\.attr\('class', 'group-count'\)/);
+    expect(src).toMatch(/\.text\(groupText\(d\)\)/);
+    expect(src).toMatch(/sayısı bilinmeyen/);
   });
 });
