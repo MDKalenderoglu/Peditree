@@ -5,15 +5,16 @@
 PediTree'de bir güvenlik açığı bulduysanız lütfen herkese açık bir "Issue"
 açmayın. GitHub'da bu deponun **Security → Report a vulnerability**
 bağlantısıyla gizli olarak bildirin. Bildirimler genellikle bir hafta içinde
-yanıtlanır.
+yanıtlanır. GitHub hesabınız yoksa peditree.app@gmail.com adresine
+"Güvenlik" konulu bir e-posta gönderin.
 
 Bildiriminize gerçek hasta bilgisi eklemeyin.
 
 ## Reporting a vulnerability
 
 Please do not open a public issue. Report it privately through
-**Security → Report a vulnerability** on this repository. Do not include real
-patient data.
+**Security → Report a vulnerability** on this repository, or e-mail
+peditree.app@gmail.com. Do not include real patient data.
 
 ## Kapsam / Scope
 

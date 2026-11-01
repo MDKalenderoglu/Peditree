@@ -1,0 +1,31 @@
+name: Öneri ya da deneyim / Suggestion or feedback
+description: Bir özellik isteği, klinikte kullanım deneyiminiz ya da daha anlaşılır olabilecek bir yer.
+title: "[Öneri] "
+labels: [öneri]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Bu sayfa herkese açıktır; hasta bilgisi paylaşmayın.
+  - type: textarea
+    id: oneri
+    attributes:
+      label: Öneriniz ya da deneyiminiz
+      description: Ne eksik, ne zor, ne iyi çalışıyor?
+    validations:
+      required: true
+  - type: textarea
+    id: neden
+    attributes:
+      label: Klinikte hangi durumda işinize yarar?
+      description: Kısa bir örnek yeterli (ör. "çok eşli ailelerde", "prenatal danışmada").
+  - type: dropdown
+    id: rol
+    attributes:
+      label: Rolünüz (isteğe bağlı)
+      options:
+        - Tıbbi genetik uzmanı / asistanı
+        - Genetik danışman
+        - Başka bir dalda hekim
+        - Öğrenci / eğitimci
+        - Diğer

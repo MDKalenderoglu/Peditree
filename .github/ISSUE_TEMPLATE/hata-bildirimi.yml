@@ -1,0 +1,49 @@
+name: Hata bildirimi / Bug report
+description: PediTree beklendiği gibi çalışmadı ya da çizim yanlış görünüyor.
+title: "[Hata] "
+labels: [hata]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Hasta bilgisi paylaşmayın.** Bu sayfa herkese açıktır. Hasta adı, doğum tarihi
+        ya da kimliği belli eden bir ekran görüntüsü eklemeyin; gerekiyorsa "Paylaş →
+        hasta adı olmadan" ile alınmış bir görüntü ya da uydurma bir aile kullanın.
+
+        **Do not share patient data.** This page is public.
+  - type: textarea
+    id: ne-yaptiniz
+    attributes:
+      label: Ne yaptınız?
+      description: Adım adım, mümkünse sırasıyla.
+      placeholder: "1. Yeni → 1. derece kuzen\n2. Annenin kardeşine eş ekledim\n3. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: ne-oldu
+    attributes:
+      label: Ne oldu?
+      description: Gördüğünüz hata mesajı ya da yanlış görünen çizim.
+    validations:
+      required: true
+  - type: textarea
+    id: ne-bekliyordunuz
+    attributes:
+      label: Ne olmasını bekliyordunuz?
+    validations:
+      required: true
+  - type: input
+    id: surum
+    attributes:
+      label: PediTree sürümü
+      description: Logoya tıklayınca açılan "PediTree hakkında" penceresinde yazar (ör. Sürüm 0.9.0 · 30.10.2026).
+  - type: input
+    id: tarayici
+    attributes:
+      label: Tarayıcı ve cihaz
+      placeholder: "ör. Safari, iPad / Chrome, Windows dizüstü"
+  - type: textarea
+    id: ek
+    attributes:
+      label: Ek bilgi
+      description: Hastasız bir ekran görüntüsü ya da uydurma bir ailenin .peditree.json dosyası çok yardımcı olur (dosyayı buraya sürükleyin).

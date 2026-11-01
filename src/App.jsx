@@ -16,7 +16,7 @@ import { toPed } from './graph/ped';
 import { TEMPLATE_GROUPS } from './graph/templates';
 import { withGeneticLine } from './graph/model';
 import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, DRAWING_FONTS, LEGEND_SIZES } from './utils/drawingStyle';
-import { versionLine, citationText, REPOSITORY_URL } from './utils/appInfo';
+import { versionLine, citationText, REPOSITORY_URL, CONTACT_EMAIL, issueUrl } from './utils/appInfo';
 import { nameCase } from './utils/nameCase';
 import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2 } from 'lucide-react';
 import './styles/app.css';
@@ -522,6 +522,14 @@ function App() {
               <p className="share-note">PediTree ile çizdiğiniz pedigriler sizindir. Bir yayında, sunumda ya da eğitim materyalinde kullandıysanız şöyle atıf yapmanız rica edilir:</p>
               <p className="about-cite">{citationText()}</p>
               <button className="ui-btn" onClick={copyCitation}>{citeCopied ? 'Kopyalandı' : 'Atfı kopyala'}</button>
+              <div className="more-title">Hata ve öneriler</div>
+              <p className="share-note">Bir hata mı buldunuz, bir öneriniz ya da deneyiminiz mi var? GitHub’daki formu doldurun ya da e-posta gönderin.</p>
+              <div className="about-links">
+                <a className="ui-btn" href={issueUrl('hata-bildirimi')} target="_blank" rel="noreferrer">Hata bildir</a>
+                <a className="ui-btn" href={issueUrl('oneri')} target="_blank" rel="noreferrer">Öneri paylaş</a>
+                <a className="ui-btn" href={`mailto:${CONTACT_EMAIL}?subject=PediTree`}>E-posta</a>
+              </div>
+              <p className="share-note">{CONTACT_EMAIL} · Bildirime hasta adı, doğum tarihi ya da kimliği belli eden bir ekran görüntüsü eklemeyin.</p>
               <div className="more-title">Lisans</div>
               <p className="share-note">Kaynak kodu Apache 2.0 lisansıyla açıktır: <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">{REPOSITORY_URL.replace('https://', '')}</a>. PediTree adı ve logosu lisansa dahil değildir.</p>
               <p className="share-note">© 2026 Muhammed Doğukan Kalenderoğlu</p>
