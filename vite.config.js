@@ -13,5 +13,7 @@ export default defineConfig({
     // baseline the current engine, so it must never run under `npm test`.
     // It has its own config (scripts/fuzz.vitest.config.js).
     exclude: ['**/node_modules/**', '**/dist/**', 'scripts/**'],
+    // tests read the Turkish screens unless a test switches to English (support/lang.js)
+    setupFiles: ['src/__tests__/support/lang.js'],
   },
 })

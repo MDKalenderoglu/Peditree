@@ -11,29 +11,30 @@
  * like the drawing's look (drawingStyle.js).
  */
 import { create } from 'zustand';
+import { tk } from '../i18n';
 
 export const RING_ROWS = [
-  { id: 'pregnancy', label: 'Gebelik' },
-  { id: 'adopted', label: 'Evlat edinilmiş' },
-  { id: 'group', label: 'Birden çok' },
+  { id: 'pregnancy', label: tk('Gebelik') },
+  { id: 'adopted', label: tk('Evlat edinilmiş') },
+  { id: 'group', label: tk('Birden çok') },
   // rare in the clinic (clinician 2026-11-02): under "Diğer…" until the clinician brings it forward
-  { id: 'art', label: 'Yardımcı üreme ile' },
+  { id: 'art', label: tk('Yardımcı üreme ile') },
 ];
 /** rows that start hidden — also for a stored preference made before they existed */
 const HIDDEN_AT_FIRST = ['art'];
 export const RING_PREGNANCY = [
-  { id: 'loss', label: 'Düşük' },
-  { id: 'stillbirth', label: 'Ölü doğum (SB)' },
-  { id: 'ongoing', label: 'Devam eden gebelik (P)' },
-  { id: 'termination', label: 'Sonlandırma (TOP)' },
-  { id: 'ectopic', label: 'Dış gebelik (ECT)' },
+  { id: 'loss', label: tk('Düşük') },
+  { id: 'stillbirth', label: tk('Ölü doğum (SB)') },
+  { id: 'ongoing', label: tk('Devam eden gebelik (P)') },
+  { id: 'termination', label: tk('Sonlandırma (TOP)') },
+  { id: 'ectopic', label: tk('Dış gebelik (ECT)') },
 ];
 export const RING_STATUS = [
-  { id: 'affected', label: 'Etkilenmiş' },
-  { id: 'carrier', label: 'Taşıyıcı' },
-  { id: 'deceased', label: 'Vefat' },
-  { id: 'proband', label: 'Proband' },
-  { id: 'consultand', label: 'Danışan' },
+  { id: 'affected', label: tk('Etkilenmiş') },
+  { id: 'carrier', label: tk('Taşıyıcı') },
+  { id: 'deceased', label: tk('Vefat') },
+  { id: 'proband', label: tk('Proband') },
+  { id: 'consultand', label: tk('Danışan') },
 ];
 
 export const DEFAULT_RING = {

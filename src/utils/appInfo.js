@@ -3,6 +3,7 @@
  * version, how to cite it, its licence (CITATION.cff, LICENSE, NOTICE).
  */
 import pkg from '../../package.json';
+import { t } from '../i18n';
 
 export const APP_VERSION = pkg.version;
 // set by vite.config.js (dev server and build); empty where it is not defined
@@ -17,13 +18,13 @@ export const issueUrl = (form) => `${REPOSITORY_URL}/issues/new?template=${form}
 // release also gets its own (v0.9.0: 10.5281/zenodo.23791765)
 export const DOI = '10.5281/zenodo.23791764';
 
-const trDate = (iso) => {
+const shortDate = (iso) => {
   const [y, m, d] = (iso || '').split('-');
   return y && m && d ? `${d}.${m}.${y}` : '';
 };
 
 /** "Sürüm 0.9.0 · 30.10.2026" */
-export const versionLine = () => [`Sürüm ${APP_VERSION}`, trDate(BUILD_DATE)].filter(Boolean).join(' · ');
+export const versionLine = () => [t('Sürüm {v}', { v: APP_VERSION }), shortDate(BUILD_DATE)].filter(Boolean).join(' · ');
 
 /** The citation (Vancouver style, as CITATION.cff), in English like the papers it goes into. */
 export const citationText = () =>
