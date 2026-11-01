@@ -28,7 +28,7 @@ export function Glyph({ kind, label = '' }) {
       {kind === 'female' && <circle r={S - 1} {...common} />}
       {kind === 'unknown' && <path d={`M0,${-S} L${S},0 L0,${S} L${-S},0 Z`} {...common} />}
       {(kind === 'loss' || kind === 'termination' || kind === 'ectopic') && <path d={`M0,${-S + 3} L${S - 2},${S - 3} L${-S + 2},${S - 3} Z`} {...common} />}
-      {kind === 'termination' && <path d={`M${-S + 1},${S - 1} L${S - 1},${-S + 1}`} {...common} />}
+      {(kind === 'termination' || kind === 'ectopic') && <path d={`M${-S + 1},${S - 1} L${S - 1},${-S + 1}`} {...common} />}
       {kind === 'ectopic' && <text x="0" y={S + 1} fontSize="5.5" textAnchor="middle" fill="currentColor" stroke="none">ECT</text>}
       {kind.startsWith('adopted-') && (
         <>
@@ -64,6 +64,8 @@ export function Glyph({ kind, label = '' }) {
 
 // [glyph, title, sex, extra, row] — row 1 people, row 2 pregnancy outcomes
 // (NSGC; clinician decision 2026-10-25: the ring stays, the choices get a second row)
+const ART_WORD = { sperm_donor: 'sperm donörü', egg_donor: 'yumurta donörü', gestational_carrier: 'gestasyonel taşıyıcı', surrogate: 'taşıyıcı anne' };
+
 const KINDS = [
   ['male', 'Erkek', 'male', {}, 1],
   ['female', 'Kız', 'female', {}, 1],
@@ -150,6 +152,8 @@ export default function RadialAddMenu({
   const [moreFor, setMoreFor] = useState(null);
   // which partner a child is from / what a new sibling is, for this person only
   const [choiceFor, setChoiceFor] = useState(null);
+  // the "Yardımcı üreme ile" row: which role the next child is added with
+  const [artRole, setArtRole] = useState(null);
   // (read before the "no person" guard below: the person may be gone mid-render)
   const showMore = !!node && moreFor === node.id;
   const setShowMore = () => node && setMoreFor((v) => (v === node.id ? null : node.id));
@@ -271,7 +275,8 @@ export default function RadialAddMenu({
   // hidden ones wait under "Diğer…" — never lost (clinician request 2026-11-01)
   const shown = (id) => showMore || !ring.hidden.includes(id);
   const pregnancyChoices = (sector) => (choices[sector] || []).filter((c) => (c[3] || 1) === 2 && shown(c[1]));
-  const rowAvailable = (sector, id) => (id === 'pregnancy' ? (choices[sector] || []).some((c) => (c[3] || 1) === 2) : !!addGroup[sector]);
+  const rowAvailable = (sector, id) => (id === 'pregnancy' ? (choices[sector] || []).some((c) => (c[3] || 1) === 2)
+    : id === 'art' ? !!addGroup[sector] && !!onAddChild : !!addGroup[sector]);
   const flyoutRows = (sector) => ring.rows.filter((id) => rowAvailable(sector, id) && shown(id) && (id !== 'pregnancy' || pregnancyChoices(sector).length));
   const flyoutHasHidden = (sector) => ring.hidden.some((id) => (RING_ROWS.some((x) => x.id === id) ? rowAvailable(sector, id)
     : RING_PREGNANCY.some((x) => x.id === id) && rowAvailable(sector, 'pregnancy')));
@@ -293,6 +298,28 @@ export default function RadialAddMenu({
           return (
             <button key={sex} className="quick-btn" title={title} aria-label={title}
               onClick={() => { addAdopted[active](sex); setActive(null); }}><Glyph kind={`adopted-${sex}`} /></button>
+          );
+        })}
+      </div>
+    ),
+    // a child conceived with assisted reproduction, its donor or carrier at once (clinician 2026-11-02)
+    art: addGroup[active] && (
+      <div className="flyout-row flyout-art">
+        <span className="flyout-row-label">Yardımcı üreme ile</span>
+        <span className="flyout-choose" role="radiogroup" aria-label="Yardımcı üreme türü">
+          {[['sperm_donor', 'Sperm donörü'], ['egg_donor', 'Yumurta donörü'], ['gestational_carrier', 'G taşıyıcı'], ['surrogate', 'Taşıyıcı anne']].map(([role, text]) => (
+            <button key={role} role="radio" aria-checked={artRole === role} className={`quick-text${artRole === role ? ' on' : ''}`}
+              onClick={() => setArtRole(role)}>{text}</button>
+          ))}
+        </span>
+        {[['male', 'erkek'], ['female', 'kız'], ['unknown', 'cinsiyeti bilinmeyen'], ['ongoing', 'devam eden gebelik']].map(([kind, word]) => {
+          const name = `${active === 'left' ? 'Kardeş' : 'Çocuk'}: ${word}, ${artRole ? `${ART_WORD[artRole]} ile` : 'yardımcı üreme ile'}`;
+          const title = artRole ? name : 'Önce yardımcı üreme türünü seçin';
+          const extra = { reproRole: artRole, ...(kind === 'ongoing' ? { ongoingPregnancy: true } : {}) };
+          const sex = kind === 'ongoing' ? 'unknown' : kind;
+          return (
+            <button key={kind} className="quick-btn" title={title} aria-label={name} disabled={!artRole}
+              onClick={() => { (active === 'left' ? addSiblingHere : addChildHere)(sex, extra); setActive(null); }}><Glyph kind={kind} /></button>
           );
         })}
       </div>
