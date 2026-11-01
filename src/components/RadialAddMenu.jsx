@@ -13,7 +13,7 @@ import { Stethoscope, HeartPulse, Users, StickyNote } from 'lucide-react';
 import FindingsPalette from './FindingsPalette';
 import DraftField from './DraftField';
 import { groupOf, multipleName } from '../graph/multiples';
-import { isPregnancy, isGroup, adoptionOf } from '../graph/model';
+import { isPregnancy, isGroup, adoptionOf, ART_DONOR_RELATION } from '../graph/model';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { parseGroupCount } from '../graph/ops';
 import { useRingPrefs, RING_ROWS, RING_PREGNANCY } from '../utils/ringPrefs';
@@ -235,7 +235,9 @@ export default function RadialAddMenu({
   const ready = (sector) => (sector === 'bottom' ? childReady : sector === 'left' ? siblingReady : true);
   const twinGroup = groupOf(pedigreeData, node.id);
 
-  const disabled = {
+  // a donor or carrier added for assisted reproduction has no family of their own (clinician decision 2026-11-01)
+  const DONOR_HINT = node.relation === ART_DONOR_RELATION ? 'Donör ya da taşıyıcının ailesi çizilmez; aile öyküsünü Not ve Bulgu ile girin.' : null;
+  const disabled = DONOR_HINT ? { top: DONOR_HINT, right: DONOR_HINT, bottom: DONOR_HINT, left: DONOR_HINT } : {
     // a pregnancy outcome takes parents and siblings, never a partner or children (clinician 2026-10-25)
     top: hasParents ? 'Bu kişinin annesi ve babası zaten çizili.' : null,
     right: group ? GROUP_HINT : isLoss ? 'Düşüğe, ölü doğuma ya da süren gebeliğe eş eklenemez.' : sexKnown ? null : 'Eş eklemek için önce bu kişinin cinsiyetini seçin: Durum düğmesi → Erkek ya da Kadın.',

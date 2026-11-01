@@ -439,6 +439,11 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           drawStroke(g, edge.y1 < edge.y2 && edge.x1 === edge.x2 ? { ...edge, y1: belowDouble(edge.x1, edge.y1, edge.unionId) } : edge);
           break;
 
+        // assisted reproduction (NSGC 2022/2025 Figure 5): solid; the parents' diagonal leaves their line's lower stroke
+        case 'reproLine':
+          drawStroke(g, edge.artKind === 'parents' ? { ...edge, y1: belowDouble(edge.x1, edge.y1, edge.unionId) } : edge).classed('repro-line', true);
+          break;
+
         case 'twinBar':
           drawStroke(g, edge);
           break;
@@ -588,7 +593,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         pedigreeIds.get(d.id)?.displayId, d.displayLabel,
         isGroup(d) ? `${d.count === 'n' ? 'sayısı bilinmeyen' : d.count} ${{ male: 'erkek', female: 'kadın' }[d.sex] || 'kişi'}`
           : pregnancyKind(d) ? PREGNANCY_LABEL[pregnancyKind(d)].toLocaleLowerCase('tr') : { male: 'erkek', female: 'kadın' }[d.sex] || 'cinsiyeti bilinmiyor',
-        d.proband && 'proband', d.consultand && 'danışan', d.affected && 'etkilenmiş', d.carrier && 'taşıyıcı', d.deceased && 'vefat',
+        d.proband && 'proband', d.consultand && 'danışan', d.reproMark === 'G' && 'gestasyonel taşıyıcı', d.reproMark === 'D' && 'donör', d.affected && 'etkilenmiş', d.carrier && 'taşıyıcı', d.deceased && 'vefat',
       ].filter(Boolean).join(', '))
       .on('click', (event, d) => {
         event.stopPropagation();
@@ -716,6 +721,12 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       }
       // Several people in one symbol: their number, or "n", inside (NSGC;
       // clinician decisions 2026-11-01)
+      // "D" (donor, surrogate) or "G" (gestational carrier) inside the symbol; white on a filled one
+      if (d.reproMark) {
+        el.append('text').attr('class', 'repro-mark').attr('y', 6).attr('text-anchor', 'middle')
+          .attr('font-size', '16px').attr('font-weight', '600')
+          .attr('fill', fillFor(d, conditionKey).mode === 'full' ? NODE_FILL : NODE_STROKE).text(d.reproMark);
+      }
       if (isGroup(d)) {
         el.append('text').attr('class', 'group-count').attr('y', 6).attr('text-anchor', 'middle')
           .attr('font-size', groupText(d).length > 1 ? '15px' : '18px').attr('font-weight', '600').attr('fill', NODE_STROKE).text(groupText(d));

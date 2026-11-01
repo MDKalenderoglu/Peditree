@@ -254,6 +254,58 @@ function AdoptionCard({ info, onSet }) {
   );
 }
 
+/**
+ * Assisted reproduction (NSGC 2022/2025 Figure 5; clinician decisions
+ * 2026-11-01): the child's donor(s) and the person carrying the pregnancy,
+ * added as a new person or chosen from the drawing; on a donor's own panel,
+ * whom they are a donor or carrier for.
+ */
+const REPRO_BUTTONS = [
+  ['sperm_donor', 'Sperm donörü', 'Çocuğun genetik babası; çizimde D, çiftle arasında ilişki çizgisi yok'],
+  ['egg_donor', 'Yumurta donörü', 'Çocuğun genetik annesi; çizimde D'],
+  ['gestational_carrier', 'Gestasyonel taşıyıcı (G)', 'Gebeliği taşır, yumurtası kullanılmaz; çocuk onun altında'],
+  ['surrogate', 'Taşıyıcı anne (D)', 'Yumurtasını verir ve gebeliği taşır; çocuk onun altında'],
+];
+function ReproCard({ info, onAdd, onRemove }) {
+  const [who, setWho] = useState('');
+  if (!info) return null;
+  const { links, canHave, candidates, roleOf } = info;
+  return (
+    <div className="card">
+      <div className="card-title">Yardımcı üreme</div>
+      {roleOf.length > 0 && (
+        <span className="field-hint">{roleOf.map(r => `${r.childName} için ${r.label.toLocaleLowerCase('tr')}`).join('; ')}. Aile öyküsünü not ve bulgu olarak girin.</span>
+      )}
+      {canHave ? (
+        <>
+          {links.map(l => (
+            <div key={l.personId + l.role} className="btn-row">
+              <span>{l.label}: {l.name}</span>
+              <button className="ui-btn ui-btn-sm" onClick={() => onRemove(l.personId)}>Kaldır</button>
+            </div>
+          ))}
+          <label className="field">
+            <span className="field-label">Kim?</span>
+            <select className="input" value={who} onChange={e => setWho(e.target.value)}>
+              <option value="">Yeni kişi (çizime eklenir)</option>
+              {candidates.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
+          <div className="btn-row btn-wrap">
+            {REPRO_BUTTONS.map(([role, text, title]) => (
+              <button key={role} className="ui-btn ui-btn-sm" title={title} disabled={!!info.blocked[role]}
+                onClick={() => onAdd(role, who ? { personId: who } : {})}>{text}</button>
+            ))}
+          </div>
+          <span className="field-hint">Donörün ve taşıyıcının ailesi çizilmez; aile öyküsünü onların not ve bulgu alanına yazın. Akrabalık katsayısı genetik ebeveynlere göre hesaplanır.</span>
+        </>
+      ) : roleOf.length === 0 && (
+        <span className="field-hint">Yardımcı üreme işaretlemek için önce bu kişinin anne-babasını (ya da tek ebeveynini) ekleyin.</span>
+      )}
+    </div>
+  );
+}
+
 function MultiplesCard({ node, pedigreeData, displayNameFor, onAddMultiple, onSetZygosity, onLeaveMultiple }) {
   const found = groupOf(pedigreeData, node.id);
   const hasParents = (pedigreeData.parentChildRelationships || []).some(r => r.children.includes(node.id));
@@ -407,7 +459,7 @@ export default function IndividualEditor({
   onClearSelection, onReorderChild, onSetUnionRelationshipBackground, onSetUnionStatus, onSetChildlessness,
   onSetPregnancyKind, onSetGestationWeeks,
   onSetMultipleBirth, onAddMultiple, onSetZygosity, onLeaveMultiple,
-  onSetGroupCount, onSplitGroup, mergeCheck, onMergeGroup, adoptionInfo, onSetAdoption,
+  onSetGroupCount, onSplitGroup, mergeCheck, onMergeGroup, adoptionInfo, onSetAdoption, reproInfo, onAddRepro, onRemoveRepro,
   wizardParents, onSetParentsField,
   selectedNodes = [], onUpdateMany, onSetFindingStatusMany, onAddFindingMany,
 }) {
@@ -633,6 +685,10 @@ export default function IndividualEditor({
 
         {!node.placeholder && !group && !isLoss && (
           <AdoptionCard info={adoptionInfo} onSet={to => onSetAdoption(node.id, to)} />
+        )}
+
+        {!node.placeholder && !group && onAddRepro && (
+          <ReproCard key={node.id} info={reproInfo} onAdd={(role, opts) => onAddRepro(node.id, role, opts)} onRemove={pid => onRemoveRepro(node.id, pid)} />
         )}
 
         {!node.placeholder && !group && (

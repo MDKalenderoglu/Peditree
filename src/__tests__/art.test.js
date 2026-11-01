@@ -14,6 +14,9 @@ import { parseProjectFile, serializeDocument } from '../graph/persistenceV2';
 import { buildTemplate, relationSpec } from '../graph/templates';
 import { toPed } from '../graph/ped';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
+import { layoutParentage } from '../layout/pcl/art';
+import { checkAllInvariants } from '../audit/layoutInvariants';
+import { checkConnectorReadability } from '../audit/connectorReadability';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
 beforeEach(() => S().resetPedigree());
@@ -161,5 +164,97 @@ describe('kept and refused in files', () => {
     S().undo();
     expect(g().reproductiveLinks).toEqual([]);
     expect(person(d)).toBeUndefined();
+  });
+});
+
+describe('twins share what their pregnancy shares', () => {
+  const twins = (zygosity) => {
+    S().addMultipleSibling('proband', { sex: 'male', zygosity });
+    return g().parentChildRelationships.find(r => r.unionId === 'U_PARENTS').children.find(c => c !== 'proband');
+  };
+  it('identical twins: a donor or carrier for one is for both; removing it takes it from both', () => {
+    const t = twins('monozygotic');
+    const d = add('proband', 'sperm_donor');
+    expect(indexGraph(g()).geneticParents(t)).toEqual([d, 'mother']);
+    S().removeReproductiveLink(t, d);
+    expect(g().reproductiveLinks).toEqual([]);
+    valid();
+  });
+  it('fraternal twins: one carrier for both, but a donor only where it is set', () => {
+    const t = twins('dizygotic');
+    const c = add('proband', 'gestational_carrier');
+    add('proband', 'egg_donor');
+    expect(g().reproductiveLinks.filter(l => l.personId === c).map(l => l.childId).sort()).toEqual(['proband', t].sort());
+    expect(indexGraph(g()).geneticParents(t)).toEqual(['father', 'mother']);
+    valid();
+  });
+  it('twins made after a donor was set get it too; two different donors for identical twins are refused', () => {
+    const d = add('proband', 'sperm_donor');
+    const r = S().addMultipleSibling('proband', { sex: 'male', zygosity: 'monozygotic' });
+    expect(r.ok, r.reason).toBe(true);
+    const t = g().parentChildRelationships.find(x => x.unionId === 'U_PARENTS').children.find(c => c !== 'proband');
+    expect(indexGraph(g()).geneticParents(t)[0]).toBe(d);
+    S().resetPedigree();
+    const t2 = twins('dizygotic');
+    add('proband', 'sperm_donor');
+    add(t2, 'sperm_donor');
+    expect(S().setMultipleZygosity('proband', 'monozygotic').ok).toBe(false);
+  });
+});
+
+describe('drawn: every case of the figure keeps the drawing\'s rules', () => {
+  const lay = () => ({ ...layoutParentage(g()), nodes: S().pedigreeData.nodes, edges: S().pedigreeData.edges });
+  const at = (id) => S().pedigreeData.nodes.find(n => n.id === id);
+  const rowOf = (id) => S().pedigreeData.nodes.filter(n => n.y === at(id).y).sort((a, b) => a.x - b.x).map(n => n.id);
+  const cases = {
+    'sperm donor': () => add('proband', 'sperm_donor'),
+    'egg donor': () => add('proband', 'egg_donor'),
+    'double donor': () => { add('proband', 'sperm_donor'); add('proband', 'egg_donor'); },
+    'gestational carrier': () => add('proband', 'gestational_carrier'),
+    'surrogate': () => add('proband', 'surrogate'),
+    'carrier with the couple\'s own children': () => { S().addSiblingTo('proband', 'female'); add('proband', 'gestational_carrier'); },
+    'identical twins carried, with a donor': () => { S().addMultipleSibling('proband', { sex: 'male', zygosity: 'monozygotic' }); add('proband', 'gestational_carrier'); add('proband', 'sperm_donor'); },
+    'a relative carries': () => { S().addSiblingTo('mother', 'female'); add('proband', 'gestational_carrier', { personId: g().parentChildRelationships.find(r => r.children.includes('mother')).children.find(c => c !== 'mother') }); },
+    'a relative donates': () => { S().addSiblingTo('father', 'male'); add('proband', 'sperm_donor', { personId: g().parentChildRelationships.find(r => r.children.includes('father')).children.find(c => c !== 'father') }); },
+    'an ongoing pregnancy by donor sperm': () => add(S().addChildToUnion('U_PARENTS', 'unknown', { ongoingPregnancy: true }).created.childId, 'sperm_donor'),
+  };
+  for (const [name, build] of Object.entries(cases)) {
+    it(`${name}: no layout or readability fault, no integrity issue`, () => {
+      build();
+      expect(checkAllInvariants(lay()).map(v => v.code)).toEqual([]);
+      expect(checkConnectorReadability(lay()).map(v => v.code)).toEqual([]);
+      // not one issue, warnings included (the layout audit's findings are warnings)
+      expect(S().integrityIssues.map(i => i.code)).toEqual([]);
+    });
+  }
+  it('a sperm donor stands beside the father, an egg donor beside the mother — never between the couple; also after a carrier', () => {
+    S().addSiblingTo('proband', 'female');
+    const sis = g().parentChildRelationships.find(r => r.unionId === 'U_PARENTS').children.find(c => c !== 'proband');
+    const carrier = add(sis, 'gestational_carrier'); // the carried child moves under her; its parents must still be found
+    const sperm = add(sis, 'sperm_donor');
+    const egg = add('proband', 'egg_donor');
+    const row = rowOf('mother');
+    const [f, m] = [row.indexOf('father'), row.indexOf('mother')];
+    expect(Math.abs(f - m)).toBe(1); // nobody between the couple
+    const out = (i, from, away) => Math.sign(i - from) === Math.sign(from - away); // on `from`'s side away from `away`
+    expect(Math.abs(row.indexOf(sperm) - f)).toBe(1);
+    expect(out(row.indexOf(sperm), f, m)).toBe(true);
+    // the carrier beside the mother, the egg donor one further out
+    expect(Math.abs(row.indexOf(carrier) - m)).toBe(1);
+    expect(Math.abs(row.indexOf(egg) - m)).toBe(2);
+    expect(out(row.indexOf(carrier), m, f) && out(row.indexOf(egg), m, f)).toBe(true);
+  });
+  it('a carried child stands under the carrier, her line down to it; the parents\' line and the donor\'s join it', () => {
+    const c = add('proband', 'gestational_carrier');
+    add('proband', 'sperm_donor');
+    expect(at('proband').x).toBeCloseTo(at(c).x, 0);
+    const edges = S().pedigreeData.edges;
+    const drop = edges.find(e => e.type === 'parentChildDrop' && Math.abs(e.x1 - at(c).x) < 1 && e.y1 === at(c).y + 20);
+    expect(drop).toBeTruthy();
+    const repro = edges.filter(e => e.type === 'reproLine');
+    expect(repro.map(e => e.artKind).sort()).toEqual(['donor', 'parents']);
+    expect(repro.every(e => e.x2 === drop.x2 && e.y2 === Math.max(drop.y1, drop.y2))).toBe(true);
+    // no relationship line between the carrier or the donor and anyone
+    expect(edges.some(e => ['union', 'consanguineousUnion'].includes(e.type) && e.unionId?.startsWith('__art__'))).toBe(false);
   });
 });
