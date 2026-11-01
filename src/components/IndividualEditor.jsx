@@ -280,7 +280,26 @@ function PairKinship({ a, b, graph }) {
   );
 }
 
-function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSiblings, onClearSelection, unionProps, onSetMultipleBirth, bulk }) {
+const GROUP_SHAPE = { male: 'kare', female: 'daire', unknown: 'baklava' };
+
+/** "Tek sembolde birleştir" — siblings chosen together become one numbered symbol (the reverse of "Tek tek ayır"). */
+function MergeCard({ check, onMerge, ids }) {
+  if (!check || !onMerge) return null;
+  const made = check.ok ? check.doc.graph.individuals.find(i => i.id === check.created.groupId) : null;
+  return (
+    <div className="card">
+      <div className="card-title">Tek sembolde birleştir</div>
+      <span className="field-hint">
+        {made
+          ? `Seçili kardeşler tek bir ${GROUP_SHAPE[made.sex || 'unknown']} olarak çizilir, içinde ${made.count} yazar. Gerekirse “Tek tek ayır” ile yeniden ayrılır.`
+          : check.reason}
+      </span>
+      <button className="ui-btn" disabled={!made} onClick={() => onMerge(ids)}>Birleştir</button>
+    </div>
+  );
+}
+
+function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSiblings, onClearSelection, unionProps, onSetMultipleBirth, bulk, merge }) {
   // Authoritative safety checks (self/duplicate, pregnancy loss, siblings,
   // cross-generation; two different parent unions cannot be merged).
   const unionPlan = computeUnionCreationPlan(pedigreeData, node.id, node2.id);
@@ -322,6 +341,7 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
             <span className="field-hint">Biri zaten ikizse diğeri de aynı gruba katılır ve üçüz olurlar.</span>
           </div>
         )}
+        {siblings && merge}
         {!couple && (
         <div className="card">
           <div className="card-title">Bu iki kişiyi</div>
@@ -349,7 +369,7 @@ export default function IndividualEditor({
   onClearSelection, onReorderChild, onSetUnionRelationshipBackground, onSetUnionStatus, onSetChildlessness,
   onSetPregnancyKind, onSetGestationWeeks,
   onSetMultipleBirth, onAddMultiple, onSetZygosity, onLeaveMultiple,
-  onSetGroupCount, onSplitGroup,
+  onSetGroupCount, onSplitGroup, mergeCheck, onMergeGroup,
   wizardParents, onSetParentsField,
   selectedNodes = [], onUpdateMany, onSetFindingStatusMany, onAddFindingMany,
 }) {
@@ -365,11 +385,16 @@ export default function IndividualEditor({
     <BulkEditor nodes={selectedNodes} conditionKey={pedigreeData?.conditionKey || []}
       onUpdateMany={onUpdateMany} onSetFindingStatusMany={onSetFindingStatusMany} onAddFindingMany={onAddFindingMany} />
   ) : null;
+  // the merge card only for children of the same parents
+  const ownRel = (id) => (pedigreeData?.parentChildRelationships || []).find(r => r.children.includes(id));
+  const sameSibship = selectedNodes.length >= 2 && !!ownRel(selectedNodes[0].id) && selectedNodes.every(n => ownRel(n.id) === ownRel(selectedNodes[0].id));
+  const merge = sameSibship ? <MergeCard check={mergeCheck} onMerge={onMergeGroup} ids={selectedNodes.map(n => n.id)} /> : null;
   if (selectedNodes.length >= 3) {
     return (
       <>
         <Header title={`${selectedNodes.length} kişi seçili`} sub={selectedNodes.map(n => ids.get(n.id)?.displayId || '—').join(', ')} onClose={onClearSelection} />
         <div className="editor-body">
+          {merge}
           {bulk}
           <div className="field-hint">Seçime kişi eklemek ya da çıkarmak için Cmd (Mac) ya da Ctrl (Windows) tuşuna basılı tutup o kişiye tıklayın.</div>
         </div>
@@ -381,7 +406,7 @@ export default function IndividualEditor({
       <TwoPersonActions node={node} node2={node2} pedigreeData={pedigreeData}
         onCreateUnion={onCreateUnion} onMakeSiblings={onMakeSiblings} onClearSelection={onClearSelection}
         unionProps={{ onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground, parentsCons, onSetChildlessness }} onSetMultipleBirth={onSetMultipleBirth}
-        bulk={bulk} />
+        bulk={bulk} merge={merge} />
     );
   }
   if (!node) return null;

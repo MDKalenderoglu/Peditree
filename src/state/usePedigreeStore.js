@@ -449,6 +449,10 @@ export const usePedigreeStore = create((zSet, get) => {
     // several people in one symbol (clinician decisions 2026-11-01)
     setGroupCount: (id, count) => apply(ops.setGroupCount(get().doc, id, count)),
     splitGroup: (id) => apply(ops.splitGroup(get().doc, id)),
+    mergeIntoGroup: (ids) => {
+      const r = ops.mergeIntoGroup(get().doc, ids);
+      return apply(r, r.ok ? sel([r.created.groupId]) : {});
+    },
     addParentsTo: (targetId, opts = {}) => applyGuarded(ops.addParents(get().doc, targetId, opts)),
     addSiblingTo: (targetId, sex = 'unknown', extra = {}) => applyGuarded(ops.addSibling(get().doc, targetId, { sex, ...extra })),
     createUnionBetween: (id1, id2, opts = {}) => applyGuarded(ops.linkPartners(get().doc, id1, id2, opts)),

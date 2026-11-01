@@ -3,7 +3,8 @@
  * (NSGC "multiple individuals"; clinician decisions 2026-11-01): a number
  * (2–99) or "n" and a sex (square, circle, diamond) only — no finding,
  * carrier or deceased mark, partner, children or proband; "Tek tek ayır"
- * draws them one by one.
+ * draws them one by one, "Tek sembolde birleştir" draws chosen siblings as
+ * one symbol again.
  */
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { usePedigreeStore } from '../state/usePedigreeStore';
@@ -112,6 +113,65 @@ describe('several people in one symbol', () => {
     bad.graph.individuals.find(i => i.id === g).affected = false;
     bad.graph.individuals.find(i => i.id === g).count = 1;
     expect(parseProjectFile(JSON.stringify(bad)).ok).toBe(false);
+  });
+
+  it('"Tek sembolde birleştir": split and merged again gives the same symbol, in the same place, selected', () => {
+    const g = addBrothers(3);
+    const at = siblingsOf('proband').indexOf(g);
+    const { created } = S().splitGroup(g);
+    const r = S().mergeIntoGroup([...created.childIds].reverse());
+    expect(r.ok, r.reason).toBe(true);
+    expect(person(g)).toMatchObject({ count: 3, sex: 'male', label: 'Erkek kardeşler' });
+    expect(siblingsOf('proband').indexOf(g)).toBe(at);
+    for (const id of created.childIds.slice(1)) expect(person(id)).toBeUndefined();
+    expect(S().doc.ids.retired).toEqual(expect.arrayContaining(created.childIds.slice(1)));
+    expect(S().selectedIds).toEqual([g]);
+    expect(errorsOf(validateDocument(S().doc))).toEqual([]);
+  });
+
+  it('merging adds the numbers; any "n" gives n; brothers and sisters together give a diamond; notes are kept', () => {
+    const g = addBrothers(3);
+    S().addSiblingTo('proband', 'female');
+    const sister = siblingsOf('proband').at(-1);
+    S().updateIndividual(sister, { notes: 'Ankara’da yaşıyor' });
+    expect(S().mergeIntoGroup([g, sister]).ok).toBe(true);
+    expect(person(g)).toMatchObject({ count: 4, sex: 'unknown', label: 'Kardeşler', notes: 'Ankara’da yaşıyor' });
+    S().addSiblingTo('proband', 'unknown', { count: 'n' });
+    const n = siblingsOf('proband').find(c => c !== g && isGroup(person(c)));
+    expect(S().mergeIntoGroup([g, n]).ok).toBe(true);
+    expect(person(g).count).toBe('n');
+  });
+
+  it('only children of the same parents, with nothing a symbol with a number cannot show, are merged; refused whole otherwise', () => {
+    S().addSiblingTo('proband', 'male');
+    const brother = siblingsOf('proband').at(-1);
+    const refused = [
+      [['proband', brother], /proband/],                // the proband
+      [[brother, 'mother'], /aynı anne-babanın/],       // not siblings
+      [[brother], /en az iki/],
+    ];
+    for (const [ids, why] of refused) {
+      const r = S().mergeIntoGroup(ids);
+      expect(r.ok).toBe(false);
+      expect(r.reason).toMatch(why);
+    }
+    S().addSiblingTo('proband', 'male');
+    const other = siblingsOf('proband').at(-1);
+    S().updateIndividual(other, { age: '12' });
+    const r = S().mergeIntoGroup([brother, other]);
+    expect(r.reason).toMatch(/Yaşı/);
+    S().updateIndividual(other, { age: '' });
+    S().addSpouseTo(other, 'female');
+    const n = S().doc.graph.individuals.length;
+    expect(S().mergeIntoGroup([brother, other]).reason).toMatch(/Eşi/);
+    expect(S().doc.graph.individuals.length).toBe(n);
+  });
+
+  it('the side panel offers the merge for siblings chosen together and says why when it cannot', () => {
+    const editor = readFileSync(join(process.cwd(), 'src/components/IndividualEditor.jsx'), 'utf8');
+    expect(editor).toMatch(/Tek sembolde birleştir/);
+    expect(editor).toMatch(/disabled=\{!made\} onClick=\{\(\) => onMerge\(ids\)\}/);
+    expect(editor).toMatch(/: check\.reason/);
   });
 
   it('undo takes the group away in one step', () => {
