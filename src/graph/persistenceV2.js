@@ -74,11 +74,12 @@ export function loadDocument() {
   let raw;
   try { raw = ls.getItem(STORAGE_KEY_V2); } catch { raw = null; }
   if (raw) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (isDocumentV2(parsed)) return { doc: currentGenetics(parsed), source: 'v2' };
-    } catch { /* fall through */ }
-    return { doc: null, source: null, notice: 'Kayıtlı pedigri okunamadı (biçim tanınmadı); temiz başlatıldı. Eski veriler silinmedi.' };
+    // the same checks as a project file (Codex audit 2026-11-01: a broken
+    // session was taken as valid, failed to draw and was silently replaced)
+    const r = parseProjectFile(raw);
+    if (r.ok && !r.migrated) return { doc: r.doc, source: 'v2', ...(r.normalizations.length ? { notice: r.normalizations.join(' ') } : {}) };
+    keepBrokenSession(ls, raw);
+    return { doc: null, source: null, notice: `Bu sekmede kayıtlı pedigri açılamadı (${r.ok ? 'biçim tanınmadı' : r.reason.replace(/\.$/, '')}); boş bir pedigriyle başlandı. Kayıt silinmedi, üzerine yazılmasın diye ayrı saklandı.` };
   }
 
   let rawV1;
@@ -105,6 +106,13 @@ export function loadDocument() {
     console.warn('[persistenceV2] Could not move the v1 session to the backup key:', err);
   }
   return { doc: result.doc, source: 'migrated-v1', normalizations: result.normalizations };
+}
+
+/** A session record that could not be opened is kept apart, so autosave never writes over it. */
+export const BROKEN_SESSION_KEY = 'clinical_pedigree_app.session.v2.unreadable';
+export function keepBrokenSession(ss, raw) {
+  if (!ss) return;
+  try { ss.setItem(BROKEN_SESSION_KEY, raw); } catch { /* full: the notice still tells the clinician */ }
 }
 
 /** "New pedigree": the user explicitly deletes the saved pedigree (all versions). */
