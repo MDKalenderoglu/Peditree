@@ -6,9 +6,7 @@
  */
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { usePedigreeStore } from '../state/usePedigreeStore';
-import { geneticLines, withGeneticLine, normalizeGenetics, TESTED_TEXT } from '../graph/model';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { geneticLines, withGeneticLine, normalizeGenetics } from '../graph/model';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
 const S = () => usePedigreeStore.getState();
@@ -59,28 +57,11 @@ describe('genetic test status (clinician decision 2026-10-27: "−" none, "+" do
     normalizeGenetics(p);
     expect(p).toEqual({ geneticTest: 'tested', geneticNote: 'pozitif' });
   });
-  it('the drawing writes each line under the symbol, "test yapıldı" when none, no "E" anywhere', () => {
-    const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
-    expect(src).toMatch(/geneticRows\(d\)\.forEach/);
-    expect(src).toMatch(/'geneticLine'/);
-    expect(src).toMatch(/TESTED_TEXT/);
-    expect(src).not.toMatch(/'E: '/);
-    expect(TESTED_TEXT).toBe('test yapıldı');
-  });
+  // moved to screen.test.js: genetic test lines under the symbol
 });
 
-describe('ring and selection step back on an empty click (clinician request 2026-10-27)', () => {
-  it('open menu → ring → selection, one level per click; selecting a person brings the ring back', () => {
-    const app = readFileSync(join(process.cwd(), 'src/App.jsx'), 'utf8');
-    expect(app).toMatch(/if \(ringShown && ringRef\.current\?\.back\(\)\) return;\s*if \(ringShown\) \{ setRingHidden\(true\); return; \}\s*clearSelection\(\);/);
-    expect(app).toMatch(/const handleNodeSelect = \(id, opts\) => \{\s*setRingHidden\(false\);/);
-    expect(app).toMatch(/onBackgroundClick=\{onBackgroundClick\}/);
-    const canvas = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
-    expect(canvas).toMatch(/svg\.on\('click\.background'/);
-    const ring = readFileSync(join(process.cwd(), 'src/components/RadialAddMenu.jsx'), 'utf8');
-    expect(ring).toMatch(/back: \(\) => \{/);
-  });
-});
+// ring and selection step back on an empty click (clinician request 2026-10-27)
+// moved to screen.test.js: an empty click steps back one level
 
 describe('diagnosis age of a finding', () => {
   it('set per person and finding, read like an age, refused when unreadable', () => {
@@ -110,29 +91,7 @@ describe('childlessness and infertility', () => {
   });
 });
 
-describe('pop-up windows and help text (clinician request 2026-10-27)', () => {
-  const app = readFileSync(join(process.cwd(), 'src/App.jsx'), 'utf8');
-  it('every toolbar pop-up closes on a click outside it or Escape, and that click does nothing else', () => {
-    // "Diğer" became "İndir" (clinician decision 2026-10-30); the logo and Ayarlar open windows too
-    for (const name of ['new', 'keys', 'share', 'download', 'settings', 'about']) {
-      expect(app).toContain(`data-popup="${name}"`);
-      expect(app).toMatch(new RegExp(`except !== '${name}'`));
-    }
-    // the related-family window (clinician request 2026-11-01): closes the same way, its backdrop counts as outside
-    expect(readFileSync(join(process.cwd(), 'src/components/RelationChooser.jsx'), 'utf8')).toContain('data-popup="relation"');
-    expect(app).toMatch(/except !== 'relation'/);
-    expect(app).toMatch(/document\.addEventListener\('pointerdown', onDown, true\)/);
-    expect(app).toMatch(/e\.key !== 'Escape'/);
-    expect(app).toMatch(/performance\.now\(\) - popupClosedAt\.current < 1000/);
-  });
-  it('the keyboard help is grouped and written in full sentences', () => {
-    expect(app).toContain("['Kişiler arasında gezinmek', [");
-    expect(app).toContain("['Seçili kişi için (önce bir kişiye tıklayın)', [");
-    expect(app).not.toMatch(/'simit açılır'|odaktaki kişiyi seç/);
-  });
-  it('the editor tip says where the buttons are and how to bring them back', () => {
-    const ed = readFileSync(join(process.cwd(), 'src/components/IndividualEditor.jsx'), 'utf8');
-    expect(ed).toContain('Düğmeler görünmüyorsa kişinin sembolüne yeniden tıklayın.');
-    expect(ed).not.toContain('etrafındaki halkayı');
-  });
-});
+// pop-up windows and help text (clinician request 2026-10-27)
+// moved to screen.test.js: pop-ups close on an outside tap or Escape; that tap does nothing else
+// moved to screen.test.js: the keyboard help
+// moved to screen.test.js: the tip in the side panel

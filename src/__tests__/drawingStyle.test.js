@@ -4,14 +4,11 @@
  * The hand-drawn look must never change what the drawing says.
  */
 import { describe, it, expect, afterEach } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import {
   LEGEND_SIZES, DRAWING_FONTS, DEFAULT_VIEW, STANDARD_FAMILY, normalizeView, applyViewChange, drawingSpec, exportSpec, STANDARD_SPEC, embeddedFontCss,
 } from '../utils/drawingStyle';
 import { sketchPath, sketchCircle, MAX_BOW, SHAPE_BOW, MARK_BOW, REGION_BOW, junctionSplitter, pathPieces } from '../utils/drawingStyleSvg';
 
-const src = (p) => readFileSync(join(process.cwd(), p), 'utf8');
 
 /** Points along a path made of M / L / C / A commands (curves sampled). */
 function samplePath(d, steps = 20) {
@@ -85,12 +82,7 @@ describe('drawing style settings', () => {
     expect(exportSpec({ ...v, exportAs: 'standard' })).toEqual(STANDARD_SPEC);
   });
 
-  it('is a viewing preference on this device: localStorage, never the pedigree document', () => {
-    const s = src('src/utils/drawingStyle.js');
-    expect(s).toMatch(/window\.localStorage\.setItem\(VIEW_KEY/);
-    expect(s).not.toMatch(/sessionStorage|patientName|graph/);
-    expect(src('src/state/usePedigreeStore.js')).not.toMatch(/drawStyle|fontId/);
-  });
+  // moved to screen.test.js: the hand-drawn look leaves the family untouched; kept in localStorage
 });
 
 describe('hand-drawn lines keep their meaning', () => {
@@ -212,31 +204,9 @@ describe('hand-drawn lines keep their meaning', () => {
     }
   });
 
-  it('drawn by geometry, never a pixel filter (a filter broke outlines into dashes); fills, regions and text untouched', () => {
-    const svgSrc = src('src/utils/drawingStyleSvg.js');
-    expect(svgSrc).not.toMatch(/feTurbulence|feDisplacementMap|setAttribute\('filter'/);
-    expect(svgSrc).toMatch(/querySelectorAll\('\.condition-regions'\)/); // regions: divider and sector edges drawn alike
-    expect(svgSrc).toMatch(/tag === 'text'/);
-    // the original outline is hidden, never removed; its fill stays exact
-    expect(svgSrc).toMatch(/setAttribute\('stroke-opacity', '0'\)/);
-    // a carrier's dot: a hand-drawn dot of the same fill, the original hidden
-    expect(svgSrc).toMatch(/setAttribute\('fill-opacity', '0'\)/);
-    // the original dot's outline (page stylesheet) is hidden too, or a stiff ring stays around the hand-drawn dot
-    expect(svgSrc).toMatch(/setAttribute\('fill-opacity', '0'\);\n\s*c\.setAttribute\('stroke-opacity', '0'\)/);
-    expect(src('src/styles/app.css')).toMatch(/\.condition-regions path\.region-divider-sketch \{\s*stroke: #1e293b;/);
-    // a dashed line keeps its dashes
-    expect(svgSrc).toMatch(/'stroke-dasharray'/);
-    // selection, focus and drop styles reach the hand-drawn outline
-    expect(src('src/styles/app.css')).toMatch(/\.node-selected > \.pedigree-shape-sketch/);
-    expect(src('src/styles/ui.css')).toMatch(/focus-visible > \.pedigree-shape-sketch/);
-  });
+  // moved to screen.test.js: the hand-drawn look (CSS rules: stylesheet.test.js)
 
-  it('the renderer applies the style after drawing; exports apply the export style to their copy', () => {
-    expect(src('src/components/PedigreeCanvas.jsx')).toMatch(/applyDrawingStyle\(svgRef\.current, drawing\)/);
-    const ex = src('src/utils/exportUtils.js');
-    expect(ex).toMatch(/if \(spec\) applyDrawingStyle\(clone, spec\)/);
-    expect(ex).toMatch(/stripStyleHelpers\(clone\)/);
-  });
+  // moved to screen.test.js: the hand-drawn look on screen; "her zaman standart" in the downloaded copy
 });
 
 describe('the typeface inside an exported file', () => {
@@ -256,43 +226,16 @@ describe('the typeface inside an exported file', () => {
     expect(await embeddedFontCss('standard')).toBe('');
   });
 
-  it('the clinician is told when the typeface could not be put in the file (App.jsx)', () => {
-    const app = readFileSync(join(process.cwd(), 'src/App.jsx'), 'utf8');
-    expect(app).toMatch(/catch \{ fontMissing = true; \}/);
-    expect(app).toMatch(/if \(opts\.fontMissing\) lines\.push\(FONT_MISSING_TEXT\)/);
-    expect(app).toMatch(/if \(opts\.fontMissing\) setExportNotice\(FONT_MISSING_TEXT\)/);
-  });
+  // moved to screen.test.js: a typeface that cannot go into the file: the clinician is told
 });
 
-describe('"Aç" explains which files it opens (clinician decision 2026-10-30)', () => {
-  const app = readFileSync(join(process.cwd(), 'src/App.jsx'), 'utf8');
-  it('both file kinds are named with what comes back from each', () => {
-    expect(app).toMatch(/<b>PediTree dosyası<\/b> \(\.peditree\.json\)/);
-    expect(app).toMatch(/<b>PED dosyası<\/b> \(\.ped, \.fam, \.txt\)/);
-    expect(app).toMatch(/isim, yaş ve bulgular gelmez/);
-  });
-  it('"Bir daha gösterme" opens the file chooser at once; Ayarlar brings the window back', () => {
-    expect(app).toMatch(/if \(view\.openHelp\) setOpenHelp\(v => !v\); else chooseFile\(\);/);
-    expect(app).toMatch(/onChange=\{e => setView\(\{ openHelp: !e\.target\.checked \}\)\}/);
-    expect(app).toMatch(/onChange=\{e => setView\(\{ openHelp: e\.target\.checked \}\)\}/);
-  });
-  it('a file dropped on the drawing opens the same way, with the same question before replacing work', () => {
-    expect(app).toMatch(/onDrop=\{onFileDrop\}/);
-    expect(app).toMatch(/openFile\(e\.dataTransfer\.files && e\.dataTransfer\.files\[0\]\)/);
-    const open = app.slice(app.indexOf('function openFile(file)'));
-    expect(open.slice(0, 400)).toMatch(/needsLeaveWarning\(doc, downloadedDoc\.current\) && !window\.confirm/);
-  });
-});
+// moved to screen.test.js: "Aç", "Bunu bir daha gösterme", a dropped file
 
 describe('text size of the name, key and notes (clinician request 2026-10-30)', () => {
   it('four sizes, normal by default; the renderer scales only the legends by it', () => {
     expect(LEGEND_SIZES.map(z => z.id)).toEqual(['small', 'normal', 'large', 'xlarge']);
     expect(drawingSpec(DEFAULT_VIEW).legendScale).toBe(1);
     expect(drawingSpec({ ...DEFAULT_VIEW, legendSize: 'xlarge' }).legendScale).toBeGreaterThan(1.3);
-    const canvas = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
-    // LK is the legends' size unit only: the symbols and the text under them never use it
-    expect(canvas).toMatch(/\* \(\(drawing && drawing\.legendScale\) \|\| 1\)/);
-    const nodeBlock = canvas.slice(canvas.indexOf('// --- Nodes') > 0 ? canvas.indexOf('// --- Nodes') : canvas.indexOf("attr('class', 'annotations')"), canvas.indexOf("attr('class', 'condition-legend')"));
-    expect(nodeBlock).not.toMatch(/\bLK\b/);
+    // the drawing itself: screen.test.js (the text size setting changes the legends only)
   });
 });

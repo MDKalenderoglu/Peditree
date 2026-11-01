@@ -36,19 +36,9 @@ describe('PediTree hakkında', () => {
     expect(read('NOTICE')).toMatch(/"PediTree" and the PediTree logo .* are not licensed/s);
   });
 
-  it('the logo opens it, and it says what PediTree is not', () => {
-    const app = read('src/App.jsx');
-    expect(app).toMatch(/aria-label="PediTree hakkında"/);
-    expect(app).toMatch(/tıbbi cihaz değildir/);
-    expect(app).toMatch(/PediTree adı ve logosu lisansa dahil değildir/);
-  });
+  // the window itself (texts and links as shown): screen.test.js, the About window
 
   it('says how to report a bug or share feedback, with the forms that exist and a warning about patient data', () => {
-    const app = read('src/App.jsx');
-    expect(app).toMatch(/issueUrl\('hata-bildirimi'\)/);
-    expect(app).toMatch(/issueUrl\('oneri'\)/);
-    expect(app).toMatch(/mailto:\$\{CONTACT_EMAIL\}/);
-    expect(app).toMatch(/hasta adı, doğum tarihi/);
     for (const form of ['hata-bildirimi', 'oneri']) {
       expect(existsSync(join(process.cwd(), `.github/ISSUE_TEMPLATE/${form}.yml`))).toBe(true);
       expect(issueUrl(form)).toBe(`${REPOSITORY_URL}/issues/new?template=${form}.yml`);

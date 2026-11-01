@@ -11,8 +11,6 @@
  *     `it.fails` turns red, and the record must be moved to "fixed".
  */
 import { describe, it, expect, vi, beforeAll } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { computePclLayout } from '../layout/pcl';
 import { makeLargePedigree, LARGE_PEDIGREE_CASES } from '../audit/largePedigrees';
 import { readabilityMetrics } from '../audit/connectorReadability';
@@ -144,55 +142,13 @@ describe('KI-3 (fixed, P0) — extra random robustness (not the original graphs;
 // Fixed 2026-10-23 (notation spec R4): the number stands at the upper-left
 // corner, or upper-right when a connector crosses there. Measured in the
 // browser on 21 fixtures: 0 numbers on a line, symbol or other label.
-describe('KI-4 (fixed, P2) — pedigree number drawn on the line of descent', () => {
-  it('the "II-3" label is not centred on the symbol axis where the stem enters', () => {
-    const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
-    expect(src).not.toMatch(/\.attr\('y', -\(sz \+ 8\)\)\.attr\('text-anchor', 'middle'\)/);
-    // every candidate corner is beside the symbol (upper-left / upper-right,
-    // or a little higher), never centred over it; numbers never overlap each
-    // other (clinician report 2026-10-25)
-    const block = src.slice(src.indexOf('const labelAt = new Map();'), src.indexOf('labelAt.set(n.id, pick);'));
-    expect(block).toMatch(/anchor: 'end'/);
-    expect(block).toMatch(/anchor: 'start'/);
-    expect(block).not.toMatch(/anchor: 'middle'/);
-    expect(block).toMatch(/!hitsPlaced\(o\.box\)/);
-  });
-  it('the proband arrow carries "P" (notation spec K10)', () => {
-    const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
-    expect(src).toMatch(/proband-p[\s\S]{0,400}\.text\('P'\)/);
-  });
-  it('separated and divorced are both drawn with one slash (clinician decision 2026-10-23)', () => {
-    const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
-    const block = src.slice(src.indexOf("case 'divorceSlash'"), src.indexOf('break;', src.indexOf("case 'divorceSlash'")));
-    expect(block.match(/append\('line'\)/g)).toHaveLength(1);
-    expect(block).not.toMatch(/'divorced'/);
-  });
-  it('adopted-in children get brackets (notation spec R3)', () => {
-    const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
-    expect(src).toMatch(/descentKind === 'adoptive'/);
-    expect(src).toMatch(/adoption-brackets/);
-  });
-});
+// KI-4 (fixed, P2) — pedigree number drawn on the line of descent
+// moved to screen.test.js: pedigree numbers beside the symbol, never on top of each other
+// moved to screen.test.js: arrows and "P"
+// moved to screen.test.js: separated and divorced: one slash
+// moved to screen.test.js: brackets for every adoption
 
-describe('KI-5 / KI-6 (fixed) — notices and toolbar never cover the canvas', () => {
-  const css = () => readFileSync(join(process.cwd(), 'src/styles/app.css'), 'utf8');
-  const block = (sel) => {
-    const s = css();
-    const i = s.indexOf(`${sel} {`);
-    return i < 0 ? '' : s.slice(i, s.indexOf('}', i));
-  };
-  it('the warning panel is in normal flow, inside the notice area above the canvas stage', () => {
-    expect(block('.warning-panel')).not.toMatch(/position:\s*absolute/);
-    const app = readFileSync(join(process.cwd(), 'src/App.jsx'), 'utf8');
-    expect(app.indexOf('className="canvas-notices"')).toBeGreaterThan(-1);
-    expect(app.indexOf('className="canvas-notices"')).toBeLessThan(app.indexOf('className="canvas-stage"'));
-    expect(app.indexOf('className="warning-panel"')).toBeLessThan(app.indexOf('className="canvas-stage"'));
-  });
-  it('the toolbar wraps and is not overlaid on the canvas', () => {
-    expect(block('.canvas-toolbar')).toMatch(/flex-wrap:\s*wrap/);
-    expect(block('.canvas-toolbar')).not.toMatch(/position:\s*absolute/);
-  });
-});
+// moved to screen.test.js: notices above the drawing (CSS rules: stylesheet.test.js)
 
 // Measured 2026-10-18 on fresh layouts (PCL with man-left tie-breaker). Lower it when it improves.
 const KI2_FLIP_CEILING = 31;
@@ -226,12 +182,5 @@ describe('KI-8 (fixed, P2) — a married-in second partner separates a couple fr
   });
 });
 
-describe('KI-9 (fixed, P1) — clinical notes legend shows pedigree numbers, not internal ids', () => {
-  it('the legend label never falls back to the internal id', () => {
-    const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
-    const legend = src.slice(src.indexOf("text: `[${i + 1}] ${who}: `"), src.indexOf("text: `[${i + 1}] ${who}: `") + 1);
-    expect(legend).toBeTruthy();
-    expect(src).not.toMatch(/const label = n\.displayLabel \|\| n\.label \|\| n\.id;/);
-    expect(src).toMatch(/pedigreeIds\.get\(n\.id\)\?\.displayId/);
-  });
-});
+// KI-9 (fixed, P1) — clinical notes legend shows pedigree numbers, not internal ids
+// moved to screen.test.js: the notes name people by pedigree number

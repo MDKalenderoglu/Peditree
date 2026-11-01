@@ -12,8 +12,6 @@ import { validateDocument, errorsOf } from '../graph/validate';
 import { subjectOf } from '../graph/model';
 import { parseProjectFile, serializeDocument } from '../graph/persistenceV2';
 import { clinicalNotices } from '../utils/clinicalNotices';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
 beforeEach(() => S().resetPedigree());
@@ -84,14 +82,7 @@ describe('the consultand', () => {
     expect(S().setProbandBirthDate('1990-05-04').ok).toBe(false);
   });
 
-  it('the drawing: an arrow for the proband and the consultand, "P" for the proband only; the ring offers "Danışan"', () => {
-    const canvas = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
-    expect(canvas).toMatch(/if \(d\.proband \|\| d\.consultand\) \{/);
-    expect(canvas).toMatch(/if \(d\.proband\) el\.append\('text'\)\s*\.attr\('class', 'proband-p'\)/);
-    expect(canvas).toMatch(/const headNode = subjectOf\(nodes\)/);
-    const ring = readFileSync(join(process.cwd(), 'src/components/RadialAddMenu.jsx'), 'utf8');
-    expect(ring).toMatch(/label: 'Danışan', on: !!node\.consultand/);
-  });
+  // moved to screen.test.js: arrows, "P" and the key's first line (marks around a person)
 
   it('the plain operation refuses an unknown person', () => {
     expect(ops.setConsultand(S().doc, 'nobody').ok).toBe(false);

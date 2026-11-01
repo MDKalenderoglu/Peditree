@@ -7,8 +7,6 @@
  * person's findings on the RIGHT side (clinician decision 2026-10-25).
  */
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { usePedigreeStore } from '../state/usePedigreeStore';
 import { deriveConditionKey, fillFor, suggestStyle, keyEntry } from '../graph/conditionKey';
 import { keyGrid } from '../utils/keyGrid';
@@ -188,30 +186,7 @@ describe('the legend follows the findings', () => {
   });
 });
 
-describe('renderer contract', () => {
-  const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
-  it('regions are drawn from the shared fill rule and the legend is inside the SVG', () => {
-    expect(src).toMatch(/fillFor\(d, conditionKey\)/);
-    expect(src).toMatch(/svg\.append\('g'\)\.attr\('class', 'condition-legend'\)/);
-  });
-  it('two findings never read as one: quadrant lines and a white gap the page style cannot paint over', () => {
-    expect(src).toMatch(/region-divider/);
-    expect(src).toMatch(/attr\('stroke', NODE_FILL\)/);
-    const css = readFileSync(join(process.cwd(), 'src/styles/app.css'), 'utf8');
-    expect(css).toMatch(/\.node-group \.condition-regions path \{\s*stroke: #ffffff;/);
-  });
-  it('every text on the page can be corrected where it stands; the notes title is "Notlar"', () => {
-    for (const kind of ["'patientName'", "'finding'", "'displayLabel'", "'condition'"]) expect(src).toContain(`, ${kind}, `);
-    expect(src).toContain('ageLine.kind, d.id, ageLine.value');
-    for (const kind of ["['note',", "['causeOfDeath',", "['condition',"]) expect(src).toContain(kind);
-    expect(src).toMatch(/className="inline-edit"/);
-    expect(src).toMatch(/\.text\('Notlar'\)/);
-    expect(src).not.toMatch(/Klinik Notlar/);
-  });
-  it('note markers under symbols use the notes legend numbering', () => {
-    expect(src).toMatch(/notedNodes\.indexOf\(d\)/);
-  });
-});
+// moved to screen.test.js: regions, the key inside the drawing, texts corrected where they stand (CSS rule: stylesheet.test.js)
 
 describe('a carrier with two findings: the two right quadrants differ in fill', () => {
   it('neither matches the carrier half, nor each other', () => {
@@ -252,10 +227,5 @@ describe('the findings key runs in columns (clinician request 2026-10-27)', () =
     expect(g.cells).toEqual([{ x: 0, y: 0 }, { x: 70, y: 0 }, { x: 280, y: 0 }, { x: 0, y: 20 }, { x: 310, y: 20 }]);
     expect(g.width).toBe(350);
   });
-  it('the canvas places each key entry from the grid', () => {
-    const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
-    expect(src).toMatch(/const grid = keyGrid\(/);
-    expect(src).toMatch(/const keyBlock = shownKey\.length \? grid\.height/);
-    expect(src).toMatch(/grid\.cells\[row\]/);
-  });
+  // moved to screen.test.js: the key entries follow one another with the same gap
 });

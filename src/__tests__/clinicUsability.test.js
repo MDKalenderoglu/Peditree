@@ -9,8 +9,6 @@ import { usePedigreeStore } from '../state/usePedigreeStore';
 import { clinicalNotices } from '../utils/clinicalNotices';
 import { withStableIdsExcludingDismissed } from '../utils/warningIds';
 import { exportFileName } from '../utils/exportUtils';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
 
@@ -89,11 +87,5 @@ describe('patient name and keyboard (clinician request 2026-10-25)', () => {
     expect(S().doc.patientName).toBe('Ali Veli');
   });
 
-  it('the name is drawn at the top left of the SVG; shortcuts never fire while typing', () => {
-    const canvas = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
-    expect(canvas).toMatch(/patient-header/);
-    const app = readFileSync(join(process.cwd(), 'src/App.jsx'), 'utf8');
-    expect(app).toMatch(/if \(typing\) \{ if \(e\.key === 'Escape'\) t\.blur\(\); return; \}/);
-    expect(app).toMatch(/key === 'z'/);
-  });
+  // moved to screen.test.js: the name at the top, shortcuts while typing, Ctrl+Z
 });
