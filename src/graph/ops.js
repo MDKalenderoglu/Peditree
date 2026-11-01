@@ -15,7 +15,7 @@
  * so behaviour does not change for the clinician; what changes is that the
  * result is stored as graph, not replayed from instructions.
  */
-import { cloneGraph, indexGraph, makePerson, SOCIAL_LINK_KINDS, PREGNANCY_FIELDS, PREGNANCY_KINDS, PREGNANCY_LABEL, isPregnancy, pregnancyKind, GENETIC_TESTED, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX } from './model';
+import { cloneGraph, indexGraph, makePerson, SOCIAL_LINK_KINDS, PREGNANCY_FIELDS, PREGNANCY_KINDS, PREGNANCY_LABEL, isPregnancy, pregnancyKind, GENETIC_TESTED, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, REPRO_ROLES, EGG_SOURCE, CARRIER_ROLES, REPRO_LABEL, ART_DONOR_RELATION, hasClinicalData } from './model';
 import { allocateEditNumber, retire } from './ids';
 import { finalizeGraph, ageOrder } from './finalize';
 import { validateDocument, errorsOf } from './validate';
@@ -180,6 +180,7 @@ export function draftRemovePerson(draft, id) {
     .map((r) => ({ ...r, children: r.children.filter((c) => !removedIds.includes(c)) }))
     .filter((r) => r.children.length > 0);
   g.socialParentLinks = (g.socialParentLinks || []).filter((l) => !removedIds.includes(l.childId) && !removedUnions.has(l.unionId));
+  g.reproductiveLinks = (g.reproductiveLinks || []).filter((l) => !removedIds.includes(l.childId) && !removedIds.includes(l.personId));
   draft.ids = retire(draft.ids, [...removedIds, ...removedUnions]);
   return { removedIds, removedUnionIds: [...removedUnions] };
 }
@@ -209,6 +210,9 @@ function partnerSexConflict(graph, personId, newSex) {
 // a pregnancy outcome is never a partner or a parent (Codex audit 2026-11-01;
 // validate.js PREGNANCY_PARTNER only warns, for older files)
 const PREGNANCY_NO_PARTNER = 'Bir gebelik sonucunun (düşük, ölü doğum, süren gebelik, sonlandırma, dış gebelik) eşi ya da çocuğu olamaz.';
+
+// a donor or carrier added for assisted reproduction has no family of their own (clinician decision 2026-11-01)
+const DONOR_NO_FAMILY = 'Donör ya da taşıyıcının ailesi çizilmez; aile öyküsünü not ve bulgu olarak girin.';
 
 const PROTECTED_FIELDS = new Set(['id', 'generation', 'proband', 'consultand', 'adoptedOut', 'placeholder', 'birthDate']);
 
@@ -317,6 +321,7 @@ export function addPartner(doc, personId, opts = {}) {
     if (!target) block('Birey grafikte bulunamadı.');
     if (isGroup(target)) block(GROUP_ONE_BY_ONE);
     if (isPregnancy(target)) block(PREGNANCY_NO_PARTNER);
+    if (target.relation === ART_DONOR_RELATION) block(DONOR_NO_FAMILY);
     const sex = opts.sex || 'unknown';
     if (target.sex === 'unknown') block('Eş eklemek için önce bu kişinin cinsiyetini seçin: kişinin çevresindeki Durum düğmesi → Erkek ya da Kadın.');
     if (sex === 'unknown' || sex === target.sex) block('Eş/birliktelik yalnızca kadın ve erkek arasında kurulabilir.');
@@ -343,6 +348,7 @@ export function linkPartners(doc, a, b, opts = {}) {
   // siblings are never partners, consanguinity flag or not (Codex audit 2026-11-01)
   if (!plan.ok) return { ok: false, doc, reason: plan.reason };
   if ([a, b].some((id) => isPregnancy(doc.graph.individuals.find((i) => i.id === id)))) return { ok: false, doc, reason: PREGNANCY_NO_PARTNER };
+  if ([a, b].some((id) => doc.graph.individuals.find((i) => i.id === id)?.relation === ART_DONOR_RELATION)) return { ok: false, doc, reason: DONOR_NO_FAMILY };
   return commit(doc, (d) => {
     const unionId = opts.unionId || `U_DE_LINK_${editNumber(d)}`;
     draftAddUnion(d, unionId, a, b, {
@@ -391,6 +397,7 @@ export function addChildToPerson(doc, personId, opts = {}) {
   const own = idx.unionsOf.get(personId) || [];
   // with several partners the clinician names the other parent (Codex audit 2026-11-01)
   if (own.length > 1) return { ok: false, doc, reason: 'Bu kişinin birden çok eşi var: çocuğun hangi eşten olduğunu seçin.' };
+  if (doc.graph.individuals.find((i) => i.id === personId)?.relation === ART_DONOR_RELATION) return { ok: false, doc, reason: DONOR_NO_FAMILY };
   if (own.length === 1) return addChild(doc, own[0], opts);
   const target = idx.byId.get(personId);
   if (!target) return { ok: false, doc, reason: 'Birey grafikte bulunamadı.' };
@@ -404,6 +411,7 @@ export function addChildToPerson(doc, personId, opts = {}) {
 
 /** Add mother + father (or one of them with an unspecified co-parent). */
 export function addParents(doc, childId, opts = {}) {
+  if (doc.graph.individuals.find((i) => i.id === childId)?.relation === ART_DONOR_RELATION) return { ok: false, doc, reason: DONOR_NO_FAMILY };
   const plan = computeAddParentsPlan(graphView(doc), childId);
   if (!plan.ok) return { ok: false, doc, reason: plan.reason };
   return commit(doc, (d) => {
@@ -434,6 +442,7 @@ export function addParents(doc, childId, opts = {}) {
  */
 export function addSibling(doc, personId, opts = {}) {
   const { createParents, biologicalSibling, ...childOpts } = opts;
+  if (doc.graph.individuals.find((i) => i.id === personId)?.relation === ART_DONOR_RELATION) return { ok: false, doc, reason: DONOR_NO_FAMILY };
   const plan = computeAddSiblingPlan(graphView(doc), personId);
   if (plan.ok) return addChild(doc, plan.unionId, childOpts);
   if (!createParents || computeAddParentsPlan(graphView(doc), personId).ok !== true) return { ok: false, doc, reason: plan.reason };
@@ -687,6 +696,47 @@ export function setAdoption(doc, id, to) {
     delete p.adoptedOut;
     g.socialParentLinks = [...others, { childId: id, unionId: to, kind: 'adoptive' }];
     return undefined;
+  });
+}
+
+/**
+ * Assisted reproduction (model.js REPRO_ROLES): a donor or carrier for a
+ * child. Without `opts.personId` a new person is drawn beside the parents
+ * (relation 'art_donor': no family of their own, notes and findings only);
+ * with it, someone already in the pedigree (e.g. a sister as the carrier).
+ */
+export function addReproductiveLink(doc, childId, role, opts = {}) {
+  return commit(doc, (d) => {
+    const g = d.graph;
+    const child = g.individuals.find((i) => i.id === childId);
+    if (!child) block('Birey grafikte bulunamadı.');
+    if (!REPRO_ROLES.includes(role)) block('Bilinmeyen yardımcı üreme rolü.');
+    const links = g.reproductiveLinks || [];
+    const taken = (list) => links.some((l) => l.childId === childId && list.includes(l.role));
+    if (role === 'sperm_donor' && taken(['sperm_donor'])) block('Bu çocuğun sperm donörü zaten çizili.');
+    if (EGG_SOURCE.includes(role) && taken(EGG_SOURCE)) block('Bu çocuğun yumurtası zaten bir donörden ya da taşıyıcı anneden geliyor.');
+    if (CARRIER_ROLES.includes(role) && taken(CARRIER_ROLES)) block('Bu gebeliği taşıyan kişi zaten çizili.');
+    let personId = opts.personId;
+    if (!personId) {
+      personId = `de_art_${editNumber(d)}`;
+      draftAddPerson(d, {
+        id: personId, sex: role === 'sperm_donor' ? 'male' : 'female',
+        generation: (child.generation ?? 3) - 1, relation: ART_DONOR_RELATION, label: REPRO_LABEL[role],
+      });
+    }
+    g.reproductiveLinks = [...links, { childId, personId, role }];
+    return { created: { personId } };
+  });
+}
+
+/** Take a donor or carrier away from a child; a person added only for it goes too, unless something was written about them. */
+export function removeReproductiveLink(doc, childId, personId) {
+  return commit(doc, (d) => {
+    const g = d.graph;
+    g.reproductiveLinks = (g.reproductiveLinks || []).filter((l) => !(l.childId === childId && l.personId === personId));
+    const p = g.individuals.find((i) => i.id === personId);
+    const stillLinked = g.reproductiveLinks.some((l) => l.personId === personId);
+    if (p && p.relation === ART_DONOR_RELATION && !stillLinked && !hasClinicalData(p)) draftRemovePerson(d, personId);
   });
 }
 

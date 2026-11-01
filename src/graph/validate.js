@@ -8,7 +8,7 @@
  * Issues: { severity: 'error' | 'warning', code, message (Turkish), ids }
  */
 import { auditPedigreeGraph } from '../utils/graphIntegrity';
-import { SOCIAL_LINK_KINDS, indexGraph, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, isPregnancy, ancestorsOf, PREGNANCY_FIELDS } from './model';
+import { SOCIAL_LINK_KINDS, indexGraph, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, isPregnancy, ancestorsOf, PREGNANCY_FIELDS, REPRO_ROLES, EGG_SOURCE, CARRIER_ROLES, ART_DONOR_RELATION } from './model';
 
 const FLAG_FIELDS = ['affected', 'carrier', 'deceased', 'proband', 'consultand', 'adoptedOut', 'placeholder', ...PREGNANCY_FIELDS];
 const FINDING_STATUSES = ['affected', 'carrier', 'unknown'];
@@ -108,6 +108,40 @@ export function validateGraphStructure(graph, { retired = [] } = {}) {
     if (!idx.bioParentUnion.has(ind.id)) err('ADOPTED_OUT_NO_PARENTS', 'Evlat verilen kişinin biyolojik ebeveynleri çizili olmalı.', [ind.id]);
     if (adoptive.has(ind.id)) err('ADOPTED_OUT_AND_IN', 'Evlat verilen kişinin evlat edinen ailesi çizimde varsa "evlat verildi" yerine o aile seçilir.', [ind.id]);
     if (isPregnancy(ind) || ind.placeholder) err('ADOPTION_KIND', 'Gebelik ya da belirtilmemiş ebeveyn evlat edinilmiş olarak işaretlenemez.', [ind.id]);
+  }
+
+  // assisted reproduction (model.js REPRO_ROLES; NSGC 2022/2025 Figure 5)
+  const repro = graph.reproductiveLinks || [];
+  const seenRepro = new Set();
+  for (const l of repro) {
+    const ids = [l.childId, l.personId];
+    const child = idx.byId.get(l.childId), person = idx.byId.get(l.personId);
+    if (!child || !person) { err('REPRO_MISSING', 'Yardımcı üreme kaydındaki çocuk ya da kişi grafikte yok.', ids); continue; }
+    if (!REPRO_ROLES.includes(l.role)) { err('REPRO_ROLE', `Bilinmeyen yardımcı üreme rolü: ${l.role}.`, ids); continue; }
+    const key = `${l.childId}|${l.personId}`;
+    if (seenRepro.has(key)) err('REPRO_DUPLICATE', 'Aynı kişi aynı çocuk için iki kez kayıtlı.', ids);
+    seenRepro.add(key);
+    const uid = idx.bioParentUnion.get(l.childId);
+    if (!uid) err('REPRO_NO_PARENTS', 'Yardımcı üremeyle doğan çocuğun anne-babası (ya da tek ebeveyni) çizili olmalı.', ids);
+    else if ((idx.unionById.get(uid)?.partners || []).includes(l.personId)) err('REPRO_IS_PARENT', 'Donör ya da taşıyıcı, çocuğun çizili anne-babasından biri olamaz.', ids);
+    if (l.personId === l.childId || ancestorsOf(graph, l.personId, idx).has(l.childId)) err('REPRO_DESCENDANT', 'Bir kişi kendi soyundan gelen birinin donörü ya da taşıyıcısı olamaz.', ids);
+    const wants = l.role === 'sperm_donor' ? 'male' : 'female';
+    if (person.sex !== wants) err('REPRO_SEX', l.role === 'sperm_donor' ? 'Sperm donörü erkek olmalı.' : 'Yumurta donörü, gestasyonel taşıyıcı ve taşıyıcı anne kadın olmalı.', ids);
+    if (isPregnancy(person) || person.placeholder || isGroup(person)) err('REPRO_KIND', 'Gebelik, belirtilmemiş ebeveyn ya da sayılı sembol donör veya taşıyıcı olamaz.', ids);
+    if (isGroup(child)) err('REPRO_KIND', 'Sayılı sembol için yardımcı üreme işaretlenemez; önce "Tek tek ayır".', ids);
+  }
+  const byChild = new Map();
+  for (const l of repro) { if (!byChild.has(l.childId)) byChild.set(l.childId, []); byChild.get(l.childId).push(l.role); }
+  for (const [childId, roles] of byChild) {
+    const n = (list) => roles.filter((r) => list.includes(r)).length;
+    if (n(['sperm_donor']) > 1) err('REPRO_SLOT', 'Bir çocuğun en fazla bir sperm donörü olabilir.', [childId]);
+    if (n(EGG_SOURCE) > 1) err('REPRO_SLOT', 'Bir çocuğun yumurtası tek kişiden gelir: yumurta donörü ya da taşıyıcı anne, ikisi birden değil.', [childId]);
+    if (n(CARRIER_ROLES) > 1) err('REPRO_SLOT', 'Bir gebeliği tek kişi taşır: gestasyonel taşıyıcı ya da taşıyıcı anne, ikisi birden değil.', [childId]);
+  }
+  // a donor or carrier added through the panel has no family of their own (clinician decision 2026-11-01)
+  for (const ind of graph.individuals) {
+    if (ind.relation !== ART_DONOR_RELATION) continue;
+    if (idx.bioParentUnion.has(ind.id) || (idx.unionsOf.get(ind.id) || []).length) err('REPRO_DONOR_FAMILY', 'Donör ya da taşıyıcının ailesi çizilmez; aile öyküsünü not ve bulgu olarak girin.', [ind.id]);
   }
 
   // the consultand (model.js): at most one, a born person

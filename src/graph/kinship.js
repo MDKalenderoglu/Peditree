@@ -16,9 +16,8 @@ function ancestorDepths(idx, id) {
   for (let d = 1; frontier.length; d++) {
     const next = [];
     for (const cur of frontier) {
-      const uid = idx.bioParentUnion.get(cur);
-      if (!uid) continue;
-      for (const p of idx.unionById.get(uid)?.partners || []) {
+      // genetic parents: a donor in the place of the partner they replace (model.js)
+      for (const p of idx.geneticParents(cur) || []) {
         if (depth.has(p) || p === id) continue;
         depth.set(p, d);
         next.push(p);
@@ -93,18 +92,17 @@ export function kinshipOf(graph, a, b, idx = indexGraph(graph)) {
 
 /**
  * Wright's kinship coefficient φ(a, b): the probability that an allele taken
- * at random from each is identical by descent, over the drawn biological
- * parentage (social parents do not count; an unspecified parent is a founder,
+ * at random from each is identical by descent, over the genetic parentage
+ * (a gamete donor in the place of the partner they replace; social parents
+ * do not count; an unspecified parent is a founder,
  * unrelated to everyone). Exact for these binary fractions. Informational
  * (clinician request 2026-10-25): the inbreeding coefficient F of a couple's
  * children is φ of the partners, e.g. first cousins 1/16; two people share
  * 2φ of their genes (non-inbred), e.g. first cousins 1/8.
  */
 export function kinshipCoefficient(graph, a, b, idx = indexGraph(graph)) {
-  const parents = (id) => {
-    const u = idx.unionById.get(idx.bioParentUnion.get(id));
-    return u ? u.partners : null;
-  };
+  // over the genetic parents: a donor in the place of the partner they replace (model.js)
+  const parents = (id) => idx.geneticParents(id);
   const levels = new Map();
   const level = (id, seen = new Set()) => {
     if (levels.has(id)) return levels.get(id);
@@ -134,6 +132,12 @@ export function kinshipCoefficient(graph, a, b, idx = indexGraph(graph)) {
   return phi(a, b);
 }
 
+/** F of one person: φ of their genetic parents (a donor-conceived child of related parents may have F = 0). */
+export function personInbreeding(graph, id, idx = indexGraph(graph)) {
+  const gp = idx.geneticParents(id);
+  return gp && gp[0] && gp[1] ? kinshipCoefficient(graph, gp[0], gp[1], idx) : 0;
+}
+
 /** Inbreeding coefficient F of the children of a union (φ of the partners). */
 export function childInbreeding(graph, unionId, idx = indexGraph(graph)) {
   const u = idx.unionById.get(unionId);
@@ -156,7 +160,7 @@ export function formatCoefficient(x) {
  * are not first cousins through one pair of full siblings.
  */
 export function cousinMarriageName(graph, a, b, idx = indexGraph(graph)) {
-  const parentsOf = (id) => idx.unionById.get(idx.bioParentUnion.get(id))?.partners || [];
+  const parentsOf = (id) => idx.geneticParents(id) || [];
   const pairs = [];
   for (const pa of parentsOf(a)) {
     for (const pb of parentsOf(b)) {

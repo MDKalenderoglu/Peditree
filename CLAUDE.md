@@ -47,6 +47,12 @@ ParentChildRelationship  { unionId, children: string[],      // BIOLOGICAL, ≤ 
 
 SocialParentLink         { childId, unionId, kind: 'adoptive' | 'foster' | 'step' | 'guardian' }
 
+ReproductiveLink         { childId, personId, role: 'sperm_donor' | 'egg_donor' | 'gestational_carrier' | 'surrogate' }
+                         // assisted reproduction (NSGC 2022 Fig. 5 as corrected 2025; clinician 2026-11-01): the drawn parents stay
+                         // the couple; kinship / F / PED use the genetic parents (indexGraph.geneticParents: a sperm donor in the
+                         // father's place, an egg donor or surrogate in the mother's); one sperm source, one egg source, one carrier
+                         // per child; a donor added here (relation 'art_donor') has no parents or partner — notes and findings only
+
 ParentChildRelationship.multiples?  [{ id, children (≥ 2, side by side), zygosity: 'monozygotic' | 'dizygotic' | 'unknown' }]
                          // twins / triplets — src/graph/multiples.js; drawn from one point of the sibship line
 ```
