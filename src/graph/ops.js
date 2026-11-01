@@ -675,3 +675,43 @@ export function splitGroup(doc, id) {
     return { created: { childIds: [id, ...created] } };
   });
 }
+
+/**
+ * "Tek sembolde birleştir" — the reverse of "Tek tek ayır": siblings of the
+ * same parents, with no partner, finding, mark, age or name, become one
+ * symbol with their number inside (a known number + "n" is "n"; mixed sex is
+ * a diamond). The first of them in birth order keeps its id and place; the
+ * others' ids are retired. Notes are kept, one under another.
+ */
+export function mergeIntoGroup(doc, ids) {
+  return commit(doc, (d) => {
+    const g = d.graph;
+    const idx = indexGraph(g);
+    const people = [...new Set(ids)].map((id) => idx.byId.get(id));
+    if (people.length < 2 || people.some((p) => !p)) block('Birleştirmek için en az iki kardeş seçin.');
+    const parents = new Set(people.map((p) => idx.bioParentUnion.get(p.id)));
+    if (parents.size !== 1 || parents.has(undefined)) block('Yalnızca aynı anne-babanın çocukları tek sembolde birleştirilebilir.');
+    const rel = g.parentChildRelationships.find((r) => r.unionId === [...parents][0]);
+    for (const p of people) {
+      if (p.placeholder || (idx.unionsOf.get(p.id) || []).length) block('Eşi ya da çocuğu olan kişi birleştirilemez.');
+      if (GROUP_FORBIDDEN.some((f) => p[f]) || (p.conditions || []).length) block('Bulgusu, taşıyıcılık, ölüm, genetik test ya da proband işareti olan kişi birleştirilemez.');
+      if (MERGE_LOSES.some((f) => p[f] !== undefined && p[f] !== null && p[f] !== '')) block('Yaşı, doğum tarihi ya da adı yazılmış kişi birleştirilemez; bunlar tek sembolde gösterilemez.');
+      if ((rel.multiples || []).some((m) => m.children.includes(p.id))) block('İkiz/üçüz grubundaki kişi birleştirilemez.');
+      if ((g.socialParentLinks || []).some((l) => l.childId === p.id)) block('Evlat edinilmiş ya da koruyucu aile yanındaki kişi birleştirilemez.');
+    }
+    const order = new Map(rel.children.map((c, k) => [c, k]));
+    people.sort((a, b) => order.get(a.id) - order.get(b.id));
+    const counts = people.map((p) => (isGroup(p) ? p.count : 1));
+    const count = counts.includes('n') ? 'n' : counts.reduce((a, b) => a + b, 0);
+    if (!validGroupCount(count)) block(GROUP_COUNT_HINT);
+    const sexes = new Set(people.map((p) => p.sex || 'unknown'));
+    const sex = sexes.size === 1 ? [...sexes][0] : 'unknown';
+    const [kept, ...rest] = people;
+    const notes = people.map((p) => (p.notes || '').trim()).filter(Boolean);
+    for (const p of rest) draftRemovePerson(d, p.id);
+    Object.assign(kept, { count, sex, label: GROUP_LABEL[sex] });
+    if (notes.length) kept.notes = notes.join('\n');
+    return { created: { groupId: kept.id } };
+  });
+}
+const MERGE_LOSES = ['age', 'birthDate', 'displayLabel', 'ageAtDeath', 'causeOfDeath', 'geneticNote', 'gestationWeeks'];

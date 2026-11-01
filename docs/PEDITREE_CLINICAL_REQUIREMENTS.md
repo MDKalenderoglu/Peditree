@@ -35,7 +35,7 @@ birlikte tanımlar. **Standart** ile **geliştirici/klinik tercih** her satırda
 | Proband | Sol altta ok **+ "P"**; **her zaman etkilenmiş** | 08, 22 | Ok var, **P yok** (RN-1) | "P" eklenir; etkilenmemiş proband için uyarı |
 | Consultand | Ok, **P yok**; birden fazla olabilir | 08, 22 | ❌ (kavram yok) | Faz 2b alanı |
 | Aile öyküsü bilinmiyor | Sembolün üstünde "?" | 08, 25 | ❌ | Faz 4 |
-| Birden çok birey | Sembol içinde sayı veya "n" | 08, 22 | ✅ | Klinisyen kararı 2026-11-01: kare/daire/baklava içinde 2–99 ya da n; yalnız sayı ve cinsiyet (bulgu, eş, çocuk, proband yok; "Tek tek ayır"). Halka menü "Birden çok" + sağ panel |
+| Birden çok birey | Sembol içinde sayı veya "n" | 08, 22 | ✅ | Klinisyen kararı 2026-11-01: kare/daire/baklava içinde 2–99 ya da n; yalnız sayı ve cinsiyet (bulgu, eş, çocuk, proband yok; "Tek tek ayır"; birlikte seçilen kardeşler "Tek sembolde birleştir"). Halka menü "Birden çok" + sağ panel |
 | Değerlendirme yapılmış | Sağ altta yıldız (*) | 08, 22 | ❌ | kapsam içi ama düşük öncelik |
 
 ## 2. Gebelik ve sonuçları

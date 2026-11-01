@@ -14,6 +14,7 @@ import { parseTypedDate, formatDate } from './utils/age';
 import DraftField from './components/DraftField';
 import { nextPerson, RING_KEYS } from './utils/keyboardNav';
 import { toPed } from './graph/ped';
+import { mergeIntoGroup as checkMerge } from './graph/ops';
 import RelationChooser from './components/RelationChooser';
 import { withGeneticLine } from './graph/model';
 import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, DRAWING_FONTS, LEGEND_SIZES } from './utils/drawingStyle';
@@ -66,7 +67,7 @@ function App() {
     updateMany, setFindingStatusMany, addFindingMany,
     deleteIndividual, createUnionBetween, addCustomConsanguinity,
     reorderChild, setUnionRelationshipBackground, setUnionStatus,
-    setMultipleBirth, addMultipleSibling, setMultipleZygosity, leaveMultipleBirth, setGroupCount, splitGroup,
+    setMultipleBirth, addMultipleSibling, setMultipleZygosity, leaveMultipleBirth, setGroupCount, splitGroup, mergeIntoGroup,
     addFinding, setFindingStatus, setFindingStyle, renameFinding, wizardData, updateWizardData,
     addParentsTo, addSiblingTo, moveSideways, dropOnto, setFindingOnset, setChildlessness, setPregnancyKind, setGestationWeeks,
     undo, redo, _history, _future,
@@ -121,6 +122,8 @@ function App() {
   const selectedNode = pedigreeData.individuals.find(i => i.id === selectedId);
   const selectedNode2 = pedigreeData.individuals.find(i => i.id === selectedId2);
   const selectedNodes = (selectedIds || []).map(id => pedigreeData.individuals.find(i => i.id === id)).filter(Boolean);
+  // siblings chosen together can become one numbered symbol; the operation itself says whether and why not
+  const mergeCheck = React.useMemo(() => ((selectedIds || []).length >= 2 ? checkMerge(doc, selectedIds) : null), [doc, selectedIds]);
 
   const errorIssues = (integrityIssues || []).filter(i => i.severity === 'error');
   const warningIssues = (integrityIssues || []).filter(i => i.severity === 'warning');
@@ -894,6 +897,8 @@ function App() {
           onLeaveMultiple={leaveMultipleBirth}
           onSetGroupCount={setGroupCount}
           onSplitGroup={splitGroup}
+          mergeCheck={mergeCheck}
+          onMergeGroup={mergeIntoGroup}
           onAddFinding={addFinding}
           onSetFindingStatus={setFindingStatus}
           onSetFindingStyle={setFindingStyle}
