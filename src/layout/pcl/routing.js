@@ -295,7 +295,7 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
       sx = ux + dir * (h - 4 - k * TOP_RISER_STEP);
       sy = uy + h;
     }
-    const line = { common, u, ghost, gx, gy, sx, sy };
+    const line = { common, u, ghost, gx, gy, sx, sy, upperY: uy, upper };
     crossLines.push(line);
     verticals.push({ owner: u.id, x: sx, y1: sy, y2: gy - BAND.BUS_DEFAULT });
   }
@@ -378,7 +378,32 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
     layoutBuses();
   }
 
+  // A cross-generation line with nothing in its way takes two bends, not
+  // four (clinician feedback 2026-11-01: "too many steps"): along the upper
+  // partner's row to above the stand-in, then straight down onto it. Only
+  // from the partner's side, only when no symbol or other line of that row
+  // lies on the way and nothing between the rows crosses the drop.
+  const directCross = (b) => {
+    const { gx, gy, sx, sy, upperY, upper } = b.xline;
+    if (sy !== upperY) return false; // left from the bottom: that side was taken
+    const lo = Math.min(sx, gx), hi = Math.max(sx, gx);
+    const rowClear = Object.entries(xPos).every(([id, x]) => yPos[id] !== upperY || id === upper || isGhost(S.indById.get(id))
+      || x + halfOf(S.indById.get(id)) < lo - CLEAR || x - halfOf(S.indById.get(id)) > hi + CLEAR);
+    const linesClear = edges.every(e => e.y1 !== upperY || e.y2 !== upperY || e.unionId === b.u.id
+      || Math.max(e.x1, e.x2) < lo - CLEAR || Math.min(e.x1, e.x2) > hi + CLEAR);
+    const dropClear = buses.every(o => o === b || o.busY <= upperY || o.busY >= gy || gx < o.x1 - CLEAR || gx > o.x2 + CLEAR)
+      && [...verticals, ...buses.filter(o => !o.xline).map(o => ({ owner: o.u.id, x: o.dropX, y1: o.geom.y, y2: o.busY }))]
+        .every(v => v.owner === b.u.id || Math.abs(v.x - gx) >= CLEAR || !overlapsY(v.y1, v.y2, upperY, gy));
+    return rowClear && linesClear && dropClear;
+  };
+
   for (const b of buses) {
+    if (b.xline && directCross(b)) {
+      const { common, gx, gy, sx, upperY } = b.xline;
+      if (Math.abs(gx - sx) > 0.5) edges.push({ ...common, x1: sx, y1: upperY, x2: gx, y2: upperY });
+      edges.push({ ...common, x1: gx, y1: upperY, x2: gx, y2: gy });
+      continue;
+    }
     if (b.xline) {
       const { common, gx, gy, sx, sy } = b.xline;
       edges.push({ ...common, x1: sx, y1: sy, x2: sx, y2: b.busY });
