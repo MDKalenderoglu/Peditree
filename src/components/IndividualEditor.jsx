@@ -13,11 +13,14 @@ import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { degreeLabel, kinshipOf, kinshipCoefficient, childInbreeding, formatCoefficient, cousinMarriageName } from '../graph/kinship';
 import { groupOf, multipleName, zygosityLabel, ZYGOSITY } from '../graph/multiples';
 import BulkEditor from './BulkEditor';
-import { isPregnancy, pregnancyKind, PREGNANCY_LABEL, GENETIC_TESTED, geneticLines, withGeneticLine } from '../graph/model';
+import { isPregnancy, pregnancyKind, PREGNANCY_LABEL, GENETIC_TESTED, geneticLines, withGeneticLine, isGroup } from '../graph/model';
+import { parseGroupCount } from '../graph/ops';
 import DraftField from './DraftField';
 import { pendingDrafts } from '../utils/drafts';
 
 const SEX_WORD = { male: 'Erkek', female: 'Kadın', unknown: 'Cinsiyet bilinmiyor' };
+// several people in one symbol (clinician decisions 2026-11-01)
+const GROUP_WORD = { male: 'erkek', female: 'kadın', unknown: 'kişi (cinsiyetleri karışık ya da bilinmiyor)' };
 // same options and wording as the wizard; an older 'separated' shows as the combined one
 const STATUS_OPTIONS = [['together', 'Birlikte'], ['divorced', 'Boşanmış/Ayrılmış'], ['unknown', 'Bilinmiyor']];
 
@@ -346,6 +349,7 @@ export default function IndividualEditor({
   onClearSelection, onReorderChild, onSetUnionRelationshipBackground, onSetUnionStatus, onSetChildlessness,
   onSetPregnancyKind, onSetGestationWeeks,
   onSetMultipleBirth, onAddMultiple, onSetZygosity, onLeaveMultiple,
+  onSetGroupCount, onSplitGroup,
   wizardParents, onSetParentsField,
   selectedNodes = [], onUpdateMany, onSetFindingStatusMany, onAddFindingMany,
 }) {
@@ -383,6 +387,7 @@ export default function IndividualEditor({
   if (!node) return null;
 
   const isLoss = isPregnancy(node);
+  const group = isGroup(node);
   const pedigreeIds = computePedigreeIds(pedigreeData?.nodes || []);
   const pedigreeId = pedigreeIds.get(node.id)?.displayId;
   const displayNameFor = (id) => {
@@ -399,7 +404,8 @@ export default function IndividualEditor({
   const siblingOrder = ownParentRel ? ownParentRel.children : null;
   const ownIndexInOrder = siblingOrder ? siblingOrder.indexOf(node.id) : -1;
 
-  const kind = pregnancyKind(node) ? PREGNANCY_LABEL[pregnancyKind(node)] : SEX_WORD[node.sex || 'unknown'];
+  const kind = group ? `${node.count === 'n' ? 'Sayısı bilinmeyen' : node.count} ${GROUP_WORD[node.sex || 'unknown']}`
+    : pregnancyKind(node) ? PREGNANCY_LABEL[pregnancyKind(node)] : SEX_WORD[node.sex || 'unknown'];
   const sub = [kind, node.age ? `${node.age} yaş` : null, node.proband ? 'proband' : null].filter(Boolean).join(' · ');
   const set = (patch) => onUpdate(node.id, patch);
   // genetic test: "+" done / "−" not; the clinician's lines, one per variant or result
@@ -420,6 +426,29 @@ export default function IndividualEditor({
 
         {!node.placeholder && (
           <div className="field-hint editor-tip">Akraba eklemek, bulgu, durum, ikiz ya da not girmek için çizimde bu kişinin çevresindeki düğmeleri kullanın. Düğmeler görünmüyorsa kişinin sembolüne yeniden tıklayın.</div>
+        )}
+
+        {/* several people in one symbol: the number, the sex, "Tek tek ayır" (clinician decisions 2026-11-01) */}
+        {group && (
+          <div className="card">
+            <div className="card-title">Birden çok kişi</div>
+            <div className="field-hint">Bu sembol birden çok kişiyi gösteriyor; sayı sembolün içine yazılır. Bulgu, eş, çocuk ya da proband gerekiyorsa kişileri “Tek tek ayır” ile ayrı çizin.</div>
+            <label className="field">
+              <span className="field-label">Kişi sayısı</span>
+              <DraftField key={`${node.id}-count`} type="text" className="input input-age" value={String(node.count)} placeholder="3 ya da n"
+                title="2–99; bilinmiyorsa n. 1 yazarsanız tek kişi olur."
+                onCommit={v => onSetGroupCount && onSetGroupCount(node.id, v.trim() === '1' ? 1 : (parseGroupCount(v) ?? v))} />
+            </label>
+            <div className="segmented" role="radiogroup" aria-label="Cinsiyet">
+              {[['male', 'Erkek'], ['female', 'Kadın'], ['unknown', 'Karışık / bilinmiyor']].map(([s, t]) => (
+                <button key={s} role="radio" aria-checked={node.sex === s} className={node.sex === s ? 'on' : undefined} onClick={() => set({ sex: s })}>{t}</button>
+              ))}
+            </div>
+            {onSplitGroup && (
+              <button className="ui-btn" disabled={node.count === 'n'} title={node.count === 'n' ? 'Ayırmak için önce kişi sayısını yazın' : undefined}
+                onClick={() => onSplitGroup(node.id)}>Tek tek ayır{node.count === 'n' ? '' : ` (${node.count} kişi)`}</button>
+            )}
+          </div>
         )}
 
         {/* a pregnancy outcome (NSGC; clinician decision 2026-10-25): its kind, the week, born */}
@@ -443,7 +472,7 @@ export default function IndividualEditor({
           </div>
         )}
 
-        {!node.placeholder && (
+        {!node.placeholder && !group && (
           <div className="card">
             <div className="card-title">Bilgiler</div>
             <label className="field-col">
@@ -539,7 +568,7 @@ export default function IndividualEditor({
           </div>
         )}
 
-        {!node.placeholder && (
+        {!node.placeholder && !group && (
           <MultiplesCard node={node} pedigreeData={pedigreeData} displayNameFor={displayNameFor}
             onAddMultiple={onAddMultiple} onSetZygosity={onSetZygosity} onLeaveMultiple={onLeaveMultiple} />
         )}

@@ -13,11 +13,12 @@ import { Stethoscope, HeartPulse, Users, StickyNote } from 'lucide-react';
 import FindingsPalette from './FindingsPalette';
 import DraftField from './DraftField';
 import { groupOf, multipleName } from '../graph/multiples';
-import { isPregnancy } from '../graph/model';
+import { isPregnancy, isGroup } from '../graph/model';
+import { parseGroupCount } from '../graph/ops';
 
 const S = 9; // glyph half-size
 
-export function Glyph({ kind }) {
+export function Glyph({ kind, label = '' }) {
   const common = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.6 };
   return (
     <svg width="20" height="20" viewBox="-10 -10 20 20" aria-hidden="true">
@@ -27,6 +28,14 @@ export function Glyph({ kind }) {
       {(kind === 'loss' || kind === 'termination' || kind === 'ectopic') && <path d={`M0,${-S + 3} L${S - 2},${S - 3} L${-S + 2},${S - 3} Z`} {...common} />}
       {kind === 'termination' && <path d={`M${-S + 1},${S - 1} L${S - 1},${-S + 1}`} {...common} />}
       {kind === 'ectopic' && <text x="0" y={S + 1} fontSize="5.5" textAnchor="middle" fill="currentColor" stroke="none">ECT</text>}
+      {kind.startsWith('group-') && (
+        <>
+          {kind === 'group-male' && <rect x={-S + 1} y={-S + 1} width={2 * S - 2} height={2 * S - 2} {...common} />}
+          {kind === 'group-female' && <circle r={S - 1} {...common} />}
+          {kind === 'group-unknown' && <path d={`M0,${-S} L${S},0 L0,${S} L${-S},0 Z`} {...common} />}
+          <text x="0" y="3" fontSize={String(label).length > 1 ? 6.5 : 8} fontWeight="700" textAnchor="middle" fill="currentColor" stroke="none">{label}</text>
+        </>
+      )}
       {kind === 'stillbirth' && (
         <>
           <path d={`M0,${-S + 1} L${S - 1},0 L0,${S - 1} L${-S + 1},0 Z`} {...common} />
@@ -123,6 +132,8 @@ export default function RadialAddMenu({
   // a popup must stay inside the drawing area (never under the side panels):
   // shift it back by however much it sticks out
   const [nudge, setNudge] = useState({ x: 0, y: 0 });
+  // several people in one symbol: the number typed before a shape is picked (clinician decisions 2026-11-01)
+  const [groupCount, setGroupCount] = useState('3');
   useLayoutEffect(() => {
     const el = popRef.current;
     if (!el) { setNudge({ x: 0, y: 0 }); return; }
@@ -176,6 +187,9 @@ export default function RadialAddMenu({
   }, [active, panel]);
   if (!node || node.placeholder) return null;
   const isLoss = isPregnancy(node);
+  // a symbol for several people takes parents, siblings and a note only (clinician decisions 2026-11-01)
+  const group = isGroup(node);
+  const GROUP_HINT = 'Bu sembol birden çok kişiyi gösteriyor; eş, çocuk ya da bulgu için önce sağdaki panelden “Tek tek ayır”.';
 
   const pcrs = pedigreeData.parentChildRelationships || [];
   const unions = (pedigreeData.unions || []).filter(u => u.partners.includes(node.id));
@@ -188,8 +202,8 @@ export default function RadialAddMenu({
   const disabled = {
     // a pregnancy outcome takes parents and siblings, never a partner or children (clinician 2026-10-25)
     top: hasParents ? 'Bu kişinin annesi ve babası zaten çizili.' : null,
-    right: isLoss ? 'Düşüğe, ölü doğuma ya da süren gebeliğe eş eklenemez.' : sexKnown ? null : 'Eş eklemek için önce bu kişinin cinsiyetini seçin: Durum düğmesi → Erkek ya da Kadın.',
-    bottom: isLoss ? 'Düşüğe, ölü doğuma ya da süren gebeliğe çocuk eklenemez.' : !lastUnion && !sexKnown ? 'Çocuk eklemek için önce bu kişinin cinsiyetini seçin: Durum düğmesi → Erkek ya da Kadın.' : null,
+    right: group ? GROUP_HINT : isLoss ? 'Düşüğe, ölü doğuma ya da süren gebeliğe eş eklenemez.' : sexKnown ? null : 'Eş eklemek için önce bu kişinin cinsiyetini seçin: Durum düğmesi → Erkek ya da Kadın.',
+    bottom: group ? GROUP_HINT : isLoss ? 'Düşüğe, ölü doğuma ya da süren gebeliğe çocuk eklenemez.' : !lastUnion && !sexKnown ? 'Çocuk eklemek için önce bu kişinin cinsiyetini seçin: Durum düğmesi → Erkek ya da Kadın.' : null,
     left: null,
   };
   // one click: parents = a mother and a father; spouse = the opposite sex
@@ -202,6 +216,12 @@ export default function RadialAddMenu({
     left: KINDS.map(([g, t, sex, extra, row]) => [`Kardeş: ${t}`, g, () => onAddSibling(node.id, sex, { ...extra, createParents: true }), row]),
     bottom: KINDS.map(([g, t, sex, extra, row]) => [`Çocuk: ${t}`, g,
       () => (lastUnion ? onAddChild(lastUnion.id, sex, null, extra) : onAddChild(null, sex, node.id, extra)), row]),
+  };
+
+  // several people in one symbol, the number inside (NSGC; clinician decisions 2026-11-01)
+  const addGroup = {
+    left: (sex, count) => onAddSibling(node.id, sex, { count, createParents: true }),
+    bottom: (sex, count) => (lastUnion ? onAddChild(lastUnion.id, sex, null, { count }) : onAddChild(null, sex, node.id, { count })),
   };
 
   const r = Math.max(24, anchor.size / 2 + 8);
@@ -323,7 +343,7 @@ export default function RadialAddMenu({
           );
         })}
       </svg>
-      {SATELLITES.map((s) => {
+      {SATELLITES.filter((s) => !group || s.key === 'note').map((s) => {
         const [x, y] = satPos(s.angle);
         const { Icon } = s;
         return (
@@ -335,20 +355,41 @@ export default function RadialAddMenu({
           </button>
         );
       })}
-      {active && (
+      {/* a sector with neither choices nor a reason (it became a one-click
+          action, e.g. after "Tek tek ayır") shows nothing */}
+      {active && (choices[active] || disabled[active]) && (
         <div className="radial-flyout" ref={popRef} style={{ ...flyoutStyle(active), translate: `${nudge.x}px ${nudge.y}px` }} onPointerEnter={(e) => isHover(e) && open(active)} onPointerLeave={(e) => isHover(e) && leave()}>
           {disabled[active] ? (
             <span className="radial-hint">{disabled[active]}</span>
-          ) : [1, 2].map((row) => (
-            <div key={row} className="flyout-row">
-              {row === 2 && <span className="flyout-row-label">Gebelik</span>}
-              {choices[active].filter((c) => (c[3] || 1) === row).map(([title, glyph, run]) => (
-                glyph
-                  ? <button key={title} className="quick-btn" title={title} aria-label={title} onClick={() => { run(); setActive(null); }}><Glyph kind={glyph} /></button>
-                  : <button key={title} className="quick-text" onClick={() => { run(); setActive(null); }}>{title}</button>
+          ) : (
+            <>
+              {[1, 2].map((row) => (
+                <div key={row} className="flyout-row">
+                  {row === 2 && <span className="flyout-row-label">Gebelik</span>}
+                  {choices[active].filter((c) => (c[3] || 1) === row).map(([title, glyph, run]) => (
+                    glyph
+                      ? <button key={title} className="quick-btn" title={title} aria-label={title} onClick={() => { run(); setActive(null); }}><Glyph kind={glyph} /></button>
+                      : <button key={title} className="quick-text" onClick={() => { run(); setActive(null); }}>{title}</button>
+                  ))}
+                </div>
               ))}
-            </div>
-          ))}
+              {addGroup[active] && (
+                <div className="flyout-row">
+                  <span className="flyout-row-label">Birden çok</span>
+                  <input className="flyout-count" value={groupCount} inputMode="numeric" maxLength={2} aria-label="Kişi sayısı (bilinmiyorsa n)"
+                    title="Kişi sayısı: 2–99; bilinmiyorsa n" onChange={(e) => setGroupCount(e.target.value)} />
+                  {[['male', 'erkek'], ['female', 'kız'], ['unknown', 'cinsiyeti karışık ya da bilinmeyen']].map(([sex, word]) => {
+                    const count = parseGroupCount(groupCount);
+                    const title = `${active === 'left' ? 'Kardeş' : 'Çocuk'}: ${count ?? '?'} ${word} (tek sembol, içinde sayı)`;
+                    return (
+                      <button key={sex} className="quick-btn" title={count ? title : 'Önce 2–99 arası bir sayı ya da n yazın'} aria-label={title} disabled={!count}
+                        onClick={() => { addGroup[active](sex, count); setActive(null); }}><Glyph kind={`group-${sex}`} label={count ?? '?'} /></button>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
       {arcPanel && (
