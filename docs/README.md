@@ -1,6 +1,6 @@
 # Peditree dokümanları
 
-Güncel durum için bu klasördeki PEDITREE_* dokümanları esas alınır. Kök dizindeki `PEDIGREE_*.md`, `AUDIT_PEDIGREE_APP.md`,
+Güncel durum için bu klasördeki PEDITREE_* dokümanları esas alınır. [`archive/`](archive/) klasöründeki `PEDIGREE_*.md`, `AUDIT_PEDIGREE_APP.md`,
 `KNOWN_LIMITATIONS.md` vb. tarihsel kayıttır; bazı ifadeleri artık güncel değildir (bkz. denetim raporu §2.8).
 
 | Doküman | İçerik |

@@ -4,7 +4,7 @@
 
 Turkish-language, clinical-grade pedigree drawing tool for genetic counseling. Produces structurally valid pedigree graphs per ACMG/NSGC nomenclature standards. Not a family tree app — clinical correctness of the graph model takes priority over visual polish. A clinician must never misread who is whose child, sibling, partner, or consanguineous relative.
 
-Living documentation (source of truth for status, decisions, risks): `docs/PEDITREE_*.md` — audit report, clinical requirements, layout architecture, stress test matrix, UX review, data model. Root-level `PEDIGREE_*.md` files are historical.
+Living documentation (source of truth for status, decisions, risks): `docs/PEDITREE_*.md` — audit report, clinical requirements, layout architecture, stress test matrix, UX review, data model. The early `PEDIGREE_*.md` notes in `docs/archive/` are historical.
 
 ---
 
