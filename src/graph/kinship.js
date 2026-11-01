@@ -32,6 +32,7 @@ function ancestorDepths(idx, id) {
 const DEGREE_LABEL = {
   first_cousin: '1. derece kuzen',
   second_cousin: '2. derece kuzen',
+  third_cousin: '3. derece kuzen',
   first_cousin_once_removed: '1. kuzenin çocuğu (bir kuşak fark)',
   second_cousin_once_removed: '2. kuzenin çocuğu (bir kuşak fark)',
   double_first_cousin: 'Çift 1. derece kuzen',
@@ -47,6 +48,7 @@ function degreeFor(m, n, half) {
   if (lo === 1 && hi === 2) return 'avuncular'; // e.g. uncle and niece (cross-generation partners)
   if (lo === 2 && hi === 2) return 'first_cousin';
   if (lo === 3 && hi === 3) return 'second_cousin';
+  if (lo === 4 && hi === 4) return 'third_cousin';
   if (lo === 2 && hi === 3) return 'first_cousin_once_removed';
   if (lo === 3 && hi === 4) return 'second_cousin_once_removed';
   return 'other';

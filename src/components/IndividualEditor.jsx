@@ -87,7 +87,7 @@ const PATH_TEXT = {
   cross_cousin_2: 'Annenin babası ile babanın annesi kardeş',
 };
 const DEGREE_OPTIONS = [
-  ['unknown', 'Bilinmiyor'], ['first_cousin', '1. derece kuzen'], ['second_cousin', '2. derece kuzen'],
+  ['unknown', 'Bilinmiyor'], ['first_cousin', '1. derece kuzen'], ['second_cousin', '2. derece kuzen'], ['third_cousin', '3. derece kuzen'],
   ['first_cousin_once_removed', '1. kuzenin çocuğu (bir kuşak fark)'], ['second_cousin_once_removed', '2. kuzenin çocuğu (bir kuşak fark)'],
   ['double_first_cousin', 'Çift 1. derece kuzen'], ['multiple_relationship', 'Birden fazla akrabalık yolu'], ['other', 'Diğer'],
 ];
