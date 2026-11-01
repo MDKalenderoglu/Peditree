@@ -78,13 +78,13 @@ describe('the legend follows the findings', () => {
   const part = (p) => `${p.fill}${p.carrier ? ':carrier' : ''}@${p.a0}-${p.a1}`;
   const partsOf = (p, k = key()) => fillFor(p, k).parts?.map(part);
 
-  it('a carrier: the left half in the finding’s fill; plain affected: full; person-level carrier: none (half fill)', () => {
+  it('a carrier: the left half in the finding’s fill; plain affected: full; person-level carrier: the left half cross-hatched (NSGC 2022)', () => {
     S().addFinding('mother', 'Miyop');
     S().setFindingStatus('mother', 'Miyop', 'carrier');
     expect(partsOf(person('mother'))).toEqual(['solid:carrier@90-270']);
     expect(person('mother').affected).toBe(false);
     expect(fillFor({ affected: true }, key())).toEqual({ mode: 'full' });
-    expect(fillFor({ carrier: true }, key())).toEqual({ mode: 'none' });
+    expect(partsOf({ carrier: true }, key())).toEqual(['cross:carrier@90-270']);
   });
 
   it('carrier of X and affected by Y: left half X, right half Y (clinician decision 2026-10-25)', () => {
@@ -109,9 +109,9 @@ describe('the legend follows the findings', () => {
     expect(partsOf(p, k)).toEqual(['solid:carrier@180-270', 'grey:carrier@90-180', 'solid@270-450']);
   });
 
-  it('a person-level carrier with a finding: left half the classic carrier fill, the finding on the right', () => {
+  it('a person-level carrier with a finding: left half the carrier pattern (never a finding\'s), the finding on the right', () => {
     const k = [{ id: 'k1', label: 'Y', region: 'q2', fill: 'hatch' }];
-    expect(partsOf({ carrier: true, conditions: [{ label: 'Y', status: 'affected' }] }, k)).toEqual(['solid:carrier@90-270', 'hatch@270-450']);
+    expect(partsOf({ carrier: true, conditions: [{ label: 'Y', status: 'affected' }] }, k)).toEqual(['cross:carrier@90-270', 'hatch@270-450']);
   });
 
   it('the proband affected by X stays fully filled; both parents carry X; a parent’s extra finding is drawn on the right', () => {

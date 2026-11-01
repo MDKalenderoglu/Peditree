@@ -20,13 +20,13 @@
  *   male      → square
  *   female    → circle
  *   unknown   → diamond
- *   pregnancyLoss / termination / ectopic → small triangle (TOP slashed, ECT below)
+ *   pregnancyLoss / termination / ectopic → small triangle (TOP and ECT slashed, "ECT" below)
  *   stillbirth → full-size symbol, slash, "SB" below; ongoingPregnancy → "P" inside
  */
 
 import { useEffect, useRef, useState, useCallback, forwardRef } from 'react';
 import * as d3 from 'd3';
-import { fillFor, REGION_ANGLES } from '../graph/conditionKey';
+import { fillFor, REGION_ANGLES, CARRIER_FILL } from '../graph/conditionKey';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { applyDrawingStyle } from '../utils/drawingStyleSvg';
 import { STANDARD_FAMILY } from '../utils/drawingStyle';
@@ -74,7 +74,7 @@ function sectorPath(a0, a1, r) {
   return `M0,0L${x0},${y0}A${r},${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1},${y1}Z`;
 }
 
-const FILL_PAINT = { solid: NODE_STROKE, grey: '#9ca3af', hatch: 'url(#fill-hatch)', dots: 'url(#fill-dots)' };
+const FILL_PAINT = { solid: NODE_STROKE, grey: '#9ca3af', hatch: 'url(#fill-hatch)', dots: 'url(#fill-dots)', cross: 'url(#fill-cross)' };
 
 /** Patterns for findings drawn in a region (graph/conditionKey.js FILLS). */
 function addFindingPatterns(defs) {
@@ -86,6 +86,12 @@ function addFindingPatterns(defs) {
     .attr('width', 5).attr('height', 5);
   dots.append('rect').attr('width', 5).attr('height', 5).attr('fill', NODE_FILL);
   dots.append('circle').attr('cx', 2.5).attr('cy', 2.5).attr('r', 1.1).attr('fill', NODE_STROKE);
+  // a carrier without a named finding (conditionKey.js CARRIER_FILL): cross-hatching, no finding's pattern
+  const cross = defs.append('pattern').attr('id', 'fill-cross').attr('patternUnits', 'userSpaceOnUse')
+    .attr('width', 5).attr('height', 5).attr('patternTransform', 'rotate(45)');
+  cross.append('rect').attr('width', 5).attr('height', 5).attr('fill', NODE_FILL);
+  cross.append('line').attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 5).attr('stroke', NODE_STROKE).attr('stroke-width', 1.2);
+  cross.append('line').attr('x1', 0).attr('y1', 0).attr('x2', 5).attr('y2', 0).attr('stroke', NODE_STROKE).attr('stroke-width', 1.2);
 }
 
 /**
@@ -230,9 +236,12 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const has = (status, entry) => nodes.some(n => (status === 'carrier' || n !== headNode) && (n.conditions || []).some(c =>
       c && c.label && c.status === status
       && c.label.trim().toLocaleLowerCase('tr') === entry.label.trim().toLocaleLowerCase('tr')));
+    // a carrier without a named finding: its own pattern, explained in the key (NSGC 2022 §4.5)
+    const plainCarrier = nodes.some(n => n.carrier && fillFor(n, conditionKey).parts?.some(p => p.fill === CARRIER_FILL));
     const shownKey = [
       ...conditionKey.filter(e => has('affected', e)).map(e => ({ ...e, carrier: false, text: e.label })),
       ...conditionKey.filter(e => has('carrier', e)).map(e => ({ ...e, carrier: true, text: `${e.label} taşıyıcısı` })),
+      ...(plainCarrier ? [{ label: null, region: 'q1', fill: CARRIER_FILL, carrier: true, text: 'Taşıyıcı' }] : []),
     ];
     const onsetsOf = (n) => (n.conditions || []).filter(c => c && c.label && c.onsetAge && (c.status === 'affected' || c.status === 'carrier'));
     const unsureOf = (n) => (n.conditions || []).filter(c => c && c.label && c.status === 'unknown');
@@ -342,13 +351,6 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
 
     // --- Defs ---
     const defs = svg.append('defs');
-    // Carrier half-fill pattern
-    const cp = defs.append('pattern')
-      .attr('id', 'carrier-half')
-      .attr('width', 1).attr('height', 1)
-      .attr('patternContentUnits', 'objectBoundingBox');
-    cp.append('rect').attr('x', 0).attr('y', 0).attr('width', 0.5).attr('height', 1).attr('fill', NODE_STROKE);
-    cp.append('rect').attr('x', 0.5).attr('y', 0).attr('width', 0.5).attr('height', 1).attr('fill', NODE_FILL);
     addFindingPatterns(defs);
 
     // The zoom/pan transform is applied to this group only; export resets it
@@ -705,12 +707,10 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       const filling = fillFor(d, conditionKey);
       let fill = NODE_FILL;
       if (filling.mode === 'full') fill = NODE_STROKE;
-      else if (filling.mode === 'none' && d.carrier) fill = 'url(#carrier-half)';
+
       shape.attr('class', 'pedigree-shape')
         .attr('fill', fill).attr('stroke', NODE_STROKE).attr('stroke-width', 2);
       if (filling.mode === 'regions') drawRegions(el, defs, `regions-${nodeIndex}`, shape, filling.parts, sz);
-      // carrier dot (NSGC) on the left half when the right half shows "affected"
-      if (filling.carrierDot) el.append('circle').attr('class', 'carrier-dot').attr('cx', -sz * 0.5).attr('cy', 0).attr('r', Math.max(2.5, sz * 0.2)).attr('fill', NODE_STROKE);
       // Selection highlight (primary blue / secondary violet) comes from the
       // node-group classes above via app.css — see EX-1 note there.
 
@@ -731,8 +731,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         el.append('text').attr('class', 'group-count').attr('y', 6).attr('text-anchor', 'middle')
           .attr('font-size', groupText(d).length > 1 ? '15px' : '18px').attr('font-weight', '600').attr('fill', NODE_STROKE).text(groupText(d));
       }
-      // Termination (TOP): a slash through the triangle (NSGC)
-      if (d.termination) {
+      // Termination (TOP) and ectopic pregnancy (ECT): a slash through the triangle (NSGC 2008; for
+      // ECT restored by the 2025 correction, Steinhaus French et al., doi:10.1002/jgc4.2020 — "ECT" below tells them apart)
+      if (d.termination || d.ectopic) {
         el.append('line').attr('x1', -(sz + 3)).attr('y1', sz + 3).attr('x2', sz + 3).attr('y2', -(sz + 3)).attr('stroke', NODE_STROKE).attr('stroke-width', 2);
       }
       // A stillbirth is drawn at full size with the slash of a deceased person
@@ -862,7 +863,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
             : cell.append('path').attr('d', `M0,${-s} L${s},0 L0,${s} L${-s},0 Z`);
         const f = fillFor(probandNode, conditionKey);
         shape.attr('stroke', NODE_STROKE).attr('stroke-width', 1.5)
-          .attr('fill', f.mode === 'full' ? NODE_STROKE : f.mode === 'none' && probandNode.carrier ? 'url(#carrier-half)' : NODE_FILL);
+          .attr('fill', f.mode === 'full' ? NODE_STROKE : NODE_FILL);
         if (f.mode === 'regions') drawRegions(cell, defs, 'legend-proband-regions', shape, f.parts, s);
         headLines.forEach((line, li) => {
           const t = keyG.append('text')
@@ -883,10 +884,11 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         const [a0, a1] = entry.carrier ? [90, 270] : (REGION_ANGLES[entry.region] || REGION_ANGLES.q1);
         drawRegions(cell, defs, `key-region-${row}`, box, [{ fill: entry.fill, a0, a1, carrier: entry.carrier }], s);
         keyLines[row].forEach((line, li) => {
-          editable(keyG.append('text')
+          const t = keyG.append('text')
             .attr('x', ex + 2 * s + 12 * LK).attr('y', ey + s + 4.5 * LK + li * KEY_LINE)
             .attr('font-size', `${12.5 * LK}px`).attr('fill', '#334155')
-            .text(line.map(p => p.text).join('')), 'finding', entry.label, entry.label);
+            .text(line.map(p => p.text).join(''));
+          if (entry.label) editable(t, 'finding', entry.label, entry.label); // "Taşıyıcı" is not a finding's name
         });
       });
     }
