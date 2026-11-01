@@ -2,14 +2,13 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 
-// development only: draw a family with every mark and list overlaps (src/audit/markCollisions.js)
+// development only: draw a family with every mark and list overlaps; the open
+// family is put back afterwards (src/audit/markCollisions.js runMarkAudit)
 if (import.meta.env.DEV) {
   window.__peditreeMarkAudit = async () => {
-    const [{ buildMarkFamily, findMarkCollisions }, { usePedigreeStore }] = await Promise.all([
+    const [{ runMarkAudit }, { usePedigreeStore }] = await Promise.all([
       import('./audit/markCollisions.js'), import('./state/usePedigreeStore.js')])
-    buildMarkFamily(usePedigreeStore)
-    await new Promise((r) => setTimeout(r, 400))
-    return findMarkCollisions(document.querySelector('svg.pedigree-svg') || document.querySelector('.pedigree-viewport').ownerSVGElement)
+    return runMarkAudit(usePedigreeStore)
   }
 }
 

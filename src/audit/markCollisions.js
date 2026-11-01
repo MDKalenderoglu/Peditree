@@ -9,8 +9,11 @@
  * out, by relatives), numbered symbols, pregnancies, twins, deceased,
  * genetic lines, ages, single and double relationship lines on both sides —
  * and `findMarkCollisions(svg)` lists every overlap. In development the app
- * exposes both as `window.__peditreeMarkAudit()` (main.jsx); run it after
- * any change to symbols, marks or routing.
+ * exposes both as `window.__peditreeMarkAudit()` (main.jsx, through
+ * `runMarkAudit`); run it after any change to symbols, marks or routing.
+ * The open family, its undo history and the saved session are put back
+ * exactly as they were afterwards (Codex audit 2026-11-01: the first
+ * version replaced the clinician's family with the test family).
  */
 
 const CLEAR = 2; // px a mark keeps from anything else
@@ -136,4 +139,26 @@ export function findMarkCollisions(svg) {
     }
   }
   return out;
+}
+
+const SESSION_KEYS = ['clinical_pedigree_app.session.v2', 'clinical_pedigree_app.session.v1', 'clinical_pedigree_app.session.v1.backup'];
+
+/**
+ * Draw the mark family, measure it, and restore whatever was open before —
+ * the store's whole state (document, undo / redo, selection) and the
+ * session's saved copies — even when building or measuring fails.
+ * `measure` (default: the rendered drawing) returns the collisions.
+ */
+export async function runMarkAudit(store, { measure, storage, settle = 400 } = {}) {
+  const ss = storage !== undefined ? storage : (typeof window !== 'undefined' ? window.sessionStorage : null);
+  const before = store.getState();
+  const saved = ss ? SESSION_KEYS.map((k) => [k, ss.getItem(k)]) : [];
+  try {
+    buildMarkFamily(store);
+    if (settle) await new Promise((r) => setTimeout(r, settle));
+    return measure ? measure() : findMarkCollisions(document.querySelector('.pedigree-viewport').ownerSVGElement);
+  } finally {
+    store.setState(before, true);
+    if (ss) for (const [k, v] of saved) { if (v === null) ss.removeItem(k); else ss.setItem(k, v); }
+  }
 }
