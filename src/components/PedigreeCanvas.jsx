@@ -31,6 +31,7 @@ import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { applyDrawingStyle } from '../utils/drawingStyleSvg';
 import { STANDARD_FAMILY } from '../utils/drawingStyle';
 import { annotationAge, pregnancyLine } from '../utils/annotations';
+import { BRACKET_OUT } from '../layout/pcl/routing';
 import { isSmallSymbol, isPregnancy, pregnancyKind, PREGNANCY_LABEL, GENETIC_TESTED, TESTED_TEXT, geneticLines, isGroup, groupText, subjectOf } from '../graph/model';
 import { packLines } from '../utils/textWrap';
 import { keyGrid } from '../utils/keyGrid';
@@ -535,7 +536,11 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // 2026-10-25: two neighbours' numbers were printed on top of each other.
     const labelAt = new Map();
     {
-      const placed = [];
+      // neighbours' brackets count as taken (clinician report 2026-11-01: a number on a bracket)
+      const placed = nodes.filter(n => adoptedIn.has(n.id)).flatMap(n => {
+        const b = (isSmallSymbol(n) ? LOSS_SIZE : HALF) + BRACKET_OUT;
+        return [{ x: n.x - b - 1, y: n.y - b, w: 8, h: 2 * b }, { x: n.x + b - 7, y: n.y - b, w: 8, h: 2 * b }];
+      });
       const hitsPlaced = (b) => placed.some(q => b.x < q.x + q.w + 3 && q.x < b.x + b.w + 3 && b.y < q.y + q.h && q.y < b.y + b.h);
       for (const n of nodes.slice().sort((a, b) => (a.y - b.y) || (a.x - b.x))) {
         const pid = pedigreeIds.get(n.id);
@@ -657,7 +662,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           .text(pedigreeId.displayId);
       }
       if (adopted) {
-        const b = sz + 7;
+        const b = sz + BRACKET_OUT;
         el.append('path')
           .attr('class', 'adoption-brackets')
           .attr('d', `M${-b + 6},${-b} L${-b},${-b} L${-b},${b} L${-b + 6},${b} M${b - 6},${-b} L${b},${-b} L${b},${b} L${b - 6},${b}`)
@@ -731,8 +736,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
 
       // Proband / consultand arrow (lower-left); "P" only for the proband
       if (d.proband || d.consultand) {
-        const arrOff = sz + 6;
-        el.append('path')
+        // outside an adopted person's brackets (clinician report 2026-11-01)
+        const arrOff = adopted ? sz + BRACKET_OUT + 4 : sz + 6;
+        el.append('path').attr('class', 'proband-arrow')
           .attr('d', `M${-(arrOff + 14)},${arrOff + 14} L${-arrOff},${arrOff} M${-arrOff},${arrOff} L${-(arrOff + 10)},${arrOff} M${-arrOff},${arrOff} L${-arrOff},${arrOff + 10}`)
           .attr('fill', 'none')
           .attr('stroke', NODE_STROKE)
@@ -747,7 +753,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       }
 
       // --- Annotations below node ---
-      let lineY = sz + 14;
+      // below an adopted person's brackets
+      let lineY = adopted ? sz + BRACKET_OUT + 16 : sz + 14;
       const LINE_H = 13;
       // the proband's lines stand a little to the right, clear of the arrow at the lower left
       const ann = el.append('g').attr('class', 'annotations').attr('transform', d.proband || d.consultand ? 'translate(14,0)' : null);

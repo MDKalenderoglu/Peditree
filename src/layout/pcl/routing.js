@@ -53,6 +53,12 @@ const CLEAR = 8;                       // min distance between a descent line an
 
 // a cross-generation stand-in has no symbol: the couple's line reaches its centre
 const halfOf = (ind) => (isGhost(ind) ? 0 : isSmallSymbol(ind) ? LOSS_HALF : NODE_HALF);
+// an adopted person's brackets stand this far outside the symbol (PedigreeCanvas
+// adoption-brackets): a relationship line starts at the bracket, never through it
+// (clinician report 2026-11-01)
+export const BRACKET_OUT = 7;
+// lines stop this far outside the bracket's own stroke (2 px wide)
+const BRACKET_LINE = BRACKET_OUT + 2;
 const XGEN_DROP_CLEAR = 14; // the couple's line of descent keeps off the stand-in's vertical
 
 function assignLevels(items, levels) {
@@ -158,6 +164,8 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
   const rowIndex = new Map();
   for (const [, ids] of rows) ids.forEach((id, k) => rowIndex.set(id, k));
   const rowOf = (id) => rows.get(S.indById.get(id).generation) || [];
+  // where a line meets a person from the side: the symbol, or its brackets
+  const sideHalf = (id) => halfOf(S.indById.get(id)) + (S.bracketed && S.bracketed.has(id) ? BRACKET_LINE : 0);
   const hasKids = (uid) => (S.childrenOf.get(uid) || []).some(c => xPos[c] !== undefined);
   const unionBetween = (p, q) => S.unions.find(u => u.partners.includes(p) && u.partners.includes(q));
 
@@ -189,8 +197,8 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
     const row = rowOf(l);
     const between = row.slice(rowIndex.get(l) + 1, rowIndex.get(r));
     if (between.length === 0) {
-      const x1 = xPos[l] + halfOf(S.indById.get(l));
-      const x2 = xPos[r] - halfOf(S.indById.get(r));
+      const x1 = xPos[l] + sideHalf(l);
+      const x2 = xPos[r] - sideHalf(r);
       edges.push({ type: edgeType, x1, y1: y, x2, y2: y, unionId: u.id, relationshipBackground: u.relationshipBackground });
       const lo = x1 + (isGhost(S.indById.get(l)) ? XGEN_DROP_CLEAR : 6);
       const hi = x2 - (isGhost(S.indById.get(r)) ? XGEN_DROP_CLEAR : 6);
@@ -219,9 +227,10 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
         const sideTaken = sideUsed.has(key) || (neighbour !== undefined && S.isPartners(p, neighbour));
         const h = halfOf(S.indById.get(p));
         if (!sideTaken) {
+          const hs = sideHalf(p);
           sideUsed.add(key);
-          const sx = xPos[p] + dir * (h + STUB);
-          edges.push({ ...common, x1: xPos[p] + dir * h, y1: y, x2: sx, y2: y });
+          const sx = xPos[p] + dir * (hs + STUB);
+          edges.push({ ...common, x1: xPos[p] + dir * hs, y1: y, x2: sx, y2: y });
           edges.push({ ...common, x1: sx, y1: y, x2: sx, y2: laneY });
           verticals.push({ owner: u.id, x: sx, y1: laneY, y2: y });
           return sx;
@@ -279,15 +288,16 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
     const gx = xPos[ghost], gy = yPos[ghost], ux = xPos[upper], uy = yPos[upper];
     const dir = gx >= ux ? 1 : -1;
     const h = halfOf(S.indById.get(upper));
+    const hs = sideHalf(upper);
     const key = `${upper}|${dir}`;
     const neighbour = rowOf(upper)[rowIndex.get(upper) + dir];
     const sideTaken = sideUsed.has(key) || (neighbour !== undefined && S.isPartners(upper, neighbour));
     let sx, sy;
     if (!sideTaken) {
       sideUsed.add(key);
-      sx = ux + dir * (h + STUB);
+      sx = ux + dir * (hs + STUB);
       sy = uy;
-      edges.push({ ...common, x1: ux + dir * h, y1: uy, x2: sx, y2: uy });
+      edges.push({ ...common, x1: ux + dir * hs, y1: uy, x2: sx, y2: uy });
     } else {
       // that side carries a partner's line: leave from the bottom, off-centre
       const k = topRisers.get(`${upper}|bottom|${dir}`) || 0;
