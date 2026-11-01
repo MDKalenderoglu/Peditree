@@ -85,6 +85,23 @@ export function normalizeGenetics(p) {
 }
 
 /**
+ * Several people drawn as one symbol (NSGC "multiple individuals"; clinician
+ * decisions 2026-11-01): `count` is the number written inside the symbol
+ * (2–99) or 'n' when the number is not known. A square holds brothers, a
+ * circle sisters, a diamond siblings of mixed or unknown sex. A group
+ * carries its number and sex only: no finding, carrier or deceased mark, no
+ * partner, children or proband; a person who needs any of these is drawn on
+ * their own ("Tek tek ayır").
+ */
+export const GROUP_MAX = 99;
+export const isGroup = (p) => !!p && p.count !== undefined && p.count !== null;
+export const validGroupCount = (c) => c === 'n' || (Number.isInteger(c) && c >= 2 && c <= GROUP_MAX);
+/** "3", or "n" */
+export const groupText = (p) => String(p.count);
+/** what a group may not carry */
+export const GROUP_FORBIDDEN = ['affected', 'carrier', 'deceased', 'geneticTest', 'proband', ...PREGNANCY_FIELDS];
+
+/**
  * Fields a clinician enters about a person. A person with any of these set
  * must never be removed as a side effect (e.g. lowering a wizard count).
  */

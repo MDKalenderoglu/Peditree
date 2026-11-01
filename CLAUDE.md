@@ -23,7 +23,9 @@ Individual   { id, sex, age, generation, relation, label, displayLabel,
                affected, carrier, deceased, proband, placeholder?,
                pregnancyLoss, stillbirth, ongoingPregnancy?, termination?, ectopic?, gestationWeeks?,
                notes, condition?, conditions?,
-               ageAtDeath?, causeOfDeath?, birthDate?, geneticTest?, geneticNote? }
+               ageAtDeath?, causeOfDeath?, birthDate?, geneticTest?, geneticNote?, count? }
+                         // count: several people in one symbol, the number inside (2–99) or 'n' (NSGC; clinician 2026-11-01):
+                         // number and sex only — no finding/mark/partner/children/proband (validate.js GROUP_*); "Tek tek ayır" = ops.splitGroup
                          // geneticTest: 'tested' ("+"; absent = "−"); geneticNote: the clinician's lines (one per variant / result),
                          // drawn one under another below the symbol, no "E" prefix (NSGC 2022); old positive/negative/vus open as a line;
                          // conditions[].onsetAge: diagnosis age (shown in the notes)

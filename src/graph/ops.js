@@ -15,7 +15,7 @@
  * so behaviour does not change for the clinician; what changes is that the
  * result is stored as graph, not replayed from instructions.
  */
-import { cloneGraph, indexGraph, makePerson, SOCIAL_LINK_KINDS, PREGNANCY_FIELDS, PREGNANCY_KINDS, PREGNANCY_LABEL, isPregnancy, pregnancyKind, GENETIC_TESTED } from './model';
+import { cloneGraph, indexGraph, makePerson, SOCIAL_LINK_KINDS, PREGNANCY_FIELDS, PREGNANCY_KINDS, PREGNANCY_LABEL, isPregnancy, pregnancyKind, GENETIC_TESTED, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX } from './model';
 import { allocateEditNumber, retire } from './ids';
 import { finalizeGraph, ageOrder } from './finalize';
 import { validateDocument, errorsOf } from './validate';
@@ -215,6 +215,7 @@ export function updatePerson(doc, id, fields) {
   return commit(doc, (d) => {
     const p = d.graph.individuals.find((i) => i.id === id);
     if (!p) block('Birey grafikte bulunamadı.');
+    if (isGroup(p) && Object.entries(fields).some(([k, v]) => (GROUP_FORBIDDEN.includes(k) || k === 'conditions') && v && !(Array.isArray(v) && !v.length))) block(GROUP_ONE_BY_ONE);
     if (Object.prototype.hasOwnProperty.call(fields, 'sex')) {
       const conflict = partnerSexConflict(d.graph, id, fields.sex);
       if (conflict) block(conflict);
@@ -281,6 +282,7 @@ export function refreshBirthDateAges(doc, today = new Date()) {
 export function setProband(doc, id) {
   return commit(doc, (d) => {
     if (id !== null && !d.graph.individuals.some((i) => i.id === id)) block('Birey grafikte bulunamadı.');
+    if (id !== null && isGroup(d.graph.individuals.find((i) => i.id === id))) block(GROUP_ONE_BY_ONE);
     for (const p of d.graph.individuals) p.proband = p.id === id;
     if (id !== null) d.wizardAnchorId = id;
   });
@@ -291,6 +293,7 @@ export function addPartner(doc, personId, opts = {}) {
   return commit(doc, (d) => {
     const target = d.graph.individuals.find((i) => i.id === personId);
     if (!target) block('Birey grafikte bulunamadı.');
+    if (isGroup(target)) block(GROUP_ONE_BY_ONE);
     const sex = opts.sex || 'unknown';
     if (target.sex === 'unknown') block('Eş eklemek için önce bu kişinin cinsiyetini seçin: kişinin çevresindeki Durum düğmesi → Erkek ya da Kadın.');
     if (sex === 'unknown' || sex === target.sex) block('Eş/birliktelik yalnızca kadın ve erkek arasında kurulabilir.');
@@ -335,13 +338,16 @@ export function addChild(doc, unionId, opts = {}) {
     const parent = d.graph.individuals.find((i) => i.id === union.partners[0]);
     const sex = opts.sex || 'unknown';
     const childId = opts.childId || `de_ch_${editNumber(d)}`;
+    if (opts.count !== undefined && !validGroupCount(opts.count)) block(GROUP_COUNT_HINT);
     draftAddPerson(d, {
       id: childId, sex,
       generation: parent ? parent.generation + 1 : 3,
       relation: opts.relation || 'child_direct',
       label: opts.label ?? (pregnancyKind(opts) ? PREGNANCY_LABEL[pregnancyKind(opts)]
+        : opts.count !== undefined ? GROUP_LABEL[sex] || GROUP_LABEL.unknown
         : sex === 'male' ? 'Cocuk (E)' : sex === 'female' ? 'Cocuk (K)' : 'Cocuk'),
       ...pregnancyFlags(pregnancyKind(opts)),
+      ...(opts.count !== undefined ? { count: opts.count } : {}),
     });
     draftAddChild(d, unionId, childId, { orderPolicy: opts.orderPolicy || 'byAge' });
     return { created: { childId } };
@@ -611,5 +617,61 @@ export function addSocialParentLink(doc, childId, unionId, kind) {
 export function removeSocialParentLink(doc, childId, unionId) {
   return commit(doc, (d) => {
     d.graph.socialParentLinks = (d.graph.socialParentLinks || []).filter((l) => !(l.childId === childId && l.unionId === unionId));
+  });
+}
+
+// ── several people in one symbol (model.js isGroup; clinician decisions 2026-11-01) ──
+
+const GROUP_ONE_BY_ONE = 'Bu sembol birden çok kişiyi gösteriyor; bulgu, eş, çocuk ya da proband için önce "Tek tek ayır" ile kişileri ayrı çizin.';
+const GROUP_COUNT_HINT = `Kişi sayısı 2 ile ${GROUP_MAX} arasında olmalı; sayı bilinmiyorsa "n" yazın.`;
+const GROUP_LABEL = { male: 'Erkek kardeşler', female: 'Kız kardeşler', unknown: 'Kardeşler' };
+
+/** "3", " 12 ", "n", "N" → 3, 12, 'n'; anything else → null. */
+export function parseGroupCount(text) {
+  const t = String(text ?? '').trim().toLocaleLowerCase('tr');
+  if (t === 'n') return 'n';
+  const n = /^\d+$/.test(t) ? Number(t) : NaN;
+  return validGroupCount(n) ? n : null;
+}
+
+/** The number in a group's symbol; 1 makes it one person again. */
+export function setGroupCount(doc, id, count) {
+  return commit(doc, (d) => {
+    const p = d.graph.individuals.find((i) => i.id === id);
+    if (!p) block('Birey grafikte bulunamadı.');
+    if (count === 1) { delete p.count; return undefined; }
+    if (!validGroupCount(count)) block(GROUP_COUNT_HINT);
+    if ((indexGraph(d.graph).unionsOf.get(id) || []).length || GROUP_FORBIDDEN.some((f) => p[f]) || (p.conditions || []).length) {
+      block('Eşi, çocuğu, bulgusu ya da işareti olan bir kişi sayılı sembole çevrilemez.');
+    }
+    p.count = count;
+  });
+}
+
+/**
+ * "Tek tek ayır": a group of a known number becomes that many people of its
+ * sex, in its place among the siblings; the group keeps its id as the first
+ * of them (ids are never moved to someone else, never reused).
+ */
+export function splitGroup(doc, id) {
+  return commit(doc, (d) => {
+    const p = d.graph.individuals.find((i) => i.id === id);
+    if (!p || !isGroup(p)) block('Bu sembol birden çok kişiyi göstermiyor.');
+    if (p.count === 'n') block('Kişi sayısı bilinmiyor ("n"); ayırmak için önce sayıyı yazın.');
+    const n = p.count;
+    delete p.count;
+    p.label = p.sex === 'male' ? 'Cocuk (E)' : p.sex === 'female' ? 'Cocuk (K)' : 'Cocuk';
+    const rel = d.graph.parentChildRelationships.find((r) => r.children.includes(id));
+    const created = [];
+    for (let k = 1; k < n; k++) {
+      const childId = `de_ch_${editNumber(d)}`;
+      draftAddPerson(d, { id: childId, sex: p.sex, generation: p.generation, relation: p.relation, label: p.label });
+      created.push(childId);
+    }
+    if (rel) {
+      const at = rel.children.indexOf(id);
+      rel.children.splice(at + 1, 0, ...created);
+    }
+    return { created: { childIds: [id, ...created] } };
   });
 }

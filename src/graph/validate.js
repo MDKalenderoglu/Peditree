@@ -8,7 +8,7 @@
  * Issues: { severity: 'error' | 'warning', code, message (Turkish), ids }
  */
 import { auditPedigreeGraph } from '../utils/graphIntegrity';
-import { SOCIAL_LINK_KINDS, indexGraph } from './model';
+import { SOCIAL_LINK_KINDS, indexGraph, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX } from './model';
 import { multiplesWarnings } from './multiples';
 import { carrierFindingIssues } from './conditionKey';
 
@@ -52,6 +52,20 @@ export function validateGraphStructure(graph, { retired = [] } = {}) {
     state.set(id, 2);
   };
   for (const ind of graph.individuals) if (!state.has(ind.id)) visit(ind.id, [ind.id]);
+
+  // several people in one symbol (model.js isGroup): a number and a sex only
+  for (const ind of graph.individuals) {
+    if (!isGroup(ind)) continue;
+    if (!validGroupCount(ind.count)) err('GROUP_COUNT', `Sembol içindeki sayı 2 ile ${GROUP_MAX} arasında bir tam sayı ya da "n" olmalı (${ind.id}).`, [ind.id]);
+    if (idx.unionsOf.get(ind.id)?.length) err('GROUP_PARTNER', 'Birden çok kişiyi gösteren sembol eş olamaz; önce "Tek tek ayır" ile kişileri ayırın.', [ind.id]);
+    const marked = GROUP_FORBIDDEN.filter((f) => ind[f]);
+    if (marked.length || (ind.conditions || []).length) err('GROUP_CLINICAL', 'Birden çok kişiyi gösteren sembolde bulgu, taşıyıcılık, ölüm, genetik test ya da proband işareti olamaz; bu kişiyi "Tek tek ayır" ile ayrı çizin.', [ind.id]);
+  }
+  for (const rel of graph.parentChildRelationships) {
+    for (const m of rel.multiples || []) {
+      if (m.children.some((c) => isGroup(idx.byId.get(c)))) err('GROUP_MULTIPLE', 'Birden çok kişiyi gösteren sembol ikiz/üçüz grubunda olamaz.', m.children);
+    }
+  }
 
   const seenLink = new Set();
   for (const l of graph.socialParentLinks || []) {
