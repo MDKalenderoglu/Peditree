@@ -11,6 +11,8 @@ import { usePedigreeStore } from '../state/usePedigreeStore';
 import { runMarkAudit } from '../audit/markCollisions';
 import { fromPed, toPed } from '../graph/ped';
 import { computePclLayout } from '../layout/pcl/index';
+import * as ops from '../graph/ops';
+import { parseProjectFile, serializeDocument } from '../graph/persistenceV2';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
 beforeEach(() => S().resetPedigree());
@@ -72,5 +74,53 @@ describe('2, 9 — PED files', () => {
     const r = fromPed('F C A B 1 2\n');
     const parents = people(r.doc).filter(i => i.label === 'A' || i.label === 'B');
     expect(parents.every(p => (p.conditions || []).some(c => c.status === 'unknown'))).toBe(true);
+  });
+});
+
+describe('5, 6, 7, 10 — rules held in the data, not only in the menus', () => {
+  const file = (mut) => { const d = JSON.parse(serializeDocument(S().doc)); mut(d); return parseProjectFile(JSON.stringify(d)); };
+  const mother = (d) => d.graph.individuals.find(i => i.id === 'mother');
+  const sister = () => { S().addSiblingTo('proband', 'female'); return g().parentChildRelationships.find(r => r.children.includes('proband')).children.find(c => c !== 'proband'); };
+
+  it('5: a file with an unknown sex, a non-yes/no mark, two pregnancy kinds or a meaningless finding is refused', () => {
+    expect(file(d => { mother(d).sex = 'alien'; }).ok).toBe(false);
+    expect(file(d => { mother(d).affected = 'evet'; }).ok).toBe(false);
+    expect(file(d => { mother(d).conditions = [{ label: 'X', status: 'banana' }]; }).ok).toBe(false);
+    S().addChildTo('proband', 'unknown', { pregnancyLoss: true });
+    expect(file(d => { d.graph.individuals.find(i => i.pregnancyLoss).stillbirth = true; }).ok).toBe(false);
+    // an older record's finding without a status still opens
+    expect(file(d => { mother(d).conditions = [{ id: 'c1', label: 'Talasemi' }]; }).ok).toBe(true);
+  });
+
+  it('6: a pregnancy outcome never gets a partner or children, by any operation', () => {
+    S().addChildTo('proband', 'male', { ongoingPregnancy: true });
+    const fetus = g().individuals.find(i => i.ongoingPregnancy).id;
+    expect(ops.addPartner(S().doc, fetus, { sex: 'female' }).ok).toBe(false);
+    expect(ops.linkPartners(S().doc, fetus, 'mat_gm').ok).toBe(false);
+    S().addSpouseTo('proband', 'female');
+    const wife = g().unions.find(u => u.partners.includes('proband')).partners.find(p => p !== 'proband');
+    expect(ops.updatePerson(S().doc, wife, { pregnancyLoss: true }).reason).toMatch(/gebelik sonucunun/);
+  });
+
+  it('7: siblings are never partners — not by the operation with a consanguinity flag, not in a file', () => {
+    const sis = sister();
+    expect(ops.linkPartners(S().doc, 'proband', sis, { markConsanguineous: true }).ok).toBe(false);
+    const r = file(d => d.graph.unions.push({ id: 'U_SIB', partners: ['proband', sis], status: 'together', consanguineous: true, consanguinityStatus: 'known_supported', relationshipBackground: 'consanguinity_reported' }));
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/Kardeşler eş olamaz/);
+  });
+
+  it('10: a child added to a childless couple takes the "childless / infertile" mark away; an older file is cleaned on opening', () => {
+    S().addSpouseTo('proband', 'female');
+    const u = g().unions.find(x => x.partners.includes('proband')).id;
+    S().setChildlessness(u, 'infertile', 'azospermi');
+    S().addChildToUnion(u, 'male');
+    expect(g().unions.find(x => x.id === u).childless).toBeUndefined();
+    const d = JSON.parse(serializeDocument(S().doc));
+    d.graph.unions.find(x => x.id === u).childless = 'by_choice';
+    const r = parseProjectFile(JSON.stringify(d));
+    expect(r.ok).toBe(true);
+    expect(r.doc.graph.unions.find(x => x.id === u).childless).toBeUndefined();
+    expect(r.normalizations.join(' ')).toMatch(/çocuksuz/);
   });
 });

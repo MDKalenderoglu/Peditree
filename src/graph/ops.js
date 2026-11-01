@@ -206,6 +206,10 @@ function partnerSexConflict(graph, personId, newSex) {
   return null;
 }
 
+// a pregnancy outcome is never a partner or a parent (Codex audit 2026-11-01;
+// validate.js PREGNANCY_PARTNER only warns, for older files)
+const PREGNANCY_NO_PARTNER = 'Bir gebelik sonucunun (düşük, ölü doğum, süren gebelik, sonlandırma, dış gebelik) eşi ya da çocuğu olamaz.';
+
 const PROTECTED_FIELDS = new Set(['id', 'generation', 'proband', 'consultand', 'adoptedOut', 'placeholder', 'birthDate']);
 
 // ── operations ──
@@ -216,6 +220,7 @@ export function updatePerson(doc, id, fields) {
     const p = d.graph.individuals.find((i) => i.id === id);
     if (!p) block('Birey grafikte bulunamadı.');
     if (isGroup(p) && Object.entries(fields).some(([k, v]) => (GROUP_FORBIDDEN.includes(k) || k === 'conditions') && v && !(Array.isArray(v) && !v.length))) block(GROUP_ONE_BY_ONE);
+    if (PREGNANCY_FIELDS.some((f) => fields[f] === true) && (indexGraph(d.graph).unionsOf.get(id) || []).length) block(PREGNANCY_NO_PARTNER);
     if (Object.prototype.hasOwnProperty.call(fields, 'sex')) {
       const conflict = partnerSexConflict(d.graph, id, fields.sex);
       if (conflict) block(conflict);
@@ -311,6 +316,7 @@ export function addPartner(doc, personId, opts = {}) {
     const target = d.graph.individuals.find((i) => i.id === personId);
     if (!target) block('Birey grafikte bulunamadı.');
     if (isGroup(target)) block(GROUP_ONE_BY_ONE);
+    if (isPregnancy(target)) block(PREGNANCY_NO_PARTNER);
     const sex = opts.sex || 'unknown';
     if (target.sex === 'unknown') block('Eş eklemek için önce bu kişinin cinsiyetini seçin: kişinin çevresindeki Durum düğmesi → Erkek ya da Kadın.');
     if (sex === 'unknown' || sex === target.sex) block('Eş/birliktelik yalnızca kadın ve erkek arasında kurulabilir.');
@@ -334,8 +340,9 @@ export function addPartner(doc, personId, opts = {}) {
 /** Make two existing people partners (v1 "make partners"). */
 export function linkPartners(doc, a, b, opts = {}) {
   const plan = computeUnionCreationPlan(graphView(doc), a, b);
-  const proceed = plan.ok || (plan.requiresConsanguineousFlag && opts.markConsanguineous);
-  if (!proceed) return { ok: false, doc, reason: plan.reason };
+  // siblings are never partners, consanguinity flag or not (Codex audit 2026-11-01)
+  if (!plan.ok) return { ok: false, doc, reason: plan.reason };
+  if ([a, b].some((id) => isPregnancy(doc.graph.individuals.find((i) => i.id === id)))) return { ok: false, doc, reason: PREGNANCY_NO_PARTNER };
   return commit(doc, (d) => {
     const unionId = opts.unionId || `U_DE_LINK_${editNumber(d)}`;
     draftAddUnion(d, unionId, a, b, {
@@ -352,6 +359,7 @@ export function addChild(doc, unionId, opts = {}) {
   return commit(doc, (d) => {
     const union = d.graph.unions.find((u) => u.id === unionId);
     if (!union) block('Birliktelik grafikte bulunamadı.');
+    if (union.partners.some((id) => isPregnancy(d.graph.individuals.find((i) => i.id === id)))) block(PREGNANCY_NO_PARTNER);
     const parent = d.graph.individuals.find((i) => i.id === union.partners[0]);
     const sex = opts.sex || 'unknown';
     const childId = opts.childId || `de_ch_${editNumber(d)}`;

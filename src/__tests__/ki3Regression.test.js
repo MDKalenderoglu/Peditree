@@ -85,7 +85,10 @@ for (const c of CASES) {
 
     it('semantics: valid pedigree graph, valid as a schema v2 document', () => {
       expect(auditPedigreeGraph(graph).filter(i => i.severity === 'error')).toEqual([]);
-      expect(validateGraphStructure(graph)).toEqual([]);
+      // the 474-person graph (an early version's output) has a stillbirth with a partner:
+      // a warning since the Codex audit 2026-11-01 (validate.js PREGNANCY_PARTNER), never an error
+      expect(errorsOf(validateGraphStructure(graph))).toEqual([]);
+      expect([...new Set(validateGraphStructure(graph).map(i => i.code))].filter(c => c !== 'PREGNANCY_PARTNER')).toEqual([]);
       expect(errorsOf(validateDocument(createDocument(graph)))).toEqual([]);
     });
 

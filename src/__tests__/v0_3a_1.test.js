@@ -395,7 +395,7 @@ describe('v0.3a.1 — store: computeUnionCreationPlan / createUnionBetween', () 
     expect(plan.ok).toBe(false);
   });
 
-  it('flags (but does not silently allow) two full siblings without an explicit consanguineous flag', () => {
+  it('refuses two full siblings as partners, also with a consanguinity flag', () => {
     // v0.5 Step 5A: uses an opposite-sex sibling (proband is male by
     // default) so the sibling/consanguineous-flag check is isolated from
     // the new same-sex block below — a same-sex sibling pair is blocked by
@@ -406,7 +406,9 @@ describe('v0.3a.1 — store: computeUnionCreationPlan / createUnionBetween', () 
     const siblingId = state.wizardData.siblings.female[0] ? `sib_f_0` : null;
     const plan = computeUnionCreationPlan(state.pedigreeData, 'proband', siblingId);
     expect(plan.ok).toBe(false);
-    expect(plan.requiresConsanguineousFlag).toBe(true);
+    // siblings are never partners, consanguinity flag or not (CLAUDE.md rule 3; Codex audit 2026-11-01)
+    expect(plan.reason).toMatch(/kardeşler eş olamaz/);
+    expect(usePedigreeStore.getState().createUnionBetween('proband', siblingId, { markConsanguineous: true }).ok).toBe(false);
   });
 
   it('allows two unrelated existing individuals to become partners', () => {
