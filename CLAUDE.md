@@ -23,7 +23,9 @@ Individual   { id, sex, age, generation, relation, label, displayLabel,
                affected, carrier, deceased, proband, placeholder?,
                pregnancyLoss, stillbirth, ongoingPregnancy?, termination?, ectopic?, gestationWeeks?,
                notes, condition?, conditions?,
-               ageAtDeath?, causeOfDeath?, birthDate?, geneticTest?, geneticNote?, count?, consultand? }
+               ageAtDeath?, causeOfDeath?, birthDate?, geneticTest?, geneticNote?, count?, consultand?, adoptedOut? }
+                         // adoptedOut: adopted out (brackets, solid line from the drawn parents); adoption by a drawn couple is a
+                         // socialParentLink 'adoptive' ('in' without, 'relative' with biological parents) — model.adoptionOf, ops.setAdoption
                          // consultand: the person who came for counselling — arrow without "P", at most one, never a
                          // pregnancy / placeholder / group (ops.setConsultand; clinician 2026-11-01); top bar = model.subjectOf
                          // count: several people in one symbol, the number inside (2–99) or 'n' (NSGC; clinician 2026-11-01):

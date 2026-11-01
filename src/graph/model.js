@@ -99,7 +99,30 @@ export const validGroupCount = (c) => c === 'n' || (Number.isInteger(c) && c >= 
 /** "3", or "n" */
 export const groupText = (p) => String(p.count);
 /** what a group may not carry */
-export const GROUP_FORBIDDEN = ['affected', 'carrier', 'deceased', 'geneticTest', 'proband', 'consultand', ...PREGNANCY_FIELDS];
+export const GROUP_FORBIDDEN = ['affected', 'carrier', 'deceased', 'geneticTest', 'proband', 'consultand', 'adoptedOut', ...PREGNANCY_FIELDS];
+
+/**
+ * Adoption (NSGC; clinician decisions 2026-11-01). The adopted person is
+ * drawn in square brackets. Three cases:
+ *   'in'       — only an adoptive link (socialParentLinks, kind 'adoptive'):
+ *                under the adoptive parents, dashed line of descent;
+ *   'out'      — `adoptedOut: true` on a child of drawn biological parents,
+ *                the adoptive family not drawn: solid line from the parents;
+ *   'relative' — biological parents AND an adoptive link to another drawn
+ *                couple (e.g. an aunt and her husband): solid line from the
+ *                parents, dashed line from the adoptive couple.
+ * At most one adoptive link per person; foster / step / guardian links stay
+ * in the model but are not offered in the menus.
+ */
+export function adoptionOf(graph, id) {
+  const p = (graph.individuals || []).find((i) => i.id === id);
+  if (!p) return null;
+  const adoptive = (graph.socialParentLinks || []).find((l) => l.childId === id && l.kind === 'adoptive');
+  const bio = (graph.parentChildRelationships || []).some((r) => r.children.includes(id));
+  if (adoptive) return { kind: bio ? 'relative' : 'in', unionId: adoptive.unionId };
+  if (p.adoptedOut) return { kind: 'out' };
+  return null;
+}
 
 /**
  * The consultand (NSGC 2022; clinician decisions 2026-11-01): the person who

@@ -206,7 +206,7 @@ function partnerSexConflict(graph, personId, newSex) {
   return null;
 }
 
-const PROTECTED_FIELDS = new Set(['id', 'generation', 'proband', 'consultand', 'placeholder', 'birthDate']);
+const PROTECTED_FIELDS = new Set(['id', 'generation', 'proband', 'consultand', 'adoptedOut', 'placeholder', 'birthDate']);
 
 // ── operations ──
 
@@ -366,7 +366,13 @@ export function addChild(doc, unionId, opts = {}) {
       ...pregnancyFlags(pregnancyKind(opts)),
       ...(opts.count !== undefined ? { count: opts.count } : {}),
     });
-    draftAddChild(d, unionId, childId, { orderPolicy: opts.orderPolicy || 'byAge' });
+    // an adopted-in child (clinician decisions 2026-11-01): the adoptive link only, no biological one
+    if (opts.adopted) {
+      if (pregnancyKind(opts) || opts.count !== undefined) block('Evlat edinilen çocuk bir gebelik ya da sayılı sembol olamaz.');
+      d.graph.socialParentLinks = [...(d.graph.socialParentLinks || []), { childId, unionId, kind: 'adoptive' }];
+    } else {
+      draftAddChild(d, unionId, childId, { orderPolicy: opts.orderPolicy || 'byAge' });
+    }
     return { created: { childId } };
   });
 }
@@ -628,6 +634,44 @@ export function addSocialParentLink(doc, childId, unionId, kind) {
     if (!d.graph.unions.some((u) => u.id === unionId)) block('Birliktelik grafikte bulunamadı.');
     if ((d.graph.socialParentLinks || []).some((l) => l.childId === childId && l.unionId === unionId)) block('Bu sosyal ebeveynlik bağı zaten var.');
     d.graph.socialParentLinks = [...(d.graph.socialParentLinks || []), { childId, unionId, kind }];
+  });
+}
+
+/**
+ * Adoption of one person (model.js adoptionOf): null clears it, 'out' marks
+ * "adopted out" (biological parents drawn, adoptive family not), a union id
+ * names the drawn adoptive couple ("in" or "by a relative"). One adoptive
+ * family at a time; foster / step / guardian links are left as they are.
+ */
+export function setAdoption(doc, id, to) {
+  return commit(doc, (d) => {
+    const g = d.graph;
+    const p = g.individuals.find((i) => i.id === id);
+    if (!p) block('Birey grafikte bulunamadı.');
+    if (isGroup(p)) block(GROUP_ONE_BY_ONE);
+    const idx = indexGraph(g);
+    const bio = idx.bioParentUnion.has(id);
+    const others = (g.socialParentLinks || []).filter((l) => !(l.childId === id && l.kind === 'adoptive'));
+    if (to === null) {
+      if (!bio && (g.socialParentLinks || []).some((l) => l.childId === id && l.kind === 'adoptive')) {
+        block('Bu kişinin biyolojik ebeveynleri çizili değil; evlat edinmeyi kaldırmak için önce biyolojik ebeveynlerini ekleyin.');
+      }
+      delete p.adoptedOut;
+      g.socialParentLinks = others;
+      return undefined;
+    }
+    if (to === 'out') {
+      if (!bio) block('Evlat verildi işareti için kişinin biyolojik ebeveynleri çizili olmalı.');
+      p.adoptedOut = true;
+      g.socialParentLinks = others;
+      return undefined;
+    }
+    if (!idx.unionById.has(to)) block('Birliktelik grafikte bulunamadı.');
+    if (idx.bioParentUnion.get(id) === to) block('Evlat edinen aile, kişinin kendi biyolojik ebeveynleri olamaz.');
+    if (idx.unionById.get(to).partners.includes(id)) block('Kişi kendi evlat edineni olamaz.');
+    delete p.adoptedOut;
+    g.socialParentLinks = [...others, { childId: id, unionId: to, kind: 'adoptive' }];
+    return undefined;
   });
 }
 
