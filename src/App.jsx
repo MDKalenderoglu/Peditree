@@ -13,7 +13,7 @@ import { parseTypedDate, formatDate } from './utils/age';
 import DraftField from './components/DraftField';
 import { nextPerson, RING_KEYS } from './utils/keyboardNav';
 import { toPed } from './graph/ped';
-import { TEMPLATE_GROUPS } from './graph/templates';
+import RelationChooser from './components/RelationChooser';
 import { withGeneticLine } from './graph/model';
 import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, DRAWING_FONTS, LEGEND_SIZES } from './utils/drawingStyle';
 import { versionLine, citationText, REPOSITORY_URL, CONTACT_EMAIL, issueUrl } from './utils/appInfo';
@@ -290,7 +290,6 @@ function App() {
   // "Yeni": the nuclear family, or a ready-made consanguinity template
   // (graph/templates.js; clinician decision 2026-10-25)
   const [newMenu, setNewMenu] = React.useState(false);
-  const [tplGroup, setTplGroup] = React.useState(TEMPLATE_GROUPS[0].id);
   const handleNewPedigree = (spec = null) => {
     setNewMenu(false);
     if (window.confirm('Yeni pedigri başlatılsın mı?\n\nŞu anki pedigriyi “Kaydet” ile dosyaya kaydetmediyseniz kaybolur ve geri getirilemez.')) {
@@ -573,17 +572,7 @@ function App() {
               <div className="keys-popover share-popover new-popover" role="dialog" aria-label="Yeni pedigri">
                 <button className="ui-btn ui-btn-primary" onClick={() => handleNewPedigree(null)}>Proband, anne ve baba ile başla</button>
                 <div className="more-title">Ya da anne-babası akraba olan hazır bir aileyle başlayın:</div>
-                <div className="segmented segmented-wrap" role="tablist" aria-label="Akrabalık derecesi">
-                  {TEMPLATE_GROUPS.map(g => (
-                    <button key={g.id} role="tab" aria-selected={tplGroup === g.id} className={tplGroup === g.id ? 'on' : undefined}
-                      onClick={() => setTplGroup(g.id)}>{g.label}</button>
-                  ))}
-                </div>
-                <div className="template-list" role="list">
-                  {TEMPLATE_GROUPS.find(g => g.id === tplGroup).items.map(i => (
-                    <button key={i.id} className="template-item" role="listitem" onClick={() => handleNewPedigree(i.spec)}>{i.label}</button>
-                  ))}
-                </div>
+                <RelationChooser onStart={handleNewPedigree} />
               </div>
             )}
           </div>

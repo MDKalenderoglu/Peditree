@@ -1,8 +1,8 @@
 /**
- * templates.js — ready-made pedigrees for "Yeni" (clinician decision
- * 2026-10-25): the proband's parents related by blood, every structure of
- * first cousins (4), second cousins (16), first cousins once removed (16)
- * and double first cousins (2).
+ * templates.js — ready-made pedigrees for "Yeni" (clinician decisions
+ * 2026-10-25, 2026-11-01): the proband's parents related by blood, through a
+ * pair of siblings 1–3 generations above each parent (first, second and
+ * third cousins and the once-removed ones), or double first cousins.
  *
  * A template says, for each parent, the path up to the relative who is the
  * sibling of the other parent's relative: e.g. father ['male'] = the
@@ -67,9 +67,18 @@ export function buildTemplate(base, spec) {
   return { ok: true, doc };
 }
 
-// ── the catalogue ──
+// ── the choices in "Yeni" (clinician decision 2026-11-01) ──
+//
+// The clinician says how many generations above each parent the two
+// siblings stand (1 = a parent of the parent, 2 = a grandparent, 3 = a
+// great-grandparent) and which relative it is on each side; the name of the
+// relationship and its F follow. One pair of numbers covers first, second
+// and third cousins and the once-removed ones; the parents may stand at most
+// one generation apart (cross-generation partners, clinician 2026-10-24).
 
 const SEXES = ['male', 'female'];
+export const GENERATIONS_UP = [1, 2, 3];
+export const canPair = (up) => Math.abs(up.father - up.mother) <= 1;
 
 /** "babanın babasının annesi" — the parent ('baba' | 'anne') and the path up. */
 export function pathName(root, path) {
@@ -81,46 +90,69 @@ export function pathName(root, path) {
   }).join(' ');
 }
 
+/** Every path of `n` steps, the father's line first: [['male','male'], ['male','female'], …]. */
+export function pathsOf(n) {
+  return n === 0 ? [[]] : pathsOf(n - 1).flatMap((p) => SEXES.map((s) => [...p, s]));
+}
+
+/** "babasının annesi" — the path seen from the parent. */
+const pathFromParent = (path) => path.map((s, k) => (k === path.length - 1
+  ? (s === 'male' ? 'babası' : 'annesi')
+  : (s === 'male' ? 'babasının' : 'annesinin'))).join(' ');
+const KIN_WORD = { 'male,male': 'dedesi', 'male,female': 'babaannesi', 'female,male': 'dedesi', 'female,female': 'anneannesi' };
+
+/** A relative as the button names it: the clinic's word and the path under it ("Babaannesi", "babasının annesi"). */
+export function relativeName(path) {
+  const way = pathFromParent(path);
+  const word = KIN_WORD[path.join(',')];
+  const main = word || way;
+  return { main: main[0].toLocaleUpperCase('tr') + main.slice(1), way: word ? way : null };
+}
+
 const COUSIN_NAME = { 'male|male': 'amca çocukları', 'female|female': 'teyze çocukları' };
-const pairLabel = ({ father, mother }) => `${pathName('father', father)} ile ${pathName('mother', mother)} kardeş`;
+const OF_GENERATION = { 1: 'anne ya da babası', 2: 'büyükanne ya da büyükbabalarından biri', 3: 'büyükanne ya da büyükbabalarının anne ya da babası' };
 
-function firstCousins() {
-  return SEXES.flatMap((a) => SEXES.map((b) => {
-    const pair = { father: [a], mother: [b] };
-    const name = COUSIN_NAME[`${a}|${b}`] || 'hala–dayı çocukları';
-    return { id: `first-${a[0]}${b[0]}`, label: `${name[0].toLocaleUpperCase('tr')}${name.slice(1)} — ${pairLabel(pair)}`, spec: { pairs: [pair] } };
-  }));
-}
-
-function secondCousins() {
-  const out = [];
-  for (const a1 of SEXES) for (const a2 of SEXES) for (const b1 of SEXES) for (const b2 of SEXES) {
-    const pair = { father: [a1, a2], mother: [b1, b2] };
-    out.push({ id: `second-${a1[0]}${a2[0]}-${b1[0]}${b2[0]}`, label: `${pairLabel(pair)[0].toLocaleUpperCase('tr')}${pairLabel(pair).slice(1)}`, spec: { pairs: [pair] } });
+/**
+ * What the chosen numbers mean: the relationship's name, a sentence for the
+ * clinician, and F of their child.
+ * @param up { father: 1–3, mother: 1–3 }, at most one apart
+ * @param paths { father: sexes[], mother: sexes[] } (first cousins: amca / teyze / hala–dayı)
+ */
+export function relationInfo(up, paths = null) {
+  const lo = Math.min(up.father, up.mother);
+  const F = 1 / 2 ** (up.father + up.mother + 2);
+  if (up.father === up.mother) {
+    const clinic = lo === 1 && paths ? COUSIN_NAME[`${paths.father[0]}|${paths.mother[0]}`] || 'hala–dayı çocukları' : null;
+    return {
+      name: `${lo}. derece kuzen${clinic ? ` (${clinic})` : ''}`,
+      sentence: `Babanın ${OF_GENERATION[up.father]} ile annenin ${OF_GENERATION[up.mother]} kardeştir.`,
+      F,
+    };
   }
-  return out;
+  const [younger, older] = up.father > up.mother ? ['Baba', 'annenin'] : ['Anne', 'babanın'];
+  return {
+    name: `${lo}. derece kuzenin çocuğu (bir kuşak fark)`,
+    sentence: `${younger}, ${older} ${lo === 1 ? '' : `${lo}. derece `}kuzeninin ${younger === 'Anne' ? 'kızıdır' : 'oğludur'}; bir kuşak aşağıdadır.`,
+    F,
+  };
 }
 
-function onceRemoved() {
-  const out = [];
-  for (const older of ['father', 'mother']) {
-    for (const a of SEXES) for (const b1 of SEXES) for (const b2 of SEXES) {
-      const pair = older === 'father' ? { father: [a], mother: [b1, b2] } : { father: [b1, b2], mother: [a] };
-      const who = older === 'father' ? 'baba' : 'anne';
-      out.push({ id: `once-${older[0]}-${a[0]}${b1[0]}${b2[0]}`, label: `${pairLabel(pair)[0].toLocaleUpperCase('tr')}${pairLabel(pair).slice(1)} (${who} bir kuşak yukarıda)`, spec: { older, pairs: [pair] } });
-    }
-  }
-  return out;
+/** The template for buildTemplate: the two relatives are siblings; a parent with the shorter way up is a generation older. */
+export function relationSpec(paths) {
+  const spec = { pairs: [{ father: paths.father, mother: paths.mother }] };
+  if (paths.father.length < paths.mother.length) spec.older = 'father';
+  if (paths.mother.length < paths.father.length) spec.older = 'mother';
+  return spec;
 }
 
-export const TEMPLATE_GROUPS = [
-  { id: 'first', label: '1. derece kuzen', items: firstCousins() },
-  { id: 'second', label: '2. derece kuzen', items: secondCousins() },
-  { id: 'once', label: '1. kuzenin çocuğu', items: onceRemoved() },
-  {
-    id: 'double', label: 'Çift 1. derece kuzen', items: [
-      { id: 'double-same', label: 'İki erkek kardeş iki kız kardeşle evli (dedeler kardeş, anneanne ile babaanne kardeş)', spec: { pairs: [{ father: ['male'], mother: ['male'] }, { father: ['female'], mother: ['female'] }] } },
-      { id: 'double-cross', label: 'Değişmeli evlilik (babanın babası ile annenin annesi kardeş, babanın annesi ile annenin babası kardeş)', spec: { pairs: [{ father: ['male'], mother: ['female'] }, { father: ['female'], mother: ['male'] }] } },
-    ],
-  },
+/** Double first cousins: two pairs of siblings, kept as the two ready-made families. */
+export const DOUBLE_FIRST_COUSINS = [
+  { id: 'double-same', label: 'İki erkek kardeş iki kız kardeşle evli', sub: 'Dedeler kardeş, anneanne ile babaanne kardeş', spec: { pairs: [{ father: ['male'], mother: ['male'] }, { father: ['female'], mother: ['female'] }] } },
+  { id: 'double-cross', label: 'Değişmeli evlilik', sub: 'Babanın babası ile annenin annesi kardeş, babanın annesi ile annenin babası kardeş', spec: { pairs: [{ father: ['male'], mother: ['female'] }, { father: ['female'], mother: ['male'] }] } },
 ];
+
+/** The relatives who were made siblings in a family built from `spec` (the preview marks them). */
+export function siblingIds(doc, spec) {
+  const up = (start, path) => path.reduce((id, sex) => id && parentOf(doc, id, sex), start);
+  return spec.pairs.flatMap((pair) => [up('father', pair.father), up('mother', pair.mother)]).filter(Boolean);
+}

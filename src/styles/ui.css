@@ -390,7 +390,7 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 .share-note { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
 .share-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .more-title { font-size: 13.5px; font-weight: 700; color: var(--ink); margin-top: 4px; }
-.new-popover { left: 0; right: auto; width: 420px; max-width: calc(100vw - 32px); }
+.new-popover { left: 0; right: auto; width: 440px; max-width: calc(100vw - 32px); max-height: calc(100vh - 110px); overflow-y: auto; }
 /* İndir: one row per file type, what it is for under its name */
 .download-popover { width: 340px; max-width: calc(100vw - 24px); max-height: calc(100vh - 110px); overflow-y: auto; gap: 4px; }
 .download-item, .download-item-head { display: flex; align-items: flex-start; gap: 10px; text-align: left; color: var(--ink-2); }
@@ -414,10 +414,28 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 .about-popover a { color: var(--accent-ink); }
 .about-links { display: flex; flex-wrap: wrap; gap: 8px; }
 .about-popover a.ui-btn { color: inherit; text-decoration: none; }
-.template-list { display: flex; flex-direction: column; gap: 1px; max-height: 300px; overflow-y: auto; }
-.template-item { text-align: left; font: inherit; font-size: 13.5px; padding: 8px 10px; border: 1px solid transparent; border-radius: var(--radius-sm); background: none; color: var(--ink); cursor: pointer; }
-.template-item:hover, .template-item:focus-visible { background: var(--accent-soft); border-color: var(--accent-line); outline: none; }
-@media (pointer: coarse) { .template-item { padding: 12px 10px; font-size: 15px; } }
+/* "Yeni" → a family whose parents are related (RelationChooser.jsx) */
+.relation-chooser { display: flex; flex-direction: column; gap: 10px; }
+.relation-row { display: flex; flex-direction: column; gap: 5px; }
+.relation-q { font-size: 13px; font-weight: 600; color: var(--ink); }
+.relation-row .segmented { align-self: flex-start; }
+.relation-row .segmented button small { font-weight: 500; color: var(--muted); margin-left: 3px; }
+.relation-row .segmented button:disabled { opacity: 0.4; cursor: not-allowed; }
+.relation-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.relation-choices-wide { grid-template-columns: 1fr; }
+.relation-choice { text-align: left; font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 9px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); cursor: pointer; }
+.relation-choice small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
+.relation-choice:hover { border-color: var(--accent-line); }
+.relation-choice.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.relation-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.relation-result { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; background: var(--sunken); border-radius: var(--radius-sm); font-size: 13px; color: var(--muted); line-height: 1.45; }
+.relation-result b { color: var(--ink); font-size: 14px; }
+.relation-preview { width: 100%; max-height: 260px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.relation-preview line { stroke: var(--ink); stroke-width: 3; }
+.relation-preview rect, .relation-preview circle { fill: var(--paper); stroke: var(--ink); stroke-width: 3; }
+.relation-preview .marked { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 6; }
+.relation-preview .proband { stroke-width: 6; }
+@media (pointer: coarse) { .relation-choice { padding: 10px; font-size: 15px; } }
 
 /* printing (App.jsx handlePrint): only the drawing, fitted to one A4 page */
 #print-root { display: none; }
