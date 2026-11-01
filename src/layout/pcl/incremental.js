@@ -75,6 +75,18 @@ export function affectedPeople(prevGraph, graph) {
     add(childId);
     (curUnions.get(unionId) || prevUnions.get(unionId) || { partners: [] }).partners.forEach(add);
   }
+  // assisted reproduction: the child, the donor or carrier, and the child's parents
+  const repro = (g) => new Set((g.reproductiveLinks || []).map((l) => `${l.childId}|${l.personId}|${l.role}`));
+  const pr = repro(prevGraph), cr = repro(graph);
+  for (const k of new Set([...pr, ...cr])) {
+    if (pr.has(k) && cr.has(k)) continue;
+    const [childId, personId] = k.split('|');
+    add(childId); add(personId);
+    for (const g of [graph, prevGraph]) {
+      const r = (g.parentChildRelationships || []).find((x) => x.children.includes(childId));
+      if (r) ((g.unions || []).find((u) => u.id === r.unionId)?.partners || []).forEach(add);
+    }
+  }
   // people related to a removed person (their partners, parents, children)
   for (const [id] of prevInd) {
     if (curInd.has(id)) continue;

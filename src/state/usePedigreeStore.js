@@ -483,6 +483,9 @@ export const usePedigreeStore = create((zSet, get) => {
     clearConsultand: () => apply(ops.setConsultand(get().doc, null)),
     // adoption (model.js adoptionOf): null, 'out' or the adoptive couple's union id
     setAdoption: (id, to) => apply(ops.setAdoption(get().doc, id, to)),
+    // assisted reproduction (model.js REPRO_ROLES): a donor or carrier for a child
+    addReproductiveLink: (childId, role, opts = {}) => apply(ops.addReproductiveLink(get().doc, childId, role, opts)),
+    removeReproductiveLink: (childId, personId) => apply(ops.removeReproductiveLink(get().doc, childId, personId)),
 
     deleteIndividual: (id) => {
       const state = get();

@@ -133,6 +133,34 @@ export function adoptionOf(graph, id) {
  */
 export const isConsultand = (p) => !!p && !!p.consultand;
 /** whose name, birth date and findings head the drawing: the proband, else the consultand */
+/**
+ * Assisted reproduction (NSGC 2022 Figure 5 as corrected in 2025, Steinhaus
+ * French et al., J Genet Couns 34:e2020; clinician decisions 2026-11-01).
+ * `graph.reproductiveLinks`: [{ childId, personId, role }] — the child's
+ * drawn parents stay the couple (or the single parent) of its parent union;
+ *   'sperm_donor'          — D inside the symbol; the genetic father
+ *   'egg_donor'            — D; the genetic mother
+ *   'gestational_carrier'  — G; carries the pregnancy, no egg of her own
+ *   'surrogate'            — D; gives the egg and carries the pregnancy
+ * A carried child stands under the person carrying it. Kinship and F follow
+ * the genetic parents (indexGraph.geneticParents). A donor or carrier the
+ * clinician adds here (relation 'art_donor') has no parents or partner of
+ * their own: family history goes in notes and findings.
+ */
+export const REPRO_ROLES = ['sperm_donor', 'egg_donor', 'gestational_carrier', 'surrogate'];
+export const EGG_SOURCE = ['egg_donor', 'surrogate'];
+export const CARRIER_ROLES = ['gestational_carrier', 'surrogate'];
+export const REPRO_LABEL = { sperm_donor: 'Sperm donörü', egg_donor: 'Yumurta donörü', gestational_carrier: 'Gestasyonel taşıyıcı', surrogate: 'Taşıyıcı anne' };
+export const ART_DONOR_RELATION = 'art_donor';
+/** the letter inside a person's symbol: 'G' for a gestational carrier, 'D' for a donor or surrogate */
+export function reproMarkOf(graph, id) {
+  const roles = (graph.reproductiveLinks || []).filter((l) => l.personId === id).map((l) => l.role);
+  if (!roles.length) return null;
+  return roles.every((r) => r === 'gestational_carrier') ? 'G' : 'D';
+}
+/** who carries the child, when not its own mother: the gestational carrier or surrogate link */
+export const carrierLinkOf = (graph, childId) => (graph.reproductiveLinks || []).find((l) => l.childId === childId && CARRIER_ROLES.includes(l.role)) || null;
+
 export const subjectOf = (individuals) => (individuals || []).find((i) => i.proband) || (individuals || []).find((i) => i.consultand) || null;
 
 /**
@@ -149,7 +177,7 @@ export function makePerson(props) {
 }
 
 export function emptyGraph() {
-  return { individuals: [], unions: [], parentChildRelationships: [], socialParentLinks: [], conditionKey: [] };
+  return { individuals: [], unions: [], parentChildRelationships: [], socialParentLinks: [], reproductiveLinks: [], conditionKey: [] };
 }
 
 /** Deep copy (plain JSON data only). */
@@ -159,6 +187,7 @@ export function cloneGraph(graph) {
     unions: graph.unions || [],
     parentChildRelationships: graph.parentChildRelationships || [],
     socialParentLinks: graph.socialParentLinks || [],
+    reproductiveLinks: graph.reproductiveLinks || [],
     conditionKey: graph.conditionKey || [],
   }));
 }
@@ -186,7 +215,29 @@ export function indexGraph(graph) {
     const u = unionById.get(uid);
     return u ? (u.partners[0] === id ? u.partners[1] : u.partners[0]) : undefined;
   };
-  return { byId, unionById, pcrByUnion, bioParentUnion, unionsOf, childrenOf, partnerOf };
+  // the genetic parents (assisted reproduction, reproductiveLinks): the
+  // drawn couple, a sperm donor in the father's place, an egg donor or a
+  // surrogate in the mother's; null for a person without drawn parents
+  const reproByChild = new Map();
+  for (const l of graph.reproductiveLinks || []) {
+    if (!reproByChild.has(l.childId)) reproByChild.set(l.childId, []);
+    reproByChild.get(l.childId).push(l);
+  }
+  const geneticParents = (id) => {
+    const uid = bioParentUnion.get(id);
+    const links = reproByChild.get(id) || [];
+    if (!uid) return null;
+    const partners = unionById.get(uid)?.partners || [];
+    const [a, b] = partners.map((p) => byId.get(p));
+    let father = [a, b].find((p) => p && p.sex === 'male')?.id;
+    let mother = [a, b].find((p) => p && p.sex === 'female')?.id;
+    if (!father) father = partners.find((p) => p !== mother);
+    if (!mother) mother = partners.find((p) => p !== father);
+    const sperm = links.find((l) => l.role === 'sperm_donor');
+    const egg = links.find((l) => EGG_SOURCE.includes(l.role));
+    return [sperm ? sperm.personId : father, egg ? egg.personId : mother];
+  };
+  return { byId, unionById, pcrByUnion, bioParentUnion, unionsOf, childrenOf, partnerOf, geneticParents, reproByChild };
 }
 
 /** All biological ancestors of `id` (individual ids), following PCR links. */

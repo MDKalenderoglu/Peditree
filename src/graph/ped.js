@@ -21,7 +21,7 @@
  * a header naming the columns (e.g. QuickPed: id fid mid sex aff, where fid
  * is the father). The first family of a multi-family file is opened.
  */
-import { makePerson, indexGraph, isPregnancy, isGroup } from './model';
+import { makePerson, indexGraph, isPregnancy, isGroup, EGG_SOURCE } from './model';
 import { createDocument } from './document';
 import { finalizeGraph } from './finalize';
 import { validateDocument, errorsOf } from './validate';
@@ -74,8 +74,13 @@ export function toPed(graph, nodes, { phenotype = 'affected', familyId = 'AILE1'
   const rows = people.map((p) => {
     const uid = idx.bioParentUnion.get(p.id);
     const r = uid ? roles.get(uid) : null;
+    // a PED file is genetic: a sperm donor is the father, an egg donor or surrogate the mother (model.js)
+    const repro = idx.reproByChild.get(p.id) || [];
+    const sperm = repro.find((l) => l.role === 'sperm_donor')?.personId;
+    const egg = repro.find((l) => EGG_SOURCE.includes(l.role))?.personId;
+    const father = sperm || (r && r.father), mother = egg || (r && r.mother);
     const sex = p.sex === 'male' ? 1 : p.sex === 'female' ? 2 : (roles.get(`sex:${p.id}`) || 0);
-    return [familyId, idOf.get(p.id), r && idOf.get(r.father) || '0', r && idOf.get(r.mother) || '0', sex, phenotypeOf(p)].join('\t');
+    return [familyId, idOf.get(p.id), idOf.get(father) || '0', idOf.get(mother) || '0', sex, phenotypeOf(p)].join('\t');
   });
   return `${rows.join('\n')}\n`;
 }

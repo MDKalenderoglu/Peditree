@@ -169,6 +169,9 @@ export function shapeProblem(doc) {
   if (g.socialParentLinks !== undefined && (!Array.isArray(g.socialParentLinks) || g.socialParentLinks.some((l) => !isObj(l) || !isId(l.childId) || !isId(l.unionId) || typeof l.kind !== 'string'))) {
     return 'bir sosyal ebeveynlik kaydı bozuk';
   }
+  if (g.reproductiveLinks !== undefined && (!Array.isArray(g.reproductiveLinks) || g.reproductiveLinks.some((l) => !isObj(l) || !isId(l.childId) || !isId(l.personId) || typeof l.role !== 'string'))) {
+    return 'bir yardımcı üreme kaydı bozuk';
+  }
   if (g.conditionKey !== undefined && (!Array.isArray(g.conditionKey) || g.conditionKey.some((e) => !isObj(e) || typeof e.label !== 'string'))) {
     return 'bulgu açıklaması bozuk';
   }
@@ -202,6 +205,7 @@ function parseChecked(text) {
     const problem = shapeProblem(doc);
     if (problem) return { ok: false, reason: `Dosyadaki pedigri bozuk, açılmadı: ${problem}.` };
     if (!Array.isArray(doc.graph.socialParentLinks)) doc.graph.socialParentLinks = [];
+    if (!Array.isArray(doc.graph.reproductiveLinks)) doc.graph.reproductiveLinks = [];
     if (!Array.isArray(doc.graph.conditionKey)) doc.graph.conditionKey = [];
     if (!doc.ids) doc.ids = { counters: {}, retired: [] };
     if (!doc.wizardAnchorId) doc.wizardAnchorId = 'proband';
