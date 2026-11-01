@@ -26,9 +26,6 @@
  * serializeSvg() serializes) — that manual check is not repeated here.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
 import { buildPedigreeFromWizard } from '../builder/pedigreeBuilderFromWizard';
 import { auditPedigreeGraph } from '../utils/graphIntegrity';
 import { computePedigreeLayout } from '../utils/pedigreeLayout';
@@ -38,88 +35,12 @@ import {
   computeSiblingCreationPlan,
 } from '../state/usePedigreeStore';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function assertZeroErrors(issues) {
   expect(issues.filter(i => i.severity === 'error')).toHaveLength(0);
 }
 
-describe('v0.3a.1 round 2 → v0.3a.3 — consanguinity renders as a plain solid black double line, no text, no color distinction', () => {
-  const canvasSource = readFileSync(
-    join(__dirname, '../components/PedigreeCanvas.jsx'),
-    'utf-8'
-  );
-
-  // v0.3a.3: consanguineousUnion and consanguineousUnionUnresolved are now
-  // a SINGLE shared case block (fall-through) — both edge types render
-  // identically. Locate that shared block by its two case labels.
-  function getSharedConsanguinityBlock(source) {
-    const caseStart = source.indexOf("case 'consanguineousUnion':");
-    expect(caseStart).toBeGreaterThan(-1);
-    const secondLabelStart = source.indexOf("case 'consanguineousUnionUnresolved':", caseStart);
-    expect(secondLabelStart).toBeGreaterThan(caseStart);
-    // The two case labels must be adjacent (fall-through), with nothing but
-    // whitespace/the label itself between them.
-    const between = source.slice(caseStart + "case 'consanguineousUnion':".length, secondLabelStart);
-    expect(between.trim()).toBe('');
-    const nextCaseStart = source.indexOf("case '", secondLabelStart + 1);
-    return source.slice(secondLabelStart, nextCaseStart === -1 ? undefined : nextCaseStart);
-  }
-
-  it('consanguineousUnion and consanguineousUnionUnresolved share the same rendering block (fall-through, no visual distinction)', () => {
-    // Asserted via getSharedConsanguinityBlock's own internal expectations.
-    expect(() => getSharedConsanguinityBlock(canvasSource)).not.toThrow();
-  });
-
-  it('the shared consanguinity block draws exactly two solid strokes (a double line)', () => {
-    // v0.5 Faz 3: strokes are drawn through drawStroke() (a path, so a
-    // crossing can carry a line-jump arc). The double line is two strokes
-    // offset perpendicular to the segment — one pair per orientation branch.
-    const block = getSharedConsanguinityBlock(canvasSource);
-    const branches = block.split(/\belse\b/);
-    expect(branches.length).toBe(2);
-    for (const branch of branches) {
-      expect((branch.match(/drawStroke\(g, edge/g) || []).length).toBe(2);
-    }
-  });
-
-  it('the shared consanguinity block never uses stroke-dasharray (no dashed line)', () => {
-    const block = getSharedConsanguinityBlock(canvasSource);
-    expect(block).not.toMatch(/stroke-dasharray/);
-  });
-
-  it('the shared consanguinity block never uses the amber color or any non-standard edge color', () => {
-    const block = getSharedConsanguinityBlock(canvasSource);
-    expect(block).not.toContain('#d97706');
-  });
-
-  it('the shared consanguinity block never appends text (no canvas label of any kind)', () => {
-    const block = getSharedConsanguinityBlock(canvasSource);
-    expect(block).not.toMatch(/g\.append\('text'\)/);
-    expect(block).not.toContain('Akrabalık bildirildi');
-    expect(block).not.toContain('? akrabalık');
-  });
-
-  it('the plain "union" case (non-consanguinity backgrounds) never appends text either', () => {
-    const caseStart = canvasSource.indexOf("case 'union':");
-    const nextCaseStart = canvasSource.indexOf("case '", caseStart + 1);
-    const block = canvasSource.slice(caseStart, nextCaseStart);
-    expect(block).not.toMatch(/g\.append\('text'\)/);
-    expect(block).not.toContain('köy');
-    expect(block).not.toContain('bölge');
-  });
-
-  it('no relationship-line edge type (union/consanguineous/sibship/drop/stem/slash) ever appends text — generic scan of the whole edges.forEach switch', () => {
-    const switchStart = canvasSource.indexOf('edges.forEach(edge => {');
-    const switchEnd = canvasSource.indexOf('\n    });', switchStart);
-    const wholeSwitch = canvasSource.slice(switchStart, switchEnd);
-    // The only text this switch may ever produce is none at all — labels
-    // like individual names/ages/notes are drawn in a completely separate
-    // pass (nodeGroups.each(...), not edges.forEach), which this scan
-    // deliberately excludes.
-    expect(wholeSwitch).not.toMatch(/g\.append\('text'\)/);
-  });
-});
+// moved to screen.test.js: a consanguineous couple — two plain strokes, no text, declared or drawn alike
 
 describe('v0.3a.1 round 2 — reported_unresolved does not fabricate ancestry', () => {
   it('a manually-marked union with no real shared ancestor stays reported_unresolved and adds no new individuals/unions', () => {
@@ -158,24 +79,7 @@ describe('v0.3a.1 round 2 — reported_unresolved does not fabricate ancestry', 
   });
 });
 
-describe('v0.3a.1 round 2 — exportUtils.js does not filter/strip SVG content', () => {
-  const exportSource = readFileSync(
-    join(__dirname, '../utils/exportUtils.js'),
-    'utf-8'
-  );
-
-  it('serializeSvg only adds xmlns attributes, never removes or filters elements', () => {
-    const fnStart = exportSource.indexOf('function serializeSvg');
-    const fnEnd = exportSource.indexOf('\n}', fnStart);
-    const body = exportSource.slice(fnStart, fnEnd);
-    // Whatever PedigreeCanvas.jsx renders into the live <svg> (double-line
-    // consanguinity edges, the condition legend, etc.) reaches export
-    // verbatim as long as this function contains no removal/filtering.
-    expect(body).not.toMatch(/\.remove\(/);
-    expect(body).not.toMatch(/querySelectorAll/);
-    expect(body).toContain('XMLSerializer');
-  });
-});
+// moved to screen.test.js: the downloaded copy keeps every person and line
 
 describe('v0.3a.1 round 2 — computeSiblingCreationPlan ("Kardeş Yap" safety)', () => {
   beforeEach(() => { usePedigreeStore.getState().resetPedigree(); });

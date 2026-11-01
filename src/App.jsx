@@ -329,6 +329,22 @@ function App() {
   // on a click anywhere outside them, or Escape (clinician request 2026-10-27)
   const popupOpen = showKeys || newMenu || relationOpen || downloadOpen || !!share || settingsOpen || aboutOpen || openHelp;
   const popupClosedAt = React.useRef(-Infinity);
+  // The tap that closes a pop-up window does only that (clinician request
+  // 2026-10-27): the click that ends that same tap is stopped before it
+  // reaches the drawing — on a person as well as on the empty canvas (found
+  // by screen.test.js). Only that one click: a later click goes through.
+  React.useEffect(() => {
+    const onClick = (e) => {
+      if (performance.now() - popupClosedAt.current > 1000) return;
+      popupClosedAt.current = -Infinity;
+      e.stopPropagation();
+      e.preventDefault();
+    };
+    const onDown = () => { if (performance.now() - popupClosedAt.current > 50) popupClosedAt.current = -Infinity; };
+    document.addEventListener('click', onClick, true);
+    document.addEventListener('pointerdown', onDown, true);
+    return () => { document.removeEventListener('click', onClick, true); document.removeEventListener('pointerdown', onDown, true); };
+  }, []);
   React.useEffect(() => {
     if (!popupOpen) return;
     const close = (except) => {
@@ -344,7 +360,8 @@ function App() {
     const onDown = (e) => {
       const inside = e.target.closest && e.target.closest('[data-popup]');
       close(inside ? inside.dataset.popup : null);
-      popupClosedAt.current = performance.now();
+      // the click of this same tap, outside the window, does nothing else
+      if (!inside) popupClosedAt.current = performance.now();
     };
     const onKey = (e) => {
       if (e.key !== 'Escape') return;
@@ -506,10 +523,7 @@ function App() {
   const stepBackRef = React.useRef(stepBack);
   stepBackRef.current = stepBack;
   // the tap that closed a pop-up window does only that
-  const onBackgroundClick = React.useCallback(() => {
-    if (performance.now() - popupClosedAt.current < 1000) return;
-    stepBackRef.current();
-  }, []);
+  const onBackgroundClick = React.useCallback(() => stepBackRef.current(), []);
 
   return (
     <>

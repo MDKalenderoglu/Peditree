@@ -7,8 +7,6 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { usePedigreeStore } from '../state/usePedigreeStore';
 import { kinshipOf } from '../graph/kinship';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
 beforeEach(() => S().resetPedigree());
@@ -183,11 +181,7 @@ describe('quick-add bar on the drawing (2026-10-24)', () => {
     expect(S().doc).toBe(before);
   });
 
-  it('the canvas keeps the zoom across edits and shows the bar for one selected person only', () => {
-    const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
-    expect(src).toMatch(/svg\.call\(zoom\.transform, d3\.zoomTransform\(svg\.node\(\)\)\)/);
-    expect(src).toMatch(/selectedNodeId2 \|\| selectedIds\.length > 1\) \{ setAnchor\(null\)/);
-  });
+  // moved to screen.test.js: a zoom stays through an edit; no ring for several people
 });
 
 describe('several people at once (clinician request 2026-10-24)', () => {

@@ -13,8 +13,6 @@ import { validateDocument, errorsOf } from '../graph/validate';
 import { isGroup } from '../graph/model';
 import { parseProjectFile, serializeDocument } from '../graph/persistenceV2';
 import { toPed } from '../graph/ped';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
 beforeEach(() => S().resetPedigree());
@@ -167,12 +165,7 @@ describe('several people in one symbol', () => {
     expect(S().doc.graph.individuals.length).toBe(n);
   });
 
-  it('the side panel offers the merge for siblings chosen together and says why when it cannot', () => {
-    const editor = readFileSync(join(process.cwd(), 'src/components/IndividualEditor.jsx'), 'utf8');
-    expect(editor).toMatch(/Tek sembolde birleştir/);
-    expect(editor).toMatch(/disabled=\{!made\} onClick=\{\(\) => onMerge\(ids\)\}/);
-    expect(editor).toMatch(/: check\.reason/);
-  });
+  // moved to screen.test.js: "Tek sembolde birleştir" (the side panel)
 
   it('undo takes the group away in one step', () => {
     const n = S().doc.graph.individuals.length;
@@ -188,22 +181,7 @@ describe('several people in one symbol', () => {
     expect(text).not.toContain(g);
   });
 
-  it('the drawing writes the number (or n) inside the symbol and reads it out to a screen reader', () => {
-    const src = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
-    expect(src).toMatch(/if \(isGroup\(d\)\) \{\s*el\.append\('text'\)\.attr\('class', 'group-count'\)/);
-    expect(src).toMatch(/\.text\(groupText\(d\)\)/);
-    expect(src).toMatch(/sayısı bilinmeyen/);
-  });
+  // moved to screen.test.js: the number inside the symbol (marks around a person)
 
-  it('the ring menu adds a group of siblings or children; the ring of a group has no partner, child, finding, status or twin choice', () => {
-    const src = readFileSync(join(process.cwd(), 'src/components/RadialAddMenu.jsx'), 'utf8');
-    expect(src).toMatch(/flyout-row-label">Birden çok/);
-    expect(src).toMatch(/left: \(sex, count\) => addSiblingHere\(sex, \{ count \}\)/);
-    expect(src).toMatch(/right: group \? GROUP_HINT/);
-    expect(src).toMatch(/bottom: group \? GROUP_HINT/);
-    expect(src).toMatch(/SATELLITES\.filter\(\(s\) => !group \|\| s\.key === 'note'\)/);
-    const editor = readFileSync(join(process.cwd(), 'src/components/IndividualEditor.jsx'), 'utf8');
-    expect(editor).toMatch(/Birden çok kişi/);
-    expect(editor).toMatch(/onSplitGroup\(node\.id\)/);
-  });
+  // moved to screen.test.js: the ring of a numbered symbol, "Birden çok", "Tek tek ayır"
 });

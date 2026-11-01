@@ -4,8 +4,6 @@
  * kept per device; a hidden choice stays in the ring under "Diğer…".
  */
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { normalizeRing, moveInRing, toggleInRing, DEFAULT_RING, RING_STATUS } from '../utils/ringPrefs';
 
 describe('ring preferences', () => {
@@ -35,12 +33,5 @@ describe('ring preferences', () => {
     expect(toggleInRing(r, 'consultand').hidden).toEqual(['stillbirth']);
   });
 
-  it('the ring follows the preference and keeps hidden choices under "Diğer…"; Ayarlar has the section', () => {
-    const ring = readFileSync(join(process.cwd(), 'src/components/RadialAddMenu.jsx'), 'utf8');
-    expect(ring).toMatch(/flyoutRows\(active\)\.map/);
-    expect(ring).toMatch(/const available = ring\.status\.filter/);
-    expect(ring).toMatch(/'Diğer…'/);
-    const app = readFileSync(join(process.cwd(), 'src/App.jsx'), 'utf8');
-    expect(app).toMatch(/<RingSettings \/>/);
-  });
+  // moved to screen.test.js: Ayarlar → Halka menü (the ring menu)
 });

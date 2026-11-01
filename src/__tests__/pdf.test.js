@@ -6,8 +6,6 @@
 import { describe, it, expect } from 'vitest';
 import { inflateSync } from 'node:zlib';
 import { Buffer } from 'node:buffer';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { pageLayout, pdfBlob, rgbaToRgb, A4, MARGIN, DPI } from '../utils/pdf';
 
 const bytesOf = async (blob) => Buffer.from(await blob.arrayBuffer());
@@ -73,9 +71,5 @@ describe('PDF file', () => {
     expect(text).not.toMatch(/\/Title|\/Author|\/Subject/);
   });
 
-  it('İndir offers it', () => {
-    const app = readFileSync(join(process.cwd(), 'src/App.jsx'), 'utf8');
-    expect(app).toMatch(/handleExportPDF\(\); \}\}>/);
-    expect(app).toMatch(/exportFileName\(doc\.patientName, 'pdf'\)/);
-  });
+  // moved to screen.test.js: İndir offers PDF
 });

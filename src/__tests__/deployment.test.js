@@ -35,9 +35,5 @@ describe('published site', () => {
     expect(read('index.html')).toMatch(/<link rel="manifest" href="\/manifest.webmanifest" \/>/);
   });
 
-  it('the app says it is not a medical device and sends patient data nowhere', () => {
-    const app = read('src/App.jsx');
-    expect(app).toMatch(/tıbbi cihaz değildir/);
-    expect(app).toMatch(/Hasta bilgisi hiçbir sunucuya gönderilmez/);
-  });
+  // the app's own words (not a medical device, data goes nowhere): screen.test.js, the About window
 });

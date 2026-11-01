@@ -1,7 +1,5 @@
 /** nameCase.test.js — patient names start with capitals, by Turkish rules (clinician request 2026-10-30). */
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { nameCase } from '../utils/nameCase';
 
 describe('nameCase', () => {
@@ -18,11 +16,5 @@ describe('nameCase', () => {
     expect(nameCase('')).toBe('');
     expect(nameCase(null)).toBe('');
   });
-  it('the toolbar box and the name on the drawing use it', () => {
-    const app = readFileSync(join(process.cwd(), 'src/App.jsx'), 'utf8');
-    const canvas = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
-    expect(app).toMatch(/onBlur=\{e => setPatientName\(nameCase\(e\.target\.value\)\.trim\(\)\)\}/);
-    expect(app).toMatch(/if \(kind === 'patientName'\) setPatientName\(nameCase\(v\)\.trim\(\)\)/);
-    expect(canvas).toMatch(/const name = nameCase\(patientName\)\.trim\(\);/);
-  });
+  // moved to screen.test.js: the name typed in the toolbar
 });

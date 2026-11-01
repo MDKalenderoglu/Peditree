@@ -8,14 +8,11 @@ import { usePedigreeStore } from '../state/usePedigreeStore';
 import { fillFor, suggestStyle } from '../graph/conditionKey';
 import { toPed, fromPed } from '../graph/ped';
 import { flushDrafts, pendingDrafts } from '../utils/drafts';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
 const S = () => usePedigreeStore.getState();
 const P = (id) => S().doc.graph.individuals.find(i => i.id === id);
 const lastChild = (uid = 'U_PARENTS') => S().doc.graph.parentChildRelationships.find(r => r.unionId === uid).children.slice(-1)[0];
-const src = (f) => readFileSync(join(process.cwd(), f), 'utf8');
 
 describe('#1 undo across opening another patient’s file', () => {
   it('undo after opening file B brings back A’s family with A’s name', () => {
@@ -72,14 +69,7 @@ describe('#2 carrier and affected are both read', () => {
 });
 
 describe('#3 saving writes what is still being typed', () => {
-  it('save, export and print flush pending drafts first', () => {
-    const app = src('src/App.jsx');
-    const save = app.slice(app.indexOf('const handleSaveProject'), app.indexOf('const handleSaveProject') + 300);
-    expect(save).toMatch(/flushDrafts\(\)/);
-    const gate = app.slice(app.indexOf('const gateExport'), app.indexOf('const gateExport') + 200);
-    expect(gate).toMatch(/flushDrafts\(\)/);
-    expect(app.slice(app.indexOf('const handleExportPed'), app.indexOf('const handleExportPed') + 200)).toMatch(/flushDrafts\(\)/);
-  });
+  // moved to screen.test.js: Kaydet writes what is still being typed
   it('a pending draft reaches the pedigree when flushed', () => {
     S().resetPedigree();
     const commit = () => { pendingDrafts.delete(commit); S().updateIndividual('proband', { geneticNote: 'yazılıyor' }); };
@@ -89,13 +79,8 @@ describe('#3 saving writes what is still being typed', () => {
   });
 });
 
-describe('#4 long text under the bottom row stays inside the drawing', () => {
-  it('the drawing frame and the notes start below the lowest annotation line', () => {
-    const c = src('src/components/PedigreeCanvas.jsx');
-    expect(c).toMatch(/annotationBottom/);
-    expect(c).toMatch(/const legendTop = Math\.max\(/);
-  });
-});
+// #4 long text under the bottom row stays inside the drawing
+// moved to screen.test.js: long text under the bottom row
 
 describe('#5 PED import limits', () => {
   it('a file too large or with too many people is refused with the reason', () => {
@@ -110,13 +95,8 @@ describe('#5 PED import limits', () => {
   });
 });
 
-describe('#6 the PED file name carries no patient name', () => {
-  it('generic name and date only', () => {
-    const app = src('src/App.jsx');
-    expect(app).not.toMatch(/exportFileName\(doc\.patientName, 'ped'\)/);
-    expect(app).toMatch(/exportFileName\('', 'ped'\)/);
-  });
-});
+// #6 the PED file name carries no patient name
+// moved to screen.test.js: the PED file carries no patient name
 
 describe('#7 born: the gestational week stays as the birth week (clinician decision)', () => {
   it('kept on the person and shown in the notes', () => {
@@ -126,7 +106,6 @@ describe('#7 born: the gestational week stays as the birth week (clinician decis
     S().setGestationWeeks(id, '32');
     S().setPregnancyKind(id, '');
     expect(P(id).gestationWeeks).toBe('32');
-    expect(src('src/components/PedigreeCanvas.jsx')).toMatch(/doğum: /);
   });
 });
 
@@ -155,6 +134,5 @@ describe('PED: a finding the clinician is unsure about is "unknown" (clinician d
     // the general affected mark: unsure about a finding and not affected → unknown
     const general = toPed(S().doc.graph, S().pedigreeData.nodes).trim().split('\n').map(l => l.split('\t'));
     expect(general.filter(r => r[5] === '0')).toHaveLength(1);
-    expect(src('src/components/PedigreeCanvas.jsx')).toMatch(/bilinmiyor/);
   });
 });

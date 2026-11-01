@@ -1,0 +1,34 @@
+/**
+ * stylesheet.test.js — rules the page's stylesheets must keep. The
+ * simulated browser of screen.test.js does not apply CSS, so these check
+ * that a rule is there, not how it looks; the look itself is checked in the
+ * browser (CLAUDE.md workflow: visual check, mark audit).
+ */
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const css = (f) => readFileSync(join(process.cwd(), 'src/styles', f), 'utf8');
+const block = (f, sel) => { const s = css(f); const i = s.indexOf(`${sel} {`); return i < 0 ? '' : s.slice(i, s.indexOf('}', i)); };
+
+describe('stylesheet rules', () => {
+  it('two findings never read as one: the white gap between regions cannot be painted over; the hand-drawn divider stays dark', () => {
+    expect(css('app.css')).toMatch(/\.node-group \.condition-regions path \{\s*stroke: #ffffff;/);
+    expect(css('app.css')).toMatch(/\.condition-regions path\.region-divider-sketch \{\s*stroke: #1e293b;/);
+  });
+
+  it('selection and keyboard focus reach the hand-drawn outline too', () => {
+    expect(css('app.css')).toMatch(/\.node-selected > \.pedigree-shape-sketch/);
+    expect(css('ui.css')).toMatch(/focus-visible > \.pedigree-shape-sketch/);
+  });
+
+  it('the pulse after an edit is an animation of the screen', () => {
+    expect(css('ui.css')).toMatch(/@keyframes pedigree-pulse/);
+  });
+
+  it('notices and the toolbar are in the page flow, never laid over the drawing; the toolbar wraps', () => {
+    expect(block('app.css', '.warning-panel')).not.toMatch(/position:\s*absolute/);
+    expect(block('app.css', '.canvas-toolbar')).toMatch(/flex-wrap:\s*wrap/);
+    expect(block('app.css', '.canvas-toolbar')).not.toMatch(/position:\s*absolute/);
+  });
+});
