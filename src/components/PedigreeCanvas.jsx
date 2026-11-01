@@ -433,6 +433,11 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           drawStroke(g, edge);
           break;
 
+        // adoption by relatives: dashed (descentKind), from the adoptive couple's lower stroke
+        case 'adoptiveDescent':
+          drawStroke(g, edge.y1 < edge.y2 && edge.x1 === edge.x2 ? { ...edge, y1: belowDouble(edge.x1, edge.y1, edge.unionId) } : edge);
+          break;
+
         case 'twinBar':
           drawStroke(g, edge);
           break;
@@ -500,9 +505,14 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // =====================
     // DRAW NODES
     // =====================
-    // Adopted-in children (only a social, adoptive link): NSGC brackets
-    // around the symbol (notation spec R3). Read from the layout's edges —
-    // their line of descent is the dashed, adoptive one.
+    // Adopted people: NSGC brackets around the symbol (notation spec R3) —
+    // adopted in or by relatives (a dashed, adoptive line of descent in the
+    // layout's edges) and adopted out (adoptedOut, solid line from the
+    // parents; clinician decisions 2026-11-01).
+    const adoptedIn = new Set([
+      ...edges.filter(e => e.descentKind === 'adoptive' && e.childId).map(e => e.childId),
+      ...nodes.filter(n => n.adoptedOut).map(n => n.id),
+    ]);
     // Pedigree-number corner: upper-left unless a connector crosses there
     // (e.g. a relationship line rising beside the symbol), then upper-right.
     const LABEL_CHAR_W = 6, LABEL_H = 11;
@@ -531,7 +541,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         const pid = pedigreeIds.get(n.id);
         if (!pid) continue;
         const nsz = isSmallSymbol(n) ? LOSS_SIZE : HALF;
-        const gap = edges.some(e => e.type === 'childStem' && e.descentKind === 'adoptive' && e.childId === n.id) ? 12 : 6;
+        const gap = adoptedIn.has(n.id) ? 12 : 6;
         const w = pid.displayId.length * LABEL_CHAR_W;
         const top = n.y - (nsz + 6) - LABEL_H + 2;
         const lift = LABEL_H + 3;
@@ -547,9 +557,6 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         labelAt.set(n.id, pick);
       }
     }
-    const adoptedIn = new Set(edges
-      .filter(e => e.type === 'childStem' && e.descentKind === 'adoptive')
-      .map(e => e.childId));
 
     const nodeGroups = g.selectAll('.node-group')
       .data(nodes)

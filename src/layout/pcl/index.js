@@ -401,6 +401,7 @@ export function computePclLayout(inputGraph, opts = {}) {
 
   const edges = routeConnectors(S, rows, xPos, yPos, plans);
   if (socialChildren.size) markSocialDescent(edges, S, socialChildren);
+  routeRelativeAdoption(inputGraph, edges, xPos, yPos);
   const tRouted = now();
   // stand-ins are never drawn
   const nodes = individuals.filter(ind => !isGhost(ind)).map(ind => ({ ...ind, x: xPos[ind.id] ?? 0, y: yPos[ind.id] ?? 0 }));
@@ -412,6 +413,46 @@ export function computePclLayout(inputGraph, opts = {}) {
       timings: { orderMs: tOrdered - t0, solveMs: tSolved - tOrdered, routeMs: tRouted - tSolved, qpSolves, qpIterations, footprintTerms: footprintTerms.size },
     },
   };
+}
+
+/**
+ * Adoption by relatives (model.js adoptionOf 'relative'; clinician decisions
+ * 2026-11-01): the child stands under the biological parents (solid line);
+ * a dashed line runs from the adoptive couple's line down to just above the
+ * child's row, across, and into the top of the child's symbol beside the
+ * solid stem. It leaves the couple's line beside its middle (where the
+ * couple's own line of descent drops) and, on its way down, steps aside of
+ * any symbol in a row between.
+ */
+const ADOPT_OFFSET = 10;   // px beside the solid stem at the child's top
+const PCL_NODE_HALF = 20;  // half a symbol (routing.js NODE_HALF)
+const ADOPT_LEAVE = 8;     // px beside the middle of the adoptive couple's line (inside it: partners stand 70 apart)
+const ADOPT_ABOVE = 14;    // px above the child's sibship line
+function routeRelativeAdoption(graph, edges, xPos, yPos) {
+  const bio = new Set((graph.parentChildRelationships || []).flatMap((r) => r.children));
+  const half = PCL_NODE_HALF;
+  for (const l of graph.socialParentLinks || []) {
+    if (l.kind !== 'adoptive' || !bio.has(l.childId) || xPos[l.childId] === undefined) continue;
+    const u = (graph.unions || []).find((x) => x.id === l.unionId);
+    if (!u || u.partners.some((p) => xPos[p] === undefined)) continue;
+    const [a, b] = u.partners;
+    const uy = Math.max(yPos[a], yPos[b]);
+    const mid = (xPos[a] + xPos[b]) / 2;
+    const cx = xPos[l.childId], cy = yPos[l.childId];
+    const dir = cx >= mid ? 1 : -1;
+    const stem = edges.find((e) => e.type === 'childStem' && e.childId === l.childId);
+    const levelY = (stem ? Math.min(stem.y1, stem.y2) : cy - half - 30) - ADOPT_ABOVE;
+    // leave beside the middle, stepping aside of any symbol between the rows
+    const blocked = (x) => Object.keys(xPos).some((id) => yPos[id] > uy && yPos[id] < levelY + half
+      && Math.abs(xPos[id] - x) < half + 6);
+    let sx = mid + dir * ADOPT_LEAVE;
+    for (let k = 1; k <= 12 && blocked(sx); k++) sx = mid + dir * (ADOPT_LEAVE + k * 12);
+    const ex = cx - dir * ADOPT_OFFSET;
+    const common = { type: 'adoptiveDescent', descentKind: 'adoptive', unionId: u.id, childId: l.childId };
+    edges.push({ ...common, x1: sx, y1: uy, x2: sx, y2: levelY });
+    if (Math.abs(ex - sx) > 0.5) edges.push({ ...common, x1: sx, y1: levelY, x2: ex, y2: levelY });
+    edges.push({ ...common, x1: ex, y1: levelY, x2: ex, y2: cy - half });
+  }
 }
 
 /**

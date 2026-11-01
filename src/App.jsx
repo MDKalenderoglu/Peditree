@@ -16,7 +16,8 @@ import { nextPerson, RING_KEYS } from './utils/keyboardNav';
 import { toPed } from './graph/ped';
 import { mergeIntoGroup as checkMerge } from './graph/ops';
 import RelationChooser from './components/RelationChooser';
-import { withGeneticLine, subjectOf } from './graph/model';
+import { withGeneticLine, subjectOf, adoptionOf, ancestorsOf } from './graph/model';
+import { clinicalNamer } from './utils/clinicalNotices';
 import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, DRAWING_FONTS, LEGEND_SIZES } from './utils/drawingStyle';
 import { versionLine, citationText, REPOSITORY_URL, CONTACT_EMAIL, issueUrl } from './utils/appInfo';
 import { nameCase } from './utils/nameCase';
@@ -62,7 +63,7 @@ function App() {
   const {
     pedigreeData, warnings, integrityIssues,
     updateIndividual, addSpouseTo, addChildTo, addChildToUnion,
-    setProband, clearProband, setConsultand, clearConsultand, resetPedigree,
+    setProband, clearProband, setConsultand, clearConsultand, setAdoption, resetPedigree,
     selectedId, selectedId2, selectedIds, selectIndividual, clearSelection, selectUnion,
     updateMany, setFindingStatusMany, addFindingMany,
     deleteIndividual, createUnionBetween, addCustomConsanguinity,
@@ -123,6 +124,19 @@ function App() {
   const selectedNode = pedigreeData.individuals.find(i => i.id === selectedId);
   const selectedNode2 = pedigreeData.individuals.find(i => i.id === selectedId2);
   const selectedNodes = (selectedIds || []).map(id => pedigreeData.individuals.find(i => i.id === id)).filter(Boolean);
+  // adoption card: the person's adoption and the couples that may adopt them
+  // (not the own parents, their own couples or a descendant's)
+  const adoptionInfo = React.useMemo(() => {
+    if (!selectedId) return null;
+    const g = doc.graph;
+    const bioRel = g.parentChildRelationships.find(r => r.children.includes(selectedId));
+    const { unionName } = clinicalNamer(pedigreeData);
+    const couples = g.unions
+      .filter(u => u.id !== bioRel?.unionId && !u.partners.includes(selectedId)
+        && !u.partners.some(p => ancestorsOf(g, p).has(selectedId)))
+      .map(u => ({ id: u.id, name: unionName(u.id) }));
+    return { current: adoptionOf(g, selectedId), couples, hasParents: !!bioRel };
+  }, [doc, selectedId, pedigreeData]);
   // siblings chosen together can become one numbered symbol; the operation itself says whether and why not
   const mergeCheck = React.useMemo(() => ((selectedIds || []).length >= 2 ? checkMerge(doc, selectedIds) : null), [doc, selectedIds]);
 
@@ -899,6 +913,8 @@ function App() {
           onSetGroupCount={setGroupCount}
           onSplitGroup={splitGroup}
           mergeCheck={mergeCheck}
+          adoptionInfo={adoptionInfo}
+          onSetAdoption={setAdoption}
           onMergeGroup={mergeIntoGroup}
           onAddFinding={addFinding}
           onSetFindingStatus={setFindingStatus}
