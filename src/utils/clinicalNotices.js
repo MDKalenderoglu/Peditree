@@ -10,6 +10,8 @@ import { computePedigreeIds } from './pedigreeNumbering';
 const BY_CODE = {
   CONSANGUINITY_UNRESOLVED: (pair) => `${pair}: akraba evliliği işaretli, ortak ataları çizimde yok. Çift çizgi gösteriliyor; ortak ataları çizmek için çiftin arasındaki çizgiye tıklayıp derece ve yolu seçin.`,
   CONSANGUINITY_STATUS_MISSING: (pair) => `${pair}: akraba evliliği bilgisi eksik.`,
+  // a soft note (clinician decision 2026-11-01): no proband is normal in carrier screening or prenatal counselling
+  PROBAND_MISSING: () => 'Proband işaretlenmedi. Aileyi incelemeye getiren etkilenmiş kişi varsa onu Durum → Proband ile işaretleyin; yoksa (ör. taşıyıcı taraması) bu notu kapatabilirsiniz.',
 };
 
 /**
