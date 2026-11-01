@@ -16,7 +16,7 @@ import { nextPerson, RING_KEYS } from './utils/keyboardNav';
 import { toPed } from './graph/ped';
 import { mergeIntoGroup as checkMerge } from './graph/ops';
 import RelationChooser from './components/RelationChooser';
-import { withGeneticLine } from './graph/model';
+import { withGeneticLine, subjectOf } from './graph/model';
 import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, DRAWING_FONTS, LEGEND_SIZES } from './utils/drawingStyle';
 import { versionLine, citationText, REPOSITORY_URL, CONTACT_EMAIL, issueUrl } from './utils/appInfo';
 import { nameCase } from './utils/nameCase';
@@ -44,7 +44,7 @@ const KEY_HELP = [
     ['K', 'Kardeş ekler: kız, erkek, düşük … seçenekleri açılır.'],
     ['C veya Ç', 'Çocuk ekler: kız, erkek, düşük … seçenekleri açılır.'],
     ['B', 'Bulgu (hastalık ya da özellik) ekler ya da değiştirir.'],
-    ['D', 'Durumunu değiştirir: cinsiyet, hasta (etkilenmiş), taşıyıcı, vefat, proband.'],
+    ['D', 'Durumunu değiştirir: cinsiyet, hasta (etkilenmiş), taşıyıcı, vefat, proband, danışan.'],
     ['İ veya I', 'İkiz kardeş ekler.'],
     ['N', 'Kişi için not yazar.'],
     ['Shift + ← →', 'Kişiyi yana kaydırır: eşiyle yer değiştirir ya da kardeşlerinin arasında bir sıra kayar. Kişiyi fareyle sürükleyerek de yapılır.'],
@@ -62,7 +62,7 @@ function App() {
   const {
     pedigreeData, warnings, integrityIssues,
     updateIndividual, addSpouseTo, addChildTo, addChildToUnion,
-    setProband, clearProband, resetPedigree,
+    setProband, clearProband, setConsultand, clearConsultand, resetPedigree,
     selectedId, selectedId2, selectedIds, selectIndividual, clearSelection, selectUnion,
     updateMany, setFindingStatusMany, addFindingMany,
     deleteIndividual, createUnionBetween, addCustomConsanguinity,
@@ -75,7 +75,8 @@ function App() {
     actionNotice, dismissActionNotice, autosaveFailed,
     exportProjectFile, openProjectFile, importPedFile, relayout, doc, setPatientName, setProbandBirthDate, newFromTemplate,
   } = usePedigreeStore();
-  const probandNode = doc.graph.individuals.find(i => i.proband);
+  // the top bar's birth date: the proband's, else the consultand's (clinician decision 2026-11-01)
+  const probandNode = subjectOf(doc.graph.individuals);
   // tablet: taps add people to the selection while this is on (a mouse has Cmd/Ctrl/Shift-click)
   const [multiSelect, setMultiSelect] = React.useState(false);
   const [showKeys, setShowKeys] = React.useState(false);
@@ -565,12 +566,12 @@ function App() {
           aria-label="Hasta adı soyadı" onChange={e => setPatientName(e.target.value)}
           onBlur={e => setPatientName(nameCase(e.target.value).trim())} />
         {/* optional: the proband's age follows it, as of today (clinician decision 2026-10-25) */}
-        <label className="toolbar-field" title="Probandın doğum tarihi (isteğe bağlı). Yazarsanız probandın yaşı bugüne göre kendiliğinden hesaplanır. Kısa da yazabilirsiniz: 3.5.25">
+        <label className="toolbar-field" title="Probandın (proband yoksa danışanın) doğum tarihi (isteğe bağlı). Yazarsanız yaşı bugüne göre kendiliğinden hesaplanır. Kısa da yazabilirsiniz: 3.5.25">
           <span>Doğum</span>
           {/* typed the quick way: 3.5.25, 3/05/2025, 030525 … (clinician request 2026-10-25) */}
           <DraftField key={probandNode ? probandNode.id : 'none'} type="text" inputMode="numeric" className="input birth-date"
             value={formatDate(probandNode && probandNode.birthDate)} placeholder="gg.aa.yyyy" disabled={!probandNode}
-            aria-label="Probandın doğum tarihi" onCommit={v => setProbandBirthDate(v.trim() ? (parseTypedDate(v) || v.trim()) : '')} />
+            aria-label="Probandın ya da danışanın doğum tarihi" onCommit={v => setProbandBirthDate(v.trim() ? (parseTypedDate(v) || v.trim()) : '')} />
         </label>
         <div className="toolbar-sep" />
         <div className="toolbar-group">
@@ -857,7 +858,7 @@ function App() {
           renderQuickBar={(anchor, panBy) => ringHidden ? null : (
             <RadialAddMenu ref={ringRef} anchor={anchor} node={selectedNode} pedigreeData={pedigreeData} onNeedRoom={panBy}
               onAddSibling={addSiblingTo} onAddSpouse={addSpouseTo} onAddParents={addParentsTo} onAddTwin={addMultipleSibling}
-              onUpdate={updateIndividual} onSetProband={setProband} onClearProband={clearProband}
+              onUpdate={updateIndividual} onSetProband={setProband} onClearProband={clearProband} onSetConsultand={setConsultand} onClearConsultand={clearConsultand}
               onAddFinding={addFinding} onSetFindingStatus={setFindingStatus} onSetFindingStyle={setFindingStyle} onSetFindingOnset={setFindingOnset}
               onAddChild={(unionId, sex, targetId, extra) => (unionId ? addChildToUnion(unionId, sex, extra) : addChildTo(targetId, sex, extra))} />
           )}
