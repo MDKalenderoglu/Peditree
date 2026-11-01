@@ -8,7 +8,7 @@
  * Issues: { severity: 'error' | 'warning', code, message (Turkish), ids }
  */
 import { auditPedigreeGraph } from '../utils/graphIntegrity';
-import { SOCIAL_LINK_KINDS, indexGraph, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX } from './model';
+import { SOCIAL_LINK_KINDS, indexGraph, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, isPregnancy } from './model';
 import { multiplesWarnings } from './multiples';
 import { carrierFindingIssues } from './conditionKey';
 
@@ -59,7 +59,13 @@ export function validateGraphStructure(graph, { retired = [] } = {}) {
     if (!validGroupCount(ind.count)) err('GROUP_COUNT', `Sembol içindeki sayı 2 ile ${GROUP_MAX} arasında bir tam sayı ya da "n" olmalı (${ind.id}).`, [ind.id]);
     if (idx.unionsOf.get(ind.id)?.length) err('GROUP_PARTNER', 'Birden çok kişiyi gösteren sembol eş olamaz; önce "Tek tek ayır" ile kişileri ayırın.', [ind.id]);
     const marked = GROUP_FORBIDDEN.filter((f) => ind[f]);
-    if (marked.length || (ind.conditions || []).length) err('GROUP_CLINICAL', 'Birden çok kişiyi gösteren sembolde bulgu, taşıyıcılık, ölüm, genetik test ya da proband işareti olamaz; bu kişiyi "Tek tek ayır" ile ayrı çizin.', [ind.id]);
+    if (marked.length || (ind.conditions || []).length) err('GROUP_CLINICAL', 'Birden çok kişiyi gösteren sembolde bulgu, taşıyıcılık, ölüm, genetik test, proband ya da danışan işareti olamaz; bu kişiyi "Tek tek ayır" ile ayrı çizin.', [ind.id]);
+  }
+  // the consultand (model.js): at most one, a born person
+  const consultands = graph.individuals.filter((i) => i.consultand);
+  if (consultands.length > 1) err('CONSULTAND_MULTIPLE', 'Pedigride birden fazla danışan işaretli; danışan en fazla bir kişidir.', consultands.map((i) => i.id));
+  for (const c of consultands) {
+    if (c.placeholder || isPregnancy(c)) err('CONSULTAND_KIND', 'Danışan bir gebelik ya da belirtilmemiş ebeveyn olamaz.', [c.id]);
   }
   for (const rel of graph.parentChildRelationships) {
     for (const m of rel.multiples || []) {

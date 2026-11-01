@@ -30,7 +30,7 @@ import { computeTidyLayout } from '../layout/pcl/tidy';
 import { auditLayoutIntegrity } from '../utils/layoutIntegrity';
 import { assessRelationshipMutation } from '../utils/relationshipSafety';
 import { validateDocument } from '../graph/validate';
-import { displayParentage } from '../graph/model';
+import { displayParentage, subjectOf } from '../graph/model';
 import * as ops from '../graph/ops';
 import { fromPed } from '../graph/ped';
 import { buildTemplate } from '../graph/templates';
@@ -397,11 +397,11 @@ export const usePedigreeStore = create((zSet, get) => {
     // patient's name: printed on the drawing and in the file names; saved
     // with the document (not an undo step: it is a label, not the family)
     setPatientName: (name) => zSet((state) => ({ doc: { ...state.doc, patientName: name } })),
-    // the proband's birth date (optional): their age follows it, as of today
+    // the proband's (else the consultand's) birth date (optional): their age follows it, as of today
     setProbandBirthDate: (iso) => {
-      const proband = get().doc.graph.individuals.find(i => i.proband);
-      if (!proband) return apply({ ok: false, reason: 'Önce bir kişiyi proband yapın.' });
-      return apply(ops.setBirthDate(get().doc, proband.id, iso || ''));
+      const subject = subjectOf(get().doc.graph.individuals);
+      if (!subject) return apply({ ok: false, reason: 'Önce bir kişiyi proband ya da danışan yapın.' });
+      return apply(ops.setBirthDate(get().doc, subject.id, iso || ''));
     },
 
     // ── several people at once (one undo step each) ──
@@ -476,6 +476,8 @@ export const usePedigreeStore = create((zSet, get) => {
     },
     setProband: (id) => apply(ops.setProband(get().doc, id)),
     clearProband: () => apply(ops.setProband(get().doc, null)),
+    setConsultand: (id) => apply(ops.setConsultand(get().doc, id)),
+    clearConsultand: () => apply(ops.setConsultand(get().doc, null)),
 
     deleteIndividual: (id) => {
       const state = get();

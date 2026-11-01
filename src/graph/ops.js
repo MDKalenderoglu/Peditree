@@ -206,7 +206,7 @@ function partnerSexConflict(graph, personId, newSex) {
   return null;
 }
 
-const PROTECTED_FIELDS = new Set(['id', 'generation', 'proband', 'placeholder', 'birthDate']);
+const PROTECTED_FIELDS = new Set(['id', 'generation', 'proband', 'consultand', 'placeholder', 'birthDate']);
 
 // ── operations ──
 
@@ -285,6 +285,23 @@ export function setProband(doc, id) {
     if (id !== null && isGroup(d.graph.individuals.find((i) => i.id === id))) block(GROUP_ONE_BY_ONE);
     for (const p of d.graph.individuals) p.proband = p.id === id;
     if (id !== null) d.wizardAnchorId = id;
+  });
+}
+
+/**
+ * The consultand (model.js isConsultand): at most one; null clears. Moves
+ * the mark when someone else already has it.
+ */
+export function setConsultand(doc, id) {
+  return commit(doc, (d) => {
+    const p = id === null ? null : d.graph.individuals.find((i) => i.id === id);
+    if (id !== null && !p) block('Birey grafikte bulunamadı.');
+    if (p && isGroup(p)) block(GROUP_ONE_BY_ONE);
+    if (p && (p.placeholder || isPregnancy(p))) block('Danışan bir gebelik ya da belirtilmemiş ebeveyn olamaz.');
+    for (const x of d.graph.individuals) {
+      if (x.id === id) x.consultand = true;
+      else delete x.consultand;
+    }
   });
 }
 
@@ -694,7 +711,7 @@ export function mergeIntoGroup(doc, ids) {
     const rel = g.parentChildRelationships.find((r) => r.unionId === [...parents][0]);
     for (const p of people) {
       if (p.placeholder || (idx.unionsOf.get(p.id) || []).length) block('Eşi ya da çocuğu olan kişi birleştirilemez.');
-      if (GROUP_FORBIDDEN.some((f) => p[f]) || (p.conditions || []).length) block('Bulgusu, taşıyıcılık, ölüm, genetik test ya da proband işareti olan kişi birleştirilemez.');
+      if (GROUP_FORBIDDEN.some((f) => p[f]) || (p.conditions || []).length) block('Bulgusu, taşıyıcılık, ölüm, genetik test, proband ya da danışan işareti olan kişi birleştirilemez.');
       if (MERGE_LOSES.some((f) => p[f] !== undefined && p[f] !== null && p[f] !== '')) block('Yaşı, doğum tarihi ya da adı yazılmış kişi birleştirilemez; bunlar tek sembolde gösterilemez.');
       if ((rel.multiples || []).some((m) => m.children.includes(p.id))) block('İkiz/üçüz grubundaki kişi birleştirilemez.');
       if ((g.socialParentLinks || []).some((l) => l.childId === p.id)) block('Evlat edinilmiş ya da koruyucu aile yanındaki kişi birleştirilemez.');

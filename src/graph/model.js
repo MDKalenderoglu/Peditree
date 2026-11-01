@@ -99,7 +99,18 @@ export const validGroupCount = (c) => c === 'n' || (Number.isInteger(c) && c >= 
 /** "3", or "n" */
 export const groupText = (p) => String(p.count);
 /** what a group may not carry */
-export const GROUP_FORBIDDEN = ['affected', 'carrier', 'deceased', 'geneticTest', 'proband', ...PREGNANCY_FIELDS];
+export const GROUP_FORBIDDEN = ['affected', 'carrier', 'deceased', 'geneticTest', 'proband', 'consultand', ...PREGNANCY_FIELDS];
+
+/**
+ * The consultand (NSGC 2022; clinician decisions 2026-11-01): the person who
+ * came for counselling — an arrow without "P" (the proband's arrow carries
+ * "P"; one arrow + P when the two are the same person). At most one per
+ * pedigree; a pedigree may have a consultand and no proband (carrier
+ * screening, prenatal counselling). Not a pregnancy, a placeholder or a group.
+ */
+export const isConsultand = (p) => !!p && !!p.consultand;
+/** whose name, birth date and findings head the drawing: the proband, else the consultand */
+export const subjectOf = (individuals) => (individuals || []).find((i) => i.proband) || (individuals || []).find((i) => i.consultand) || null;
 
 /**
  * Fields a clinician enters about a person. A person with any of these set
