@@ -724,7 +724,12 @@ export function addReproductiveLink(doc, childId, role, opts = {}) {
         generation: (child.generation ?? 3) - 1, relation: ART_DONOR_RELATION, label: REPRO_LABEL[role],
       });
     }
-    g.reproductiveLinks = [...links, { childId, personId, role }];
+    // twins: the co-twins of one pregnancy share its carrier; identical twins share their donors too
+    const rel = g.parentChildRelationships.find((r) => r.children.includes(childId));
+    const group = (rel?.multiples || []).find((m) => m.children.includes(childId));
+    const shares = group && (CARRIER_ROLES.includes(role) || group.zygosity === 'monozygotic');
+    const children = shares ? group.children : [childId];
+    g.reproductiveLinks = [...links, ...children.map((c) => ({ childId: c, personId, role }))];
     return { created: { personId } };
   });
 }
@@ -733,7 +738,11 @@ export function addReproductiveLink(doc, childId, role, opts = {}) {
 export function removeReproductiveLink(doc, childId, personId) {
   return commit(doc, (d) => {
     const g = d.graph;
-    g.reproductiveLinks = (g.reproductiveLinks || []).filter((l) => !(l.childId === childId && l.personId === personId));
+    // twins sharing the link lose it together (the rule in validate.js REPRO_TWINS)
+    const rel = g.parentChildRelationships.find((r) => r.children.includes(childId));
+    const group = (rel?.multiples || []).find((m) => m.children.includes(childId));
+    const together = new Set(group ? group.children : [childId]);
+    g.reproductiveLinks = (g.reproductiveLinks || []).filter((l) => !(together.has(l.childId) && l.personId === personId));
     const p = g.individuals.find((i) => i.id === personId);
     const stillLinked = g.reproductiveLinks.some((l) => l.personId === personId);
     if (p && p.relation === ART_DONOR_RELATION && !stillLinked && !hasClinicalData(p)) draftRemovePerson(d, personId);

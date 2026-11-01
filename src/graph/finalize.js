@@ -20,7 +20,7 @@
  * Mutates the (already cloned) graph in place and returns it.
  */
 import { computeGenerations } from '../utils/graphTraversal';
-import { indexGraph, displayParentage, isPregnancy, normalizeGenetics } from './model';
+import { indexGraph, displayParentage, isPregnancy, normalizeGenetics, REPRO_ROLES, CARRIER_ROLES } from './model';
 import { kinshipOf } from './kinship';
 import { deriveConditionKey } from './conditionKey';
 import { normalizeMultiples } from './multiples';
@@ -40,6 +40,7 @@ export function finalizeGraph(graph, { anchorId = 'proband' } = {}) {
   }
   // twins / multiple births stand together whatever the order rule did
   normalizeMultiples(graph);
+  shareTwinLinks(graph);
   graph.individuals.forEach(normalizeGenetics);
 
   const anchor = idx0.byId.has(anchorId)
@@ -131,5 +132,30 @@ export function clearChildlessWithChildren(graph) {
   for (const u of graph.unions) {
     if (u.childless && withKids.has(u.id)) { delete u.childless; delete u.childlessReason; }
   }
+  return graph;
+}
+
+/**
+ * Twins share what one pregnancy shares (validate.js REPRO_TWINS): its
+ * carrier, and for identical (MZ) twins the donors too. A link one twin has
+ * is given to the co-twins — also when the twins are made after it. Two
+ * different donors for identical twins are not merged: validation refuses.
+ */
+export function shareTwinLinks(graph) {
+  const links = graph.reproductiveLinks || [];
+  if (!links.length) return graph;
+  const has = new Set(links.map((l) => `${l.childId}|${l.personId}|${l.role}`));
+  for (const rel of graph.parentChildRelationships) {
+    for (const m of rel.multiples || []) {
+      const shared = m.zygosity === 'monozygotic' ? REPRO_ROLES : CARRIER_ROLES;
+      for (const l of links.filter((x) => m.children.includes(x.childId) && shared.includes(x.role))) {
+        for (const c of m.children) {
+          const key = `${c}|${l.personId}|${l.role}`;
+          if (!has.has(key)) { has.add(key); links.push({ childId: c, personId: l.personId, role: l.role }); }
+        }
+      }
+    }
+  }
+  graph.reproductiveLinks = links;
   return graph;
 }
