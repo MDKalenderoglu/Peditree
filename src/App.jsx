@@ -82,7 +82,9 @@ function App() {
   // the ring can be put away while the person stays selected (clinician
   // request 2026-10-27); selecting a person, the same one too, brings it back
   const [ringHidden, setRingHidden] = React.useState(false);
-  React.useEffect(() => { setRingHidden(false); }, [selectedId]);
+  // another selection brings it back (set while rendering, not in an effect: no extra render)
+  const [ringFor, setRingFor] = React.useState(selectedId);
+  if (ringFor !== selectedId) { setRingFor(selectedId); setRingHidden(false); }
   // how the drawing looks: chosen by whoever looks at it, kept on this device
   // (clinician request 2026-10-28; drawingStyle.js)
   const { view, setView } = useViewSettings();
