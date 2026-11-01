@@ -41,7 +41,7 @@ import * as findings from '../graph/findings';
 import { migrateV1ToV2 } from '../graph/migrate';
 import { cloneInitialState } from '../graph/v1pipeline';
 import {
-  loadDocument, saveDocument, clearAllSessions, serializeDocument, parseProjectFile,
+  loadDocument, saveDocument, clearAllSessions, serializeDocument, parseProjectFile, keepBrokenSession,
 } from '../graph/persistenceV2';
 
 // Pure relationship feasibility checks live in src/graph/plans.js (shared
@@ -182,14 +182,17 @@ function bootstrap() {
     console.warn('[usePedigreeStore] Failed to read saved pedigree — starting clean.', err);
     doc = null;
   }
-  const actionNotice = notice ? { message: notice, at: Date.now() } : null;
+  let actionNotice = notice ? { message: notice, at: Date.now() } : null;
   if (doc) {
     try {
       const prevNodes = nodesFromHints(doc.layoutHints);
       const clean = withBirthDateAges(withoutHints(doc));
       return { doc: clean, ...deriveAll(clean, {}, prevNodes ? { prevNodes, frozen: true } : null), actionNotice };
     } catch (err) {
-      console.error('[usePedigreeStore] Saved pedigree failed to load — starting clean (saved data not deleted).', err);
+      // passed the checks but could not be drawn: kept apart, and said so (Codex audit 2026-11-01)
+      console.error('[usePedigreeStore] Saved pedigree failed to load — starting clean (saved data kept apart).', err);
+      keepBrokenSession(typeof window !== 'undefined' ? window.sessionStorage : null, JSON.stringify(doc));
+      actionNotice = { message: 'Bu sekmede kayıtlı pedigri çizilemedi; boş bir pedigriyle başlandı. Kayıt silinmedi, üzerine yazılmasın diye ayrı saklandı.', at: Date.now() };
     }
   }
   const fresh = starterDocument();

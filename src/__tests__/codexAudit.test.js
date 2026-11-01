@@ -12,7 +12,7 @@ import { runMarkAudit } from '../audit/markCollisions';
 import { fromPed, toPed } from '../graph/ped';
 import { computePclLayout } from '../layout/pcl/index';
 import * as ops from '../graph/ops';
-import { parseProjectFile, serializeDocument } from '../graph/persistenceV2';
+import { parseProjectFile, serializeDocument, loadDocument, BROKEN_SESSION_KEY } from '../graph/persistenceV2';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
 beforeEach(() => S().resetPedigree());
@@ -122,5 +122,36 @@ describe('5, 6, 7, 10 — rules held in the data, not only in the menus', () => 
     expect(r.ok).toBe(true);
     expect(r.doc.graph.unions.find(x => x.id === u).childless).toBeUndefined();
     expect(r.normalizations.join(' ')).toMatch(/çocuksuz/);
+  });
+});
+
+describe('8 — a broken session is reported, and kept apart', () => {
+  it('a stored pedigree that fails the file checks is not opened as valid: the clinician is told, the record is kept', () => {
+    const d = JSON.parse(serializeDocument(S().doc));
+    d.graph.individuals = [null];
+    const raw = JSON.stringify(d);
+    const ss = fakeStorage({ 'clinical_pedigree_app.session.v2': raw });
+    vi.stubGlobal('window', { sessionStorage: ss, localStorage: ss });
+    try {
+      const r = loadDocument();
+      expect(r.doc).toBeNull();
+      expect(r.notice).toMatch(/açılamadı.*Kayıt silinmedi/);
+      expect(ss.getItem(BROKEN_SESSION_KEY)).toBe(raw);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('a good stored pedigree still opens', () => {
+    S().addSiblingTo('proband', 'female');
+    const ss = fakeStorage({ 'clinical_pedigree_app.session.v2': serializeDocument(S().doc) });
+    vi.stubGlobal('window', { sessionStorage: ss, localStorage: ss });
+    try {
+      const r = loadDocument();
+      expect(r.source).toBe('v2');
+      expect(r.doc.graph.individuals.length).toBe(g().individuals.length);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
