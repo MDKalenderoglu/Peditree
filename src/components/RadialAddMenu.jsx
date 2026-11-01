@@ -91,10 +91,10 @@ function ArcButton({ a0, a1, r, R, label, on, disabled, onClick, title, flip = 0
   const rot = (a0 + a1) / 2 + 90 + flip;
   const cx = tr * Math.cos(mid), cy = tr * Math.sin(mid);
   return (
-    <g className={`radial-arc${on ? ' on' : ''}${disabled ? ' off' : ''}`} role="button" aria-label={label.replace('\n', ' ')}
+    <g className={`radial-arc${on ? ' on' : ''}${disabled ? ' off' : ''}`} role="button" aria-label={label.replace(/\n/g, ' ')}
       aria-pressed={!!on} tabIndex={disabled ? -1 : 0} onClick={disabled ? undefined : onClick}
       onKeyDown={disabled ? undefined : (e) => pressKey(e, onClick)}>
-      <title>{title || label.replace('\n', ' ')}</title>
+      <title>{title || label.replace(/\n/g, ' ')}</title>
       <path d={sectorPath(a0, a1, r, R, 1.5)} />
       <text x={cx} y={cy - (lines.length - 1) * 5.5} textAnchor="middle" dominantBaseline="central" transform={`rotate(${rot} ${cx} ${cy})`}>
         {lines.map((t, k) => <tspan key={k} x={cx} dy={k ? 11 : 0}>{t}</tspan>)}
@@ -272,7 +272,7 @@ export default function RadialAddMenu({
       return [...band(-135, inner, B1, 40), ...band(-135, outer, B2, 33)];
     },
     twins: () => band(135, [['monozygotic', 'Tek\nyumurta'], ['dizygotic', 'Çift\nyumurta'], ['unknown', 'Bilinmiyor']].map(([z, t]) => ({
-      label: t, title: `${twinGroup ? `${multipleName(twinGroup.group.children.length + 1)} yap` : 'İkizini ekle'}: ${t.replace('\n', ' ')}`,
+      label: t, title: `${twinGroup ? `${multipleName(twinGroup.group.children.length + 1)} yap` : 'İkizini ekle'}: ${t.replace(/\n/g, ' ')}`,
       on: twinGroup?.group.zygosity === z,
       onClick: () => { onAddTwin(node.id, { sex: node.sex, zygosity: z }); setPanel(null); },
     })), B1, 42),
