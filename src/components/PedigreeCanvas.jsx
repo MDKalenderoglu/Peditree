@@ -35,6 +35,7 @@ import { isSmallSymbol, isPregnancy, pregnancyKind, PREGNANCY_LABEL, GENETIC_TES
 import { packLines } from '../utils/textWrap';
 import { keyGrid } from '../utils/keyGrid';
 import { nameCase } from '../utils/nameCase';
+import { chainOf, offsetPolyline } from '../utils/doubleLine';
 
 const EDGE_COLOR = '#64748b';
 const NODE_STROKE = '#1e293b';
@@ -364,7 +365,24 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const sameUnion = (e, unionId) => !unionId || !e.unionId || e.unionId === unionId;
     const onDouble = (x, y, unionId) => doubleLevels.some(e => sameUnion(e, unionId) && Math.abs(e.y1 - y) < 0.5 && x >= Math.min(e.x1, e.x2) - 0.5 && x <= Math.max(e.x1, e.x2) + 0.5);
     const belowDouble = (x, y, unionId) => (onDouble(x, y, unionId) ? y + DOUBLE_OFFSET : y);
+    // a couple's line of several segments (cross-generation) is drawn as one
+    // double line whose corners meet, not as pairs of strokes per segment
+    // (clinician feedback 2026-11-01)
+    const doubleChains = new Map();
+    for (const e of edges) {
+      if ((e.type !== 'consanguineousUnion' && e.type !== 'consanguineousUnionUnresolved') || !e.unionId) continue;
+      doubleChains.set(e.unionId, [...(doubleChains.get(e.unionId) || []), e]);
+    }
+    for (const [unionId, segs] of doubleChains) {
+      const points = segs.length > 1 && !segs.some(e => e.bridges && e.bridges.length) ? chainOf(segs) : null;
+      if (!points) { doubleChains.delete(unionId); continue; }
+      for (const side of [-DOUBLE_OFFSET, DOUBLE_OFFSET]) {
+        g.append('path').attr('d', offsetPolyline(points, side).map(([x, y], i) => `${i ? 'L' : 'M'}${x},${y}`).join(''))
+          .attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5).attr('fill', 'none').attr('stroke-linejoin', 'miter');
+      }
+    }
     edges.forEach(edge => {
+      if (doubleChains.has(edge.unionId) && (edge.type === 'consanguineousUnion' || edge.type === 'consanguineousUnionUnresolved')) return;
       switch (edge.type) {
         case 'union':
           // v0.3a.3 fix: pedigree relationship lines never carry canvas
