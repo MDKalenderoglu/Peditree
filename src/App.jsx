@@ -575,8 +575,15 @@ function App() {
             <button className="ui-btn" onClick={() => setNewMenu(v => !v)} aria-expanded={newMenu} title="Yeni bir pedigri başlat: boş bir aileyle ya da hazır bir akraba evliliği şablonuyla"><FilePlus2 size={15} /> Yeni</button>
             {newMenu && (
               <div className="keys-popover share-popover new-popover" role="dialog" aria-label="Yeni pedigri">
-                <button className="ui-btn ui-btn-primary" onClick={() => handleNewPedigree(null)}>Proband, anne ve baba ile başla</button>
-                <button className="ui-btn" onClick={() => { setNewMenu(false); setRelationOpen(true); }}>Anne-babası akraba olan bir aileyle başla…</button>
+                {/* two ways to start, each with a small pedigree of what opens (clinician request 2026-11-01) */}
+                <button className="download-item" onClick={() => handleNewPedigree(null)}>
+                  <svg className="new-icon" viewBox="0 0 40 32" aria-hidden="true"><rect x="3" y="3" width="10" height="10" /><circle cx="32" cy="8" r="5" /><path d="M13 8h14M20 8v13" /><rect x="15" y="21" width="10" height="10" /></svg>
+                  <span><b>Yeni aile</b><small>Proband, anne ve babayla başlar; akrabaları çizim üzerinden eklersiniz.</small></span>
+                </button>
+                <button className="download-item" onClick={() => { setNewMenu(false); setRelationOpen(true); }}>
+                  <svg className="new-icon" viewBox="0 0 40 32" aria-hidden="true"><rect x="3" y="3" width="10" height="10" /><circle cx="32" cy="8" r="5" /><path d="M13 5.5h14M13 10.5h14M20 10.5v10.5" /><rect x="15" y="21" width="10" height="10" /></svg>
+                  <span><b>Akraba evliliği</b><small>Anne-babası akraba olan hazır bir aile: kuzen evliliği, berdel…</small></span>
+                </button>
               </div>
             )}
           </div>
