@@ -6,6 +6,7 @@ abstract: "PediTree is a browser-based tool for drawing family pedigrees in stan
 authors:
   - family-names: "Kalenderoğlu"
     given-names: "Muhammed Doğukan"
+    orcid: "https://orcid.org/0000-0001-6762-5193"
 version: "0.9.0"
 doi: "10.5281/zenodo.23791764"
 identifiers:
