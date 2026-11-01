@@ -62,6 +62,9 @@ export function buildMarkFamily(store) {
   ok(S().addChildTo(sister, 'female'), 'niece');
   const niece = g().parentChildRelationships.find((r) => r.unionId === unionOf(sister)).children[0];
   ok(S().setAdoption(niece, unionOf(uncle)), 'niece by relatives');
+  // assisted reproduction: a sperm donor ("D") for the ongoing pregnancy, a gestational carrier ("G") for the deceased sister
+  ok(S().addReproductiveLink(g().individuals.find((i) => i.ongoingPregnancy).id, 'sperm_donor'), 'sperm donor');
+  ok(S().addReproductiveLink(dec, 'gestational_carrier'), 'gestational carrier');
   S().clearSelection();
 }
 
@@ -118,6 +121,8 @@ export function findMarkCollisions(svg) {
     if (arrow) items.push({ kind: 'arrow', person, own, box: boxOf(arrow) });
     const p = node.querySelector('.proband-p');
     if (p) items.push({ kind: 'P', person, own, box: boxOf(p) });
+    const letter = node.querySelector('.repro-mark');
+    if (letter) items.push({ kind: 'letter', person, own, box: boxOf(letter) });
     const num = node.querySelector('.pedigree-number');
     if (num) items.push({ kind: 'number', person, own, box: boxOf(num) });
     for (const t of node.querySelectorAll('.annotations text')) {

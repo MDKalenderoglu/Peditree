@@ -18,7 +18,8 @@ import { buildStructure } from './structure';
 import { orderLayers, orderLayersStable } from './ordering';
 import { solveSeparatedQP } from './qp';
 import { routeConnectors, estimateLevelNeeds, planBands } from './routing';
-import { displayParentage } from '../../graph/model';
+import { displayParentage, isSmallSymbol, reproMarkOf } from '../../graph/model';
+import { withArt, artEdges, isArtUnion } from './art';
 import { withGhosts, isGhost } from './crossGeneration';
 
 export const PCL = {
@@ -95,14 +96,16 @@ const FOOTPRINT_ROUNDS = 400;   // upper bound; only pathological graphs need mo
 export function computePclLayout(inputGraph, opts = {}) {
   // social-only children (e.g. adopted-in) are drawn under their social parents
   const { graph: drawn, socialChildren } = displayParentage(inputGraph);
-  // partners on different rows: an invisible stand-in beside the lower one
-  const graph = withGhosts(drawn);
+  // partners on different rows: an invisible stand-in beside the lower one;
+  // assisted reproduction: donors and carriers beside the woman carrying (art.js)
+  const { graph, art } = withArt(withGhosts(drawn), inputGraph.reproductiveLinks || []);
   const individuals = graph.individuals || [];
   if (individuals.length === 0) return { nodes: [], edges: [] };
 
   const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const t0 = now();
   const S = buildStructure(graph);
+  S.art = art;
   // adopted people are drawn in brackets (model.js adoptionOf): lines meet the brackets
   S.bracketed = new Set([
     ...individuals.filter((i) => i.adoptedOut).map((i) => i.id),
@@ -180,6 +183,18 @@ export function computePclLayout(inputGraph, opts = {}) {
     }
     const kids = (S.childrenOf.get(u.id) || []).filter(c => index.has(c));
     if (!kids.length) continue;
+    // a child carried by a gestational carrier or surrogate stands right under her (art.js)
+    if (isArtUnion(u)) {
+      const carrier = u.artCarrier;
+      if (carrier && index.has(carrier)) {
+        const sorted = kids.slice().sort((p, q) => rowPos.get(p) - rowPos.get(q));
+        const [f, l] = [sorted[0], sorted[sorted.length - 1]];
+        terms.push(f === l
+          ? { w: W_CENTRE_EXACT, idx: [index.get(carrier), index.get(f)], c: [1, -1], d: 0 }
+          : { w: W_CENTRE_EXACT, idx: [index.get(carrier), index.get(f), index.get(l)], c: [1, -0.5, -0.5], d: 0 });
+      }
+      continue;
+    }
     const ordered = kids.slice().sort((p, q) => rowPos.get(p) - rowPos.get(q));
     const first = ordered[0], last = ordered[ordered.length - 1];
     const idx = [index.get(a), index.get(b)];
@@ -270,6 +285,7 @@ export function computePclLayout(inputGraph, opts = {}) {
   // style outer loop, deterministic).
   const unionKids = [];
   for (const u of S.unions) {
+    if (isArtUnion(u)) continue; // no sibship line under an invisible bond
     const [a, b] = u.partners || [];
     if (!index.has(a) || !index.has(b)) continue;
     if (S.indById.get(a).generation !== S.indById.get(b).generation) continue;
@@ -407,9 +423,15 @@ export function computePclLayout(inputGraph, opts = {}) {
   const edges = routeConnectors(S, rows, xPos, yPos, plans);
   if (socialChildren.size) markSocialDescent(edges, S, socialChildren);
   routeRelativeAdoption(inputGraph, edges, xPos, yPos);
+  edges.push(...artEdges(art, edges, xPos, yPos, (id) => (isSmallSymbol(S.indById.get(id)) ? 14 : PCL_NODE_HALF)));
   const tRouted = now();
   // stand-ins are never drawn
-  const nodes = individuals.filter(ind => !isGhost(ind)).map(ind => ({ ...ind, x: xPos[ind.id] ?? 0, y: yPos[ind.id] ?? 0 }));
+  const nodes = individuals.filter(ind => !isGhost(ind)).map(ind => {
+    const n = { ...ind, x: xPos[ind.id] ?? 0, y: yPos[ind.id] ?? 0 };
+    const mark = art ? reproMarkOf(inputGraph, ind.id) : null; // "D" / "G" inside the symbol
+    if (mark) n.reproMark = mark;
+    return n;
+  });
   const shownRows = new Map([...rows].map(([g, list]) => [g, list.filter(id => !isGhost(S.indById.get(id)))]));
   return {
     nodes, edges,

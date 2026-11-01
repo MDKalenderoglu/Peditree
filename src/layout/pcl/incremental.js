@@ -23,9 +23,10 @@
  * reproduced exactly ('frozen').
  */
 import { computePclLayout } from './index';
+import { layoutParentage } from './art';
 import { checkAllInvariants } from '../../audit/layoutInvariants';
 import { checkConnectorReadability, readabilityMetrics } from '../../audit/connectorReadability';
-import { displayParentage, pregnancyKind } from '../../graph/model';
+import { pregnancyKind } from '../../graph/model';
 
 const WIDE_SHARE = 0.5; // an edit touching more than half the people: start wide
 
@@ -104,13 +105,13 @@ export function crossingsOf(edges) {
 }
 
 function clean(graph, layout) {
-  const drawn = { ...displayParentage(graph).graph, ...layout };
+  const drawn = { ...layoutParentage(graph), ...layout };
   return checkAllInvariants(drawn).length === 0 && checkConnectorReadability(drawn).length === 0;
 }
 
 /** Readability problems a drawing has: line crossings, off-centre couples, long partner lines. */
 function problemsOf(graph, layout) {
-  const m = readabilityMetrics({ ...displayParentage(graph).graph, ...layout });
+  const m = readabilityMetrics({ ...layoutParentage(graph), ...layout });
   return { crossings: crossingsOf(layout.edges), offCenter: m.offCenter, longUnions: m.longUnions };
 }
 const noWorse = (p, base) => p.crossings <= base.crossings && p.offCenter <= base.offCenter && p.longUnions <= base.longUnions;
