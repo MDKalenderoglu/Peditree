@@ -66,7 +66,7 @@ function App() {
     updateMany, setFindingStatusMany, addFindingMany,
     deleteIndividual, createUnionBetween, addCustomConsanguinity,
     reorderChild, setUnionRelationshipBackground, setUnionStatus,
-    setMultipleBirth, addMultipleSibling, setMultipleZygosity, leaveMultipleBirth,
+    setMultipleBirth, addMultipleSibling, setMultipleZygosity, leaveMultipleBirth, setGroupCount, splitGroup,
     addFinding, setFindingStatus, setFindingStyle, renameFinding, wizardData, updateWizardData,
     addParentsTo, addSiblingTo, moveSideways, dropOnto, setFindingOnset, setChildlessness, setPregnancyKind, setGestationWeeks,
     undo, redo, _history, _future,
@@ -892,6 +892,8 @@ function App() {
           onAddMultiple={addMultipleSibling}
           onSetZygosity={setMultipleZygosity}
           onLeaveMultiple={leaveMultipleBirth}
+          onSetGroupCount={setGroupCount}
+          onSplitGroup={splitGroup}
           onAddFinding={addFinding}
           onSetFindingStatus={setFindingStatus}
           onSetFindingStyle={setFindingStyle}
