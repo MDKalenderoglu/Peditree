@@ -28,12 +28,12 @@ birlikte tanımlar. **Standart** ile **geliştirici/klinik tercih** her satırda
 | Erkek / kadın / bilinmeyen | Kare / daire / karo | 08, 22 | ✅ | korunur |
 | Cinsiyet kimliği ≠ doğumda atanan cinsiyet | Kimlik sembolü + altında AMAB/AFAB/UAAB | 22, 25 | ❌ | Faz 2b (model alanı) |
 | Etkilenmiş | Dolu sembol, lejantta tanımlı | 08, 22 | ✅ (lejant yalnız `conditions[]` için) | lejant her durumda |
-| Birden fazla durum | Bölünmüş sembol, her bölme ayrı desen, lejant | 08, 22 | ❌ | Faz 4 |
-| Taşıyıcı | **22: nokta artık önerilmiyor**; bölünmüş sembol + desen + lejant | 22 §4.5 | Yarım dolu, lejantsız (RN-2) | Bölme deseni + zorunlu lejant girişi |
+| Birden fazla durum | Bölünmüş sembol, her bölme ayrı desen, lejant | 08, 22 | ✅ bölünmüş sembol, her bulguya ayrı bölge ve desen, bulgu anahtarında tanımlı | korunur |
+| Taşıyıcı | **22: nokta artık önerilmiyor**; bölünmüş sembol + desen + lejant | 22 §4.5 | Sol yarı dolgu; adı verilmiş taşınan bulgu bulgu anahtarında; etkilenmiş + taşıyıcıda sol yarıda **2008 noktası** (2026-10-25 kararı) — 22 noktayı önermiyor | klinisyen kararı bekliyor (K5) |
 | Asemptomatik/presemptomatik taşıyıcı | Ortadan dikey çizgi | 08, 22 | ❌ | Faz 4 |
 | Ölmüş | Sembolü aşan eğik çizgi; altında "d." + yaş | 08, 22 | ✅ (çizgi) | "d." etiketi doğrulanacak |
-| Proband | Sol altta ok **+ "P"**; **her zaman etkilenmiş** | 08, 22 | Ok var, **P yok** (RN-1) | "P" eklenir; etkilenmemiş proband için uyarı |
-| Consultand | Ok, **P yok**; birden fazla olabilir | 08, 22 | ❌ (kavram yok) | Faz 2b alanı |
+| Proband | Sol altta ok **+ "P"**; **her zaman etkilenmiş** | 08, 22 | ✅ ok + P (K10). En fazla bir; hiç olmayabilir — o zaman kapatılabilen bir not (2026-11-01). PED açılırken etkilenmiş kimse yoksa proband işaretlenmez | etkilenmemiş proband için uyarı **yok** (açık) |
+| Consultand | Ok, **P yok**; birden fazla olabilir | 08, 22 | ✅ Danışan: ok, P yok; proband ile aynı kişiyse tek ok + P (2026-11-01). **Klinisyen kararıyla en fazla bir** (standart birden fazlaya izin verir) | korunur |
 | Aile öyküsü bilinmiyor | Sembolün üstünde "?" | 08, 25 | ❌ | Faz 4 |
 | Birden çok birey | Sembol içinde sayı veya "n" | 08, 22 | ✅ | Klinisyen kararı 2026-11-01: kare/daire/baklava içinde 2–99 ya da n; yalnız sayı ve cinsiyet (bulgu, eş, çocuk, proband yok; "Tek tek ayır"; birlikte seçilen kardeşler "Tek sembolde birleştir"). Halka menü "Birden çok" + sağ panel |
 | Değerlendirme yapılmış | Sağ altta yıldız (*) | 08, 22 | ❌ | kapsam içi ama düşük öncelik |
@@ -42,11 +42,11 @@ birlikte tanımlar. **Standart** ile **geliştirici/klinik tercih** her satırda
 
 | Kavram | Standart | Kaynak | Bugün | Hedef |
 |---|---|---|---|---|
-| Süren gebelik | Sembol içinde "P"; altında gebelik haftası | 08, 22, 25 | ❌ | Faz 2b/4 |
-| Spontan düşük (SAB) | Küçük üçgen; etkilenmişse dolu; altında hafta | 08, 22 | ✅ üçgen, hafta yok | hafta alanı |
-| Gebelik sonlandırma (TOP) | Eğik çizgili üçgen | 08, 22 | ❌ | Faz 2b/4 |
-| Ektopik (ECT) | Eğik çizgili üçgen + "ECT" | 08, 25 | ❌ | Faz 2b/4 |
-| Ölü doğum (SB) | **Normal boy** sembol + eğik çizgi + "SB" + hafta | 08, 22, 25 | Küçük sembol + X (RN-3) | düzeltilir (Faz 4) |
+| Süren gebelik | Sembol içinde "P"; altında gebelik haftası | 08, 22, 25 | ✅ normal boy, içinde P, altında hafta (K11) | korunur |
+| Spontan düşük (SAB) | Küçük üçgen; etkilenmişse dolu; altında hafta | 08, 22 | ✅ küçük üçgen, altında hafta | korunur |
+| Gebelik sonlandırma (TOP) | Eğik çizgili üçgen | 08, 22 | ✅ eğik çizgili küçük üçgen (K11) | korunur |
+| Ektopik (ECT) | Eğik çizgili üçgen + "ECT" | 08, 25 | Kısmen: küçük üçgen + altında "ECT"; **25'teki eğik çizgi yok** | klinisyen kararı bekliyor |
+| Ölü doğum (SB) | **Normal boy** sembol + eğik çizgi + "SB" + hafta | 08, 22, 25 | ✅ normal boy, eğik çizgi, SB, hafta (K11) | korunur |
 
 `CLAUDE.md` kural 5 (bu türler karıştırılmaz) korunur; dört sonuç türü ayrı model değerleridir.
 
@@ -55,18 +55,18 @@ birlikte tanımlar. **Standart** ile **geliştirici/klinik tercih** her satırda
 | Kavram | Standart | Kaynak | Bugün | Hedef |
 |---|---|---|---|---|
 | Birliktelik çizgisi | Partnerler arasında düz yatay çizgi | 08, 22 | ✅ (yakın partnerlerde); uzak partnerlerde koridor çizgisi (LY-6) | Faz 3 |
-| Sona ermiş ilişki | Çizgide **tek gösterim "//"** (ayrılık/boşanma ayrımı yok) | 08, 22 | Ayrılık = tek eğik, boşanma = çift eğik (**standart dışı**) | "//" tek gösterim; ayrılık/boşanma yalnız kayıt bilgisi |
+| Sona ermiş ilişki | Çizgide **tek gösterim "//"** (ayrılık/boşanma ayrımı yok) | 08, 22 | Ayrılık ve boşanma: çizgide **tek eğik çizgi** (klinisyen kararı 2026-10-23, notasyon belgesi §4.7) — standarttaki "//" değil | karara göre korunur |
 | Akraba evliliği | Düz **çift** çizgi; derece çizimden belli değilse çizginin üstüne yazılır | 08, 22 | ✅ çift çizgi; derece etiketi yok | derece etiketi (Faz 4) |
-| Çocuksuz (bilinçli / nedeni bilinmiyor) | Kısa dikey + **tek** çubuk; neden altına | 08, 22 | 5B'de kaldırıldı (artık yanlışlıkla çizilmiyor) | açık model alanıyla geri gelir |
-| İnfertilite | Kısa dikey + **çift** çubuk; neden altına | 08, 22 | ❌ | açık model alanı |
+| Çocuksuz (bilinçli / nedeni bilinmiyor) | Kısa dikey + **tek** çubuk; neden altına | 08, 22 | ✅ açık model alanı (`union.childless`): dikey + tek çubuk, neden altında; çocuk eklenince işaret kalkar | korunur |
+| İnfertilite | Kısa dikey + **çift** çubuk; neden altına | 08, 22 | ✅ dikey + çift çubuk, neden altında; çocuk eklenince işaret kalkar | korunur |
 | Kayıt edilmemiş çocuksuzluk | **İşaret gerekmez** | 22 Şekil 3 | ✅ (5B) | korunur |
 | İniş çizgisi / kardeş çizgisi | Birliktelik çizgisinden kardeş çizgisine dikey, her çocuğa dikey | 08, 22 | ✅ | korunur, ama Faz 3'te birliktelik ortasından |
 | Kardeş sırası | **Soldan sağa doğum sırası** (zorunlu, *bilindiğinde*) | 08, 22 | ✅ Faz 3: kullanıcı "Doğum Sırası" ile sıra verdiyse (`PCR.birthOrderExplicit`, artık her kardeşlikte çalışıyor — DM-12) veya tüm kardeşlerin yaşı varsa **sert kısıt**. Bilinmiyorsa kayıtlı sıra yalnızca ekleme sırasıdır (ör. baba her zaman amcalardan önce kaydedilir); başka bir aileyle evlenen (ya da torunu evlenen) kardeş kardeşliğin eşine bakan ucuna alınabilir (kinship2 autohint). Bilinen yaşlarla çelişen düzen hiç üretilmez. | sert kısıt (bilinen sıra) |
 | Partneri gösterilmeyen çocuk | İniş çizgisi tek ebeveynden iner | 22/25 Şekil 3 örneği | Yer tutucu "belirtilmemiş ebeveyn" karosu çiziliyor | Faz 3: yer tutucu çizilmeden tek ebeveynden iniş |
-| Çoklu partner | Örnekle: kişi ortada, partnerler iki yanda | 22/25 Şekil 3 | sabit ofsetle tek yana | Faz 3 |
-| İkiz | Tek noktadan çapraz ayrılan çizgiler; MZ'de aradaki yatay çubuk; "?" = zigot bilinmiyor; işaretsiz = DZ (22) / "MZ değil" (25) | 08, 22, 25 | ❌ | Faz 2b + 3 |
-| Evlat edinme | Köşeli parantez; evlat edinen ebeveynden **kesikli**, biyolojik ebeveynden **düz** iniş; çocuk iki ebeveyn setine bağlanabilir | 08, 22, 25 | ❌ (bir çocuk = tek ebeveyn birliği kuralı engelliyor) | Faz 2b (tipli ebeveyn bağları) |
-| Yardımcı üreme | Donör "D", gestasyonel taşıyıcı "G" (25: "S" kaldırıldı) | 08, 22, 25 | ❌ | Faz 2b |
+| Çoklu partner | Örnekle: kişi ortada, partnerler iki yanda | 22/25 Şekil 3 | ✅ KI-8: eşler kişinin iki yanında durabilir; halkada çocuk eklerken "Hangi eşten?" sorulur (2026-11-01) | korunur; 3+ eş KI-8 kalıntısı |
+| İkiz | Tek noktadan çapraz ayrılan çizgiler; MZ'de aradaki yatay çubuk; "?" = zigot bilinmiyor; işaretsiz = DZ (22) / "MZ değil" (25) | 08, 22, 25 | ✅ tek noktadan ayrılan çizgiler; MZ çubuk; bilinmeyen "?" (K12) | korunur |
+| Evlat edinme | Köşeli parantez; evlat edinen ebeveynden **kesikli**, biyolojik ebeveynden **düz** iniş; çocuk iki ebeveyn setine bağlanabilir | 08, 22, 25 | ✅ köşeli parantez; içeri (evlat edinen aileden kesikli), dışarı (biyolojik aileden düz), iki aile birden (düz + kesikli) (K3/K4, 2026-11-01); koruyucu / üvey / vasi menüde yok | korunur |
+| Yardımcı üreme | Donör "D", gestasyonel taşıyıcı "G" (25: "S" kaldırıldı) | 08, 22, 25 | ❌ | klinisyen 22/25 metnini verdi; uygulama bekliyor (K6) |
 | Erkek partner solda | **Yumuşak** öneri ("if possible"), 22/25 şekillerinde yok | 08 | ✅ Faz 3: sıralamada eşitlik bozucu maliyet (kesişim veya şerit maliyetinden küçük); ayrıca düzenlemeler arasında çizimin aynalanmasını azaltır (baba solda ⇒ baba tarafı solda) | eşitlikte tercih |
 | Kuşak / birey numarası | "I-1" biçimi; Romen rakamı kuşak + soldan sağa numara **gelenek** | 08 (örnek), 22 | Her sembolün üstünde | Romen rakamları sol kenarda + isteğe bağlı numaralar |
 
@@ -76,8 +76,9 @@ birlikte tanımlar. **Standart** ile **geliştirici/klinik tercih** her satırda
 |---|---|---|---|
 | Aynı cinsiyetli partnerlik | 22: 2008 önerileri aynı cinsiyetli ilişkilerin kaydını içerir; özel gösterim yok, normal çizgi | Sizin talimatınızla (Türkiye klinik pratiği) **engelli** | **Klinisyen** (bkz. denetim raporu §4) |
 | Cinsiyeti bilinmeyen partner | 22/25 şekillerinde karo partnerler normal çizgiyle | 5A ile engelli | Klinisyen |
-| Farklı kuşaktan partnerler (ör. amca–yeğen) | **Ele alınmamış** | Kategorik engelli | Klinisyen; öneri: biyolojik olarak mümkünse uyarıyla izin, yerleşim motoru basamaklı çizgiyle çizer |
-| "Tam olarak bir proband" | Proband tanımı gereği etkilenmiş; etkilenmemiş başvuran consultand'dır; proband hiç olmayabilir | `CLAUDE.md` kural 6: tam bir proband | Klinisyen (consultand alanı eklenince yeniden değerlendirilmeli) |
+| Farklı kuşaktan partnerler (ör. amca–yeğen) | **Ele alınmamış** | Bir kuşak farkla izinli, ata–torun asla; basamaklı çizgi (klinisyen 2026-10-24) | Klinisyen (karar verildi) |
+| "Tam olarak bir proband" | Proband tanımı gereği etkilenmiş; etkilenmemiş başvuran consultand'dır; proband hiç olmayabilir | En fazla bir proband, en fazla bir danışan; proband yoksa kapatılabilen not (klinisyen 2026-11-01) | Klinisyen (karar verildi) |
+| Kardeş evliliği | Standart ayrı bir kural koymaz | Kardeşler asla eş yapılamaz; akraba evliliği işaretiyle de (CLAUDE.md kural 3; Codex denetimi 2026-11-01 sonrası veri katmanında da) | Klinisyen (`CLAUDE.md`) |
 
 ## 5. Okunabilirlik gereksinimleri (Peditree kuralları — Tores & Barillot 2001 ölçütleriyle uyumlu)
 
