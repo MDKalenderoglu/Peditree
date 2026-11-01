@@ -220,7 +220,12 @@ const EDITS = [
     if (u) S().addChildToUnion(u, 'male');
     return t;
   }],
-  ['child to the proband', (S) => { S().addChildTo('proband', 'female'); return 'proband'; }],
+  ['child to the proband', (S) => {
+    // the proband's first partnership, named (with several partners the other parent is chosen)
+    const u = S().doc.graph.unions.find((x) => x.partners.includes('proband'));
+    if (u) S().addChildToUnion(u.id, 'female'); else S().addChildTo('proband', 'female');
+    return 'proband';
+  }],
   ['sibling to the proband', (S) => { S().addSiblingTo('proband', 'male'); return 'proband'; }],
   ['spouse to the first female sibling', (S) => {
     const t = S().wizardData.siblings.female[0]?.id;

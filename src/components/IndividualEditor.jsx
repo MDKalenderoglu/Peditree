@@ -246,7 +246,7 @@ function AdoptionCard({ info, onSet }) {
       </label>
       <span className="field-hint">
         {kind === 'out' ? 'Evlat verildi: sembol köşeli parantez içinde, biyolojik ailesinden düz çizgi. Evlat edinen aile çizimde yok.'
-          : kind === 'relative' ? 'Akraba tarafından evlat edinildi: biyolojik ailesinden düz, evlat edinen aileden kesikli çizgi.'
+          : kind === 'relative' ? 'Evlat edinildi; biyolojik ve evlat edinen ailesi çizimde: biyolojik ailesinden düz, evlat edinen aileden kesikli çizgi.'
           : kind === 'in' ? 'Evlat edinildi: evlat edinen ailesinin altında, kesikli çizgiyle.'
           : 'Evlat verildiyse ve evlat edinen aile çizimde yoksa “Evlat verildi”; aile çizimdeyse (ör. teyze ve eşi) listeden seçin.'}
       </span>

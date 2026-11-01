@@ -8,10 +8,14 @@
  */
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { usePedigreeStore } from '../state/usePedigreeStore';
+import { createElement } from 'react';
+import { renderToString } from 'react-dom/server';
+import RadialAddMenu from '../components/RadialAddMenu';
 import { runMarkAudit } from '../audit/markCollisions';
 import { fromPed, toPed } from '../graph/ped';
 import { computePclLayout } from '../layout/pcl/index';
 import * as ops from '../graph/ops';
+import { validateDocument, errorsOf } from '../graph/validate';
 import { parseProjectFile, serializeDocument, loadDocument, BROKEN_SESSION_KEY } from '../graph/persistenceV2';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
@@ -153,5 +157,42 @@ describe('8 — a broken session is reported, and kept apart', () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe('3, 4 — the other parent and the kind of sibling are named, never guessed', () => {
+  it('3: a person with two partners: adding a child without naming the union is refused; with the union it goes there', () => {
+    S().addSpouseTo('father', 'female');
+    const [first, second] = g().unions.filter(u => u.partners.includes('father')).map(u => u.id);
+    const r = S().addChildTo('father', 'male');
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/hangi eşten/);
+    expect(S().addChildToUnion(first, 'male').ok).toBe(true);
+    expect(g().parentChildRelationships.find(x => x.unionId === first).children.length).toBe(2);
+    expect(g().parentChildRelationships.some(x => x.unionId === second)).toBe(false);
+  });
+
+  it('4: a sibling of an adopted-in child never invents biological parents unless "biological sibling" is chosen', () => {
+    const pu = g().parentChildRelationships.find(r => r.children.includes('proband')).unionId;
+    const c = S().addChildToUnion(pu, 'female', { adopted: true }).created.childId;
+    const unionsBefore = g().unions.length;
+    const r = S().addSiblingTo(c, 'male', { createParents: true });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/evlat edinilmiş/);
+    expect(g().unions.length).toBe(unionsBefore);
+    // "biyolojik kardeşi": the adopted child's biological parents are drawn, the adoption kept
+    const b = S().addSiblingTo(c, 'male', { createParents: true, biologicalSibling: true });
+    expect(b.ok, b.reason).toBe(true);
+    expect(g().socialParentLinks.some(l => l.childId === c && l.unionId === pu)).toBe(true);
+    expect(errorsOf(validateDocument(S().doc))).toEqual([]);
+  });
+});
+
+describe('the ring survives its person disappearing (found while checking 3 and 4)', () => {
+  it('rendered with no person (the selected person removed by undo or "Yeni" while the ring is open): nothing drawn, no crash', () => {
+    const anchor = { x: 0, y: 0, size: 40 };
+    expect(() => renderToString(createElement(RadialAddMenu, { anchor, node: undefined, pedigreeData: S().pedigreeData }))).not.toThrow();
+    const person = S().pedigreeData.individuals.find(i => i.id === 'proband');
+    expect(renderToString(createElement(RadialAddMenu, { anchor, node: person, pedigreeData: S().pedigreeData }))).toMatch(/Kardeş/);
   });
 });

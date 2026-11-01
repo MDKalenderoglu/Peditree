@@ -139,7 +139,13 @@ export function applyOp(o) {
       case 'addSibling': s.addSiblingTo(o.target, o.sex); break;
       case 'addSiblingCat': s.addSiblingOfCategory(o.category); break;
       case 'addSpouse': s.addSpouseTo(o.target, o.sex); break;
-      case 'addChild': s.addChildTo(o.target, o.sex); break;
+      // with several partners the other parent is named (Codex audit 2026-11-01): the first partnership,
+      // the one this used to take by itself, so earlier runs reproduce
+      case 'addChild': {
+        const first = s.doc.graph.unions.find((u) => u.partners.includes(o.target));
+        if (first) s.addChildToUnion(first.id, o.sex); else s.addChildTo(o.target, o.sex);
+        break;
+      }
       case 'addChildToUnion': s.addChildToUnion(o.unionId, o.sex); break;
       case 'addParents': s.addParentsTo(o.target); break;
       case 'addRelativeBranch': {
