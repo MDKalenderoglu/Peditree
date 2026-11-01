@@ -36,7 +36,8 @@ export function bendScore(edges) {
   return bends + 2 * lanes + 3 * jumps;
 }
 
-export function computeTidyLayout(graph) {
+/** The variant with the fewest bends among the clean ones (index.js opts.straight). */
+function bestVariant(graph) {
   let best = null;
   for (const opts of VARIANTS) {
     const l = computePclLayout(graph, opts);
@@ -47,6 +48,40 @@ export function computeTidyLayout(graph) {
     const score = bendScore(l.edges) + width / 1e5; // width only breaks ties
     const cand = { ...l, clean, score, variant: opts.straight || 'base' };
     if (!best || (cand.clean && !best.clean) || (cand.clean === best.clean && cand.score < best.score - 1e-9)) best = cand;
+  }
+  return best;
+}
+
+// Partner sides (clinician feedback 2026-11-01: lines of descent stepping
+// sideways where they could run straight). Man-left is only a convention;
+// where a line of descent passes through a woman, it often runs straight
+// only with her partner on her other side. When the tidiest variant still
+// bends, the partners of one couple at a time swap sides and every swap that
+// leaves fewer bends is kept. A side the clinician chose (union.leftPartner)
+// is never changed; large pedigrees skip this to keep "Konumlandır" quick.
+const SIDE_SEARCH_MAX_PEOPLE = 60;
+const SIDE_SEARCH_MAX_TRIES = 24;
+
+export function computeTidyLayout(graph) {
+  let best = bestVariant(graph);
+  if (best.score < 1 || (graph.individuals || []).length > SIDE_SEARCH_MAX_PEOPLE) return best;
+  let g = graph, tries = 0, improved = true;
+  while (improved && best.score >= 1 && tries < SIDE_SEARCH_MAX_TRIES) {
+    improved = false;
+    for (const u of g.unions || []) {
+      if (tries >= SIDE_SEARCH_MAX_TRIES || best.score < 1) break;
+      if (u.leftPartner || u.crossGeneration || (u.partners || []).length !== 2) continue;
+      const [a, b] = u.partners;
+      const na = best.nodes.find((n) => n.id === a), nb = best.nodes.find((n) => n.id === b);
+      if (!na || !nb || na.y !== nb.y) continue;
+      const right = na.x > nb.x ? a : b;
+      const trial = { ...g, unions: g.unions.map((x) => (x.id === u.id ? { ...x, leftPartner: right } : x)) };
+      tries++;
+      const cand = bestVariant(trial);
+      if (cand.clean && (!best.clean || cand.score < best.score - 0.5)) {
+        best = cand; g = trial; improved = true;
+      }
+    }
   }
   return best;
 }

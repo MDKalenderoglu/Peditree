@@ -7,7 +7,7 @@ import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { starterDocument, usePedigreeStore } from '../state/usePedigreeStore';
 import { buildTemplate, pathName, pathsOf, relativeName, relationInfo, relationSpec, canPair, GENERATIONS_UP, DOUBLE_FIRST_COUSINS } from '../graph/templates';
 import { errorsOf, validateDocument } from '../graph/validate';
-import { computeTidyLayout } from '../layout/pcl/tidy';
+import { computeTidyLayout, bendScore } from '../layout/pcl/tidy';
 import { checkAllInvariants } from '../audit/layoutInvariants';
 import { checkConnectorReadability } from '../audit/connectorReadability';
 import { childInbreeding } from '../graph/kinship';
@@ -67,6 +67,16 @@ describe('consanguinity templates', () => {
       }
     }, 60000);
   }
+
+  // clinician feedback 2026-11-01: lines of descent stepping sideways where they could run straight
+  it('every cousin family opens with straight lines of descent: no jog, no lane, no line jump', () => {
+    const bent = [];
+    for (const up of PAIRS) for (const father of pathsOf(up.father)) for (const mother of pathsOf(up.mother)) {
+      const r = buildTemplate(starterDocument(), relationSpec({ father, mother }));
+      if (Math.floor(bendScore(computeTidyLayout(r.doc.graph).edges)) > 0) bent.push(`${father}|${mother}`);
+    }
+    expect(bent).toEqual([]);
+  });
 
   it('double first cousins: both ready-made families', () => {
     for (const item of DOUBLE_FIRST_COUSINS) checkFamily(item.spec, item.id, 'double_first_cousin', 1 / 8);
