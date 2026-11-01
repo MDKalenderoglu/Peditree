@@ -37,6 +37,12 @@ const W_CENTRE = 1;
 // SNAP_ONLY_CHILD px straight. Later edits start from that drawing. Not used
 // generally: on dense pedigrees it pushes other couples off centre.
 const W_CENTRE_ONLY = 8;
+// tidy.js 'only' / 'strong': an only child exactly under the couple's
+// midpoint. With the weaker pull a long partner line (consanguineous
+// cousins) left the child 7–9 px off, and the line of descent met the
+// couple's line off its middle (clinician feedback 2026-11-01); this one
+// leaves under 1 px. Tidy keeps the variant only when it is clean.
+const W_CENTRE_EXACT = 128;
 const W_SPOUSE = 0.5;
 const W_FAR_PARTNERS = 0.03;
 const W_XLINK = 0.5; // a cross-generation partner over their stand-in (short stepped line)
@@ -183,7 +189,8 @@ export function computePclLayout(inputGraph, opts = {}) {
     // (every couple firmly over its children)
     const straight = opts.straight || (opts.straightStart ? 'founders' : null);
     let w = W_CENTRE;
-    if (first === last && (straight === 'only' || straight === 'strong' || (straight === 'founders' && founders))) w = W_CENTRE_ONLY;
+    if (first === last && (straight === 'only' || straight === 'strong')) w = W_CENTRE_EXACT;
+    else if (first === last && straight === 'founders' && founders) w = W_CENTRE_ONLY;
     else if (straight === 'strong') w = W_CENTRE * 4;
     terms.push({ w, idx, c, d: 0, couple: true });
   }

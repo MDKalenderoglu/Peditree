@@ -78,6 +78,25 @@ describe('consanguinity templates', () => {
     expect(bent).toEqual([]);
   });
 
+  // clinician feedback 2026-11-01: a line of descent meets the couple's line off its middle
+  it('every only child stands under the middle of its parents\' line (within 1 px)', () => {
+    const off = [];
+    for (const up of PAIRS) for (const father of pathsOf(up.father)) for (const mother of pathsOf(up.mother)) {
+      const r = buildTemplate(starterDocument(), relationSpec({ father, mother }));
+      const g = r.doc.graph;
+      const x = new Map(computeTidyLayout(g).nodes.map(n => [n.id, n.x]));
+      for (const rel of g.parentChildRelationships) {
+        if (rel.children.length !== 1) continue;
+        const u = g.unions.find(x => x.id === rel.unionId);
+        if (u.crossGeneration) continue; // partners on two rows: a stepped line by design
+        const [a, b] = u.partners;
+        const d = Math.abs(x.get(rel.children[0]) - (x.get(a) + x.get(b)) / 2);
+        if (d > 1) off.push(`${father}|${mother} ${rel.children[0]} ${d.toFixed(1)}`);
+      }
+    }
+    expect(off).toEqual([]);
+  });
+
   it('double first cousins: both ready-made families', () => {
     for (const item of DOUBLE_FIRST_COUSINS) checkFamily(item.spec, item.id, 'double_first_cousin', 1 / 8);
   });
