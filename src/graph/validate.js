@@ -8,7 +8,7 @@
  * Issues: { severity: 'error' | 'warning', code, message (Turkish), ids }
  */
 import { auditPedigreeGraph } from '../utils/graphIntegrity';
-import { SOCIAL_LINK_KINDS, indexGraph, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, isPregnancy } from './model';
+import { SOCIAL_LINK_KINDS, indexGraph, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, isPregnancy, ancestorsOf } from './model';
 import { multiplesWarnings } from './multiples';
 import { carrierFindingIssues } from './conditionKey';
 
@@ -61,6 +61,24 @@ export function validateGraphStructure(graph, { retired = [] } = {}) {
     const marked = GROUP_FORBIDDEN.filter((f) => ind[f]);
     if (marked.length || (ind.conditions || []).length) err('GROUP_CLINICAL', 'Birden çok kişiyi gösteren sembolde bulgu, taşıyıcılık, ölüm, genetik test, proband ya da danışan işareti olamaz; bu kişiyi "Tek tek ayır" ile ayrı çizin.', [ind.id]);
   }
+  // adoption (model.js adoptionOf): one adoptive family; "adopted out" needs drawn parents and no adoptive family
+  const adoptive = new Map();
+  for (const l of graph.socialParentLinks || []) {
+    if (l.kind !== 'adoptive') continue;
+    if (adoptive.has(l.childId)) err('ADOPTION_MULTIPLE', 'Bir kişinin en fazla bir evlat edinen ailesi olabilir.', [l.childId]);
+    adoptive.set(l.childId, l.unionId);
+    const parents = idx.unionById.get(l.unionId)?.partners || [];
+    if (parents.some((p) => ancestorsOf(graph, p, idx).has(l.childId))) err('ADOPTION_BY_DESCENDANT', 'Bir kişi kendi soyundan gelen biri tarafından evlat edinilemez.', [l.childId, l.unionId]);
+    const child = idx.byId.get(l.childId);
+    if (child && (isPregnancy(child) || child.placeholder)) err('ADOPTION_KIND', 'Gebelik ya da belirtilmemiş ebeveyn evlat edinilmiş olarak işaretlenemez.', [l.childId]);
+  }
+  for (const ind of graph.individuals) {
+    if (!ind.adoptedOut) continue;
+    if (!idx.bioParentUnion.has(ind.id)) err('ADOPTED_OUT_NO_PARENTS', 'Evlat verilen kişinin biyolojik ebeveynleri çizili olmalı.', [ind.id]);
+    if (adoptive.has(ind.id)) err('ADOPTED_OUT_AND_IN', 'Evlat verilen kişinin evlat edinen ailesi çizimde varsa "evlat verildi" yerine o aile seçilir.', [ind.id]);
+    if (isPregnancy(ind) || ind.placeholder) err('ADOPTION_KIND', 'Gebelik ya da belirtilmemiş ebeveyn evlat edinilmiş olarak işaretlenemez.', [ind.id]);
+  }
+
   // the consultand (model.js): at most one, a born person
   const consultands = graph.individuals.filter((i) => i.consultand);
   if (consultands.length > 1) err('CONSULTAND_MULTIPLE', 'Pedigride birden fazla danışan işaretli; danışan en fazla bir kişidir.', consultands.map((i) => i.id));

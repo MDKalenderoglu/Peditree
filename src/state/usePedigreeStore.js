@@ -478,6 +478,8 @@ export const usePedigreeStore = create((zSet, get) => {
     clearProband: () => apply(ops.setProband(get().doc, null)),
     setConsultand: (id) => apply(ops.setConsultand(get().doc, id)),
     clearConsultand: () => apply(ops.setConsultand(get().doc, null)),
+    // adoption (model.js adoptionOf): null, 'out' or the adoptive couple's union id
+    setAdoption: (id, to) => apply(ops.setAdoption(get().doc, id, to)),
 
     deleteIndividual: (id) => {
       const state = get();
