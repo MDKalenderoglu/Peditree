@@ -1,8 +1,10 @@
 # Weekly pull requests for dependency updates; security fixes come at once.
+# They go to the working branch: main is only moved forward to it, never merged into.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /
+    target-branch: stabilization/clinical-layout
     schedule:
       interval: weekly
     groups:
@@ -11,5 +13,6 @@ updates:
     open-pull-requests-limit: 5
   - package-ecosystem: github-actions
     directory: /
+    target-branch: stabilization/clinical-layout
     schedule:
       interval: monthly
