@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: E-posta / E-mail
+    url: mailto:peditree.app@gmail.com
+    about: GitHub hesabınız yoksa peditree.app@gmail.com adresine yazabilirsiniz.
+  - name: Güvenlik açığı / Security vulnerability
+    url: https://github.com/MDKalenderoglu/Peditree/security/advisories/new
+    about: Güvenlik açıklarını herkese açık olarak değil, buradan gizli olarak bildirin.

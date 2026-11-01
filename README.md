@@ -71,6 +71,15 @@ If you use PediTree in a publication, presentation or teaching material,
 please cite it — see [`CITATION.cff`](CITATION.cff) or **"Cite this
 repository"** on GitHub.
 
+## Hata ve öneriler / Feedback
+
+- **Hata bildirmek:** [Hata bildirimi formu](https://github.com/MDKalenderoglu/Peditree/issues/new?template=hata-bildirimi.yml)
+- **Öneri ya da deneyim paylaşmak:** [Öneri formu](https://github.com/MDKalenderoglu/Peditree/issues/new?template=oneri.yml)
+- **GitHub hesabınız yoksa:** peditree.app@gmail.com
+
+Bildirimlere hasta bilgisi eklemeyin. / Please never include patient data.
+Güvenlik açıkları için: [`SECURITY.md`](SECURITY.md).
+
 ## Geliştirme / Development
 
 Node.js 22 gerekir.

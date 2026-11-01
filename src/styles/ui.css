@@ -412,6 +412,8 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 .about-head img { flex: none; display: block; }
 .about-cite { margin: 0; padding: 8px 10px; background: var(--sunken); border-radius: var(--radius-sm); font-size: 13px; line-height: 1.5; color: var(--ink); user-select: all; overflow-wrap: anywhere; }
 .about-popover a { color: var(--accent-ink); }
+.about-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.about-popover a.ui-btn { color: inherit; text-decoration: none; }
 .template-list { display: flex; flex-direction: column; gap: 1px; max-height: 300px; overflow-y: auto; }
 .template-item { text-align: left; font: inherit; font-size: 13.5px; padding: 8px 10px; border: 1px solid transparent; border-radius: var(--radius-sm); background: none; color: var(--ink); cursor: pointer; }
 .template-item:hover, .template-item:focus-visible { background: var(--accent-soft); border-color: var(--accent-line); outline: none; }

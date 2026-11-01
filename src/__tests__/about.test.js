@@ -6,7 +6,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { APP_VERSION, BUILD_DATE, versionLine, citationText, REPOSITORY_URL, DOI } from '../utils/appInfo';
+import { APP_VERSION, BUILD_DATE, versionLine, citationText, REPOSITORY_URL, DOI, CONTACT_EMAIL, issueUrl } from '../utils/appInfo';
+import { existsSync } from 'node:fs';
 
 const read = (p) => readFileSync(join(process.cwd(), p), 'utf8');
 
@@ -40,5 +41,21 @@ describe('PediTree hakkında', () => {
     expect(app).toMatch(/aria-label="PediTree hakkında"/);
     expect(app).toMatch(/tıbbi cihaz değildir/);
     expect(app).toMatch(/PediTree adı ve logosu lisansa dahil değildir/);
+  });
+
+  it('says how to report a bug or share feedback, with the forms that exist and a warning about patient data', () => {
+    const app = read('src/App.jsx');
+    expect(app).toMatch(/issueUrl\('hata-bildirimi'\)/);
+    expect(app).toMatch(/issueUrl\('oneri'\)/);
+    expect(app).toMatch(/mailto:\$\{CONTACT_EMAIL\}/);
+    expect(app).toMatch(/hasta adı, doğum tarihi/);
+    for (const form of ['hata-bildirimi', 'oneri']) {
+      expect(existsSync(join(process.cwd(), `.github/ISSUE_TEMPLATE/${form}.yml`))).toBe(true);
+      expect(issueUrl(form)).toBe(`${REPOSITORY_URL}/issues/new?template=${form}.yml`);
+      expect(read(`.github/ISSUE_TEMPLATE/${form}.yml`)).toMatch(/hasta bilgisi paylaşmayın/i);
+    }
+    expect(CONTACT_EMAIL).toBe('peditree.app@gmail.com');
+    expect(read('README.md')).toContain(CONTACT_EMAIL);
+    expect(read('SECURITY.md')).toContain(CONTACT_EMAIL);
   });
 });

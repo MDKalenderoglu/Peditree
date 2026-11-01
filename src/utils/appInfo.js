@@ -9,6 +9,10 @@ export const APP_VERSION = pkg.version;
 // eslint-disable-next-line no-undef
 export const BUILD_DATE = typeof __BUILD_DATE__ === 'string' ? __BUILD_DATE__ : '';
 export const REPOSITORY_URL = 'https://github.com/MDKalenderoglu/Peditree';
+// how to reach the project (clinician decision 2026-11-01): a GitHub form, or e-mail for those without an account
+export const CONTACT_EMAIL = 'peditree.app@gmail.com';
+/** A new GitHub issue from one of the forms in .github/ISSUE_TEMPLATE. */
+export const issueUrl = (form) => `${REPOSITORY_URL}/issues/new?template=${form}.yml`;
 // Zenodo's DOI for every version (it always leads to the latest); each
 // release also gets its own (v0.9.0: 10.5281/zenodo.23791765)
 export const DOI = '10.5281/zenodo.23791764';
