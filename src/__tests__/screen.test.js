@@ -711,3 +711,75 @@ describe('the About window (the logo)', () => {
     await key('Escape');
   });
 });
+
+describe('assisted reproduction on the screen', () => {
+  it('"D" in a donor\'s and a surrogate\'s symbol, "G" in a gestational carrier\'s; white on a filled symbol; solid lines', async () => {
+    await run(() => { S().addReproductiveLink('proband', 'sperm_donor'); S().addSiblingTo('proband', 'female'); });
+    const sis = g().parentChildRelationships.find(r => r.unionId === 'U_PARENTS').children.find(c => c !== 'proband');
+    await run(() => S().addReproductiveLink(sis, 'gestational_carrier'));
+    const [donor, carrier] = g().reproductiveLinks.map(l => l.personId);
+    expect(drawn(donor).querySelector('.repro-mark').textContent).toBe('D');
+    expect(drawn(carrier).querySelector('.repro-mark').textContent).toBe('G');
+    expect(drawn(donor).getAttribute('aria-label')).toMatch(/donör/);
+    await run(() => S().updateIndividual(donor, { affected: true }));
+    expect(drawn(donor).querySelector('.repro-mark').getAttribute('fill')).not.toBe(drawn(donor).querySelector('.pedigree-shape').getAttribute('fill'));
+    const lines = $$('.repro-line');
+    expect(lines.length).toBeGreaterThanOrEqual(2);
+    expect(lines.every(l => !l.getAttribute('stroke-dasharray'))).toBe(true);
+  });
+
+  it('the child\'s panel adds a donor (a new person, or someone in the drawing) and takes it away', async () => {
+    await run(() => S().addSiblingTo('mother', 'female'));
+    await select('proband');
+    expect(panelText()).toMatch(/Yardımcı üreme/);
+    await click(button('Sperm donörü'));
+    expect(g().reproductiveLinks.map(l => l.role)).toEqual(['sperm_donor']);
+    const aunt = g().parentChildRelationships.find(r => r.children.includes('mother')).children.find(c => c !== 'mother');
+    await select('proband');
+    const who = [...$$('.editor-body select')].find(s => [...s.options].some(o => o.value === aunt));
+    await run(() => { who.value = aunt; who.dispatchEvent(new Event('change', { bubbles: true })); });
+    await click(button('Gestasyonel taşıyıcı (G)'));
+    expect(g().reproductiveLinks.find(l => l.role === 'gestational_carrier').personId).toBe(aunt);
+    expect(button('Gestasyonel taşıyıcı (G)').disabled).toBe(true);
+    await click(buttons().find(b => b.textContent === 'Kaldır'));
+    expect(g().reproductiveLinks.map(l => l.role)).toEqual(['gestational_carrier']);
+  });
+
+  it('a donor\'s ring: no family directions, with the reason; the panel says whom they are a donor for', async () => {
+    await run(() => S().addReproductiveLink('proband', 'egg_donor'));
+    const donor = g().reproductiveLinks[0].personId;
+    await select(donor);
+    await key('k');
+    expect(flyoutText()).toMatch(/ailesi çizilmez/);
+    expect(panelText()).toMatch(/için yumurta donörü/);
+  });
+});
+
+describe('every person, every part of the ring (the areas that kept breaking)', () => {
+  it('in the family with every mark: each person selected, each ring part opened — never a blank page, and each kind gets its own choices', async () => {
+    const { buildMarkFamily } = await import('../audit/markCollisions');
+    await run(() => buildMarkFamily(usePedigreeStore));
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const seen = {};
+    for (const p of g().individuals) {
+      if (p.placeholder) continue;
+      await select(p.id);
+      expect($('.pedigree-viewport')).not.toBeNull();
+      for (const k of ['k', 'c', 'd', 'b', 'i', 'n']) {
+        await key(k);
+        expect($('.pedigree-viewport')).not.toBeNull();
+      }
+      await key('k');
+      const kind = p.count !== undefined ? 'group' : p.relation === 'art_donor' ? 'donor'
+        : ['pregnancyLoss', 'stillbirth', 'ongoingPregnancy', 'termination', 'ectopic'].some(f => p[f]) ? 'pregnancy' : 'person';
+      seen[kind] = flyoutText();
+      await key('Escape');
+    }
+    // a donor's ring offers no family; a pregnancy offers siblings; a person offers the rows
+    expect(seen.donor).toMatch(/ailesi çizilmez/);
+    expect(seen.person).toMatch(/Gebelik/);
+    expect(seen.pregnancy).toMatch(/Kardeş|Gebelik|Erkek|Kız/);
+    expect(errors.mock.calls.filter(c => /Uncaught|TypeError|Cannot read/.test(String(c[0])))).toEqual([]);
+    errors.mockRestore();
+  });
+});
