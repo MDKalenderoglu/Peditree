@@ -158,3 +158,4 @@ After Faz 2b: layout stability (edit-local relayout using the previous layout), 
 4. **Snapshot generation values** before builder changes and assert they are unchanged afterwards.
 5. **Git:** work on `stabilization/clinical-layout`; never commit directly to `main`; the user pushes (GitHub Desktop) — do not push, fetch or rewrite history without explicit approval.
 6. **Visual check:** for renderer/layout changes, verify in the browser preview (`peditree-dev`) and compare engines with `globalThis.__PEDITREE_PACKER__`.
+7. **Marks check:** after any change to symbols, marks or routing, run `await window.__peditreeMarkAudit()` in the dev preview (`src/audit/markCollisions.js`: a family with every mark — arrows, brackets, numbered symbols, pregnancies, twins, text, single and double lines — measured as rendered); it must return `[]`, and look at the drawing too.

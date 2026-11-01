@@ -10,6 +10,7 @@ import { validateDocument, errorsOf } from '../graph/validate';
 import { adoptionOf } from '../graph/model';
 import { parseProjectFile, serializeDocument } from '../graph/persistenceV2';
 import { readFileSync } from 'node:fs';
+import { buildMarkFamily } from '../audit/markCollisions';
 import { join } from 'node:path';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
@@ -97,6 +98,28 @@ describe('adoption', () => {
     expect(canvas).toMatch(/\.\.\.edges\.filter\(e => e\.descentKind === 'adoptive' && e\.childId\)/);
     expect(canvas).toMatch(/\.\.\.nodes\.filter\(n => n\.adoptedOut\)/);
     expect(canvas).toMatch(/case 'adoptiveDescent':/);
+  });
+
+  // clinician report 2026-11-01: relationship lines ran through brackets; the arrow touched them
+  it('the family with every mark: no relationship line reaches inside an adopted person\'s brackets', () => {
+    buildMarkFamily(usePedigreeStore);
+    const { nodes, edges } = S().pedigreeData;
+    const bracketed = nodes.filter(n => adoptionOf(g(), n.id));
+    expect(bracketed.length).toBeGreaterThanOrEqual(7);
+    const unionTypes = ['union', 'consanguineousUnion', 'consanguineousUnionUnresolved'];
+    const bad = [];
+    for (const n of bracketed) {
+      for (const e of edges.filter(x => unionTypes.includes(x.type) && x.y1 === x.y2 && x.y1 === n.y)) {
+        for (const x of [e.x1, e.x2]) {
+          const d = Math.abs(x - n.x);
+          if (d < 29 && Math.min(e.x1, e.x2) <= n.x + 29 && Math.max(e.x1, e.x2) >= n.x - 29) bad.push(`${n.id} ${d}`);
+        }
+      }
+    }
+    expect(bad).toEqual([]);
+    const canvas = readFileSync(join(process.cwd(), 'src/components/PedigreeCanvas.jsx'), 'utf8');
+    expect(canvas).toMatch(/const arrOff = adopted \? sz \+ BRACKET_OUT \+ 4 : sz \+ 6/);
+    expect(canvas).toMatch(/let lineY = adopted \? sz \+ BRACKET_OUT \+ 16 : sz \+ 14/);
   });
 
   it('survives save and open and undo; a file with two adoptive families is refused', () => {

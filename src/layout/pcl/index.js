@@ -103,6 +103,11 @@ export function computePclLayout(inputGraph, opts = {}) {
   const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const t0 = now();
   const S = buildStructure(graph);
+  // adopted people are drawn in brackets (model.js adoptionOf): lines meet the brackets
+  S.bracketed = new Set([
+    ...individuals.filter((i) => i.adoptedOut).map((i) => i.id),
+    ...(inputGraph.socialParentLinks || []).filter((l) => l.kind === 'adoptive').map((l) => l.childId),
+  ]);
   const stability = opts.stability || null;
   const { order } = stability ? orderLayersStable(S, stability) : orderLayers(S);
   // orderOnly (after a removal): keep the previous left-to-right order,
@@ -436,8 +441,14 @@ function routeRelativeAdoption(graph, edges, xPos, yPos) {
     const u = (graph.unions || []).find((x) => x.id === l.unionId);
     if (!u || u.partners.some((p) => xPos[p] === undefined)) continue;
     const [a, b] = u.partners;
-    const uy = Math.max(yPos[a], yPos[b]);
-    const mid = (xPos[a] + xPos[b]) / 2;
+    // the couple's drawn line (a lane above the row when people stand between them): its longest level piece
+    const level = edges.filter((e) => e.unionId === u.id && e.y1 === e.y2 && !e.descentKind
+      && ['union', 'consanguineousUnion', 'consanguineousUnionUnresolved'].includes(e.type))
+      .sort((p, q) => Math.abs(q.x2 - q.x1) - Math.abs(p.x2 - p.x1))[0];
+    const uy = level ? level.y1 : Math.max(yPos[a], yPos[b]);
+    const lineLo = level ? Math.min(level.x1, level.x2) : Math.min(xPos[a], xPos[b]);
+    const lineHi = level ? Math.max(level.x1, level.x2) : Math.max(xPos[a], xPos[b]);
+    const mid = (lineLo + lineHi) / 2;
     const cx = xPos[l.childId], cy = yPos[l.childId];
     const dir = cx >= mid ? 1 : -1;
     const stem = edges.find((e) => e.type === 'childStem' && e.childId === l.childId);
@@ -447,6 +458,7 @@ function routeRelativeAdoption(graph, edges, xPos, yPos) {
       && Math.abs(xPos[id] - x) < half + 6);
     let sx = mid + dir * ADOPT_LEAVE;
     for (let k = 1; k <= 12 && blocked(sx); k++) sx = mid + dir * (ADOPT_LEAVE + k * 12);
+    sx = Math.min(lineHi - 4, Math.max(lineLo + 4, sx));
     const ex = cx - dir * ADOPT_OFFSET;
     const common = { type: 'adoptiveDescent', descentKind: 'adoptive', unionId: u.id, childId: l.childId };
     edges.push({ ...common, x1: sx, y1: uy, x2: sx, y2: levelY });
