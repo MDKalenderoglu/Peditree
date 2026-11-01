@@ -121,7 +121,7 @@ function sectorPath(a0, a1, r, R, gapDeg = 3) {
 
 export default function RadialAddMenu({
   anchor, node, pedigreeData, onAddSibling, onAddChild, onAddSpouse, onAddParents, onAddTwin,
-  onUpdate, onSetProband, onClearProband, onAddFinding, onSetFindingStatus, onSetFindingStyle, onSetFindingOnset,
+  onUpdate, onSetProband, onClearProband, onSetConsultand, onClearConsultand, onAddFinding, onSetFindingStatus, onSetFindingStyle, onSetFindingOnset,
   onNeedRoom, ref,
 }) {
   const [active, setActive] = useState(null);   // sector under the pointer
@@ -287,7 +287,9 @@ export default function RadialAddMenu({
         { label: 'Etkilenmiş', on: !!node.affected, onClick: () => onUpdate(node.id, { affected: !node.affected }), title: 'Kişi hasta (etkilenmiş): sembolün içi tamamen dolar. Hastalığın adını yazmak için Bulgu düğmesini kullanın.' },
         { label: 'Taşıyıcı', on: !!node.carrier, onClick: () => onUpdate(node.id, { carrier: !node.carrier }), title: 'Kişi hasta değil ama hastalığa yol açan geni taşıyor' },
         ...(isLoss ? [] : [{ label: 'Vefat', on: !!node.deceased, onClick: () => onUpdate(node.id, { deceased: !node.deceased }), title: 'Kişi hayatta değil: sembolün üzerine çapraz çizgi çekilir' }]),
-        { label: 'Proband', on: !!node.proband, onClick: () => (node.proband ? onClearProband() : onSetProband(node.id)), title: 'Ailede incelemeye yol açan ilk kişi: yanında ok ve P harfi çizilir' },
+        { label: 'Proband', on: !!node.proband, onClick: () => (node.proband ? onClearProband() : onSetProband(node.id)), title: 'Ailede incelemeye yol açan ilk etkilenmiş kişi: yanında ok ve P harfi çizilir' },
+        // the consultand (clinician decisions 2026-11-01): an arrow without "P"
+        ...(isLoss || !onSetConsultand ? [] : [{ label: 'Danışan', on: !!node.consultand, onClick: () => (node.consultand ? onClearConsultand() : onSetConsultand(node.id)), title: 'Danışmanlık için başvuran kişi: yanında yalnız ok çizilir (P yok). Ailede bir danışan olur; proband ile aynı kişi olabilir.' }]),
       ];
       return [...band(-135, inner, B1, 40), ...band(-135, outer, B2, 33)];
     },

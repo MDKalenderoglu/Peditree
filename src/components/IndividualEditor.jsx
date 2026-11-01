@@ -431,7 +431,7 @@ export default function IndividualEditor({
 
   const kind = group ? `${node.count === 'n' ? 'Sayısı bilinmeyen' : node.count} ${GROUP_WORD[node.sex || 'unknown']}`
     : pregnancyKind(node) ? PREGNANCY_LABEL[pregnancyKind(node)] : SEX_WORD[node.sex || 'unknown'];
-  const sub = [kind, node.age ? `${node.age} yaş` : null, node.proband ? 'proband' : null].filter(Boolean).join(' · ');
+  const sub = [kind, node.age ? `${node.age} yaş` : null, node.proband ? 'proband' : null, node.consultand ? 'danışan' : null].filter(Boolean).join(' · ');
   const set = (patch) => onUpdate(node.id, patch);
   // genetic test: "+" done / "−" not; the clinician's lines, one per variant or result
   const tested = node.geneticTest === GENETIC_TESTED;

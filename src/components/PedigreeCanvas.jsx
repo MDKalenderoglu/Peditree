@@ -31,7 +31,7 @@ import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { applyDrawingStyle } from '../utils/drawingStyleSvg';
 import { STANDARD_FAMILY } from '../utils/drawingStyle';
 import { annotationAge, pregnancyLine } from '../utils/annotations';
-import { isSmallSymbol, isPregnancy, pregnancyKind, PREGNANCY_LABEL, GENETIC_TESTED, TESTED_TEXT, geneticLines, isGroup, groupText } from '../graph/model';
+import { isSmallSymbol, isPregnancy, pregnancyKind, PREGNANCY_LABEL, GENETIC_TESTED, TESTED_TEXT, geneticLines, isGroup, groupText, subjectOf } from '../graph/model';
 import { packLines } from '../utils/textWrap';
 import { keyGrid } from '../utils/keyGrid';
 import { nameCase } from '../utils/nameCase';
@@ -223,8 +223,10 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // findings key: a row for each finding a relative is affected by (its
     // quadrant), and one for each finding someone carries ("… taşıyıcısı",
     // the left half — clinician decision 2026-10-25); the proband is drawn
-    // fully filled, their findings stand in the first line
-    const has = (status, entry) => nodes.some(n => (status === 'carrier' || !n.proband) && (n.conditions || []).some(c =>
+    // fully filled, their findings stand in the first line (the proband, else
+    // the consultand — clinician decision 2026-11-01)
+    const headNode = subjectOf(nodes);
+    const has = (status, entry) => nodes.some(n => (status === 'carrier' || n !== headNode) && (n.conditions || []).some(c =>
       c && c.label && c.status === status
       && c.label.trim().toLocaleLowerCase('tr') === entry.label.trim().toLocaleLowerCase('tr')));
     const shownKey = [
@@ -279,7 +281,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const notesBlock = noteLines.length ? TITLE_ROW + d3.sum(noteLines, l => l.length) * NOTE_ROW + 10 * LK : 0;
     // the key's first line (clinician request 2026-10-25): the patient's
     // name, the proband's own symbol, the proband's findings
-    const probandNode = nodes.find(n => n.proband);
+    const probandNode = headNode;
     const probandFindings = probandNode ? (probandNode.conditions || []).filter(c => c && c.label && c.status === 'affected').map(c => c.label.trim()) : [];
     // as names are written, also from an older file (clinician request 2026-10-30)
     const name = nameCase(patientName).trim();
@@ -322,7 +324,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       if (!lines.length) return [{ text: TESTED_TEXT, k: 0, value: '', placeholder: true }];
       // ~20 characters fit between two siblings (100 apart), so a variant with
       // its zygosity ("TGFBR2 c.1609C>T het") stays on one line
-      return lines.flatMap((line, k) => packLines([{ text: line }], d.proband ? 17 : 20)
+      return lines.flatMap((line, k) => packLines([{ text: line }], d.proband || d.consultand ? 17 : 20)
         .map(part => ({ text: part.map(x => x.text).join(''), k, value: line })));
     };
     const annotationBottom = (d) => {
@@ -574,7 +576,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         pedigreeIds.get(d.id)?.displayId, d.displayLabel,
         isGroup(d) ? `${d.count === 'n' ? 'sayısı bilinmeyen' : d.count} ${{ male: 'erkek', female: 'kadın' }[d.sex] || 'kişi'}`
           : pregnancyKind(d) ? PREGNANCY_LABEL[pregnancyKind(d)].toLocaleLowerCase('tr') : { male: 'erkek', female: 'kadın' }[d.sex] || 'cinsiyeti bilinmiyor',
-        d.proband && 'proband', d.affected && 'etkilenmiş', d.carrier && 'taşıyıcı', d.deceased && 'vefat',
+        d.proband && 'proband', d.consultand && 'danışan', d.affected && 'etkilenmiş', d.carrier && 'taşıyıcı', d.deceased && 'vefat',
       ].filter(Boolean).join(', '))
       .on('click', (event, d) => {
         event.stopPropagation();
@@ -720,17 +722,17 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           .attr('stroke', NODE_STROKE).attr('stroke-width', 2);
       }
 
-      // Proband arrow (lower-left)
-      if (d.proband) {
+      // Proband / consultand arrow (lower-left); "P" only for the proband
+      if (d.proband || d.consultand) {
         const arrOff = sz + 6;
         el.append('path')
           .attr('d', `M${-(arrOff + 14)},${arrOff + 14} L${-arrOff},${arrOff} M${-arrOff},${arrOff} L${-(arrOff + 10)},${arrOff} M${-arrOff},${arrOff} L${-arrOff},${arrOff + 10}`)
           .attr('fill', 'none')
           .attr('stroke', NODE_STROKE)
           .attr('stroke-width', 2);
-        // NSGC: the proband's arrow carries "P" (an arrow alone marks a
-        // consultand) — clinician decision K10, 2026-10-23
-        el.append('text')
+        // NSGC: the proband's arrow carries "P"; an arrow alone marks the
+        // consultand — clinician decisions K10, 2026-10-23 and 2026-11-01
+        if (d.proband) el.append('text')
           .attr('class', 'proband-p')
           .attr('x', -(arrOff + 17)).attr('y', arrOff + 26).attr('text-anchor', 'end')
           .attr('font-size', '12px').attr('font-weight', '700').attr('fill', NODE_STROKE)
@@ -741,7 +743,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       let lineY = sz + 14;
       const LINE_H = 13;
       // the proband's lines stand a little to the right, clear of the arrow at the lower left
-      const ann = el.append('g').attr('class', 'annotations').attr('transform', d.proband ? 'translate(14,0)' : null);
+      const ann = el.append('g').attr('class', 'annotations').attr('transform', d.proband || d.consultand ? 'translate(14,0)' : null);
 
       // Age, or "d." and the age at death (also without an age filled in)
       const ageLine = annotationAge(d);
