@@ -462,14 +462,20 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         .text('?');
     });
 
-    // No children (one bar) / infertile (two bars), NSGC; the reason below
+    // No children (one bar) / infertile (two bars), NSGC; the reason below.
+    // The stem reaches about half way to the next row; the bars are wide
+    // enough to read as a mark, not a stub (clinician 2026-11-01).
+    const CL = { stem: 44, half: 16, gap: 6 };
     edges.filter(e => e.type === 'childless').forEach(e => {
       const m = g.append('g').attr('class', 'childless-mark');
-      m.append('line').attr('x1', e.x).attr('y1', belowDouble(e.x, e.y, e.unionId)).attr('x2', e.x).attr('y2', e.y + 24).attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5);
-      m.append('line').attr('x1', e.x - 11).attr('y1', e.y + 24).attr('x2', e.x + 11).attr('y2', e.y + 24).attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5);
-      if (e.kind === 'infertile') m.append('line').attr('x1', e.x - 11).attr('y1', e.y + 29).attr('x2', e.x + 11).attr('y2', e.y + 29).attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5);
+      const bar = (y) => m.append('line').attr('x1', e.x - CL.half).attr('y1', y).attr('x2', e.x + CL.half).attr('y2', y)
+        .attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5).attr('stroke-linecap', 'round');
+      const end = e.y + CL.stem;
+      m.append('line').attr('x1', e.x).attr('y1', belowDouble(e.x, e.y, e.unionId)).attr('x2', e.x).attr('y2', end).attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5);
+      bar(end);
+      if (e.kind === 'infertile') bar(end + CL.gap);
       if (e.reason) {
-        editable(m.append('text').attr('x', e.x).attr('y', e.y + (e.kind === 'infertile' ? 43 : 38)).attr('text-anchor', 'middle')
+        editable(m.append('text').attr('x', e.x).attr('y', end + (e.kind === 'infertile' ? CL.gap : 0) + 14).attr('text-anchor', 'middle')
           .attr('font-size', '10px').attr('fill', '#475569').text(e.reason), 'childlessReason', e.unionId, e.reason);
       }
     });
