@@ -118,6 +118,9 @@ describe('pop-up windows and help text (clinician request 2026-10-27)', () => {
       expect(app).toContain(`data-popup="${name}"`);
       expect(app).toMatch(new RegExp(`except !== '${name}'`));
     }
+    // the related-family window (clinician request 2026-11-01): closes the same way, its backdrop counts as outside
+    expect(readFileSync(join(process.cwd(), 'src/components/RelationChooser.jsx'), 'utf8')).toContain('data-popup="relation"');
+    expect(app).toMatch(/except !== 'relation'/);
     expect(app).toMatch(/document\.addEventListener\('pointerdown', onDown, true\)/);
     expect(app).toMatch(/e\.key !== 'Escape'/);
     expect(app).toMatch(/performance\.now\(\) - popupClosedAt\.current < 1000/);

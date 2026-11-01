@@ -390,7 +390,7 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 .share-note { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
 .share-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .more-title { font-size: 13.5px; font-weight: 700; color: var(--ink); margin-top: 4px; }
-.new-popover { left: 0; right: auto; width: 440px; max-width: calc(100vw - 32px); max-height: calc(100vh - 110px); overflow-y: auto; }
+.new-popover { left: 0; right: auto; width: 320px; max-width: calc(100vw - 32px); }
 /* İndir: one row per file type, what it is for under its name */
 .download-popover { width: 340px; max-width: calc(100vw - 24px); max-height: calc(100vh - 110px); overflow-y: auto; gap: 4px; }
 .download-item, .download-item-head { display: flex; align-items: flex-start; gap: 10px; text-align: left; color: var(--ink-2); }
@@ -414,28 +414,42 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 .about-popover a { color: var(--accent-ink); }
 .about-links { display: flex; flex-wrap: wrap; gap: 8px; }
 .about-popover a.ui-btn { color: inherit; text-decoration: none; }
-/* "Yeni" → a family whose parents are related (RelationChooser.jsx) */
-.relation-chooser { display: flex; flex-direction: column; gap: 10px; }
-.relation-row { display: flex; flex-direction: column; gap: 5px; }
-.relation-q { font-size: 13px; font-weight: 600; color: var(--ink); }
-.relation-row .segmented { align-self: flex-start; }
-.relation-row .segmented button small { font-weight: 500; color: var(--muted); margin-left: 3px; }
-.relation-row .segmented button:disabled { opacity: 0.4; cursor: not-allowed; }
-.relation-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-.relation-choices-wide { grid-template-columns: 1fr; }
-.relation-choice { text-align: left; font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 9px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); cursor: pointer; }
-.relation-choice small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
-.relation-choice:hover { border-color: var(--accent-line); }
-.relation-choice.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
-.relation-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.relation-result { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; background: var(--sunken); border-radius: var(--radius-sm); font-size: 13px; color: var(--muted); line-height: 1.45; }
-.relation-result b { color: var(--ink); font-size: 14px; }
-.relation-preview { width: 100%; max-height: 260px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-sm); }
-.relation-preview line { stroke: var(--ink); stroke-width: 3; }
+/* "Yeni" → a family whose parents are related: a window of its own (RelationChooser.jsx) */
+.relation-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(21, 28, 51, 0.32); }
+.relation-dialog { width: 760px; max-width: 100%; max-height: calc(100vh - 32px); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-pop); overflow: hidden; }
+.relation-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px 20px; }
+.relation-head h2 { margin: 0; font-size: 17px; font-weight: 700; color: var(--ink); }
+.relation-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 20px; padding: 4px 20px 16px; overflow-y: auto; }
+.relation-label { font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+.relation-left .relation-label + * + .relation-label { margin-top: 16px; }
+.relation-list { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; }
+.relation-row-item { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 9px 12px; font: inherit; font-size: 14px; text-align: left; color: var(--ink); background: var(--surface); border: none; border-top: 1px solid var(--line); cursor: pointer; }
+.relation-row-item:first-child { border-top: none; }
+.relation-row-item small { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.relation-row-item:hover { background: var(--sunken); }
+.relation-row-item.on { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+.relation-row-item.on small { color: var(--accent-ink); }
+.relation-row-item:focus-visible, .relation-pills button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.relation-more { color: var(--muted); font-size: 13px; }
+.relation-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.relation-pills button { font: inherit; font-size: 13px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); cursor: pointer; }
+.relation-pills button:hover { border-color: var(--accent-line); }
+.relation-pills button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.relation-sides { display: flex; flex-direction: column; gap: 8px; }
+.relation-hint { margin: 0; font-size: 12.5px; color: var(--muted); }
+.relation-side { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: center; gap: 8px; font-size: 13px; color: var(--ink); }
+.relation-side select { font: inherit; font-size: 13px; height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); min-width: 0; }
+.relation-right { display: flex; flex-direction: column; gap: 8px; }
+.relation-preview { width: 100%; height: 280px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.relation-preview line, .relation-arrow { stroke: var(--ink); stroke-width: 3; fill: none; }
 .relation-preview rect, .relation-preview circle { fill: var(--paper); stroke: var(--ink); stroke-width: 3; }
 .relation-preview .marked { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 6; }
-.relation-preview .proband { stroke-width: 6; }
-@media (pointer: coarse) { .relation-choice { padding: 10px; font-size: 15px; } }
+.relation-legend { margin: 0; font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.relation-swatch { width: 11px; height: 11px; background: var(--accent-soft); border: 2px solid var(--accent); }
+.relation-summary { margin: 0; font-size: 13.5px; color: var(--ink); line-height: 1.5; }
+.relation-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--line); }
+@media (max-width: 700px) { .relation-body { grid-template-columns: minmax(0, 1fr); } .relation-preview { height: 220px; } }
+@media (pointer: coarse) { .relation-row-item { padding: 12px; font-size: 15px; } .relation-pills button { padding: 10px 12px; font-size: 14px; } }
 
 /* printing (App.jsx handlePrint): only the drawing, fitted to one A4 page */
 #print-root { display: none; }

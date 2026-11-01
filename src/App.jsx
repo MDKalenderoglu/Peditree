@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import * as d3 from 'd3';
 import { usePedigreeStore, needsLeaveWarning, flushAutosave } from './state/usePedigreeStore';
 import { exportSVG, exportPNG, exportPDF, exportFileName, pngBlob, shareFile, downloadBlob, prepareExportSvg } from './utils/exportUtils';
@@ -290,8 +291,11 @@ function App() {
   // "Yeni": the nuclear family, or a ready-made consanguinity template
   // (graph/templates.js; clinician decision 2026-10-25)
   const [newMenu, setNewMenu] = React.useState(false);
+  // the related family opens in a window of its own (clinician request 2026-11-01)
+  const [relationOpen, setRelationOpen] = React.useState(false);
   const handleNewPedigree = (spec = null) => {
     setNewMenu(false);
+    setRelationOpen(false);
     if (window.confirm('Yeni pedigri başlatılsın mı?\n\nŞu anki pedigriyi “Kaydet” ile dosyaya kaydetmediyseniz kaybolur ve geri getirilemez.')) {
       // resetPedigree() / newFromTemplate() clear selection and the undo
       // stack — see usePedigreeStore.js. Only export-banner state (local to
@@ -304,13 +308,14 @@ function App() {
 
   // the toolbar's pop-up windows (Yeni, Paylaş, Diğer, keyboard help) close
   // on a click anywhere outside them, or Escape (clinician request 2026-10-27)
-  const popupOpen = showKeys || newMenu || downloadOpen || !!share || settingsOpen || aboutOpen || openHelp;
+  const popupOpen = showKeys || newMenu || relationOpen || downloadOpen || !!share || settingsOpen || aboutOpen || openHelp;
   const popupClosedAt = React.useRef(-Infinity);
   React.useEffect(() => {
     if (!popupOpen) return;
     const close = (except) => {
       if (except !== 'keys') setShowKeys(false);
       if (except !== 'new') setNewMenu(false);
+      if (except !== 'relation') setRelationOpen(false);
       if (except !== 'download') setDownloadOpen(false);
       if (except !== 'open') setOpenHelp(false);
       if (except !== 'share') setShare(null);
@@ -571,11 +576,17 @@ function App() {
             {newMenu && (
               <div className="keys-popover share-popover new-popover" role="dialog" aria-label="Yeni pedigri">
                 <button className="ui-btn ui-btn-primary" onClick={() => handleNewPedigree(null)}>Proband, anne ve baba ile başla</button>
-                <div className="more-title">Ya da anne-babası akraba olan hazır bir aileyle başlayın:</div>
-                <RelationChooser onStart={handleNewPedigree} />
+                <button className="ui-btn" onClick={() => { setNewMenu(false); setRelationOpen(true); }}>Anne-babası akraba olan bir aileyle başla…</button>
               </div>
             )}
           </div>
+          {/* on the page, not in the toolbar: a fixed window must not follow the toolbar's box */}
+          {relationOpen && createPortal(
+            <div className="relation-backdrop">
+              <RelationChooser onStart={handleNewPedigree} onClose={() => setRelationOpen(false)} />
+            </div>,
+            document.body,
+          )}
           <div className="keys-wrap" data-popup="open">
             <button className="ui-btn" onClick={handleOpenClick} aria-expanded={openHelp} title="Daha önce kaydettiğiniz bir pedigri dosyasını (.peditree.json) ya da bir PED dosyasını açar"><FolderOpen size={15} /> Aç</button>
             {openHelp && (
