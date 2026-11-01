@@ -9,6 +9,7 @@
  * no invariant or readability violation. Pure and deterministic.
  */
 import { computePclLayout } from './index';
+import { layoutParentage } from './art';
 import { checkAllInvariants } from '../../audit/layoutInvariants';
 import { checkConnectorReadability } from '../../audit/connectorReadability';
 
@@ -41,7 +42,8 @@ function bestVariant(graph) {
   let best = null;
   for (const opts of VARIANTS) {
     const l = computePclLayout(graph, opts);
-    const drawn = { ...graph, nodes: l.nodes, edges: l.edges };
+    // audited against the parentage the drawing shows (adopted-in children, carried children: art.js)
+    const drawn = { ...layoutParentage(graph), nodes: l.nodes, edges: l.edges };
     const clean = checkAllInvariants(drawn).length === 0 && checkConnectorReadability(drawn).length === 0;
     const xs = l.nodes.map((n) => n.x);
     const width = xs.length ? Math.max(...xs) - Math.min(...xs) : 0;

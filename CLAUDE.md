@@ -97,6 +97,7 @@ Consanguinity is derived from the drawing (`src/graph/kinship.js`, run in `final
 - `qp.js` — separated QP (FISTA + exact per-row PAVA projection): symbols can never overlap.
 - `index.js` — objective (couple over children, spouse gap, compactness, optional stability), footprint rule (nobody but the parents above a sibship line), adaptive row gaps.
 - `routing.js` — NSGC connectors, relationship lanes, line jumps for unavoidable crossings.
+- `art.js` — assisted reproduction: donors / carriers beside the parent they stand in for (invisible `artVirtual` bonds), a carried child under its carrier, D/G lines (straight only where no symbol is touched). `layoutParentage(graph)` is the parentage the drawing shows; every layout audit (store, tidy, incremental) reads it, never the bare document.
 
 Fallback engines are kept (do not delete until PCL has been validated for at least one release): `PEDITREE_PACKER=recursive` (`recursiveIntervalPacker.js`) and `PEDITREE_PACKER=legacy` (`pedigreeLayout.js` / legacy `layoutPacking`). `globalThis.__PEDITREE_PACKER__` overrides in the browser.
 

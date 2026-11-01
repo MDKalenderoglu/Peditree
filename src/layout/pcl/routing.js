@@ -91,6 +91,7 @@ export function estimateLevelNeeds(S, rows, xPos) {
   for (const [, ids] of rows) ids.forEach((id, k) => rowIndex.set(id, k));
   const lanes = new Map(), buses = new Map();
   for (const u of S.unions) {
+    if (u.artVirtual) continue; // assisted reproduction: an invisible bond, no line (art.js)
     const [a, b] = u.partners || [];
     if (xPos[a] === undefined || xPos[b] === undefined) continue;
     const ga = S.indById.get(a).generation;
@@ -176,6 +177,13 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
   const unionGeom = new Map(); // uid -> { y, prefX, lo, hi }
   const lanesByRow = new Map();
   for (const u of S.unions) {
+    // assisted reproduction (art.js): an invisible bond, no line; a carrier's bond has its
+    // line of descent start at the bottom of her symbol, so the children stand under her
+    if (u.artVirtual) {
+      const c = u.artCarrier;
+      if (c && xPos[c] !== undefined) unionGeom.set(u.id, { y: yPos[c] + halfOf(S.indById.get(c)), prefX: xPos[c], lo: xPos[c], hi: xPos[c] });
+      continue;
+    }
     const [a, b] = u.partners || [];
     if (xPos[a] === undefined || xPos[b] === undefined) continue;
     const { edgeType } = relationshipBackgroundToEdgeInfo(u.relationshipBackground);

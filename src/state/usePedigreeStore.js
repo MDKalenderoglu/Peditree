@@ -27,10 +27,11 @@ import { computePedigreeLayoutV2 as computePedigreeLayout } from '../utils/pedig
 import { selectedPacker } from '../utils/layoutPacking';
 import { computeStableLayout } from '../layout/pcl/incremental';
 import { computeTidyLayout } from '../layout/pcl/tidy';
+import { layoutParentage } from '../layout/pcl/art';
 import { auditLayoutIntegrity } from '../utils/layoutIntegrity';
 import { assessRelationshipMutation } from '../utils/relationshipSafety';
 import { validateDocument } from '../graph/validate';
-import { displayParentage, subjectOf } from '../graph/model';
+import { subjectOf } from '../graph/model';
 import * as ops from '../graph/ops';
 import { fromPed } from '../graph/ped';
 import { buildTemplate } from '../graph/templates';
@@ -151,7 +152,7 @@ function deriveAll(doc, ui = {}, ctx = null) {
   if (errors.length > 0) console.error('Pedigree graph integrity failed', errors);
   // geometry is audited against the parentage that is drawn (adopted-in
   // children under their social parents), see displayParentage
-  const layoutIssues = tagIssues(auditLayoutIntegrity(layout, displayParentage(graph).graph), 'layout');
+  const layoutIssues = tagIssues(auditLayoutIntegrity(layout, layoutParentage(graph)), 'layout');
   const integrityIssues = [...graphIssues, ...layoutIssues];
   return {
     pedigreeData: combined,
