@@ -5,7 +5,7 @@
  * the same store operations as before. The store re-validates every action
  * independently of what this panel offers.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { X, Trash2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { computeSiblingCreationPlan, computeUnionCreationPlan } from '../state/usePedigreeStore';
 import { AGE_EXAMPLE } from '../utils/age';
@@ -30,7 +30,8 @@ const STATUS_OPTIONS = [['together', 'Birlikte'], ['divorced', 'Boşanmış/Ayr�
 function AddLineField({ onAdd, ...rest }) {
   const [text, setText] = useState('');
   const latest = useRef({ text, onAdd });
-  latest.current = { text, onAdd };
+  // the newest onAdd for a write after this render (refs are not written while rendering)
+  useLayoutEffect(() => { latest.current.onAdd = onAdd; });
   const flush = useRef(() => {
     const t = latest.current.text.trim();
     pendingDrafts.delete(flush.current);
@@ -40,7 +41,7 @@ function AddLineField({ onAdd, ...rest }) {
   const add = () => { flush.current(); setText(''); latest.current.text = ''; };
   return (
     <input {...rest} value={text}
-      onChange={(e) => { setText(e.target.value); if (e.target.value.trim()) pendingDrafts.add(flush.current); else pendingDrafts.delete(flush.current); }}
+      onChange={(e) => { setText(e.target.value); latest.current.text = e.target.value; if (e.target.value.trim()) pendingDrafts.add(flush.current); else pendingDrafts.delete(flush.current); }}
       onBlur={add}
       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} />
   );

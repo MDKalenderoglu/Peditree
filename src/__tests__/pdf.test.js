@@ -5,6 +5,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { inflateSync } from 'node:zlib';
+import { Buffer } from 'node:buffer';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pageLayout, pdfBlob, rgbaToRgb, A4, MARGIN, DPI } from '../utils/pdf';
