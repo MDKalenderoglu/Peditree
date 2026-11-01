@@ -15,6 +15,7 @@ import DraftField from './components/DraftField';
 import { nextPerson, RING_KEYS } from './utils/keyboardNav';
 import { toPed } from './graph/ped';
 import { mergeIntoGroup as checkMerge } from './graph/ops';
+import RingSettings from './components/RingSettings';
 import RelationChooser from './components/RelationChooser';
 import { withGeneticLine, subjectOf, adoptionOf, ancestorsOf } from './graph/model';
 import { clinicalNamer } from './utils/clinicalNotices';
@@ -703,7 +704,7 @@ function App() {
         <div className="toolbar-sep" />
           <div className="keys-wrap" data-popup="settings">
             <button className="ui-btn" onClick={() => setSettingsOpen(v => !v)} aria-expanded={settingsOpen}
-              title="Ayarlar: çizimin görünümü, yazı tipi ve indirilen resimler">
+              title="Ayarlar: çizimin görünümü, yazı tipi, halka menü ve indirilen resimler">
               <SlidersHorizontal size={15} /> Ayarlar
             </button>
             {settingsOpen && (
@@ -757,6 +758,7 @@ function App() {
                     ))}
                   </div>
                 </div>
+                <RingSettings />
                 <div className="settings-group">
                   <div className="more-title">Dosya açma</div>
                   <label className="check">

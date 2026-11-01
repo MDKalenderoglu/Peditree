@@ -8,13 +8,14 @@
  * symbol visible and clickable. The same store operations as the right
  * panel; the store refuses (with a reason) anything the graph rules forbid.
  */
-import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import { Stethoscope, HeartPulse, Users, StickyNote } from 'lucide-react';
 import FindingsPalette from './FindingsPalette';
 import DraftField from './DraftField';
 import { groupOf, multipleName } from '../graph/multiples';
 import { isPregnancy, isGroup } from '../graph/model';
 import { parseGroupCount } from '../graph/ops';
+import { useRingPrefs, RING_ROWS, RING_PREGNANCY } from '../utils/ringPrefs';
 
 const S = 9; // glyph half-size
 
@@ -142,6 +143,12 @@ export default function RadialAddMenu({
   const [nudge, setNudge] = useState({ x: 0, y: 0 });
   // several people in one symbol: the number typed before a shape is picked (clinician decisions 2026-11-01)
   const [groupCount, setGroupCount] = useState('3');
+  // the clinician's ring (ringPrefs.js) and whether its hidden choices are shown for now
+  const ring = useRingPrefs((st) => st.ring);
+  // (for this person only: another person's ring starts without them)
+  const [moreFor, setMoreFor] = useState(null);
+  const showMore = moreFor === node.id;
+  const setShowMore = () => setMoreFor((v) => (v === node.id ? null : node.id));
   useLayoutEffect(() => {
     const el = popRef.current;
     if (!el) { setNudge({ x: 0, y: 0 }); return; }
@@ -237,6 +244,53 @@ export default function RadialAddMenu({
     bottom: (sex) => (lastUnion ? onAddChild(lastUnion.id, sex, null, { adopted: true }) : onAddChild(null, sex, node.id, { adopted: true })),
   };
 
+  // the clinician's ring (Ayarlar → Halka menü, ringPrefs.js): rows and choices in their order;
+  // hidden ones wait under "Diğer…" — never lost (clinician request 2026-11-01)
+  const shown = (id) => showMore || !ring.hidden.includes(id);
+  const pregnancyChoices = (sector) => (choices[sector] || []).filter((c) => (c[3] || 1) === 2 && shown(c[1]));
+  const rowAvailable = (sector, id) => (id === 'pregnancy' ? (choices[sector] || []).some((c) => (c[3] || 1) === 2) : !!addGroup[sector]);
+  const flyoutRows = (sector) => ring.rows.filter((id) => rowAvailable(sector, id) && shown(id) && (id !== 'pregnancy' || pregnancyChoices(sector).length));
+  const flyoutHasHidden = (sector) => ring.hidden.some((id) => (RING_ROWS.some((x) => x.id === id) ? rowAvailable(sector, id)
+    : RING_PREGNANCY.some((x) => x.id === id) && rowAvailable(sector, 'pregnancy')));
+  const rowView = !active || !choices[active] ? {} : {
+    pregnancy: (
+      <div className="flyout-row">
+        <span className="flyout-row-label">Gebelik</span>
+        {pregnancyChoices(active).map(([title, glyph, run]) => (
+          <button key={title} className="quick-btn" title={title} aria-label={title} onClick={() => { run(); setActive(null); }}><Glyph kind={glyph} /></button>
+        ))}
+      </div>
+    ),
+    // adopted in (NSGC brackets, dashed line from the adoptive parents; clinician decisions 2026-11-01)
+    adopted: addGroup[active] && (
+      <div className="flyout-row">
+        <span className="flyout-row-label">Evlat edinilmiş</span>
+        {[['male', 'erkek'], ['female', 'kız'], ['unknown', 'cinsiyeti bilinmeyen']].map(([sex, word]) => {
+          const title = `${active === 'left' ? 'Kardeş' : 'Çocuk'}: evlat edinilmiş ${word} (köşeli parantez, kesikli iniş çizgisi)`;
+          return (
+            <button key={sex} className="quick-btn" title={title} aria-label={title}
+              onClick={() => { addAdopted[active](sex); setActive(null); }}><Glyph kind={`adopted-${sex}`} /></button>
+          );
+        })}
+      </div>
+    ),
+    group: addGroup[active] && (
+      <div className="flyout-row">
+        <span className="flyout-row-label">Birden çok</span>
+        <input className="flyout-count" value={groupCount} inputMode="numeric" maxLength={2} aria-label="Kişi sayısı (bilinmiyorsa n)"
+          title="Kişi sayısı: 2–99; bilinmiyorsa n" onChange={(e) => setGroupCount(e.target.value)} />
+        {[['male', 'erkek'], ['female', 'kız'], ['unknown', 'cinsiyeti karışık ya da bilinmeyen']].map(([sex, word]) => {
+          const count = parseGroupCount(groupCount);
+          const title = `${active === 'left' ? 'Kardeş' : 'Çocuk'}: ${count ?? '?'} ${word} (tek sembol, içinde sayı)`;
+          return (
+            <button key={sex} className="quick-btn" title={count ? title : 'Önce 2–99 arası bir sayı ya da n yazın'} aria-label={title} disabled={!count}
+              onClick={() => { addGroup[active](sex, count); setActive(null); }}><Glyph kind={`group-${sex}`} label={count ?? '?'} /></button>
+          );
+        })}
+      </div>
+    ),
+  };
+
   const r = Math.max(24, anchor.size / 2 + 8);
   const R = r + 34;
   const box = R + 2;
@@ -296,13 +350,20 @@ export default function RadialAddMenu({
       const inner = isLoss ? [] : [['male', 'Erkek'], ['female', 'Kadın'], ['unknown', 'Bilinmiyor']].map(([v, t]) => ({
         label: t, on: (node.sex || 'unknown') === v, onClick: () => onUpdate(node.id, { sex: v }),
       }));
-      const outer = [
-        { label: 'Etkilenmiş', on: !!node.affected, onClick: () => onUpdate(node.id, { affected: !node.affected }), title: 'Kişi hasta (etkilenmiş): sembolün içi tamamen dolar. Hastalığın adını yazmak için Bulgu düğmesini kullanın.' },
-        { label: 'Taşıyıcı', on: !!node.carrier, onClick: () => onUpdate(node.id, { carrier: !node.carrier }), title: 'Kişi hasta değil ama hastalığa yol açan geni taşıyor' },
-        ...(isLoss ? [] : [{ label: 'Vefat', on: !!node.deceased, onClick: () => onUpdate(node.id, { deceased: !node.deceased }), title: 'Kişi hayatta değil: sembolün üzerine çapraz çizgi çekilir' }]),
-        { label: 'Proband', on: !!node.proband, onClick: () => (node.proband ? onClearProband() : onSetProband(node.id)), title: 'Ailede incelemeye yol açan ilk etkilenmiş kişi: yanında ok ve P harfi çizilir' },
+      const byId = {
+        affected: { label: 'Etkilenmiş', on: !!node.affected, onClick: () => onUpdate(node.id, { affected: !node.affected }), title: 'Kişi hasta (etkilenmiş): sembolün içi tamamen dolar. Hastalığın adını yazmak için Bulgu düğmesini kullanın.' },
+        carrier: { label: 'Taşıyıcı', on: !!node.carrier, onClick: () => onUpdate(node.id, { carrier: !node.carrier }), title: 'Kişi hasta değil ama hastalığa yol açan geni taşıyor' },
+        deceased: isLoss ? null : { label: 'Vefat', on: !!node.deceased, onClick: () => onUpdate(node.id, { deceased: !node.deceased }), title: 'Kişi hayatta değil: sembolün üzerine çapraz çizgi çekilir' },
+        proband: { label: 'Proband', on: !!node.proband, onClick: () => (node.proband ? onClearProband() : onSetProband(node.id)), title: 'Ailede incelemeye yol açan ilk etkilenmiş kişi: yanında ok ve P harfi çizilir' },
         // the consultand (clinician decisions 2026-11-01): an arrow without "P"
-        ...(isLoss || !onSetConsultand ? [] : [{ label: 'Danışan', on: !!node.consultand, onClick: () => (node.consultand ? onClearConsultand() : onSetConsultand(node.id)), title: 'Danışmanlık için başvuran kişi: yanında yalnız ok çizilir (P yok). Ailede bir danışan olur; proband ile aynı kişi olabilir.' }]),
+        consultand: isLoss || !onSetConsultand ? null : { label: 'Danışan', on: !!node.consultand, onClick: () => (node.consultand ? onClearConsultand() : onSetConsultand(node.id)), title: 'Danışmanlık için başvuran kişi: yanında yalnız ok çizilir (P yok). Ailede bir danışan olur; proband ile aynı kişi olabilir.' },
+      };
+      // the clinician's order; hidden choices under "Diğer…" (Ayarlar → Halka menü)
+      const available = ring.status.filter((id) => byId[id]);
+      const hiddenHere = available.filter((id) => ring.hidden.includes(id));
+      const outer = [
+        ...available.filter((id) => showMore || !hiddenHere.includes(id)).map((id) => byId[id]),
+        ...(hiddenHere.length ? [{ label: showMore ? 'Daha az' : 'Diğer…', on: false, onClick: () => setShowMore(), title: showMore ? 'Gizlediğiniz seçenekleri yeniden gizle' : 'Halka menüden gizlediğiniz seçenekler (Ayarlar → Halka menü)' }] : []),
       ];
       return [...band(-135, inner, B1, 40), ...band(-135, outer, B2, 33)];
     },
@@ -378,43 +439,17 @@ export default function RadialAddMenu({
             <span className="radial-hint">{disabled[active]}</span>
           ) : (
             <>
-              {[1, 2].map((row) => (
-                <div key={row} className="flyout-row">
-                  {row === 2 && <span className="flyout-row-label">Gebelik</span>}
-                  {choices[active].filter((c) => (c[3] || 1) === row).map(([title, glyph, run]) => (
-                    glyph
-                      ? <button key={title} className="quick-btn" title={title} aria-label={title} onClick={() => { run(); setActive(null); }}><Glyph kind={glyph} /></button>
-                      : <button key={title} className="quick-text" onClick={() => { run(); setActive(null); }}>{title}</button>
-                  ))}
-                </div>
-              ))}
-              {/* adopted in (NSGC brackets, dashed line from the adoptive parents; clinician decisions 2026-11-01) */}
-              {addGroup[active] && (
-                <div className="flyout-row">
-                  <span className="flyout-row-label">Evlat edinilmiş</span>
-                  {[['male', 'erkek'], ['female', 'kız'], ['unknown', 'cinsiyeti bilinmeyen']].map(([sex, word]) => {
-                    const title = `${active === 'left' ? 'Kardeş' : 'Çocuk'}: evlat edinilmiş ${word} (köşeli parantez, kesikli iniş çizgisi)`;
-                    return (
-                      <button key={sex} className="quick-btn" title={title} aria-label={title}
-                        onClick={() => { addAdopted[active](sex); setActive(null); }}><Glyph kind={`adopted-${sex}`} /></button>
-                    );
-                  })}
-                </div>
-              )}
-              {addGroup[active] && (
-                <div className="flyout-row">
-                  <span className="flyout-row-label">Birden çok</span>
-                  <input className="flyout-count" value={groupCount} inputMode="numeric" maxLength={2} aria-label="Kişi sayısı (bilinmiyorsa n)"
-                    title="Kişi sayısı: 2–99; bilinmiyorsa n" onChange={(e) => setGroupCount(e.target.value)} />
-                  {[['male', 'erkek'], ['female', 'kız'], ['unknown', 'cinsiyeti karışık ya da bilinmeyen']].map(([sex, word]) => {
-                    const count = parseGroupCount(groupCount);
-                    const title = `${active === 'left' ? 'Kardeş' : 'Çocuk'}: ${count ?? '?'} ${word} (tek sembol, içinde sayı)`;
-                    return (
-                      <button key={sex} className="quick-btn" title={count ? title : 'Önce 2–99 arası bir sayı ya da n yazın'} aria-label={title} disabled={!count}
-                        onClick={() => { addGroup[active](sex, count); setActive(null); }}><Glyph kind={`group-${sex}`} label={count ?? '?'} /></button>
-                    );
-                  })}
-                </div>
+              {/* the sexes, then the rows in the clinician's order (Ayarlar → Halka menü; ringPrefs.js) */}
+              <div className="flyout-row">
+                {choices[active].filter((c) => (c[3] || 1) === 1).map(([title, glyph, run]) => (
+                  <button key={title} className="quick-btn" title={title} aria-label={title} onClick={() => { run(); setActive(null); }}><Glyph kind={glyph} /></button>
+                ))}
+              </div>
+              {flyoutRows(active).map((rowId) => rowView[rowId] && <Fragment key={rowId}>{rowView[rowId]}</Fragment>)}
+              {flyoutHasHidden(active) && (
+                <button className="flyout-more" onClick={() => setShowMore()} aria-expanded={showMore}>
+                  {showMore ? 'Daha az' : 'Diğer…'}
+                </button>
               )}
             </>
           )}
