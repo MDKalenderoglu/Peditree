@@ -15,6 +15,7 @@
  * than standard text, so a label never runs into a neighbour (notation R4).
  */
 import { create } from 'zustand';
+import { tk } from '../i18n';
 import kalam400 from '@fontsource/kalam/files/kalam-latin-400-normal.woff2?url';
 import kalam400x from '@fontsource/kalam/files/kalam-latin-ext-400-normal.woff2?url';
 import kalam700 from '@fontsource/kalam/files/kalam-latin-700-normal.woff2?url';
@@ -50,16 +51,16 @@ const LATIN = 'U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+
  * text under a symbol keep their spacing.
  */
 export const DRAWING_FONTS = [
-  { id: 'standard', label: 'Standart', group: 'plain', family: STANDARD_FAMILY, k: 1, files: null },
-  { id: 'atkinson', label: 'Atkinson Hyperlegible', note: 'I, l ve 1 karışmaz', group: 'plain', name: 'Atkinson Hyperlegible Next',
+  { id: 'standard', label: tk('Standart'), group: 'plain', family: STANDARD_FAMILY, k: 1, files: null },
+  { id: 'atkinson', label: 'Atkinson Hyperlegible', note: tk('I, l ve 1 karışmaz'), group: 'plain', name: 'Atkinson Hyperlegible Next',
     family: "'Atkinson Hyperlegible Next', sans-serif", k: 1.07, files: { 400: [atk400, atk400x], 700: [atk700, atk700x] } },
-  { id: 'serif', label: 'Source Serif', note: 'tırnaklı, rapor görünümü', group: 'plain', name: 'Source Serif 4',
+  { id: 'serif', label: 'Source Serif', note: tk('tırnaklı, rapor görünümü'), group: 'plain', name: 'Source Serif 4',
     family: "'Source Serif 4', Georgia, serif", k: 1, files: { 400: [serif400, serif400x], 700: [serif700, serif700x] } },
-  { id: 'kalam', label: 'Kalam', note: 'düzgün el yazısı', group: 'hand', name: 'Kalam',
+  { id: 'kalam', label: 'Kalam', note: tk('düzgün el yazısı'), group: 'hand', name: 'Kalam',
     family: "'Kalam', cursive", k: 1.1, files: { 400: [kalam400, kalam400x], 700: [kalam700, kalam700x] } },
-  { id: 'patrick', label: 'Patrick Hand', note: 'okunaklı el yazısı', group: 'hand', name: 'Patrick Hand',
+  { id: 'patrick', label: 'Patrick Hand', note: tk('okunaklı el yazısı'), group: 'hand', name: 'Patrick Hand',
     family: "'Patrick Hand', cursive", k: 1.15, files: { 400: [patrick400, patrick400x] } },
-  { id: 'caveat', label: 'Caveat', note: 'hızlı kalem notu', group: 'hand', name: 'Caveat',
+  { id: 'caveat', label: 'Caveat', note: tk('hızlı kalem notu'), group: 'hand', name: 'Caveat',
     family: "'Caveat', cursive", k: 1.15, files: { 400: [caveat400, caveat400x], 700: [caveat700, caveat700x] } },
 ];
 
@@ -75,10 +76,10 @@ export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNu
  * symbols keeps its size (the layout leaves room for it).
  */
 export const LEGEND_SIZES = [
-  { id: 'small', label: 'Küçük', scale: 0.85 },
-  { id: 'normal', label: 'Normal', scale: 1 },
-  { id: 'large', label: 'Büyük', scale: 1.2 },
-  { id: 'xlarge', label: 'Çok büyük', scale: 1.45 },
+  { id: 'small', label: tk('Küçük'), scale: 0.85 },
+  { id: 'normal', label: tk('Normal'), scale: 1 },
+  { id: 'large', label: tk('Büyük'), scale: 1.2 },
+  { id: 'xlarge', label: tk('Çok büyük'), scale: 1.45 },
 ];
 const VIEW_KEY = 'peditree.view.v1';
 

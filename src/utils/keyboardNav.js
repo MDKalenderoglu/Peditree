@@ -39,9 +39,27 @@ export function nextPerson(data, id, dir) {
   return nearest(nodes.filter((n) => Math.abs(n.y - y) < 1))?.id ?? null;
 }
 
-/** Letters for one selected person: a sector or satellite of the ring, or an action. */
-export const RING_KEYS = {
-  a: 'parents', e: 'spouse',
-  k: 'left', c: 'bottom', 'ç': 'bottom',
-  b: 'findings', d: 'status', i: 'twins', 'ı': 'twins', n: 'note',
+/**
+ * Letters for one selected person: a sector or satellite of the ring, or an
+ * action — the initials of the words in the interface's language (Anne-baba,
+ * Eş … / Parents, Spouse …).
+ */
+const RING_KEYS_BY_LANG = {
+  tr: {
+    a: 'parents', e: 'spouse',
+    k: 'left', c: 'bottom', 'ç': 'bottom',
+    b: 'findings', d: 'status', i: 'twins', 'ı': 'twins', n: 'note',
+  },
+  en: {
+    p: 'parents', s: 'spouse',
+    b: 'left', c: 'bottom',
+    f: 'findings', a: 'status', t: 'twins', n: 'note',
+  },
+};
+export const ringKeysFor = (lang) => RING_KEYS_BY_LANG[lang] || RING_KEYS_BY_LANG.tr;
+export const RING_KEYS = RING_KEYS_BY_LANG.tr;
+/** How the keyboard help writes each action's letter. */
+export const KEY_LETTERS = {
+  tr: { parents: 'A', spouse: 'E', left: 'K', bottom: 'C veya Ç', findings: 'B', status: 'D', twins: 'İ veya I', note: 'N' },
+  en: { parents: 'P', spouse: 'S', left: 'B', bottom: 'C', findings: 'F', status: 'A', twins: 'T', note: 'N' },
 };
