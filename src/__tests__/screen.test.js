@@ -783,3 +783,44 @@ describe('every person, every part of the ring (the areas that kept breaking)', 
     errors.mockRestore();
   });
 });
+
+describe('notation per the literature (NSGC 2022 and its 2025 correction)', () => {
+  it('ectopic pregnancy: the triangle with a slash and "ECT" below, like a termination but named', async () => {
+    await run(() => { S().addChildTo('proband', 'unknown', { ectopic: true }); S().addChildTo('proband', 'unknown', { termination: true }); });
+    const ect = g().individuals.find(i => i.ectopic).id, top = g().individuals.find(i => i.termination).id;
+    expect(drawn(ect).querySelectorAll(':scope > line').length).toBe(1);
+    expect(drawn(top).querySelectorAll(':scope > line').length).toBe(1);
+    expect([...drawn(ect).querySelectorAll('text')].some(t => t.textContent === 'ECT')).toBe(true);
+  });
+
+  it('a carrier without a named finding: the left half cross-hatched, explained as "Taşıyıcı" in the key; never the old dot', async () => {
+    await run(() => { S().updateIndividual('mother', { carrier: true }); S().updateIndividual('father', { carrier: true, affected: true }); });
+    for (const id of ['mother', 'father']) {
+      expect(drawn(id).querySelector('.condition-carrier').getAttribute('fill')).toBe('url(#fill-cross)');
+      expect(drawn(id).querySelector('.carrier-dot')).toBeNull();
+    }
+    expect(drawn('father').querySelector('.condition-region').getAttribute('fill')).not.toBe('url(#fill-cross)');
+    const row = $$('.condition-legend text').find(t => t.textContent === 'Taşıyıcı');
+    expect(row).toBeTruthy();
+    expect(row.classList.contains('editable')).toBe(false);
+    await run(() => { S().updateIndividual('mother', { carrier: false }); S().updateIndividual('father', { carrier: false }); });
+    expect($$('.condition-legend text').some(t => t.textContent === 'Taşıyıcı')).toBe(false);
+  });
+});
+
+describe('the ring\'s "Yardımcı üreme ile" row', () => {
+  it('hidden at first, under "Diğer…"; a role, then the child: the child and the donor in one step', async () => {
+    await select('mother');
+    await key('c');
+    expect(flyoutText()).not.toMatch(/Yardımcı üreme ile/);
+    await click(button('Diğer…', flyout()));
+    expect(flyoutText()).toMatch(/Yardımcı üreme ile/);
+    const add = () => buttons(flyout()).find(b => /devam eden gebelik/.test(b.getAttribute('aria-label') || ''));
+    expect(add().disabled).toBe(true); // a role first
+    await click(buttons(flyout()).find(b => b.textContent === 'Sperm donörü'));
+    await click(add());
+    const pregnancy = g().individuals.find(i => i.ongoingPregnancy);
+    expect(pregnancy).toBeTruthy();
+    expect(g().reproductiveLinks).toEqual([expect.objectContaining({ childId: pregnancy.id, role: 'sperm_donor' })]);
+  });
+});

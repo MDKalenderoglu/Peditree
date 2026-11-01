@@ -380,6 +380,7 @@ export function addChild(doc, unionId, opts = {}) {
       ...pregnancyFlags(pregnancyKind(opts)),
       ...(opts.count !== undefined ? { count: opts.count } : {}),
     });
+    if (opts.reproRole !== undefined && (opts.adopted || opts.count !== undefined)) block('Yardımcı üremeyle doğan çocuk aynı anda evlat edinilmiş ya da sayılı sembol olarak eklenemez.');
     // an adopted-in child (clinician decisions 2026-11-01): the adoptive link only, no biological one
     if (opts.adopted) {
       if (pregnancyKind(opts) || opts.count !== undefined) block('Evlat edinilen çocuk bir gebelik ya da sayılı sembol olamaz.');
@@ -387,7 +388,9 @@ export function addChild(doc, unionId, opts = {}) {
     } else {
       draftAddChild(d, unionId, childId, { orderPolicy: opts.orderPolicy || 'byAge' });
     }
-    return { created: { childId } };
+    // with a donor or carrier at once (the ring's "Yardımcı üreme ile" row): one step, one undo
+    const reproId = opts.reproRole ? draftAddReproductiveLink(d, childId, opts.reproRole) : undefined;
+    return { created: { childId, ...(reproId ? { personId: reproId } : {}) } };
   });
 }
 
@@ -706,32 +709,35 @@ export function setAdoption(doc, id, to) {
  * with it, someone already in the pedigree (e.g. a sister as the carrier).
  */
 export function addReproductiveLink(doc, childId, role, opts = {}) {
-  return commit(doc, (d) => {
-    const g = d.graph;
-    const child = g.individuals.find((i) => i.id === childId);
-    if (!child) block('Birey grafikte bulunamadı.');
-    if (!REPRO_ROLES.includes(role)) block('Bilinmeyen yardımcı üreme rolü.');
-    const links = g.reproductiveLinks || [];
-    const taken = (list) => links.some((l) => l.childId === childId && list.includes(l.role));
-    if (role === 'sperm_donor' && taken(['sperm_donor'])) block('Bu çocuğun sperm donörü zaten çizili.');
-    if (EGG_SOURCE.includes(role) && taken(EGG_SOURCE)) block('Bu çocuğun yumurtası zaten bir donörden ya da taşıyıcı anneden geliyor.');
-    if (CARRIER_ROLES.includes(role) && taken(CARRIER_ROLES)) block('Bu gebeliği taşıyan kişi zaten çizili.');
-    let personId = opts.personId;
-    if (!personId) {
-      personId = `de_art_${editNumber(d)}`;
-      draftAddPerson(d, {
-        id: personId, sex: role === 'sperm_donor' ? 'male' : 'female',
-        generation: (child.generation ?? 3) - 1, relation: ART_DONOR_RELATION, label: REPRO_LABEL[role],
-      });
-    }
-    // twins: the co-twins of one pregnancy share its carrier; identical twins share their donors too
-    const rel = g.parentChildRelationships.find((r) => r.children.includes(childId));
-    const group = (rel?.multiples || []).find((m) => m.children.includes(childId));
-    const shares = group && (CARRIER_ROLES.includes(role) || group.zygosity === 'monozygotic');
-    const children = shares ? group.children : [childId];
-    g.reproductiveLinks = [...links, ...children.map((c) => ({ childId: c, personId, role }))];
-    return { created: { personId } };
-  });
+  return commit(doc, (d) => ({ created: { personId: draftAddReproductiveLink(d, childId, role, opts.personId) } }));
+}
+
+/** The draft part of addReproductiveLink (also used by addChild's `reproRole`): returns the donor's / carrier's id. */
+function draftAddReproductiveLink(d, childId, role, existingId) {
+  const g = d.graph;
+  const child = g.individuals.find((i) => i.id === childId);
+  if (!child) block('Birey grafikte bulunamadı.');
+  if (!REPRO_ROLES.includes(role)) block('Bilinmeyen yardımcı üreme rolü.');
+  const links = g.reproductiveLinks || [];
+  const taken = (list) => links.some((l) => l.childId === childId && list.includes(l.role));
+  if (role === 'sperm_donor' && taken(['sperm_donor'])) block('Bu çocuğun sperm donörü zaten çizili.');
+  if (EGG_SOURCE.includes(role) && taken(EGG_SOURCE)) block('Bu çocuğun yumurtası zaten bir donörden ya da taşıyıcı anneden geliyor.');
+  if (CARRIER_ROLES.includes(role) && taken(CARRIER_ROLES)) block('Bu gebeliği taşıyan kişi zaten çizili.');
+  let personId = existingId;
+  if (!personId) {
+    personId = `de_art_${editNumber(d)}`;
+    draftAddPerson(d, {
+      id: personId, sex: role === 'sperm_donor' ? 'male' : 'female',
+      generation: (child.generation ?? 3) - 1, relation: ART_DONOR_RELATION, label: REPRO_LABEL[role],
+    });
+  }
+  // twins: the co-twins of one pregnancy share its carrier; identical twins share their donors too
+  const rel = g.parentChildRelationships.find((r) => r.children.includes(childId));
+  const group = (rel?.multiples || []).find((m) => m.children.includes(childId));
+  const shares = group && (CARRIER_ROLES.includes(role) || group.zygosity === 'monozygotic');
+  const children = shares ? group.children : [childId];
+  g.reproductiveLinks = [...links, ...children.map((c) => ({ childId: c, personId, role }))];
+  return personId;
 }
 
 /** Take a donor or carrier away from a child; a person added only for it goes too, unless something was written about them. */

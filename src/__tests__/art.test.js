@@ -258,3 +258,18 @@ describe('drawn: every case of the figure keeps the drawing\'s rules', () => {
     expect(edges.some(e => ['union', 'consanguineousUnion'].includes(e.type) && e.unionId?.startsWith('__art__'))).toBe(false);
   });
 });
+
+describe('a child with its donor or carrier in one step (the ring\'s "Yardımcı üreme ile")', () => {
+  it('one step adds both; one undo takes both away; never together with adopted or a numbered symbol', () => {
+    const people = g().individuals.length;
+    const r = S().addChildToUnion('U_PARENTS', 'unknown', { ongoingPregnancy: true, reproRole: 'gestational_carrier' });
+    expect(r.ok, r.reason).toBe(true);
+    expect(g().individuals.length).toBe(people + 2);
+    expect(g().reproductiveLinks).toEqual([{ childId: r.created.childId, personId: r.created.personId, role: 'gestational_carrier' }]);
+    S().undo();
+    expect(g().individuals.length).toBe(people);
+    expect(g().reproductiveLinks).toEqual([]);
+    expect(S().addChildToUnion('U_PARENTS', 'male', { adopted: true, reproRole: 'sperm_donor' }).ok).toBe(false);
+    expect(S().addChildToUnion('U_PARENTS', 'male', { count: 3, reproRole: 'sperm_donor' }).ok).toBe(false);
+  });
+});

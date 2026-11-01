@@ -16,7 +16,11 @@ export const RING_ROWS = [
   { id: 'pregnancy', label: 'Gebelik' },
   { id: 'adopted', label: 'Evlat edinilmiş' },
   { id: 'group', label: 'Birden çok' },
+  // rare in the clinic (clinician 2026-11-02): under "Diğer…" until the clinician brings it forward
+  { id: 'art', label: 'Yardımcı üreme ile' },
 ];
+/** rows that start hidden — also for a stored preference made before they existed */
+const HIDDEN_AT_FIRST = ['art'];
 export const RING_PREGNANCY = [
   { id: 'loss', label: 'Düşük' },
   { id: 'stillbirth', label: 'Ölü doğum (SB)' },
@@ -35,7 +39,7 @@ export const RING_STATUS = [
 export const DEFAULT_RING = {
   rows: RING_ROWS.map((r) => r.id),
   status: RING_STATUS.map((s) => s.id),
-  hidden: [],
+  hidden: [...HIDDEN_AT_FIRST],
 };
 const RING_KEY = 'peditree.ring.v1';
 const KNOWN = new Set([...RING_ROWS, ...RING_PREGNANCY, ...RING_STATUS].map((x) => x.id));
@@ -49,10 +53,13 @@ const ordered = (stored, all) => {
 
 export function normalizeRing(v) {
   const o = v && typeof v === 'object' ? v : {};
+  const storedRows = Array.isArray(o.rows) ? o.rows : [];
+  // a row the stored preference has never seen starts hidden if it is one of those
+  const unseen = HIDDEN_AT_FIRST.filter((id) => !storedRows.includes(id));
   return {
     rows: ordered(o.rows, RING_ROWS),
     status: ordered(o.status, RING_STATUS),
-    hidden: [...new Set((Array.isArray(o.hidden) ? o.hidden : []).filter((id) => KNOWN.has(id)))],
+    hidden: [...new Set([...(Array.isArray(o.hidden) ? o.hidden : []), ...unseen].filter((id) => KNOWN.has(id)))],
   };
 }
 
