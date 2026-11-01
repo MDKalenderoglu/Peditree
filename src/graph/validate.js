@@ -138,6 +138,20 @@ export function validateGraphStructure(graph, { retired = [] } = {}) {
     if (n(EGG_SOURCE) > 1) err('REPRO_SLOT', 'Bir çocuğun yumurtası tek kişiden gelir: yumurta donörü ya da taşıyıcı anne, ikisi birden değil.', [childId]);
     if (n(CARRIER_ROLES) > 1) err('REPRO_SLOT', 'Bir gebeliği tek kişi taşır: gestasyonel taşıyıcı ya da taşıyıcı anne, ikisi birden değil.', [childId]);
   }
+  // twins (multiples.js): one pregnancy has one carrier; identical (MZ) twins share their genetic parents too
+  const rolesOf = (id, list) => repro.filter((l) => l.childId === id && list.includes(l.role)).map((l) => `${l.role}:${l.personId}`).sort().join(',');
+  for (const rel of graph.parentChildRelationships) {
+    for (const m of rel.multiples || []) {
+      const [first, ...rest] = m.children;
+      const shared = m.zygosity === 'monozygotic' ? ['sperm_donor', ...EGG_SOURCE, ...CARRIER_ROLES] : CARRIER_ROLES;
+      if (rest.some((c) => rolesOf(c, shared) !== rolesOf(first, shared))) {
+        err('REPRO_TWINS', m.zygosity === 'monozygotic'
+          ? 'Tek yumurta ikizlerinin donörleri ve taşıyıcısı aynı olmalı.'
+          : 'Aynı gebelikten doğan ikizleri aynı kişi taşır.', m.children);
+      }
+    }
+  }
+
   // a donor or carrier added through the panel has no family of their own (clinician decision 2026-11-01)
   for (const ind of graph.individuals) {
     if (ind.relation !== ART_DONOR_RELATION) continue;
