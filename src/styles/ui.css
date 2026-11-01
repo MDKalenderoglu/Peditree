@@ -390,7 +390,8 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 .share-note { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
 .share-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .more-title { font-size: 13.5px; font-weight: 700; color: var(--ink); margin-top: 4px; }
-.new-popover { left: 0; right: auto; width: 320px; max-width: calc(100vw - 32px); }
+.new-popover { left: 0; right: auto; width: 340px; max-width: calc(100vw - 32px); gap: 2px; }
+.new-icon { flex: none; width: 34px; height: 28px; margin-top: 1px; fill: none; stroke: var(--accent); stroke-width: 1.8; }
 /* İndir: one row per file type, what it is for under its name */
 .download-popover { width: 340px; max-width: calc(100vw - 24px); max-height: calc(100vh - 110px); overflow-y: auto; gap: 4px; }
 .download-item, .download-item-head { display: flex; align-items: flex-start; gap: 10px; text-align: left; color: var(--ink-2); }
