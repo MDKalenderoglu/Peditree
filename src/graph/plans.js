@@ -5,7 +5,7 @@
  * Moved verbatim from usePedigreeStore.js (which re-exports them) so graph
  * code can use them without instantiating the store.
  */
-import { isPregnancy } from './model';
+import { isPregnancy, isGroup } from './model';
 
 /**
  * Pure, read-only check for whether `targetId` can be safely deleted via
@@ -110,6 +110,9 @@ export function computeUnionCreationPlan(pedigreeData, id1, id2) {
   // proband), never a partner or children (clinician 2026-10-25)
   if (isPregnancy(ind1) || isPregnancy(ind2)) {
     return { ok: false, reason: 'Düşük/ölü doğum kaydı bir bireyle eş yapılamaz.' };
+  }
+  if (isGroup(ind1) || isGroup(ind2)) {
+    return { ok: false, reason: 'Birden çok kişiyi gösteren sembol eş olamaz; önce "Tek tek ayır" ile kişileri ayırın.' };
   }
 
   // v0.5 Step 5A: a union/eş ilişkisi yalnızca kadın+erkek (karşı cinsiyet)

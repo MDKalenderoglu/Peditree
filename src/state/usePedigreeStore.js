@@ -446,6 +446,9 @@ export const usePedigreeStore = create((zSet, get) => {
     // extra: { pregnancyLoss | stillbirth | ongoingPregnancy | termination | ectopic: true } for a pregnancy outcome
     addChildToUnion: (unionId, sex = 'unknown', extra = {}) => apply(ops.addChild(get().doc, unionId, { sex, ...extra })),
     addChildTo: (targetId, childSex = 'unknown', extra = {}) => apply(ops.addChildToPerson(get().doc, targetId, { sex: childSex, ...extra })),
+    // several people in one symbol (clinician decisions 2026-11-01)
+    setGroupCount: (id, count) => apply(ops.setGroupCount(get().doc, id, count)),
+    splitGroup: (id) => apply(ops.splitGroup(get().doc, id)),
     addParentsTo: (targetId, opts = {}) => applyGuarded(ops.addParents(get().doc, targetId, opts)),
     addSiblingTo: (targetId, sex = 'unknown', extra = {}) => applyGuarded(ops.addSibling(get().doc, targetId, { sex, ...extra })),
     createUnionBetween: (id1, id2, opts = {}) => applyGuarded(ops.linkPartners(get().doc, id1, id2, opts)),
