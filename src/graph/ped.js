@@ -102,6 +102,9 @@ function columnsOf(header) {
 /**
  * @returns {{ ok: true, doc, notice } | { ok: false, reason }}
  */
+const PED_PHENO = { 2: 'affected', 1: 'unaffected', 0: 'unknown', '-9': 'unknown' };
+/** the finding an imported "unknown" (0 / -9) is kept as, so it goes back out as 0 */
+export const PED_UNKNOWN_LABEL = 'PED: hastalık durumu';
 export const MAX_PED_CHARS = 20 * 1024 * 1024;
 export const MAX_PED_PEOPLE = 3000;
 
@@ -130,9 +133,17 @@ export function fromPed(text) {
     father: MISSING.has(String(get(r, 'father') ?? '0').toLowerCase()) ? null : get(r, 'father'),
     mother: MISSING.has(String(get(r, 'mother') ?? '0').toLowerCase()) ? null : get(r, 'mother'),
     sex: ({ 1: 'male', m: 'male', male: 'male', 2: 'female', f: 'female', female: 'female' })[String(get(r, 'sex') ?? '').toLowerCase()] || 'unknown',
-    affected: String(get(r, 'pheno') ?? '') === '2',
+    pheno: cols.pheno >= 0 ? String(get(r, 'pheno') ?? '').trim() : null,
   }));
   if (recs.some((r) => !r.id)) return { ok: false, reason: 'PED dosyasında kimliği olmayan bir satır var.' };
+  // affection: 2 yes, 1 no, 0 or -9 unknown — kept as unknown, never turned
+  // into "no" (Codex audit 2026-11-01); any other code is refused
+  for (const r of recs) {
+    if (r.pheno === null) { r.affected = false; r.unknown = true; continue; }
+    if (!PED_PHENO[r.pheno]) return { ok: false, reason: `PED dosyasında "${r.id}" için hastalık durumu "${r.pheno}" anlaşılamadı (2 = hasta, 1 = sağlam, 0 ya da -9 = bilinmiyor).` };
+    r.affected = PED_PHENO[r.pheno] === 'affected';
+    r.unknown = PED_PHENO[r.pheno] === 'unknown';
+  }
   if (recs.length > MAX_PED_PEOPLE) return { ok: false, reason: `PED dosyasındaki aile ${MAX_PED_PEOPLE} kişiden büyük (${recs.length}); bu boyutta bir pedigri çizilemez.` };
   const seen = new Set();
   for (const r of recs) {
@@ -146,7 +157,7 @@ export function fromPed(text) {
       const pid = r[role];
       if (!pid) continue;
       if (pid === r.id) return { ok: false, reason: `"${r.id}" kendi ebeveyni olarak yazılmış.` };
-      if (!byId.has(pid)) { const add = { id: pid, father: null, mother: null, sex, affected: false }; recs.push(add); byId.set(pid, add); }
+      if (!byId.has(pid)) { const add = { id: pid, father: null, mother: null, sex, affected: false, unknown: true }; recs.push(add); byId.set(pid, add); }
       const parent = byId.get(pid);
       if (parent.sex === 'unknown') parent.sex = sex;
       else if (parent.sex !== sex) return { ok: false, reason: `"${pid}" hem ${sex === 'male' ? 'baba' : 'anne'} olarak yazılmış hem de cinsiyeti ${parent.sex === 'male' ? 'erkek' : 'kadın'}.` };
@@ -185,6 +196,7 @@ export function fromPed(text) {
   const individuals = recs.map((r) => makePerson({
     id: pid.get(r.id), sex: r.sex, generation: 0, relation: 'imported',
     label: r.id, displayLabel: r.id, affected: r.affected,
+    ...(r.unknown ? { conditions: [{ label: PED_UNKNOWN_LABEL, status: 'unknown' }] } : {}),
   }));
   const unions = [];
   const pcrs = [];
@@ -212,17 +224,24 @@ export function fromPed(text) {
     }
     pcrOf.get(unionOf.get(key)).children.push(pid.get(r.id));
   }
-  // a proband is needed: the first affected person without children, else the first affected, else the first person
+  // the proband (NSGC: an affected person): the first affected person
+  // without children, else the first affected; nobody when nobody is
+  // affected (Codex audit 2026-11-01 — a pedigree may have no proband)
   const isParent = new Set(recs.flatMap((r) => [r.father, r.mother]).filter(Boolean));
-  const proband = recs.find((r) => r.affected && !isParent.has(r.id)) || recs.find((r) => r.affected) || recs[0];
-  individuals.find((i) => i.id === pid.get(proband.id)).proband = true;
+  const proband = recs.find((r) => r.affected && !isParent.has(r.id)) || recs.find((r) => r.affected) || null;
+  if (proband) individuals.find((i) => i.id === pid.get(proband.id)).proband = true;
+  const anchor = proband || recs.find((r) => !isParent.has(r.id)) || recs[0];
 
   const graph = { individuals, unions, parentChildRelationships: pcrs, socialParentLinks: [], conditionKey: [] };
-  finalizeGraph(graph, { anchorId: pid.get(proband.id) });
-  const doc = createDocument(graph, { wizardAnchorId: pid.get(proband.id), provenance: { importedFrom: 'ped' } });
+  finalizeGraph(graph, { anchorId: pid.get(anchor.id) });
+  const doc = createDocument(graph, { wizardAnchorId: pid.get(anchor.id), provenance: { importedFrom: 'ped' } });
   const errors = errorsOf(validateDocument(doc));
   if (errors.length) return { ok: false, reason: `PED dosyasındaki aile çizilemedi: ${errors[0].message}` };
-  const notes = [`PED dosyasından ${recs.length} kişi açıldı; proband olarak "${proband.id}" seçildi (değiştirebilirsiniz).`];
+  const unknownN = recs.filter((r) => r.unknown).length;
+  const notes = [proband
+    ? `PED dosyasından ${recs.length} kişi açıldı; proband olarak "${proband.id}" seçildi (değiştirebilirsiniz).`
+    : `PED dosyasından ${recs.length} kişi açıldı; dosyada hasta (2) işaretli kimse olmadığı için proband işaretlenmedi.`];
+  if (unknownN) notes.push(`${unknownN} kişinin hastalık durumu bilinmiyor; "${PED_UNKNOWN_LABEL}" bulgusu "?" olarak işaretlendi.`);
   if (families.length > 1) notes.push(`Dosyada ${families.length} aile vardı; ilki ("${family}") açıldı.`);
   return { ok: true, doc, notice: notes.join(' ') };
 }
