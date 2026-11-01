@@ -487,3 +487,6 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 .ring-list > li { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px; }
 .ring-move { display: inline-flex; gap: 2px; }
 .ring-sub { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 2px 12px; padding: 0 0 4px 24px; font-size: 12px; }
+
+/* the ring asks first: which partner, what kind of sibling (Codex audit 2026-11-01) */
+.flyout-choose .quick-text.on { background: var(--accent-soft, #ece6f7); border-color: var(--accent, #5b3fa0); color: var(--accent, #5b3fa0); font-weight: 600; }

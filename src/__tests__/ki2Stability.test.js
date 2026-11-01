@@ -26,7 +26,7 @@ import { computePclLayout } from '../layout/pcl';
 import { computeStableLayout, affectedPeople } from '../layout/pcl/incremental';
 import { computePedigreeLayoutV2 } from '../utils/pedigreeLayoutV2';
 import { createDocument } from '../graph/document';
-import { addChildToPerson, addPartner, addSibling, updatePerson } from '../graph/ops';
+import { addChild, addChildToPerson, addPartner, addSibling, updatePerson } from '../graph/ops';
 import { checkAllInvariants } from '../audit/layoutInvariants';
 import { checkConnectorReadability, readabilityMetrics } from '../audit/connectorReadability';
 import { displayParentage } from '../graph/model';
@@ -239,7 +239,8 @@ describe('KI-2 PCL level — edit-local relayout', () => {
 describe('KI-2 large families (KI-3 fixtures)', () => {
   const load = (id) => JSON.parse(readFileSync(join(process.cwd(), 'src/__tests__/regression/ki3', `${id}.json`), 'utf8')).graph;
   const EDITS = {
-    'child to proband': (d) => addChildToPerson(d, 'proband', { sex: 'female' }),
+    // the proband's first partnership, named: with several partners the other parent is chosen
+    'child to proband': (d) => { const u = d.graph.unions.find(x => x.partners.includes('proband')); return u ? addChild(d, u.id, { sex: 'female' }) : addChildToPerson(d, 'proband', { sex: 'female' }); },
     'sibling to proband': (d) => addSibling(d, 'proband', { sex: 'male' }),
     'spouse to mother': (d) => addPartner(d, 'mother', { sex: 'male' }),
   };

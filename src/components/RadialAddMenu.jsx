@@ -13,7 +13,8 @@ import { Stethoscope, HeartPulse, Users, StickyNote } from 'lucide-react';
 import FindingsPalette from './FindingsPalette';
 import DraftField from './DraftField';
 import { groupOf, multipleName } from '../graph/multiples';
-import { isPregnancy, isGroup } from '../graph/model';
+import { isPregnancy, isGroup, adoptionOf } from '../graph/model';
+import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { parseGroupCount } from '../graph/ops';
 import { useRingPrefs, RING_ROWS, RING_PREGNANCY } from '../utils/ringPrefs';
 
@@ -147,8 +148,11 @@ export default function RadialAddMenu({
   const ring = useRingPrefs((st) => st.ring);
   // (for this person only: another person's ring starts without them)
   const [moreFor, setMoreFor] = useState(null);
-  const showMore = moreFor === node.id;
-  const setShowMore = () => setMoreFor((v) => (v === node.id ? null : node.id));
+  // which partner a child is from / what a new sibling is, for this person only
+  const [choiceFor, setChoiceFor] = useState(null);
+  // (read before the "no person" guard below: the person may be gone mid-render)
+  const showMore = !!node && moreFor === node.id;
+  const setShowMore = () => node && setMoreFor((v) => (v === node.id ? null : node.id));
   useLayoutEffect(() => {
     const el = popRef.current;
     if (!el) { setNudge({ x: 0, y: 0 }); return; }
@@ -210,15 +214,32 @@ export default function RadialAddMenu({
   const unions = (pedigreeData.unions || []).filter(u => u.partners.includes(node.id));
   const hasParents = pcrs.some(r => r.children.includes(node.id));
   const sexKnown = node.sex === 'male' || node.sex === 'female';
-  // children go to the most recent partnership; the right panel has every one
-  const lastUnion = unions[unions.length - 1];
+  // Codex audit 2026-11-01: with several partners the clinician names the
+  // child's other parent (never the most recent one silently); for an
+  // adopted-in person the clinician says what the new sibling is
+  const ids = computePedigreeIds(pedigreeData.nodes || []);
+  const nameOf = (id) => { const p = (pedigreeData.individuals || []).find(i => i.id === id); return [ids.get(id)?.displayId, p?.displayLabel].filter(Boolean).join(' ') || 'eşi'; };
+  const pickedUnion = choiceFor && choiceFor.node === node.id ? unions.find(u => u.id === choiceFor.union) : null;
+  const childUnion = unions.length === 1 ? unions[0] : pickedUnion || null;
+  const childReady = unions.length <= 1 || !!childUnion;
+  const addChildHere = (sex, extra) => (childUnion ? onAddChild(childUnion.id, sex, null, extra) : onAddChild(null, sex, node.id, extra));
+  const adoption = adoptionOf(pedigreeData, node.id);
+  const adoptedIn = adoption && adoption.kind === 'in';
+  const sibKind = adoptedIn && choiceFor && choiceFor.node === node.id ? choiceFor.sibling : null;
+  const siblingReady = !adoptedIn || !!sibKind;
+  const addSiblingHere = (sex, extra) => {
+    if (!adoptedIn) return onAddSibling(node.id, sex, { ...extra, createParents: true });
+    if (sibKind === 'biological') return onAddSibling(node.id, sex, { ...extra, createParents: true, biologicalSibling: true });
+    return onAddChild(adoption.unionId, sex, null, sibKind === 'adopted' ? { ...extra, adopted: true } : extra);
+  };
+  const ready = (sector) => (sector === 'bottom' ? childReady : sector === 'left' ? siblingReady : true);
   const twinGroup = groupOf(pedigreeData, node.id);
 
   const disabled = {
     // a pregnancy outcome takes parents and siblings, never a partner or children (clinician 2026-10-25)
     top: hasParents ? 'Bu kişinin annesi ve babası zaten çizili.' : null,
     right: group ? GROUP_HINT : isLoss ? 'Düşüğe, ölü doğuma ya da süren gebeliğe eş eklenemez.' : sexKnown ? null : 'Eş eklemek için önce bu kişinin cinsiyetini seçin: Durum düğmesi → Erkek ya da Kadın.',
-    bottom: group ? GROUP_HINT : isLoss ? 'Düşüğe, ölü doğuma ya da süren gebeliğe çocuk eklenemez.' : !lastUnion && !sexKnown ? 'Çocuk eklemek için önce bu kişinin cinsiyetini seçin: Durum düğmesi → Erkek ya da Kadın.' : null,
+    bottom: group ? GROUP_HINT : isLoss ? 'Düşüğe, ölü doğuma ya da süren gebeliğe çocuk eklenemez.' : !unions.length && !sexKnown ? 'Çocuk eklemek için önce bu kişinin cinsiyetini seçin: Durum düğmesi → Erkek ya da Kadın.' : null,
     left: null,
   };
   // one click: parents = a mother and a father; spouse = the opposite sex
@@ -228,20 +249,20 @@ export default function RadialAddMenu({
     right: () => onAddSpouse(node.id, node.sex === 'female' ? 'male' : 'female'),
   };
   const choices = {
-    left: KINDS.map(([g, t, sex, extra, row]) => [`Kardeş: ${t}`, g, () => onAddSibling(node.id, sex, { ...extra, createParents: true }), row]),
-    bottom: KINDS.map(([g, t, sex, extra, row]) => [`Çocuk: ${t}`, g,
-      () => (lastUnion ? onAddChild(lastUnion.id, sex, null, extra) : onAddChild(null, sex, node.id, extra)), row]),
+    left: KINDS.map(([g, t, sex, extra, row]) => [`Kardeş: ${t}`, g, () => addSiblingHere(sex, extra), row]),
+    bottom: KINDS.map(([g, t, sex, extra, row]) => [`Çocuk: ${t}`, g, () => addChildHere(sex, extra), row]),
   };
 
   // several people in one symbol, the number inside (NSGC; clinician decisions 2026-11-01)
   const addGroup = {
-    left: (sex, count) => onAddSibling(node.id, sex, { count, createParents: true }),
-    bottom: (sex, count) => (lastUnion ? onAddChild(lastUnion.id, sex, null, { count }) : onAddChild(null, sex, node.id, { count })),
+    left: (sex, count) => addSiblingHere(sex, { count }),
+    bottom: (sex, count) => addChildHere(sex, { count }),
   };
 
   const addAdopted = {
-    left: (sex) => onAddSibling(node.id, sex, { adopted: true, createParents: true }),
-    bottom: (sex) => (lastUnion ? onAddChild(lastUnion.id, sex, null, { adopted: true }) : onAddChild(null, sex, node.id, { adopted: true })),
+    // an adopted-in person's adopted sibling: another child of the same adoptive couple
+    left: (sex) => (adoptedIn ? onAddChild(adoption.unionId, sex, null, { adopted: true }) : onAddSibling(node.id, sex, { adopted: true, createParents: true })),
+    bottom: (sex) => addChildHere(sex, { adopted: true }),
   };
 
   // the clinician's ring (Ayarlar → Halka menü, ringPrefs.js): rows and choices in their order;
@@ -439,6 +460,29 @@ export default function RadialAddMenu({
             <span className="radial-hint">{disabled[active]}</span>
           ) : (
             <>
+              {active === 'bottom' && unions.length > 1 && (
+                <div className="flyout-row flyout-choose" role="radiogroup" aria-label="Çocuk hangi eşten?">
+                  <span className="flyout-row-label">Hangi eşten?</span>
+                  {unions.map((u) => {
+                    const other = u.partners.find((p) => p !== node.id);
+                    const on = childUnion && childUnion.id === u.id;
+                    return <button key={u.id} role="radio" aria-checked={!!on} className={`quick-text${on ? ' on' : ''}`}
+                      onClick={() => setChoiceFor({ node: node.id, union: u.id })}>{nameOf(other)} ile</button>;
+                  })}
+                </div>
+              )}
+              {active === 'left' && adoptedIn && (
+                <div className="flyout-row flyout-choose" role="radiogroup" aria-label="Yeni kardeş ne?">
+                  <span className="flyout-row-label">Yeni kardeş</span>
+                  {[['family', 'Ailenin öz çocuğu', 'Evlat edinen anne-babanın kendi çocuğu'], ['adopted', 'Evlat edinilmiş', 'Aynı ailenin evlat edindiği başka bir çocuk'], ['biological', 'Biyolojik kardeşi', 'Bu kişinin biyolojik kardeşi: biyolojik anne-babası (bilinmiyor) da çizilir']].map(([k, t, title]) => (
+                    <button key={k} role="radio" aria-checked={sibKind === k} className={`quick-text${sibKind === k ? ' on' : ''}`} title={title}
+                      onClick={() => setChoiceFor({ node: node.id, sibling: k })}>{t}</button>
+                  ))}
+                </div>
+              )}
+              {!ready(active) ? (
+                <span className="radial-hint">{active === 'bottom' ? 'Önce çocuğun hangi eşten olduğunu seçin.' : 'Önce yeni kardeşin ne olduğunu seçin.'}</span>
+              ) : (<>
               {/* the sexes, then the rows in the clinician's order (Ayarlar → Halka menü; ringPrefs.js) */}
               <div className="flyout-row">
                 {choices[active].filter((c) => (c[3] || 1) === 1).map(([title, glyph, run]) => (
@@ -451,6 +495,7 @@ export default function RadialAddMenu({
                   {showMore ? 'Daha az' : 'Diğer…'}
                 </button>
               )}
+              </>)}
             </>
           )}
         </div>

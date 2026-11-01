@@ -198,7 +198,7 @@ describe('several people in one symbol', () => {
   it('the ring menu adds a group of siblings or children; the ring of a group has no partner, child, finding, status or twin choice', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/RadialAddMenu.jsx'), 'utf8');
     expect(src).toMatch(/flyout-row-label">Birden çok/);
-    expect(src).toMatch(/left: \(sex, count\) => onAddSibling\(node\.id, sex, \{ count, createParents: true \}\)/);
+    expect(src).toMatch(/left: \(sex, count\) => addSiblingHere\(sex, \{ count \}\)/);
     expect(src).toMatch(/right: group \? GROUP_HINT/);
     expect(src).toMatch(/bottom: group \? GROUP_HINT/);
     expect(src).toMatch(/SATELLITES\.filter\(\(s\) => !group \|\| s\.key === 'note'\)/);

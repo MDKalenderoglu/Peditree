@@ -388,8 +388,10 @@ export function addChild(doc, unionId, opts = {}) {
 /** Add a child to a person, creating a spouse + union first if they have none. */
 export function addChildToPerson(doc, personId, opts = {}) {
   const idx = indexGraph(doc.graph);
-  const existing = (idx.unionsOf.get(personId) || [])[0];
-  if (existing) return addChild(doc, existing, opts);
+  const own = idx.unionsOf.get(personId) || [];
+  // with several partners the clinician names the other parent (Codex audit 2026-11-01)
+  if (own.length > 1) return { ok: false, doc, reason: 'Bu kişinin birden çok eşi var: çocuğun hangi eşten olduğunu seçin.' };
+  if (own.length === 1) return addChild(doc, own[0], opts);
   const target = idx.byId.get(personId);
   if (!target) return { ok: false, doc, reason: 'Birey grafikte bulunamadı.' };
   const spouseSex = target.sex === 'male' ? 'female' : target.sex === 'female' ? 'male' : 'unknown';
@@ -431,10 +433,15 @@ export function addParents(doc, childId, opts = {}) {
  * father — one operation, one undo step.
  */
 export function addSibling(doc, personId, opts = {}) {
-  const { createParents, ...childOpts } = opts;
+  const { createParents, biologicalSibling, ...childOpts } = opts;
   const plan = computeAddSiblingPlan(graphView(doc), personId);
   if (plan.ok) return addChild(doc, plan.unionId, childOpts);
   if (!createParents || computeAddParentsPlan(graphView(doc), personId).ok !== true) return { ok: false, doc, reason: plan.reason };
+  // an adopted person's biological parents are drawn only when the clinician
+  // says the new sibling is a biological one (Codex audit 2026-11-01)
+  if (!biologicalSibling && (doc.graph.socialParentLinks || []).some((l) => l.childId === personId)) {
+    return { ok: false, doc, reason: 'Bu kişi evlat edinilmiş: yeni kardeşin evlat edinen ailenin çocuğu mu, yoksa biyolojik kardeşi mi olduğunu seçin.' };
+  }
   const r1 = addParents(doc, personId, {});
   if (!r1.ok) return r1;
   const r2 = addChild(r1.doc, r1.created.unionId, childOpts);
