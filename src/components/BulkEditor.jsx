@@ -5,6 +5,7 @@
  * (Cmd/Ctrl-click).
  */
 import { useState } from 'react';
+import { t } from '../i18n';
 import { FindingGlyph, StylePicker } from './FindingsPalette';
 import { normLabel, suggestStyle, styleTaken, KEY_FULL_MESSAGE } from '../graph/conditionKey';
 import { isPregnancy } from '../graph/model';
@@ -28,8 +29,8 @@ export default function BulkEditor({ nodes, conditionKey = [], onUpdateMany, onS
     const st = flag(key, list);
     return (
       <button key={key} className={`chip${st === 'all' ? ' on' : st === 'some' ? ' chip-carrier' : ''}`} aria-pressed={st === 'all'}
-        title={st === 'some' ? 'Seçilenlerin bazılarında var; tıklarsanız hepsine uygulanır' : undefined} onClick={() => toggle(key, list)} disabled={!list.length}>
-        {label}{st === 'some' ? ' (bazıları)' : ''}
+        title={st === 'some' ? t('Seçilenlerin bazılarında var; tıklarsanız hepsine uygulanır') : undefined} onClick={() => toggle(key, list)} disabled={!list.length}>
+        {label}{st === 'some' ? t(' (bazıları)') : ''}
       </button>
     );
   };
@@ -42,11 +43,11 @@ export default function BulkEditor({ nodes, conditionKey = [], onUpdateMany, onS
   };
   return (
     <div className="card">
-      <div className="card-title">Hepsine birden ({nodes.length} kişi)</div>
+      <div className="card-title">{t('Hepsine birden ({n} kişi)', { n: nodes.length })}</div>
       <div className="chips">
-        {chip('affected', 'Etkilenmiş')}
-        {chip('carrier', 'Taşıyıcı')}
-        {chip('deceased', 'Vefat', living)}
+        {chip('affected', t('Etkilenmiş'))}
+        {chip('carrier', t('Taşıyıcı'))}
+        {chip('deceased', t('Vefat'), living)}
       </div>
       {conditionKey.length > 0 && (
         <div className="findings-list">
@@ -56,11 +57,11 @@ export default function BulkEditor({ nodes, conditionKey = [], onUpdateMany, onS
             return (
               <div key={e.id} className="finding-row">
                 <span className="finding-glyph"><FindingGlyph region={e.region} fill={e.fill} /></span>
-                <span className="finding-name" title={e.label}>{e.label}{st === null ? ' · karışık' : ''}</span>
+                <span className="finding-name" title={e.label}>{e.label}{st === null ? t(' · karışık') : ''}</span>
                 <div className="segmented finding-state" role="radiogroup" aria-label={e.label}>
-                  {[['none', 'Yok'], ['affected', 'Var'], ['carrier', 'Taşıyıcı'], ['unknown', '?']].map(([v, t]) => (
+                  {[['none', t('Yok')], ['affected', t('Var')], ['carrier', t('Taşıyıcı')], ['unknown', '?']].map(([v, label]) => (
                     <button key={v} className={st === v ? 'on' : undefined} role="radio" aria-checked={st === v}
-                      onClick={() => onSetFindingStatusMany(ids, e.label, v)}>{t}</button>
+                      onClick={() => onSetFindingStatusMany(ids, e.label, v)}>{label}</button>
                   ))}
                 </div>
               </div>
@@ -72,14 +73,14 @@ export default function BulkEditor({ nodes, conditionKey = [], onUpdateMany, onS
         <>
         <div className="finding-new">
           <FindingGlyph region={suggested.region} fill={suggested.fill} />
-          <input type="text" className="input" value={draft} placeholder="Yeni bulgu adı (seçili herkese eklenir)"
+          <input type="text" className="input" value={draft} placeholder={t('Yeni bulgu adı (seçili herkese eklenir)')}
             onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }} />
-          <button className="ui-btn ui-btn-sm ui-btn-primary" disabled={!draft.trim()} onClick={add}>Ekle</button>
+          <button className="ui-btn ui-btn-sm ui-btn-primary" disabled={!draft.trim()} onClick={add}>{t('Ekle')}</button>
         </div>
         {draft.trim() && <StylePicker value={suggested} isTaken={(st2) => styleTaken(conditionKey, st2)} onChange={setStyle} />}
         </>
       ) : (
-        <div className="field-hint finding-limit" role="alert">{KEY_FULL_MESSAGE}</div>
+        <div className="field-hint finding-limit" role="alert">{t(KEY_FULL_MESSAGE)}</div>
       )}
     </div>
   );

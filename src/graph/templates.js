@@ -13,6 +13,7 @@
  */
 import * as ops from './ops';
 import { indexGraph } from './model';
+import { t, tk, currentLang } from '../i18n';
 
 const parentOf = (doc, id, sex) => {
   const idx = indexGraph(doc.graph);
@@ -46,7 +47,7 @@ export function buildTemplate(base, spec) {
   if (spec.older) {
     const r = ops.commit(doc, (d) => {
       const u = d.graph.unions.find((x) => x.partners.includes('father') && x.partners.includes('mother'));
-      if (!u) ops.block('Anne-baba birlikteliği yok.');
+      if (!u) ops.block(t('Anne-baba birlikteliği yok.'));
       const [older, younger] = spec.older === 'father' ? ['father', 'mother'] : ['mother', 'father'];
       const by = (id) => d.graph.individuals.find((i) => i.id === id);
       u.crossGeneration = true;
@@ -101,12 +102,19 @@ const pathFromParent = (path) => path.map((s, k) => (k === path.length - 1
   : (s === 'male' ? 'babasının' : 'annesinin'))).join(' ');
 const KIN_WORD = { 'male,male': 'dedesi', 'male,female': 'babaannesi', 'female,male': 'dedesi', 'female,female': 'anneannesi' };
 
-/** A relative as the button names it: the clinic's word and the path under it ("Babaannesi", "babasının annesi"). */
-export function relativeName(path) {
-  const way = pathFromParent(path);
-  const word = KIN_WORD[path.join(',')];
+const KIN_WORD_EN = { 'male,male': 'paternal grandfather', 'male,female': 'paternal grandmother', 'female,male': 'maternal grandfather', 'female,female': 'maternal grandmother' };
+
+/**
+ * A relative as the button names it: the clinic's word and the path under it
+ * ("Babaannesi", "babasının annesi"; in English "Paternal grandmother",
+ * "father's mother" — i18n, clinician decisions 2026-11-02).
+ */
+export function relativeName(path, lang = currentLang()) {
+  const en = lang === 'en';
+  const way = en ? path.map((s) => (s === 'male' ? 'father' : 'mother')).join('’s ') : pathFromParent(path);
+  const word = (en ? KIN_WORD_EN : KIN_WORD)[path.join(',')];
   const main = word || way;
-  return { main: main[0].toLocaleUpperCase('tr') + main.slice(1), way: word ? way : null };
+  return { main: main[0].toLocaleUpperCase(lang) + main.slice(1), way: word ? way : null };
 }
 
 const COUSIN_NAME = { 'male|male': 'amca çocukları', 'female|female': 'teyze çocukları' };
@@ -125,13 +133,13 @@ export function relationInfo(up, paths = null) {
     const clinic = lo === 1 && paths ? COUSIN_NAME[`${paths.father[0]}|${paths.mother[0]}`] || 'hala–dayı çocukları' : null;
     return {
       name: `${lo}. derece kuzen${clinic ? ` (${clinic})` : ''}`,
-      sentence: `Babanın ${OF_GENERATION[up.father]} ile annenin ${OF_GENERATION[up.mother]} kardeştir.`,
+      sentence: t('Babanın {v0} ile annenin {v1} kardeştir.', { v0: OF_GENERATION[up.father], v1: OF_GENERATION[up.mother] }),
       F,
     };
   }
   const [younger, older] = up.father > up.mother ? ['Baba', 'annenin'] : ['Anne', 'babanın'];
   return {
-    name: `${lo}. derece kuzenin çocuğu (bir kuşak fark)`,
+    name: t('{lo}. derece kuzenin çocuğu (bir kuşak fark)', { lo }),
     sentence: `${younger}, ${older} ${lo === 1 ? '' : `${lo}. derece `}kuzeninin ${younger === 'Anne' ? 'kızıdır' : 'oğludur'}; bir kuşak aşağıdadır.`,
     F,
   };
@@ -147,8 +155,8 @@ export function relationSpec(paths) {
 
 /** Double first cousins: two pairs of siblings, kept as the two ready-made families. */
 export const DOUBLE_FIRST_COUSINS = [
-  { id: 'double-same', label: 'Babaları kardeş, anneleri de kardeş', sub: 'Dedeler kardeş, anneanne ile babaanne kardeş', spec: { pairs: [{ father: ['male'], mother: ['male'] }, { father: ['female'], mother: ['female'] }] } },
-  { id: 'double-cross', label: 'Berdel', sub: 'Babanın babası ile annenin annesi kardeş, babanın annesi ile annenin babası kardeş', spec: { pairs: [{ father: ['male'], mother: ['female'] }, { father: ['female'], mother: ['male'] }] } },
+  { id: 'double-same', label: tk('Babaları kardeş, anneleri de kardeş'), sub: tk('Dedeler kardeş, anneanne ile babaanne kardeş'), spec: { pairs: [{ father: ['male'], mother: ['male'] }, { father: ['female'], mother: ['female'] }] } },
+  { id: 'double-cross', label: tk('Berdel'), sub: tk('Babanın babası ile annenin annesi kardeş, babanın annesi ile annenin babası kardeş'), spec: { pairs: [{ father: ['male'], mother: ['female'] }, { father: ['female'], mother: ['male'] }] } },
 ];
 
 /** The relatives who were made siblings in a family built from `spec` (the preview marks them). */

@@ -21,6 +21,7 @@ import { indexGraph, hasClinicalData } from './model';
 import { allocateId } from './ids';
 import { computeDeletionPlanFor } from './plans';
 import { kinshipOf } from './kinship';
+import { t, tk } from '../i18n';
 
 // ── id helpers ──
 
@@ -223,7 +224,7 @@ function untouched(d, id, { allowedUnions = [], allowParents = true } = {}) {
   return true;
 }
 
-const TOUCHED_REASON = 'Bu kişiye klinik bilgi ya da yeni bir ilişki girilmiş; sayıyı azaltmak bunu sessizce silerdi. Kişiyi seçip "Seçili Bireyi Sil" ile kaldırın.';
+const TOUCHED_REASON = tk('Bu kişiye klinik bilgi ya da yeni bir ilişki girilmiş; sayıyı azaltmak bunu sessizce silerdi. Kişiyi seçip "Seçili Bireyi Sil" ile kaldırın.');
 
 function removeUntouched(d, id, opts) {
   if (!untouched(d, id, opts)) block(TOUCHED_REASON);
@@ -289,9 +290,9 @@ function insertByRank(d, unionId, childId, anchorId) {
 
 function draftAddSibling(d, category) {
   const r = rolesOf(d.graph, d.wizardAnchorId);
-  if (!r.parentsUnion) block('Kardeş eklemek için önce probandın anne ve babasını ekleyin.');
+  if (!r.parentsUnion) block(t('Kardeş eklemek için önce probandın anne ve babasını ekleyin.'));
   const kind = SIB_KIND[category];
-  if (!kind) block(`Bilinmeyen kardeş türü: ${category}`);
+  if (!kind) block(t('Bilinmeyen kardeş türü: {category}', { category }));
   const { id } = alloc(d, kind.prefix);
   draftAddPerson(d, { id, generation: r.idx.byId.get(r.anchor).generation, relation: 'sibling', ...kind.props });
   insertByRank(d, r.parentsUnion, id, r.anchor);
@@ -339,7 +340,7 @@ function draftEnsureParent(d, which) {
       u.partners = u.partners.map((x) => (x === placeholder ? id : x));
       d.graph.individuals = d.graph.individuals.filter((i) => i.id !== placeholder);
     } else {
-      block('Probandın ebeveyn birliğinde boş yer yok.');
+      block(t('Probandın ebeveyn birliğinde boş yer yok.'));
     }
   } else {
     // no parents at all yet: create the parents' union with an unspecified co-parent
@@ -378,7 +379,7 @@ function makeSiblingPair(d, a, b, ids, gen, record) {
   const idx = indexGraph(d.graph);
   const ua = idx.bioParentUnion.get(a), ub = idx.bioParentUnion.get(b);
   if (ua && ub && ua === ub) return ua;
-  if (ua && ub) block('Seçilen akrabalık yolu, bu büyük ebeveynlerin zaten çizili olan farklı ebeveynleriyle çelişiyor; önce o ebeveynleri kaldırın.');
+  if (ua && ub) block(t('Seçilen akrabalık yolu, bu büyük ebeveynlerin zaten çizili olan farklı ebeveynleriyle çelişiyor; önce o ebeveynleri kaldırın.'));
   if (ua || ub) {
     const target = ua || ub, child = ua ? b : a;
     draftAddChild(d, target, child, { orderPolicy: 'insertion' });
@@ -420,7 +421,7 @@ function teardownTemplate(d) {
     const idx = indexGraph(d.graph);
     const own = idx.unionsOf.get(id) || [];
     const ok = untouched(d, id, { allowedUnions: own.filter((uid) => (meta.createdIds || []).includes(uid)) });
-    if (!ok) block('Akrabalık şablonunun oluşturduğu büyük ebeveynlere bilgi girilmiş; şablon değiştirilemez. Önce o kişileri düzenleyin ya da silin.');
+    if (!ok) block(t('Akrabalık şablonunun oluşturduğu büyük ebeveynlere bilgi girilmiş; şablon değiştirilemez. Önce o kişileri düzenleyin ya da silin.'));
   }
   for (const id of people) if (indexGraph(d.graph).byId.has(id)) draftRemovePerson(d, id);
 }
@@ -428,7 +429,7 @@ function teardownTemplate(d) {
 function buildTemplate(d, degree, path) {
   const record = { createdIds: [], attached: [] };
   const r = rolesOf(d.graph, d.wizardAnchorId);
-  const need = (k) => r[k] || block('Akrabalık yolunu çizmek için anne ve babanın ebeveynleri çizili olmalı.');
+  const need = (k) => r[k] || block(t('Akrabalık yolunu çizmek için anne ve babanın ebeveynleri çizili olmalı.'));
   const gpGen = () => r.idx.byId.get(need('mat_gf')).generation - 1;
   if (degree === 'first_cousin' && FIRST_COUSIN_PATHS[path]) {
     const [a, b] = FIRST_COUSIN_PATHS[path].map(need);
@@ -443,14 +444,14 @@ function buildTemplate(d, degree, path) {
     const idx = indexGraph(d.graph);
     const fm = idx.unionById.get(um).partners.find((p) => idx.byId.get(p).sex === 'male');
     const fp = idx.unionById.get(up).partners.find((p) => idx.byId.get(p).sex === 'male');
-    makeSiblingPair(d, fm, fp, { f: 'gggf', m: 'gggm', u: 'U_GGG', labels: ['Ata Dede', 'Ata Anne'] }, gen - 1, record);
+    makeSiblingPair(d, fm, fp, { f: 'gggf', m: 'gggm', u: 'U_GGG', labels: ['Ata Dede', t('Ata Anne')] }, gen - 1, record);
   }
   return record;
 }
 
 function draftSetParentsConsanguinity(d, { consanguineous, degree, path }) {
   const r = rolesOf(d.graph, d.wizardAnchorId);
-  if (!r.parentsUnion || !r.mother || !r.father) block('Akraba evliliğini işaretlemek için önce anne ve babayı ekleyin.');
+  if (!r.parentsUnion || !r.mother || !r.father) block(t('Akraba evliliğini işaretlemek için önce anne ve babayı ekleyin.'));
   teardownTemplate(d);
   const u = d.graph.unions.find((x) => x.id === r.parentsUnion);
   delete u.consanguinityFromStructure; // the clinician's own statement
@@ -471,8 +472,8 @@ function relativeBaseId(d, side) {
   const r = rolesOf(d.graph, d.wizardAnchorId);
   const base = r[SIDE[side].base];
   if (!base) {
-    const what = { mother: 'anne', father: 'baba', mat_gf: 'anne tarafı dede', pat_gf: 'baba tarafı dede' }[SIDE[side].base];
-    block(`Bu akrabaları eklemek için önce ${what} çizili olmalı.`);
+    const what = { mother: t('anne'), father: t('baba'), mat_gf: t('anne tarafı dede'), pat_gf: t('baba tarafı dede') }[SIDE[side].base];
+    block(t('Bu akrabaları eklemek için önce {what} çizili olmalı.', { what }));
   }
   return base;
 }
@@ -482,7 +483,7 @@ function draftAddRelative(d, side, type) {
   const isGP = side.endsWith('GPRelatives');
   let parentsUnion = indexGraph(d.graph).bioParentUnion.get(base);
   if (!parentsUnion) {
-    if (!isGP) block('Bu akrabaları eklemek için önce büyük ebeveynler çizili olmalı.');
+    if (!isGP) block(t('Bu akrabaları eklemek için önce büyük ebeveynler çizili olmalı.'));
     const sk = SIDE[side].sideKey.replace('gp_', '');
     const gen = indexGraph(d.graph).byId.get(base).generation - 1;
     const label = sk === 'mat' ? 'Anne' : 'Baba';
@@ -497,10 +498,10 @@ function draftAddRelative(d, side, type) {
   const { id } = alloc(d, `${SIDE[side].sideKey}_${role}_`);
   const sk = SIDE[side].sideKey;
   const LABELS = {
-    mat: { uncle: ['dayi', 'Dayı'], aunt: ['teyze', 'Teyze'] },
-    pat: { uncle: ['amca', 'Amca'], aunt: ['hala', 'Hala'] },
-    gp_mat: { uncle: ['buyuk_dayi', 'B.Dayı'], aunt: ['buyuk_teyze', 'B.Teyze'] },
-    gp_pat: { uncle: ['buyuk_dayi', 'B.Amca'], aunt: ['buyuk_teyze', 'B.Hala'] },
+    mat: { uncle: ['dayi', t('Dayı')], aunt: [t('teyze'), t('Teyze')] },
+    pat: { uncle: [t('amca'), t('Amca')], aunt: ['hala', t('Hala')] },
+    gp_mat: { uncle: ['buyuk_dayi', t('B.Dayı')], aunt: ['buyuk_teyze', t('B.Teyze')] },
+    gp_pat: { uncle: ['buyuk_dayi', t('B.Amca')], aunt: ['buyuk_teyze', t('B.Hala')] },
   }[sk][role];
   const n = Number(id.match(/(\d+)$/)[1]);
   draftAddPerson(d, {
@@ -544,7 +545,7 @@ function ensureUnionFor(d, personId, spouseProps, unionBase) {
   const existing = firstUnionOf(idx, personId);
   if (existing) return existing;
   const p = idx.byId.get(personId);
-  if (p.sex !== 'male' && p.sex !== 'female') block('Çocuk eklemek için önce bu kişinin cinsiyetini seçin: kişinin çevresindeki Durum düğmesi → Erkek ya da Kadın.');
+  if (p.sex !== 'male' && p.sex !== 'female') block(t('Çocuk eklemek için önce bu kişinin cinsiyetini seçin: kişinin çevresindeki Durum düğmesi → Erkek ya da Kadın.'));
   const spouseId = freeId(d, `${personId}_sp`);
   draftAddPerson(d, { id: spouseId, sex: p.sex === 'male' ? 'female' : 'male', generation: p.generation, ...spouseProps });
   const uid = freeId(d, unionBase);
@@ -555,7 +556,7 @@ function ensureUnionFor(d, personId, spouseProps, unionBase) {
 function setChildrenCount(d, personId, unionId, sex, count, idPrefix, kinds = COUSIN_KIND, relation = 'kuzen') {
   const idx = indexGraph(d.graph);
   const kind = kinds[sex];
-  if (!kind) block(`Bilinmeyen çocuk türü: ${sex}`);
+  if (!kind) block(t('Bilinmeyen çocuk türü: {sex}', { sex }));
   const current = (unionId ? idx.childrenOf(unionId) : []).filter((c) => {
     const p = idx.byId.get(c);
     if (sex === 'pregnancyLoss') return p.pregnancyLoss;
@@ -582,16 +583,16 @@ export const wizardOps = {
     return commit(doc, (d) => {
       const r = rolesOf(d.graph, d.wizardAnchorId);
       const p = d.graph.individuals.find((i) => i.id === r.anchor);
-      if (!p) block('Proband yuvası grafikte yok.');
+      if (!p) block(t('Proband yuvası grafikte yok.'));
       if (field === 'sex') {
         for (const uid of r.idx.unionsOf.get(p.id) || []) {
           const partner = r.idx.byId.get(r.idx.partnerOf(uid, p.id));
           if (!partner || partner.placeholder) continue;
-          if (value === 'unknown') block('Bu kişinin bir eşi var; cinsiyeti "bilinmiyor" yapılamaz.');
-          if (partner.sex === value) block('Cinsiyet değiştirilmedi: bu kişi ile eşi aynı cinsiyette olurdu.');
+          if (value === 'unknown') block(t('Bu kişinin bir eşi var; cinsiyeti "bilinmiyor" yapılamaz.'));
+          if (partner.sex === value) block(t('Cinsiyet değiştirilmedi: bu kişi ile eşi aynı cinsiyette olurdu.'));
         }
       }
-      if (field !== 'sex' && field !== 'age') block(`Bilinmeyen proband alanı: ${field}`);
+      if (field !== 'sex' && field !== 'age') block(t('Bilinmeyen proband alanı: {field}', { field }));
       p[field] = value;
     });
   },
@@ -601,10 +602,10 @@ export const wizardOps = {
       const r = rolesOf(d.graph, d.wizardAnchorId);
       const person = (id) => d.graph.individuals.find((i) => i.id === id);
       switch (field) {
-        case 'motherAge': if (!r.mother) block('Anne çizili değil.'); person(r.mother).age = value; break;
-        case 'fatherAge': if (!r.father) block('Baba çizili değil.'); person(r.father).age = value; break;
+        case 'motherAge': if (!r.mother) block(t('Anne çizili değil.')); person(r.mother).age = value; break;
+        case 'fatherAge': if (!r.father) block(t('Baba çizili değil.')); person(r.father).age = value; break;
         case 'relationshipStatus': {
-          if (!r.parentsUnion) block('Anne-baba birlikteliği yok.');
+          if (!r.parentsUnion) block(t('Anne-baba birlikteliği yok.'));
           d.graph.unions.find((u) => u.id === r.parentsUnion).status = value;
           break;
         }
@@ -646,7 +647,7 @@ export const wizardOps = {
 
   setSiblingAge(doc, type, index, age) {
     const entry = deriveWizardView(doc).siblings[type]?.[index];
-    if (!entry) return { ok: false, doc, reason: 'Kardeş bulunamadı.' };
+    if (!entry) return { ok: false, doc, reason: t('Kardeş bulunamadı.') };
     return commit(doc, (d) => { d.graph.individuals.find((i) => i.id === entry.id).age = age; });
   },
 
@@ -654,14 +655,14 @@ export const wizardOps = {
     return commit(doc, (d) => {
       const r = rolesOf(d.graph, d.wizardAnchorId);
       const parent = r[parentType];
-      if (!parent) block(parentType === 'mother' ? 'Anne çizili değil.' : 'Baba çizili değil.');
+      if (!parent) block(parentType === 'mother' ? t('Anne çizili değil.') : t('Baba çizili değil.'));
       const key = parentType === 'mother' ? 'mother_spouse_' : 'father_spouse_';
       const { id, n } = alloc(d, key);
       const p = r.idx.byId.get(parent);
       draftAddPerson(d, {
         id, sex: parentType === 'mother' ? 'male' : 'female', generation: p.generation,
         relation: parentType === 'mother' ? 'spouse_mother' : 'spouse_father',
-        label: `${parentType === 'mother' ? 'Anne' : 'Baba'} Eşi ${n + 1}`,
+        label: `${parentType === 'mother' ? tk('Anne') : tk('Baba')} Eşi ${n + 1}`,
       });
       const uid = freeId(d, `${parentType === 'mother' ? 'U_MOTHER_OTHER' : 'U_FATHER_OTHER'}_${n}`);
       draftAddUnion(d, uid, parent, id);
@@ -671,7 +672,7 @@ export const wizardOps = {
 
   updateOtherUnion(doc, parentType, index, field, value) {
     const v = deriveWizardView(doc).parents[parentType === 'mother' ? 'motherOtherUnions' : 'fatherOtherUnions'][index];
-    if (!v) return { ok: false, doc, reason: 'Birliktelik bulunamadı.' };
+    if (!v) return { ok: false, doc, reason: t('Birliktelik bulunamadı.') };
     return commit(doc, (d) => {
       if (field === 'status') { d.graph.unions.find((u) => u.id === v.unionId).status = value; return; }
       const parent = rolesOf(d.graph, d.wizardAnchorId)[parentType];
@@ -687,7 +688,7 @@ export const wizardOps = {
 
   removeOtherUnion(doc, parentType, index) {
     const v = deriveWizardView(doc).parents[parentType === 'mother' ? 'motherOtherUnions' : 'fatherOtherUnions'][index];
-    if (!v) return { ok: false, doc, reason: 'Birliktelik bulunamadı.' };
+    if (!v) return { ok: false, doc, reason: t('Birliktelik bulunamadı.') };
     return commit(doc, (d) => {
       for (const c of v.childIds) if (!untouched(d, c)) block(TOUCHED_REASON);
       for (const c of v.childIds) draftRemovePerson(d, c);
@@ -706,7 +707,7 @@ export const wizardOps = {
 
   setRelativeChildren(doc, side, type, index, sex, count) {
     const rel = deriveWizardView(doc)[side]?.[type]?.[index];
-    if (!rel) return { ok: false, doc, reason: 'Akraba bulunamadı.' };
+    if (!rel) return { ok: false, doc, reason: t('Akraba bulunamadı.') };
     return commit(doc, (d) => {
       const role = type === 'uncles' ? 'UNCLE' : 'AUNT';
       const n = (rel.id.match(/(\d+)$/) || [])[1] ?? '0';
@@ -728,17 +729,17 @@ export const wizardOps = {
     return commit(doc, (d) => {
       const r = rolesOf(d.graph, d.wizardAnchorId);
       const gp = r[gpKey];
-      if (!gp) block('Bu büyük ebeveyn çizili değil.');
+      if (!gp) block(t('Bu büyük ebeveyn çizili değil.'));
       const existing = r.idx.bioParentUnion.get(gp);
       if (value) {
         if (existing) return;
-        const labels = { mat_gf: 'Dede (Anne)', mat_gm: 'Anneanne', pat_gf: 'Dede (Baba)', pat_gm: 'Babaanne' }[gpKey];
+        const labels = { mat_gf: tk('Dede (Anne)'), mat_gm: 'Anneanne', pat_gf: tk('Dede (Baba)'), pat_gm: 'Babaanne' }[gpKey];
         ensureParentsOf(d, gp, { f: `gg_${gpKey}_f`, m: `gg_${gpKey}_m`, u: `U_GG_${gpKey.toUpperCase()}`, labels: [`${labels} Baba`, `${labels} Anne`] },
           r.idx.byId.get(gp).generation - 1, { createdIds: [], attached: [] });
         return;
       }
       if (!existing) return;
-      if (r.idx.childrenOf(existing).length > 1) block('Bu büyük ebeveynlerin başka çocukları da çizili (ör. büyük dayı/amca); ebeveynler kaldırılamaz.');
+      if (r.idx.childrenOf(existing).length > 1) block(t('Bu büyük ebeveynlerin başka çocukları da çizili (ör. büyük dayı/amca); ebeveynler kaldırılamaz.'));
       const parents = r.idx.unionById.get(existing).partners;
       for (const p of parents) if (!untouched(d, p, { allowedUnions: [existing] })) block(TOUCHED_REASON);
       for (const p of parents) if (indexGraph(d.graph).byId.has(p)) draftRemovePerson(d, p);
@@ -748,11 +749,11 @@ export const wizardOps = {
   updateGen4(doc, entry, field, value) {
     return commit(doc, (d) => {
       if (field === 'targetPath') {
-        if (entry.childIds?.length) block('Çocukları olan kaydın hedefi değiştirilemez; önce çocukları kaldırın.');
+        if (entry.childIds?.length) block(t('Çocukları olan kaydın hedefi değiştirilemez; önce çocukları kaldırın.'));
         return { pendingRetarget: value };
       }
       const target = entry.targetPath;
-      if (!d.graph.individuals.some((i) => i.id === target)) block('Hedef kişi grafikte yok.');
+      if (!d.graph.individuals.some((i) => i.id === target)) block(t('Hedef kişi grafikte yok.'));
       let unionId = entry.unionId;
       if (!unionId && value > 0) {
         const { n } = alloc(d, 'gen4_sp_');
@@ -779,7 +780,7 @@ export const wizardOps = {
 
   removeCustomSiblingLink(doc, index) {
     const link = deriveWizardView(doc).customConsanguinity[index];
-    if (!link) return { ok: false, doc, reason: 'Bağ bulunamadı.' };
+    if (!link) return { ok: false, doc, reason: t('Bağ bulunamadı.') };
     return commit(doc, (d) => {
       const u = d.graph.unions.find((x) => x.id === link.unionId);
       for (const p of u.partners) if (!untouched(d, p, { allowedUnions: [u.id] })) block(TOUCHED_REASON);

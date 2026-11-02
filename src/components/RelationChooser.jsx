@@ -7,6 +7,7 @@
  * pairs of siblings.
  */
 import { useMemo, useState } from 'react';
+import { t, tk, currentLang } from '../i18n';
 import { X } from 'lucide-react';
 import { starterDocument } from '../state/usePedigreeStore';
 import { computeTidyLayout } from '../layout/pcl/tidy';
@@ -14,25 +15,25 @@ import { buildTemplate, DOUBLE_FIRST_COUSINS, pathsOf, relationInfo, relationSpe
 
 // the relationships in the order of the list; the farther ones fold away
 const RELATIONS = [
-  { id: 'c1', name: '1. derece kuzen', up: { father: 1, mother: 1 } },
-  { id: 'c2', name: '2. derece kuzen', up: { father: 2, mother: 2 } },
-  { id: 'c3', name: '3. derece kuzen', up: { father: 3, mother: 3 } },
-  { id: 'r1m', name: 'Anne, babanın kuzeninin kızı', up: { father: 1, mother: 2 } },
-  { id: 'r1f', name: 'Baba, annenin kuzeninin oğlu', up: { father: 2, mother: 1 } },
-  { id: 'double', name: 'Çift 1. derece kuzen', double: true },
-  { id: 'r2m', name: 'Anne, babanın 2. derece kuzeninin kızı', up: { father: 2, mother: 3 }, far: true },
-  { id: 'r2f', name: 'Baba, annenin 2. derece kuzeninin oğlu', up: { father: 3, mother: 2 }, far: true },
+  { id: 'c1', name: tk('1. derece kuzen'), up: { father: 1, mother: 1 } },
+  { id: 'c2', name: tk('2. derece kuzen'), up: { father: 2, mother: 2 } },
+  { id: 'c3', name: tk('3. derece kuzen'), up: { father: 3, mother: 3 } },
+  { id: 'r1m', name: tk('Anne, babanın kuzeninin kızı'), up: { father: 1, mother: 2 } },
+  { id: 'r1f', name: tk('Baba, annenin kuzeninin oğlu'), up: { father: 2, mother: 1 } },
+  { id: 'double', name: tk('Çift 1. derece kuzen'), double: true },
+  { id: 'r2m', name: tk('Anne, babanın 2. derece kuzeninin kızı'), up: { father: 2, mother: 3 }, far: true },
+  { id: 'r2f', name: tk('Baba, annenin 2. derece kuzeninin oğlu'), up: { father: 3, mother: 2 }, far: true },
 ];
 // first cousins by the clinic's words: which grandparent on each side
 const FIRST_COUSINS = [
-  { name: 'Amca çocukları', paths: { father: ['male'], mother: ['male'] } },
-  { name: 'Teyze çocukları', paths: { father: ['female'], mother: ['female'] } },
-  { name: 'Anne, babanın halasının kızı', paths: { father: ['male'], mother: ['female'] } },
-  { name: 'Anne, babanın dayısının kızı', paths: { father: ['female'], mother: ['male'] } },
+  { name: tk('Amca çocukları'), paths: { father: ['male'], mother: ['male'] } },
+  { name: tk('Teyze çocukları'), paths: { father: ['female'], mother: ['female'] } },
+  { name: tk('Anne, babanın halasının kızı'), paths: { father: ['male'], mother: ['female'] } },
+  { name: tk('Anne, babanın dayısının kızı'), paths: { father: ['female'], mother: ['male'] } },
 ];
 const fraction = (F) => `1/${Math.round(1 / F)}`;
 const allMale = (up) => ({ father: Array(up.father).fill('male'), mother: Array(up.mother).fill('male') });
-const who = (path) => { const { main, way } = relativeName(path); return `${main.toLocaleLowerCase('tr')}${way ? ` (${way})` : ''}`; };
+const who = (path) => { const { main, way } = relativeName(path); return `${main.toLocaleLowerCase(currentLang())}${way ? ` (${way})` : ''}`; };
 const sameWay = (a, b) => a.father.join() === b.father.join() && a.mother.join() === b.mother.join();
 
 export default function RelationChooser({ onStart, onClose }) {
@@ -48,14 +49,14 @@ export default function RelationChooser({ onStart, onClose }) {
   const spec = rel.double ? double.spec : relationSpec(paths);
   const info = rel.double ? { F: 1 / 8 } : relationInfo(rel.up, paths);
   const summary = rel.double
-    ? `${double.label}: ${double.sub.toLocaleLowerCase('tr')}.`
+    ? `${t(double.label)}: ${t(double.sub).toLocaleLowerCase(currentLang())}.`
     : rel.up.father === 1 && rel.up.mother === 1
-      ? `${FIRST_COUSINS.find((c) => sameWay(c.paths, paths)).name}.`
-      : `Babanın ${who(paths.father)} ile annenin ${who(paths.mother)} kardeş.`;
+      ? `${t(FIRST_COUSINS.find((c) => sameWay(c.paths, paths)).name)}.`
+      : t('Babanın {a} ile annenin {b} kardeş.', { a: who(paths.father), b: who(paths.mother) });
 
   const row = (r) => (
     <button key={r.id} role="radio" aria-checked={relId === r.id} className={`relation-row-item${relId === r.id ? ' on' : ''}`} onClick={() => choose(r)}>
-      <span>{r.name}</span>
+      <span>{t(r.name)}</span>
       <small>F {fraction(r.double ? 1 / 8 : relationInfo(r.up).F)}</small>
     </button>
   );
@@ -74,50 +75,50 @@ export default function RelationChooser({ onStart, onClose }) {
   return (
     <div className="relation-dialog" role="dialog" aria-modal="true" aria-labelledby="relation-title" data-popup="relation">
       <div className="relation-head">
-        <h2 id="relation-title">Anne-babası akraba olan bir aileyle başla</h2>
-        <button className="ui-btn ui-btn-ghost ui-btn-icon" onClick={onClose} aria-label="Kapat" title="Kapat"><X size={18} /></button>
+        <h2 id="relation-title">{t('Anne-babası akraba olan bir aileyle başla')}</h2>
+        <button className="ui-btn ui-btn-ghost ui-btn-icon" onClick={onClose} aria-label={t('Kapat')} title={t('Kapat')}><X size={18} /></button>
       </div>
       <div className="relation-body">
         <div className="relation-left">
-          <div className="relation-label" id="relation-q">Anne ile baba nasıl akraba?</div>
+          <div className="relation-label" id="relation-q">{t('Anne ile baba nasıl akraba?')}</div>
           <div className="relation-list" role="radiogroup" aria-labelledby="relation-q">
             {RELATIONS.filter((r) => !r.far).map(row)}
             {(showFar || rel.far) ? RELATIONS.filter((r) => r.far).map(row) : (
-              <button className="relation-row-item relation-more" onClick={() => setShowFar(true)}>Daha uzak akrabalıklar…</button>
+              <button className="relation-row-item relation-more" onClick={() => setShowFar(true)}>{t('Daha uzak akrabalıklar…')}</button>
             )}
           </div>
 
-          <div className="relation-label">{rel.double ? 'Nasıl?' : 'Hangi taraftan?'}</div>
+          <div className="relation-label">{rel.double ? t('Nasıl?') : t('Hangi taraftan?')}</div>
           {rel.double ? (
-            <div className="relation-pills" role="radiogroup" aria-label="Çift 1. derece kuzen">
+            <div className="relation-pills" role="radiogroup" aria-label={t('Çift 1. derece kuzen')}>
               {DOUBLE_FIRST_COUSINS.map((d) => (
-                <button key={d.id} role="radio" aria-checked={doubleId === d.id} className={doubleId === d.id ? 'on' : undefined} onClick={() => setDoubleId(d.id)}>{d.label}</button>
+                <button key={d.id} role="radio" aria-checked={doubleId === d.id} className={doubleId === d.id ? 'on' : undefined} onClick={() => setDoubleId(d.id)}>{t(d.label)}</button>
               ))}
             </div>
           ) : rel.up.father === 1 && rel.up.mother === 1 ? (
-            <div className="relation-pills" role="radiogroup" aria-label="Hangi taraftan">
+            <div className="relation-pills" role="radiogroup" aria-label={t('Hangi taraftan?')}>
               {FIRST_COUSINS.map((c) => (
-                <button key={c.name} role="radio" aria-checked={sameWay(c.paths, paths)} className={sameWay(c.paths, paths) ? 'on' : undefined} onClick={() => setPaths(c.paths)}>{c.name}</button>
+                <button key={c.name} role="radio" aria-checked={sameWay(c.paths, paths)} className={sameWay(c.paths, paths) ? 'on' : undefined} onClick={() => setPaths(c.paths)}>{t(c.name)}</button>
               ))}
             </div>
           ) : (
             <div className="relation-sides">
-              <p className="relation-hint">Kardeş olan büyükler; bilinmiyorsa olduğu gibi bırakın.</p>
-              {side('father', 'Babanın')}
-              {side('mother', 'Annenin')}
+              <p className="relation-hint">{t('Kardeş olan büyükler; bilinmiyorsa olduğu gibi bırakın.')}</p>
+              {side('father', t('Babanın'))}
+              {side('mother', t('Annenin'))}
             </div>
           )}
         </div>
 
         <div className="relation-right">
           <FamilyPreview spec={spec} />
-          <p className="relation-legend"><span className="relation-swatch" aria-hidden="true" />Kardeş olan büyükler</p>
-          <p className="relation-summary">{summary} Çocuklarında akrabalık katsayısı F = {fraction(info.F)}.</p>
+          <p className="relation-legend"><span className="relation-swatch" aria-hidden="true" />{t('Kardeş olan büyükler')}</p>
+          <p className="relation-summary">{summary} {t('Çocuklarında akrabalık katsayısı F = {f}.', { f: fraction(info.F) })}</p>
         </div>
       </div>
       <div className="relation-foot">
-        <button className="ui-btn" onClick={onClose}>Vazgeç</button>
-        <button className="ui-btn ui-btn-primary" onClick={() => onStart(spec)}>Bu aileyle başla</button>
+        <button className="ui-btn" onClick={onClose}>{t('Vazgeç')}</button>
+        <button className="ui-btn ui-btn-primary" onClick={() => onStart(spec)}>{t('Bu aileyle başla')}</button>
       </div>
     </div>
   );
@@ -132,8 +133,8 @@ function FamilyPreview({ spec }) {
     const parsed = JSON.parse(key);
     const r = buildTemplate(starterDocument(), parsed);
     if (!r.ok) return null;
-    const t = computeTidyLayout(r.doc.graph);
-    return { nodes: t.nodes, edges: t.edges, marked: new Set(siblingIds(r.doc, parsed)) };
+    const tidy = computeTidyLayout(r.doc.graph);
+    return { nodes: tidy.nodes, edges: tidy.edges, marked: new Set(siblingIds(r.doc, parsed)) };
   }, [key]);
   if (!drawn) return null;
   const xs = drawn.nodes.map((n) => n.x), ys = drawn.nodes.map((n) => n.y);
@@ -141,7 +142,7 @@ function FamilyPreview({ spec }) {
   const w = Math.max(...xs) - x0 + S, h = Math.max(...ys) - y0 + S + 20;
   const proband = drawn.nodes.find((n) => n.proband);
   return (
-    <svg className="relation-preview" viewBox={`${x0} ${y0} ${w} ${h}`} role="img" aria-label="Açılacak ailenin küçük çizimi">
+    <svg className="relation-preview" viewBox={`${x0} ${y0} ${w} ${h}`} role="img" aria-label={t('Açılacak ailenin küçük çizimi')}>
       {drawn.edges.map((e, i) => {
         const dbl = e.type === 'consanguineousUnion' || e.type === 'consanguineousUnionUnresolved';
         const [dx, dy] = e.x1 === e.x2 ? [4, 0] : [0, 4];

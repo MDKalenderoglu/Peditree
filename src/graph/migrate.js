@@ -28,6 +28,7 @@ import { finalizeGraph, deriveConsanguinity } from './finalize';
 import { deriveConditionKey } from './conditionKey';
 import { cloneGraph, indexGraph } from './model';
 import { defaultChildOrder } from '../utils/childOrdering';
+import { t } from '../i18n';
 
 const V1_SORTED_GROUP = /^(U_PARENTS|U_MOTHER_OTHER_\d+|U_FATHER_OTHER_\d+|U_(GP_)?(MAT|PAT)_(UNCLE|AUNT)_\d+|U_GEN4_\d+)$/;
 
@@ -38,7 +39,7 @@ export function migrateV1ToV2(rawWizardData, { now = new Date().toISOString() } 
   try {
     ({ graph } = deriveV1Graph(wd));
   } catch (err) {
-    return { ok: false, reason: `Eski kayıt okunamadı (v1 grafiği oluşturulamadı): ${err && err.message}` };
+    return { ok: false, reason: t('Eski kayıt okunamadı (v1 grafiği oluşturulamadı): {v0}', { v0: err && err.message }) };
   }
 
   const idx = indexGraph({ ...graph, socialParentLinks: [] });
@@ -84,17 +85,17 @@ export function semanticDiff(a, b) {
     const mx = new Map(xs.map((x) => [keyOf(x), x]));
     const my = new Map(ys.map((y) => [keyOf(y), y]));
     for (const [k, x] of mx) {
-      if (!my.has(k)) { out.push(`${kind} ${k}: yalnız ilk grafikte`); continue; }
+      if (!my.has(k)) { out.push(t('{kind} {k}: yalnız ilk grafikte', { kind, k })); continue; }
       const fx = fmt(x), fy = fmt(my.get(k));
       if (fx !== fy) out.push(`${kind} ${k}: ${fx} ≠ ${fy}`);
     }
-    for (const k of my.keys()) if (!mx.has(k)) out.push(`${kind} ${k}: yalnız ikinci grafikte`);
+    for (const k of my.keys()) if (!mx.has(k)) out.push(t('{kind} {k}: yalnız ikinci grafikte', { kind, k }));
   };
-  cmpById('kişi', a.individuals, b.individuals, (i) => i.id, (i) => stable(i));
+  cmpById(t('kişi'), a.individuals, b.individuals, (i) => i.id, (i) => stable(i));
   cmpById('birliktelik', a.unions, b.unions, (u) => u.id, (u) => stable(u));
-  cmpById('ebeveyn-çocuk', a.parentChildRelationships, b.parentChildRelationships, (r) => r.unionId,
-    (r) => `${r.children.join(',')}${r.birthOrderExplicit ? ' (açık sıra)' : ''}${(r.multiples || []).map((m) => ` [${m.zygosity}: ${m.children.join(',')}]`).join('')}`);
+  cmpById(t('ebeveyn-çocuk'), a.parentChildRelationships, b.parentChildRelationships, (r) => r.unionId,
+    (r) => `${r.children.join(',')}${r.birthOrderExplicit ? t(' (açık sıra)') : ''}${(r.multiples || []).map((m) => ` [${m.zygosity}: ${m.children.join(',')}]`).join('')}`);
   cmpById('lejant', a.conditionKey || [], b.conditionKey || [], (c) => c.id, (c) => c.label);
-  cmpById('sosyal bağ', a.socialParentLinks || [], b.socialParentLinks || [], (l) => `${l.childId}|${l.unionId}`, (l) => l.kind);
+  cmpById(t('sosyal bağ'), a.socialParentLinks || [], b.socialParentLinks || [], (l) => `${l.childId}|${l.unionId}`, (l) => l.kind);
   return out;
 }

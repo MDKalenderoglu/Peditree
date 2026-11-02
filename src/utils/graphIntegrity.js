@@ -7,6 +7,7 @@
  * @param {{ individuals: Array, unions: Array, parentChildRelationships: Array }} graph
  * @returns {Array<{ severity: 'error'|'warning', code: string, message: string, ids: string[] }>}
  */
+import { t } from '../i18n';
 export function auditPedigreeGraph(graph) {
   const { individuals = [], unions = [], parentChildRelationships = [] } = graph;
   const issues = [];
@@ -244,14 +245,14 @@ export function auditPedigreeGraph(graph) {
       issues.push({
         severity: 'warning',
         code: 'PROBAND_MISSING',
-        message: 'Pedigride proband (index vaka) işaretlenmemiş.',
+        message: t('Pedigride proband (index vaka) işaretlenmemiş.'),
         ids: [],
       });
     } else if (probandIds.length > 1) {
       issues.push({
         severity: 'error',
         code: 'PROBAND_MULTIPLE',
-        message: `Pedigride birden fazla proband işaretli: ${probandIds.join(', ')}`,
+        message: t('Pedigride birden fazla proband işaretli: {v0}', { v0: probandIds.join(', ') }),
         ids: probandIds,
       });
     }
@@ -275,7 +276,7 @@ export function auditPedigreeGraph(graph) {
         issues.push({
           severity: 'error',
           code: 'UNION_PARTNER_SEX_CONFLICT',
-          message: `Birliktelikteki iki birey aynı cinsiyette görünüyor (${a.displayLabel || a.label || a.id} ve ${b.displayLabel || b.label || b.id}); cinsiyet kayıtlarını kontrol edin.`,
+          message: t('Birliktelikteki iki birey aynı cinsiyette görünüyor ({v0} ve {v1}); cinsiyet kayıtlarını kontrol edin.', { v0: a.displayLabel || a.label || a.id, v1: b.displayLabel || b.label || b.id }),
           ids: [u.id, a.id, b.id],
         });
       }
@@ -297,7 +298,7 @@ export function auditPedigreeGraph(graph) {
       issues.push({
         severity: 'warning',
         code: 'CONSANGUINITY_UNRESOLVED',
-        message: `Union '${u.id}' akraba evliliği olarak işaretli; ortak ata yapısı grafikte henüz modellenmedi (reported_unresolved). Bu, çizimi etkilemez — standart siyah çift çizgi zaten gösteriliyor; sadece derece/ortak ata bilgisi kayıt amaçlı eksik.`,
+        message: t('Union \'{id}\' akraba evliliği olarak işaretli; ortak ata yapısı grafikte henüz modellenmedi (reported_unresolved). Bu, çizimi etkilemez — standart siyah çift çizgi zaten gösteriliyor; sadece derece/ortak ata bilgisi kayıt amaçlı eksik.', { id: u.id }),
         ids: [u.id],
       });
     }
@@ -318,7 +319,7 @@ export function auditPedigreeGraph(graph) {
       issues.push({
         severity: 'error',
         code: 'CONSANGUINITY_STATUS_MISSING',
-        message: `Union '${u.id}' consanguineous=true ancak consanguinityStatus geçerli bir değere sahip değil ('${u.consanguinityStatus}').`,
+        message: t('Union \'{id}\' consanguineous=true ancak consanguinityStatus geçerli bir değere sahip değil (\'{consanguinityStatus}\').', { id: u.id, consanguinityStatus: u.consanguinityStatus }),
         ids: [u.id],
       });
     }

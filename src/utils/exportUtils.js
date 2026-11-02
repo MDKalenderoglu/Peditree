@@ -16,6 +16,7 @@
  */
 import { applyDrawingStyle, stripStyleHelpers } from './drawingStyleSvg';
 import { pageLayout, pdfBlob, rgbaToRgb } from './pdf';
+import { t } from '../i18n';
 
 export class ExportError extends Error {
   constructor(message) {
@@ -27,7 +28,7 @@ export class ExportError extends Error {
 function resolveSvgElement(svgElement) {
   const el = svgElement || (typeof document !== 'undefined' ? document.getElementById('pedigree-svg') : null);
   if (!el) {
-    throw new ExportError('Pedigri çizimi bulunamadı — dışa aktarılamadı. Önce bir pedigri oluşturun.');
+    throw new ExportError(t('Pedigri çizimi bulunamadı — dışa aktarılamadı. Önce bir pedigri oluşturun.'));
   }
   return el;
 }
@@ -187,13 +188,13 @@ function renderCanvas(svgElement, opts, scaleFor, what) {
         resolve({ canvas, width, height });
       } catch (err) {
         URL.revokeObjectURL(url);
-        reject(new ExportError(`${what} oluşturulamadı: ${err.message}`));
+        reject(new ExportError(t('{what} oluşturulamadı: {message}', { what, message: err.message })));
       }
     };
 
     img.onerror = function () {
       URL.revokeObjectURL(url);
-      reject(new ExportError(`${what} oluşturulamadı — SVG görüntüye dönüştürülemedi.`));
+      reject(new ExportError(t('{what} oluşturulamadı — SVG görüntüye dönüştürülemedi.', { what })));
     };
 
     img.src = url;
@@ -208,7 +209,7 @@ function renderCanvas(svgElement, opts, scaleFor, what) {
 export async function pngBlob(svgElement, opts = {}) {
   const { canvas } = await renderCanvas(svgElement, opts, () => 2, 'PNG');
   return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new ExportError('PNG oluşturulamadı.'))), 'image/png');
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new ExportError(t('PNG oluşturulamadı.')))), 'image/png');
   });
 }
 
@@ -224,7 +225,7 @@ export async function pdfFileBlob(svgElement, opts = {}) {
     const rgb = rgbaToRgb(canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data);
     return await pdfBlob({ width: canvas.width, height: canvas.height, rgb }, page, `PediTree \xb7 ${new Date().toLocaleDateString('tr-TR')}`);
   } catch (err) {
-    throw new ExportError(`PDF oluşturulamadı: ${err.message}`);
+    throw new ExportError(t('PDF oluşturulamadı: {message}', { message: err.message }));
   }
 }
 
@@ -263,6 +264,6 @@ export async function shareFile(file, title = 'Pedigri') {
     return 'shared';
   } catch (err) {
     if (err && err.name === 'AbortError') return 'cancelled';
-    throw new ExportError(`Paylaşılamadı: ${err.message}`);
+    throw new ExportError(t('Paylaşılamadı: {message}', { message: err.message }));
   }
 }

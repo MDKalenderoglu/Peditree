@@ -26,6 +26,7 @@ import { isDocumentV2 } from './document';
 import { normalizeGenetics } from './model';
 import { validateDocument, errorsOf } from './validate';
 import { clearChildlessWithChildren } from './finalize';
+import { t } from '../i18n';
 
 export const STORAGE_KEY_V2 = 'clinical_pedigree_app.session.v2';
 export const V1_BACKUP_KEY = 'clinical_pedigree_app.session.v1.backup';
@@ -79,7 +80,7 @@ export function loadDocument() {
     const r = parseProjectFile(raw);
     if (r.ok && !r.migrated) return { doc: r.doc, source: 'v2', ...(r.normalizations.length ? { notice: r.normalizations.join(' ') } : {}) };
     keepBrokenSession(ls, raw);
-    return { doc: null, source: null, notice: `Bu sekmede kayıtlı pedigri açılamadı (${r.ok ? 'biçim tanınmadı' : r.reason.replace(/\.$/, '')}); boş bir pedigriyle başlandı. Kayıt silinmedi, üzerine yazılmasın diye ayrı saklandı.` };
+    return { doc: null, source: null, notice: t('Bu sekmede kayıtlı pedigri açılamadı ({v0}); boş bir pedigriyle başlandı. Kayıt silinmedi, üzerine yazılmasın diye ayrı saklandı.', { v0: r.ok ? t('biçim tanınmadı') : r.reason.replace(/\.$/, '') }) };
   }
 
   let rawV1;
@@ -88,16 +89,16 @@ export function loadDocument() {
 
   let envelope;
   try { envelope = JSON.parse(rawV1); } catch {
-    return { doc: null, source: null, notice: 'Eski kayıt okunamadı (geçersiz JSON); dokunulmadı.' };
+    return { doc: null, source: null, notice: t('Eski kayıt okunamadı (geçersiz JSON); dokunulmadı.') };
   }
   const wdOk = (w) => w && typeof w === 'object' && w.proband && typeof w.proband === 'object' && w.parents && typeof w.parents === 'object';
   if (!envelope || envelope.schemaVersion !== 1 || !wdOk(envelope.wizardData)) {
-    return { doc: null, source: null, notice: 'Eski kayıt tanınmadı; dokunulmadı.' };
+    return { doc: null, source: null, notice: t('Eski kayıt tanınmadı; dokunulmadı.') };
   }
   const result = migrateV1ToV2({ ...envelope.wizardData, savedAt: envelope.savedAt });
-  if (!result.ok) return { doc: null, source: null, notice: `${result.reason} Eski kayıt dokunulmadan bırakıldı.` };
+  if (!result.ok) return { doc: null, source: null, notice: t('{reason} Eski kayıt dokunulmadan bırakıldı.', { reason: result.reason }) };
   if (!saveDocument(result.doc)) {
-    return { doc: result.doc, source: 'migrated-v1', normalizations: result.normalizations, notice: 'Taşınan pedigri kaydedilemedi; eski kayıt korunuyor.' };
+    return { doc: result.doc, source: 'migrated-v1', normalizations: result.normalizations, notice: t('Taşınan pedigri kaydedilemedi; eski kayıt korunuyor.') };
   }
   try {
     ls.setItem(V1_BACKUP_KEY, rawV1);
@@ -151,29 +152,29 @@ const TEXT_FIELDS = ['label', 'displayLabel', 'notes', 'condition', 'causeOfDeat
 export function shapeProblem(doc) {
   const g = doc.graph;
   for (const p of g.individuals) {
-    if (!isObj(p) || !isId(p.id)) return 'bir kişinin kaydı bozuk (kimliği yok)';
+    if (!isObj(p) || !isId(p.id)) return t('bir kişinin kaydı bozuk (kimliği yok)');
     for (const f of TEXT_FIELDS) {
       const v = p[f];
-      if (v !== undefined && v !== null && typeof v !== 'string' && typeof v !== 'number') return `"${p.id}" kişisinin "${f}" alanı metin değil`;
+      if (v !== undefined && v !== null && typeof v !== 'string' && typeof v !== 'number') return t('"{id}" kişisinin "{f}" alanı metin değil', { id: p.id, f });
     }
-    if (p.conditions !== undefined && (!Array.isArray(p.conditions) || p.conditions.some((c) => !isObj(c) || typeof c.label !== 'string'))) return `"${p.id}" kişisinin bulguları bozuk`;
+    if (p.conditions !== undefined && (!Array.isArray(p.conditions) || p.conditions.some((c) => !isObj(c) || typeof c.label !== 'string'))) return t('"{id}" kişisinin bulguları bozuk', { id: p.id });
   }
   for (const u of g.unions) {
     if (!isObj(u) || !isId(u.id) || !Array.isArray(u.partners) || u.partners.length !== 2 || !u.partners.every(isId) || u.partners[0] === u.partners[1]) {
-      return `bir birliktelik tam iki farklı kişiyi bağlamıyor${isObj(u) && u.id ? ` (${u.id})` : ''}`;
+      return `${t('bir birliktelik tam iki farklı kişiyi bağlamıyor')}${isObj(u) && u.id ? ` (${u.id})` : ''}`;
     }
   }
   for (const r of g.parentChildRelationships) {
-    if (!isObj(r) || !isId(r.unionId) || !Array.isArray(r.children) || !r.children.every(isId)) return 'bir ebeveyn–çocuk kaydı bozuk';
+    if (!isObj(r) || !isId(r.unionId) || !Array.isArray(r.children) || !r.children.every(isId)) return t('bir ebeveyn–çocuk kaydı bozuk');
   }
   if (g.socialParentLinks !== undefined && (!Array.isArray(g.socialParentLinks) || g.socialParentLinks.some((l) => !isObj(l) || !isId(l.childId) || !isId(l.unionId) || typeof l.kind !== 'string'))) {
-    return 'bir sosyal ebeveynlik kaydı bozuk';
+    return t('bir sosyal ebeveynlik kaydı bozuk');
   }
   if (g.reproductiveLinks !== undefined && (!Array.isArray(g.reproductiveLinks) || g.reproductiveLinks.some((l) => !isObj(l) || !isId(l.childId) || !isId(l.personId) || typeof l.role !== 'string'))) {
-    return 'bir yardımcı üreme kaydı bozuk';
+    return t('bir yardımcı üreme kaydı bozuk');
   }
   if (g.conditionKey !== undefined && (!Array.isArray(g.conditionKey) || g.conditionKey.some((e) => !isObj(e) || typeof e.label !== 'string'))) {
-    return 'bulgu açıklaması bozuk';
+    return t('bulgu açıklaması bozuk');
   }
   return null;
 }
@@ -184,26 +185,26 @@ export function shapeProblem(doc) {
  * It never throws: whatever goes wrong comes back as a reason.
  */
 export function parseProjectFile(text) {
-  if (typeof text !== 'string') return { ok: false, reason: 'Dosya okunamadı.' };
-  if (text.length > MAX_PROJECT_FILE_CHARS) return { ok: false, reason: 'Dosya çok büyük (20 MB üstü); bir Peditree pedigrisi değil gibi görünüyor, açılmadı.' };
+  if (typeof text !== 'string') return { ok: false, reason: t('Dosya okunamadı.') };
+  if (text.length > MAX_PROJECT_FILE_CHARS) return { ok: false, reason: t('Dosya çok büyük (20 MB üstü); bir Peditree pedigrisi değil gibi görünüyor, açılmadı.') };
   try {
     return parseChecked(text);
   } catch (err) {
     console.warn('[persistenceV2] Project file could not be read:', err);
-    return { ok: false, reason: 'Dosya okunamadı: içeriği bozuk, açılmadı.' };
+    return { ok: false, reason: t('Dosya okunamadı: içeriği bozuk, açılmadı.') };
   }
 }
 
 function parseChecked(text) {
   let parsed;
   try { parsed = JSON.parse(text); } catch {
-    return { ok: false, reason: 'Dosya okunamadı: geçerli bir JSON değil.' };
+    return { ok: false, reason: t('Dosya okunamadı: geçerli bir JSON değil.') };
   }
   let doc, migrated = false, normalizations = [];
   if (isDocumentV2(parsed)) {
     doc = parsed;
     const problem = shapeProblem(doc);
-    if (problem) return { ok: false, reason: `Dosyadaki pedigri bozuk, açılmadı: ${problem}.` };
+    if (problem) return { ok: false, reason: t('Dosyadaki pedigri bozuk, açılmadı: {problem}.', { problem }) };
     if (!Array.isArray(doc.graph.socialParentLinks)) doc.graph.socialParentLinks = [];
     if (!Array.isArray(doc.graph.reproductiveLinks)) doc.graph.reproductiveLinks = [];
     if (!Array.isArray(doc.graph.conditionKey)) doc.graph.conditionKey = [];
@@ -213,15 +214,15 @@ function parseChecked(text) {
   } else {
     const wizardData = parsed && parsed.schemaVersion === 1 && parsed.wizardData ? parsed.wizardData
       : (parsed && parsed.proband && parsed.parents ? parsed : null);
-    if (!wizardData) return { ok: false, reason: 'Dosya bir Peditree pedigrisi değil (tanınmayan biçim).' };
+    if (!wizardData) return { ok: false, reason: t('Dosya bir Peditree pedigrisi değil (tanınmayan biçim).') };
     const r = migrateV1ToV2(wizardData);
     if (!r.ok) return { ok: false, reason: r.reason };
     doc = r.doc; migrated = true; normalizations = r.normalizations;
   }
   const cleared = doc.graph.unions.filter((u) => u.childless).length;
   clearChildlessWithChildren(doc.graph);
-  if (doc.graph.unions.filter((u) => u.childless).length < cleared) normalizations = [...normalizations, 'Çocuğu olan bir çiftteki "çocuksuz / kısır" işareti kaldırıldı.'];
+  if (doc.graph.unions.filter((u) => u.childless).length < cleared) normalizations = [...normalizations, t('Çocuğu olan bir çiftteki "çocuksuz / kısır" işareti kaldırıldı.')];
   const errors = errorsOf(validateDocument(doc));
-  if (errors.length) return { ok: false, reason: `Dosyadaki pedigri tutarsız, açılmadı: ${errors[0].message}` };
+  if (errors.length) return { ok: false, reason: t('Dosyadaki pedigri tutarsız, açılmadı: {v0}', { v0: errors[0].message }) };
   return { ok: true, doc, migrated, normalizations };
 }
