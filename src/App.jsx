@@ -121,7 +121,7 @@ function App() {
     let fontCss = '';
     let fontMissing = false;
     try { fontCss = await embeddedFontCss(spec.fontId); } catch { fontMissing = true; }
-    return { ...extra, spec, fontCss, fontMissing };
+    return { ...extra, spec, fontCss, fontMissing, lang: drawLang };
   };
   const FONT_MISSING_TEXT = t('Seçtiğiniz yazı tipi dosyaya eklenemedi. Dosya başka bir bilgisayarda açılırsa yazılar o bilgisayarın yazı tipiyle görünür.');
   const exportNoticeFor = (assessment, opts) => {
@@ -227,7 +227,7 @@ function App() {
     if (!assessment) return;
     try {
       const opts = await exportOpts();
-      exportSVG(svgRef.current, exportFileName(doc.patientName, 'svg'), opts);
+      exportSVG(svgRef.current, exportFileName(doc.patientName, 'svg', undefined, drawLang), opts);
       markDownloaded();
       setExportError(null);
       setExportNotice(exportNoticeFor(assessment, opts));
@@ -242,7 +242,7 @@ function App() {
     if (!assessment) return;
     try {
       const opts = await exportOpts();
-      await exportPNG(svgRef.current, exportFileName(doc.patientName, 'png'), opts);
+      await exportPNG(svgRef.current, exportFileName(doc.patientName, 'png', undefined, drawLang), opts);
       markDownloaded();
       setExportError(null);
       setExportNotice(exportNoticeFor(assessment, opts));
@@ -257,7 +257,7 @@ function App() {
     if (!assessment) return;
     try {
       const opts = await exportOpts();
-      await exportPDF(svgRef.current, exportFileName(doc.patientName, 'pdf'), opts);
+      await exportPDF(svgRef.current, exportFileName(doc.patientName, 'pdf', undefined, drawLang), opts);
       markDownloaded();
       setExportError(null);
       setExportNotice(exportNoticeFor(assessment, opts));
@@ -279,8 +279,8 @@ function App() {
     try {
       const name = (doc.patientName || '').trim();
       const opts = await exportOpts();
-      const noName = new File([await pngBlob(svgRef.current, { ...opts, withoutPatientName: true })], exportFileName('', 'png'), { type: 'image/png' });
-      const withName = name ? new File([await pngBlob(svgRef.current, opts)], exportFileName(name, 'png'), { type: 'image/png' }) : null;
+      const noName = new File([await pngBlob(svgRef.current, { ...opts, withoutPatientName: true })], exportFileName('', 'png', undefined, drawLang), { type: 'image/png' });
+      const withName = name ? new File([await pngBlob(svgRef.current, opts)], exportFileName(name, 'png', undefined, drawLang), { type: 'image/png' }) : null;
       setShare({ withName, noName, busy: false });
       if (opts.fontMissing) setExportNotice(FONT_MISSING_TEXT);
     } catch (err) {
@@ -336,7 +336,7 @@ function App() {
     const st = usePedigreeStore.getState();
     const text = toPed(st.doc.graph, st.pedigreeData.nodes, { phenotype: pedPhenotype });
     // no patient name in the file, nor in its name (it goes to a lab)
-    downloadBlob(new Blob([text], { type: 'text/plain' }), exportFileName('', 'ped'));
+    downloadBlob(new Blob([text], { type: 'text/plain' }), exportFileName('', 'ped', undefined, drawLang));
     setDownloadOpen(false);
   };
 
@@ -427,7 +427,7 @@ function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = exportFileName(doc.patientName, 'peditree.json');
+    a.download = exportFileName(doc.patientName, 'peditree.json', undefined, drawLang);
     markDownloaded();
     document.body.appendChild(a);
     a.click();
@@ -919,6 +919,7 @@ function App() {
           onNodeSelect={handleNodeSelect}
           onBackgroundClick={onBackgroundClick}
           drawing={drawing}
+          lang={drawLang}
           onUnionSelect={selectUnion}
           conditionKey={pedigreeData.conditionKey || []}
           patientName={doc.patientName || ''}

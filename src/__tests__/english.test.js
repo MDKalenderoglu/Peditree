@@ -175,7 +175,42 @@ describe('the screens in English', () => {
     expect([...missing]).toEqual([]);
   });
 
+  it('the drawing in English: the key, the notes, ages, weeks and "tested" — the clinician’s own text as typed', async () => {
+    const { buildMarkFamily } = await import('../audit/markCollisions');
+    await settle(() => buildMarkFamily(usePedigreeStore));
+    await settle(() => {
+      const ids = S().doc.graph.individuals.filter((p) => !p.placeholder && !p.count && !p.relation?.startsWith?.('art'));
+      S().updateIndividual(ids[2].id, { age: '3 ay' });
+      S().updateIndividual(ids[3].id, { deceased: true, ageAtDeath: '12 gün', causeOfDeath: 'MI' });
+      S().updateIndividual(ids[4].id, { carrier: true });
+    });
+    const svg = $('.pedigree-viewport').ownerSVGElement;
+    const text = said(svg);
+    expect(text).toMatch(/Notes/);
+    expect(text).toMatch(/3 mo/);
+    expect(text).toMatch(/d\.12 d/);
+    expect(text).toMatch(/Carrier/);
+    expect(turkishIn(text)).toEqual([]);
+    expect([...missing]).toEqual([]);
+  });
+
+  it('the drawing’s language apart from the screens: Turkish screens, English drawing — and the reverse', async () => {
+    await settle(() => useLang.getState().setLang({ ui: 'tr', drawing: 'en' }));
+    const svg = () => $('.pedigree-viewport').ownerSVGElement;
+    expect(said(svg())).toMatch(/Notes/);
+    expect(said(svg())).not.toMatch(/Notlar/);
+    expect(said(svg())).toMatch(/3 mo/);
+    expect(byText('Kaydet')).toBeTruthy();
+    await settle(() => useLang.getState().setLang({ ui: 'en', drawing: 'tr' }));
+    expect(said(svg())).toMatch(/Notlar/);
+    expect(said(svg())).toMatch(/3 ay/);
+    expect(byText('Save')).toBeTruthy();
+    await settle(() => useLang.getState().setLang({ ui: 'en', drawing: 'same' }));
+    expect(said(svg())).toMatch(/Notes/);
+  });
+
   it('a notice on screen is worded again when the language changes; the drawing does not move', async () => {
+    await settle(() => useLang.getState().setLang({ ui: 'en', drawing: 'same' }));
     await settle(() => S().resetPedigree());
     await settle(() => S().clearProband());
     const strip = () => $('.notice-strip');
@@ -190,6 +225,7 @@ describe('the screens in English', () => {
   });
 
   it('keyboard letters follow the language: S adds a partner in English, the Turkish E does nothing', async () => {
+    await settle(() => useLang.getState().setLang({ ui: 'en', drawing: 'same' }));
     await settle(() => S().resetPedigree());
     await settle(() => S().selectIndividual('proband'));
     const partners = () => S().doc.graph.unions.filter((u) => u.partners.includes('proband')).length;

@@ -16,7 +16,7 @@
  */
 import { applyDrawingStyle, stripStyleHelpers } from './drawingStyleSvg';
 import { pageLayout, pdfBlob, rgbaToRgb } from './pdf';
-import { t } from '../i18n';
+import { t, currentLang } from '../i18n';
 
 export class ExportError extends Error {
   constructor(message) {
@@ -127,12 +127,12 @@ function triggerDownload(href, filename) {
 }
 
 /** File name for a download: pedigri-<patient>-<date>.<ext> (Turkish letters kept readable). */
-export function exportFileName(patientName, ext, date = new Date()) {
+export function exportFileName(patientName, ext, date = new Date(), lang = currentLang()) {
   const map = { ç: 'c', ğ: 'g', ı: 'i', i: 'i', ö: 'o', ş: 's', ü: 'u' };
   const slug = String(patientName || '').trim().toLocaleLowerCase('tr')
     .replace(/[çğıiöşü]/g, (ch) => map[ch] || ch)
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  return `pedigri${slug ? `-${slug}` : ''}-${date.toISOString().slice(0, 10)}.${ext}`;
+  return `${lang === 'en' ? 'pedigree' : 'pedigri'}${slug ? `-${slug}` : ''}-${date.toISOString().slice(0, 10)}.${ext}`;
 }
 
 /**
@@ -223,7 +223,7 @@ export async function pdfFileBlob(svgElement, opts = {}) {
   try {
     const page = pageLayout(width, height);
     const rgb = rgbaToRgb(canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data);
-    return await pdfBlob({ width: canvas.width, height: canvas.height, rgb }, page, `PediTree \xb7 ${new Date().toLocaleDateString('tr-TR')}`);
+    return await pdfBlob({ width: canvas.width, height: canvas.height, rgb }, page, `PediTree \xb7 ${new Date().toLocaleDateString(opts.lang === 'en' ? 'en-GB' : 'tr-TR')}`);
   } catch (err) {
     throw new ExportError(t('PDF oluşturulamadı: {message}', { message: err.message }));
   }
