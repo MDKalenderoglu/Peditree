@@ -12,6 +12,7 @@ Güncel durum için bu klasördeki PEDITREE_* dokümanları esas alınır. [`arc
 | [PEDITREE_KNOWN_ISSUES.md](PEDITREE_KNOWN_ISSUES.md) | Açık/kapatılmış sorun kayıtları (KI-…), öncelik, koruma testleri, çıkış ölçütleri |
 | [PEDITREE_UX_REVIEW.md](PEDITREE_UX_REVIEW.md) | Kalıcı UX gereksinimleri (akıllı ilişki görselleştirmesi, düzenleme kararlılığı) ve kabul kriterleri |
 | [PEDITREE_DATA_MODEL_V2.md](PEDITREE_DATA_MODEL_V2.md) | Faz 2b: mevcut veri modelinin değerlendirmesi, graph-first şema v2, göç ve kalıcı kimlikler |
+| [release-audit/](release-audit/RELEASE_AUDIT.md) | Yayın öncesi denetim (2026-11-02): bulgular, NSGC uyum matrisi, güvenlik ve gizlilik, test matrisi, yayın listesi; karar NO-GO (kanıt ve onay eksikleri) |
 
 Ölçüm komutları:
 
