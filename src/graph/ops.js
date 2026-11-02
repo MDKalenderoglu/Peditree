@@ -15,7 +15,7 @@
  * so behaviour does not change for the clinician; what changes is that the
  * result is stored as graph, not replayed from instructions.
  */
-import { cloneGraph, indexGraph, makePerson, SOCIAL_LINK_KINDS, PREGNANCY_FIELDS, PREGNANCY_KINDS, PREGNANCY_LABEL, isPregnancy, pregnancyKind, GENETIC_TESTED, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, REPRO_ROLES, EGG_SOURCE, CARRIER_ROLES, REPRO_LABEL, ART_DONOR_RELATION, hasClinicalData } from './model';
+import { cloneGraph, indexGraph, makePerson, SOCIAL_LINK_KINDS, PREGNANCY_FIELDS, PREGNANCY_KINDS, PREGNANCY_LABEL, isPregnancy, pregnancyKind, GENETIC_TESTED, SEX_AT_BIRTH, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, REPRO_ROLES, EGG_SOURCE, CARRIER_ROLES, REPRO_LABEL, ART_DONOR_RELATION, hasClinicalData } from './model';
 import { allocateEditNumber, retire } from './ids';
 import { finalizeGraph, ageOrder } from './finalize';
 import { validateDocument, errorsOf } from './validate';
@@ -24,7 +24,7 @@ import {
   computeAddParentsPlan, computeAddSiblingPlan,
 } from './plans';
 import { reconcileOrder, moveChildInOrder } from '../utils/childOrdering';
-import { normalizeAge, ageFromBirthDate, AGE_EXAMPLE } from '../utils/age';
+import { normalizeAge, ageFromBirthDate, AGE_EXAMPLE, parseTypedDate } from '../utils/age';
 import { t, tk } from '../i18n';
 
 const issueKey = (i) => `${i.code}|${[...(i.ids || [])].sort().join(',')}`;
@@ -241,6 +241,26 @@ export function updatePerson(doc, id, fields) {
         if (v) p.geneticTest = v; else { delete p.geneticTest; delete p.geneticNote; }
         continue;
       }
+      if (k === 'sexAtBirth') {
+        if (v && !SEX_AT_BIRTH.includes(v)) block(t('Doğumda atanan cinsiyet AMAB, AFAB ya da UAAB olmalı.'));
+        if (v) p.sexAtBirth = v; else delete p.sexAtBirth;
+        continue;
+      }
+      if (k === 'presymptomatic') {
+        if (v && (fields.affected ?? p.affected)) block(t('Etkilenmiş kişi belirtisiz taşıyıcı olarak işaretlenemez; önce "Etkilenmiş" işaretini kaldırın.'));
+        if (v) p.presymptomatic = true; else delete p.presymptomatic;
+        continue;
+      }
+      if (k === 'lmp') {
+        // the last menstrual period of an ongoing pregnancy (NSGC: "LMP" under the P)
+        const raw = String(v ?? '').trim();
+        if (!raw) { delete p.lmp; continue; }
+        if (pregnancyKind(p) !== 'ongoing') block(t('Son adet tarihi yalnız süren gebelikte yazılır.'));
+        const iso = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : parseTypedDate(raw);
+        if (!iso || ageFromBirthDate(iso) === null) block(t('Son adet tarihi anlaşılamadı ya da bugünden sonra: "{v}" (ör. 3.5.26).', { v: raw }));
+        p.lmp = iso;
+        continue;
+      }
       if (k === 'age' || k === 'ageAtDeath') {
         const age = normalizeAge(v);
         if (age === null) block(t('Yaş anlaşılamadı: "{v}" ({AGE_EXAMPLE}).', { v, AGE_EXAMPLE }));
@@ -251,6 +271,8 @@ export function updatePerson(doc, id, fields) {
     }
     // "affected" set by hand is the clinician's own; findings no longer clear it
     if (Object.prototype.hasOwnProperty.call(fields, 'affected')) delete p.affectedByFindings;
+    // symptoms now: no longer a presymptomatic carrier (the line goes, visibly)
+    if (fields.affected === true) delete p.presymptomatic;
   });
 }
 
@@ -856,4 +878,4 @@ export function mergeIntoGroup(doc, ids) {
     return { created: { groupId: kept.id } };
   });
 }
-const MERGE_LOSES = ['age', 'birthDate', 'displayLabel', 'ageAtDeath', 'causeOfDeath', 'geneticNote', 'gestationWeeks'];
+const MERGE_LOSES = ['age', 'birthDate', 'displayLabel', 'ageAtDeath', 'causeOfDeath', 'geneticNote', 'gestationWeeks', 'lmp'];

@@ -142,7 +142,7 @@ export const MAX_PROJECT_FILE_CHARS = 20 * 1024 * 1024;
 
 const isObj = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
 const isId = (x) => typeof x === 'string' && x.length > 0;
-const TEXT_FIELDS = ['label', 'displayLabel', 'notes', 'condition', 'causeOfDeath', 'age', 'ageAtDeath', 'relation', 'sex', 'geneticTest', 'geneticNote', 'birthDate'];
+const TEXT_FIELDS = ['label', 'displayLabel', 'notes', 'condition', 'causeOfDeath', 'age', 'ageAtDeath', 'relation', 'sex', 'geneticTest', 'geneticNote', 'birthDate', 'sexAtBirth', 'lmp'];
 
 /**
  * The form of a v2 document, checked before anything reads it (audit

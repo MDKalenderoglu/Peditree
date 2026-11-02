@@ -58,6 +58,20 @@ export const isSmallSymbol = (p) => ['loss', 'termination', 'ectopic'].includes(
 // bekleniyor" …), drawn one under another below the symbol with no "E"
 // prefix (NSGC 2022 §4.2). A test with no line written shows TESTED_TEXT.
 export const GENETIC_TESTED = 'tested';
+
+/**
+ * Sex assigned at birth, written under the symbol when it differs from the
+ * gender the symbol shows (NSGC 2022 Box 1 and Fig 1; clinician decision
+ * 2026-11-02). Absent = not stated. The symbol itself stays the person's gender.
+ */
+export const SEX_AT_BIRTH = ['AMAB', 'AFAB', 'UAAB'];
+/**
+ * A presymptomatic / asymptomatic carrier (NSGC 2022 Fig 2: "no clinical
+ * symptoms now, but could later exhibit symptoms", typically dominant): a
+ * vertical line through the symbol. Never with "affected" — marking a person
+ * affected clears it (ops.updatePerson); clinician decision 2026-11-02.
+ */
+export const PRESYMPTOMATIC = 'presymptomatic';
 export const TESTED_TEXT = tk('test yapıldı');
 export const geneticLines = (p) => String((p && p.geneticNote) || '').split('\n').map((s) => s.trim()).filter(Boolean);
 /** The note with line `index` replaced by `text` (appended past the end; an empty text removes the line). */
@@ -101,7 +115,7 @@ export const validGroupCount = (c) => c === 'n' || (Number.isInteger(c) && c >= 
 /** "3", or "n" */
 export const groupText = (p) => String(p.count);
 /** what a group may not carry */
-export const GROUP_FORBIDDEN = ['affected', 'carrier', 'deceased', 'geneticTest', 'proband', 'consultand', 'adoptedOut', ...PREGNANCY_FIELDS];
+export const GROUP_FORBIDDEN = ['affected', 'carrier', 'presymptomatic', 'sexAtBirth', 'deceased', 'geneticTest', 'proband', 'consultand', 'adoptedOut', ...PREGNANCY_FIELDS];
 
 /**
  * Adoption (NSGC; clinician decisions 2026-11-01). The adopted person is
@@ -172,6 +186,7 @@ export const subjectOf = (individuals) => (individuals || []).find((i) => i.prob
 export const CLINICAL_FIELDS = [
   'age', 'displayLabel', 'affected', 'carrier', 'notes', 'condition',
   'ageAtDeath', 'causeOfDeath', 'conditions', 'geneticTest', 'geneticNote', 'birthDate',
+  'presymptomatic', 'sexAtBirth', 'lmp',
 ];
 
 export function makePerson(props) {

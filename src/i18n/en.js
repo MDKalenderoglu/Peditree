@@ -871,6 +871,17 @@ const EN = {
   'vefat': 'deceased',
   'Notlar': 'Notes',
   'Tüm pedigriyi ekrana sığdır (0)': 'Fit the whole pedigree on the screen (0)',
+  // ── presymptomatic carrier, sex at birth, LMP (clinician decision 2026-11-02) ──
+  'Doğumda atanan cinsiyet AMAB, AFAB ya da UAAB olmalı.': 'Sex assigned at birth must be AMAB, AFAB or UAAB.',
+  'Etkilenmiş kişi belirtisiz taşıyıcı olarak işaretlenemez; önce "Etkilenmiş" işaretini kaldırın.': 'An affected person cannot be marked as a presymptomatic carrier; remove “Affected” first.',
+  'Son adet tarihi yalnız süren gebelikte yazılır.': 'The LMP is written only for an ongoing pregnancy.',
+  'Son adet tarihi anlaşılamadı ya da bugünden sonra: "{v}" (ör. 3.5.26).': 'The LMP could not be read or is in the future: “{v}” (e.g. 3.5.26).',
+  'Bir kişinin doğumda atanan cinsiyeti anlaşılamadı ("{v0}").': 'A person’s sex assigned at birth could not be read (“{v0}”).',
+  'Bir gebeliğin son adet tarihi anlaşılamadı ("{v0}").': 'A pregnancy’s LMP could not be read (“{v0}”).',
+  'Bir kişi hem etkilenmiş hem belirtisiz taşıyıcı olarak işaretli; birini kaldırın.': 'A person is marked both affected and presymptomatic carrier; remove one.',
+  'SAT': 'LMP',
+  'Belirtisiz taşıyıcı (şu an belirtisi yok)': 'Presymptomatic carrier (no symptoms now)',
+  'belirtisiz taşıyıcı': 'presymptomatic carrier',
 };
 
 export default EN;

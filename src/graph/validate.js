@@ -8,9 +8,9 @@
  * Issues: { severity: 'error' | 'warning', code, message (Turkish), ids }
  */
 import { auditPedigreeGraph } from '../utils/graphIntegrity';
-import { SOCIAL_LINK_KINDS, indexGraph, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, isPregnancy, ancestorsOf, PREGNANCY_FIELDS, REPRO_ROLES, EGG_SOURCE, CARRIER_ROLES, ART_DONOR_RELATION } from './model';
+import { SOCIAL_LINK_KINDS, SEX_AT_BIRTH, indexGraph, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, isPregnancy, ancestorsOf, PREGNANCY_FIELDS, REPRO_ROLES, EGG_SOURCE, CARRIER_ROLES, ART_DONOR_RELATION } from './model';
 
-const FLAG_FIELDS = ['affected', 'carrier', 'deceased', 'proband', 'consultand', 'adoptedOut', 'placeholder', ...PREGNANCY_FIELDS];
+const FLAG_FIELDS = ['affected', 'carrier', 'presymptomatic', 'deceased', 'proband', 'consultand', 'adoptedOut', 'placeholder', ...PREGNANCY_FIELDS];
 const FINDING_STATUSES = ['affected', 'carrier', 'unknown'];
 import { multiplesWarnings } from './multiples';
 import { carrierFindingIssues } from './conditionKey';
@@ -56,6 +56,9 @@ export function validateGraphStructure(graph, { retired = [] } = {}) {
     const notFlag = FLAG_FIELDS.filter((f) => ind[f] !== undefined && ind[f] !== null && typeof ind[f] !== 'boolean');
     if (notFlag.length) err('FIELD_FLAG', t('Bir kişinin "{v0}" alanı evet / hayır değil.', { v0: notFlag[0] }), [ind.id]);
     if (PREGNANCY_FIELDS.filter((f) => ind[f] === true).length > 1) err('PREGNANCY_KIND_MULTIPLE', t('Bir gebelik sonucu aynı anda iki türde işaretli (ör. hem düşük hem ölü doğum).'), [ind.id]);
+    if (ind.sexAtBirth !== undefined && !SEX_AT_BIRTH.includes(ind.sexAtBirth)) err('FIELD_SEX_AT_BIRTH', t('Bir kişinin doğumda atanan cinsiyeti anlaşılamadı ("{v0}").', { v0: String(ind.sexAtBirth) }), [ind.id]);
+    if (ind.lmp !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(String(ind.lmp))) err('FIELD_LMP', t('Bir gebeliğin son adet tarihi anlaşılamadı ("{v0}").', { v0: String(ind.lmp) }), [ind.id]);
+    if (ind.presymptomatic && ind.affected) out.push({ severity: 'warning', code: 'PRESYMPTOMATIC_AFFECTED', message: t('Bir kişi hem etkilenmiş hem belirtisiz taşıyıcı olarak işaretli; birini kaldırın.'), ids: [ind.id] });
     if (ind.conditions !== undefined && !Array.isArray(ind.conditions)) err('FIELD_CONDITIONS', t('Bir kişinin bulguları bir liste değil.'), [ind.id]);
     for (const c of Array.isArray(ind.conditions) ? ind.conditions : []) {
       // a finding without a status comes from an older record and is kept as it is

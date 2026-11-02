@@ -30,7 +30,7 @@ import { fillFor, REGION_ANGLES, CARRIER_FILL } from '../graph/conditionKey';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { applyDrawingStyle } from '../utils/drawingStyleSvg';
 import { STANDARD_FAMILY } from '../utils/drawingStyle';
-import { annotationAge, pregnancyLine } from '../utils/annotations';
+import { annotationAge, pregnancyLine, lmpLine } from '../utils/annotations';
 import { BRACKET_OUT } from '../layout/pcl/routing';
 import { isSmallSymbol, isPregnancy, pregnancyKind, PREGNANCY_LABEL, GENETIC_TESTED, TESTED_TEXT, geneticLines, isGroup, groupText, subjectOf } from '../graph/model';
 import { packLines } from '../utils/textWrap';
@@ -38,7 +38,7 @@ import { keyGrid } from '../utils/keyGrid';
 import { nameCase } from '../utils/nameCase';
 import { chainOf, offsetPolyline } from '../utils/doubleLine';
 import { t, tFor, currentLang } from '../i18n';
-import { shownAge } from '../utils/age';
+import { shownAge, formatDate } from '../utils/age';
 
 const EDGE_COLOR = '#64748b';
 const NODE_STROKE = '#1e293b';
@@ -247,6 +247,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       ...conditionKey.filter(e => has('affected', e)).map(e => ({ ...e, carrier: false, text: e.label })),
       ...conditionKey.filter(e => has('carrier', e)).map(e => ({ ...e, carrier: true, text: td('{label} taşıyıcısı', { label: e.label }) })),
       ...(plainCarrier ? [{ label: null, region: 'q1', fill: CARRIER_FILL, carrier: true, text: td('Taşıyıcı') }] : []),
+      // the vertical line is explained in the key too (NSGC 2022 Fig 2)
+      ...(nodes.some(n => n.presymptomatic && !isSmallSymbol(n)) ? [{ label: null, presymptomatic: true, text: td('Belirtisiz taşıyıcı (şu an belirtisi yok)') }] : []),
     ];
     const onsetsOf = (n) => (n.conditions || []).filter(c => c && c.label && c.onsetAge && (c.status === 'affected' || c.status === 'carrier'));
     const unsureOf = (n) => (n.conditions || []).filter(c => c && c.label && c.status === 'unknown');
@@ -343,7 +345,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         .map(part => ({ text: part.map(x => x.text).join(''), k, value: line })));
     };
     const annotationBottom = (d) => {
-      const lines = [annotationAge(d, lang), pregnancyLine(d, lang), d.displayLabel, d.condition, notedNodes.includes(d)].filter(Boolean).length;
+      const lines = [d.sexAtBirth, annotationAge(d, lang), pregnancyLine(d, lang), lmpLine(d, lang), d.displayLabel, d.condition, notedNodes.includes(d)].filter(Boolean).length;
       return (isSmallSymbol(d) ? LOSS_SIZE : HALF) + 14 + lines * 13 + geneticRows(d).length * GENETIC_ROW;
     };
     const lowest = d3.max(nodes, d => d.y + annotationBottom(d));
@@ -456,14 +458,16 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           break;
 
         case 'divorceSlash': {
-          // Separated and divorced: one slash on the relationship line
-          // (clinician decision 2026-10-23, notation spec §4.7)
+          // Separated and divorced: the relationship line broken by "//"
+          // (NSGC 2022 Fig 3; clinician decision 2026-11-02, before: one slash)
           const { x, y } = edge;
-          g.append('line')
-            .attr('class', 'relationship-ended')
-            .attr('x1', x - 6).attr('y1', y + 8)
-            .attr('x2', x + 6).attr('y2', y - 8)
-            .attr('stroke', NODE_STROKE).attr('stroke-width', 2);
+          for (const dx of [-3.5, 3.5]) {
+            g.append('line')
+              .attr('class', 'relationship-ended')
+              .attr('x1', x + dx - 5).attr('y1', y + 7)
+              .attr('x2', x + dx + 5).attr('y2', y - 7)
+              .attr('stroke', NODE_STROKE).attr('stroke-width', 2);
+          }
           break;
         }
         default:
@@ -600,7 +604,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         pedigreeIds.get(d.id)?.displayId, d.displayLabel,
         isGroup(d) ? `${d.count === 'n' ? t('sayısı bilinmeyen') : d.count} ${t({ male: 'erkek', female: 'kadın' }[d.sex] || 'kişi')}`
           : pregnancyKind(d) ? t(PREGNANCY_LABEL[pregnancyKind(d)]).toLocaleLowerCase(currentLang()) : t({ male: 'erkek', female: 'kadın' }[d.sex] || 'cinsiyeti bilinmiyor'),
-        d.proband && 'proband', d.consultand && t('danışan'), d.reproMark === 'G' && t('gestasyonel taşıyıcı'), d.reproMark === 'D' && t('donör'), d.affected && t('etkilenmiş'), d.carrier && t('taşıyıcı'), d.deceased && t('vefat'),
+        d.proband && 'proband', d.consultand && t('danışan'), d.reproMark === 'G' && t('gestasyonel taşıyıcı'), d.reproMark === 'D' && t('donör'), d.affected && t('etkilenmiş'), d.carrier && t('taşıyıcı'), d.presymptomatic && t('belirtisiz taşıyıcı'), d.sexAtBirth, d.deceased && t('vefat'),
       ].filter(Boolean).join(', '))
       .on('click', (event, d) => {
         event.stopPropagation();
@@ -719,6 +723,14 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       // Selection highlight (primary blue / secondary violet) comes from the
       // node-group classes above via app.css — see EX-1 note there.
 
+      // Presymptomatic / asymptomatic carrier: a vertical line through the symbol
+      // (NSGC 2022 Fig 2; clinician decision 2026-11-02)
+      if (d.presymptomatic && !isSmall) {
+        el.append('line').attr('class', 'presymptomatic-line')
+          .attr('x1', 0).attr('y1', -sz).attr('x2', 0).attr('y2', sz)
+          .attr('stroke', NODE_STROKE).attr('stroke-width', 2);
+      }
+
       // Ongoing pregnancy: "P" inside the symbol (NSGC)
       if (d.ongoingPregnancy) {
         el.append('text').attr('class', 'pregnancy-p').attr('y', 5).attr('text-anchor', 'middle')
@@ -776,6 +788,15 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       // the proband's lines stand a little to the right, clear of the arrow at the lower left
       const ann = el.append('g').attr('class', 'annotations').attr('transform', d.proband || d.consultand ? 'translate(14,0)' : null);
 
+      // Sex assigned at birth right under the symbol, when stated (NSGC 2022 Box 1, Fig 1)
+      if (d.sexAtBirth) {
+        ann.append('text').attr('class', 'sex-at-birth')
+          .attr('y', lineY).attr('text-anchor', 'middle')
+          .attr('font-size', '11px').attr('fill', '#475569')
+          .text(d.sexAtBirth);
+        lineY += LINE_H;
+      }
+
       // Age, or "d." and the age at death (also without an age filled in)
       const ageLine = annotationAge(d, lang);
       if (ageLine) {
@@ -793,6 +814,15 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           .attr('y', lineY).attr('text-anchor', 'middle')
           .attr('font-size', '11px').attr('fill', '#475569')
           .text(pLine), 'gestationWeeks', d.id, d.gestationWeeks || '');
+        lineY += LINE_H;
+      }
+      // an ongoing pregnancy's last menstrual period (NSGC: "LMP" under the P)
+      const lLine = lmpLine(d, lang);
+      if (lLine) {
+        editable(ann.append('text').attr('class', 'lmp-line')
+          .attr('y', lineY).attr('text-anchor', 'middle')
+          .attr('font-size', '11px').attr('fill', '#475569')
+          .text(lLine), 'lmp', d.id, formatDate(d.lmp));
         lineY += LINE_H;
       }
 
@@ -886,8 +916,13 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         const cell = keyG.append('g').attr('transform', `translate(${ex + s},${ey + s})`);
         const box = cell.append('rect').attr('x', -s).attr('y', -s).attr('width', 2 * s).attr('height', 2 * s)
           .attr('fill', NODE_FILL).attr('stroke', NODE_STROKE).attr('stroke-width', 1.5);
-        const [a0, a1] = entry.carrier ? [90, 270] : (REGION_ANGLES[entry.region] || REGION_ANGLES.q1);
-        drawRegions(cell, defs, `key-region-${row}`, box, [{ fill: entry.fill, a0, a1, carrier: entry.carrier }], s);
+        if (entry.presymptomatic) {
+          cell.append('line').attr('class', 'presymptomatic-line').attr('x1', 0).attr('y1', -s).attr('x2', 0).attr('y2', s)
+            .attr('stroke', NODE_STROKE).attr('stroke-width', 1.5);
+        } else {
+          const [a0, a1] = entry.carrier ? [90, 270] : (REGION_ANGLES[entry.region] || REGION_ANGLES.q1);
+          drawRegions(cell, defs, `key-region-${row}`, box, [{ fill: entry.fill, a0, a1, carrier: entry.carrier }], s);
+        }
         keyLines[row].forEach((line, li) => {
           const t = keyG.append('text')
             .attr('x', ex + 2 * s + 12 * LK).attr('y', ey + s + 4.5 * LK + li * KEY_LINE)
