@@ -941,6 +941,7 @@ function App() {
             else if (kind === 'gestationWeeks') setGestationWeeks(target, v.replace(/[^\d.,]/g, ''));
             else if (kind === 'age') updateIndividual(target, { age: v.trim() }); // read (or refused) in ops.updatePerson
             else if (kind === 'ageAtDeath') updateIndividual(target, { ageAtDeath: v.trim() });
+            else if (kind === 'lmp') updateIndividual(target, { lmp: v.trim() });
             else updateIndividual(target, { [kind]: v }); // displayLabel, condition, causeOfDeath
           }}
           renderQuickBar={(anchor, panBy) => ringHidden ? null : (

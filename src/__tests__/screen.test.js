@@ -92,10 +92,10 @@ describe('marks around a person', () => {
     expect(labels.some(l => /sayısı bilinmeyen/.test(l))).toBe(true);
   });
 
-  it('separated and divorced: one slash on the relationship line (clinician decision 2026-10-23)', async () => {
+  it('separated and divorced: the relationship line broken by "//" (NSGC 2022 Fig 3; clinician decision 2026-11-02)', async () => {
     for (const status of ['separated', 'divorced']) {
       await run(() => S().setUnionStatus('U_PARENTS', status));
-      expect($$('.relationship-ended')).toHaveLength(1);
+      expect($$('.relationship-ended')).toHaveLength(2);
     }
     await run(() => S().setUnionStatus('U_PARENTS', 'together'));
     expect($$('.relationship-ended')).toHaveLength(0);

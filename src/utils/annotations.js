@@ -8,7 +8,7 @@
  */
 import { isPregnancy, pregnancyKind } from '../graph/model';
 import { t } from '../i18n';
-import { shownAge } from './age';
+import { shownAge, formatDate } from './age';
 
 export function annotationAge(d, lang) {
   if (!d || isPregnancy(d)) return null;
@@ -27,4 +27,10 @@ export function pregnancyLine(d, lang) {
   const w = d.gestationWeeks ? `${d.gestationWeeks} ${t('hf', null, lang)}` : '';
   const text = { stillbirth: ['SB', w], termination: ['TOP', w], ectopic: ['ECT', w], loss: [w], ongoing: [w] }[kind].filter(Boolean).join(' ');
   return text || null;
+}
+
+/** An ongoing pregnancy's last menstrual period: "SAT 03.05.2026" ("LMP" in English; NSGC). */
+export function lmpLine(d, lang) {
+  if (!d || pregnancyKind(d) !== 'ongoing' || !d.lmp) return null;
+  return `${t('SAT', null, lang)} ${formatDate(d.lmp)}`;
 }
