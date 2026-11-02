@@ -224,7 +224,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       svg.append('text')
         .attr('x', 400).attr('y', 200)
         .attr('text-anchor', 'middle')
-        .attr('fill', '#94a3b8')
+        .attr('fill', '#64748b')
         .attr('font-size', '16px')
         .text(t('Yeni bir pedigri başlatmak için üstteki "Yeni" düğmesine basın.'));
       return;
@@ -820,7 +820,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       if (d.condition) {
         editable(ann.append('text')
           .attr('y', lineY).attr('text-anchor', 'middle')
-          .attr('font-size', '10px').attr('fill', '#6366f1')
+          .attr('font-size', '10px').attr('fill', '#4f46e5')
           .attr('font-style', 'italic')
           .text(d.condition.length > 15 ? d.condition.substring(0, 14) + '...' : d.condition), 'condition', d.id, d.condition);
         lineY += LINE_H;
@@ -832,7 +832,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         if (noteIdx >= 0) {
           ann.append('text')
             .attr('y', lineY).attr('text-anchor', 'middle')
-            .attr('font-size', '9px').attr('fill', '#ef4444')
+            .attr('font-size', '9px').attr('fill', '#b91c1c') // 6.5:1 on white (WCAG AA; audit 2026-11-02)
             .attr('font-weight', '600')
             .text(`[${noteIdx + 1}]`);
         }
