@@ -6,6 +6,7 @@
  * code can use them without instantiating the store.
  */
 import { isPregnancy, isGroup } from './model';
+import { t } from '../i18n';
 
 /**
  * Pure, read-only check for whether `targetId` can be safely deleted via
@@ -38,7 +39,7 @@ export function computeDeletionPlanFor(pedigreeData, targetId) {
 
   const targetInd = individuals.find(i => i.id === targetId);
   if (!targetInd) {
-    return { ok: false, reason: 'Birey grafikte bulunamadı.' };
+    return { ok: false, reason: t('Birey grafikte bulunamadı.') };
   }
 
   // v0.3a.2: deletion is no longer restricted to direct-edit individuals —
@@ -54,13 +55,13 @@ export function computeDeletionPlanFor(pedigreeData, targetId) {
   if (targetInd.proband) {
     return {
       ok: false,
-      reason: 'Proband silinemez. Önce başka bir bireyi proband olarak atayın, ardından tekrar deneyin.',
+      reason: t('Proband silinemez. Önce başka bir bireyi proband olarak atayın, ardından tekrar deneyin.'),
     };
   }
   if (targetInd.placeholder) {
     return {
       ok: false,
-      reason: 'Belirtilmemiş ebeveyn ayrıca silinemez; diğer ebeveyni silerseniz bu birliktelik de kaldırılır.',
+      reason: t('Belirtilmemiş ebeveyn ayrıca silinemez; diğer ebeveyni silerseniz bu birliktelik de kaldırılır.'),
     };
   }
 
@@ -99,20 +100,20 @@ export function computeUnionCreationPlan(pedigreeData, id1, id2) {
   const pcrs = pedigreeData.parentChildRelationships || [];
 
   if (!id1 || !id2 || id1 === id2) {
-    return { ok: false, reason: 'Aynı birey kendisiyle birleştirilemez.' };
+    return { ok: false, reason: t('Aynı birey kendisiyle birleştirilemez.') };
   }
   const ind1 = individuals.find(i => i.id === id1);
   const ind2 = individuals.find(i => i.id === id2);
   if (!ind1 || !ind2) {
-    return { ok: false, reason: 'Bireylerden biri grafikte bulunamadı.' };
+    return { ok: false, reason: t('Bireylerden biri grafikte bulunamadı.') };
   }
   // a pregnancy outcome can have parents and siblings (a fetus may be the
   // proband), never a partner or children (clinician 2026-10-25)
   if (isPregnancy(ind1) || isPregnancy(ind2)) {
-    return { ok: false, reason: 'Düşük/ölü doğum kaydı bir bireyle eş yapılamaz.' };
+    return { ok: false, reason: t('Düşük/ölü doğum kaydı bir bireyle eş yapılamaz.') };
   }
   if (isGroup(ind1) || isGroup(ind2)) {
-    return { ok: false, reason: 'Birden çok kişiyi gösteren sembol eş olamaz; önce "Tek tek ayır" ile kişileri ayırın.' };
+    return { ok: false, reason: t('Birden çok kişiyi gösteren sembol eş olamaz; önce "Tek tek ayır" ile kişileri ayırın.') };
   }
 
   // v0.5 Step 5A: a union/eş ilişkisi yalnızca kadın+erkek (karşı cinsiyet)
@@ -124,15 +125,15 @@ export function computeUnionCreationPlan(pedigreeData, id1, id2) {
   if (ind1.sex === 'unknown' || ind2.sex === 'unknown') {
     return {
       ok: false,
-      reason: 'Cinsiyeti belirtilmemiş (bilinmiyor) bir birey doğrudan eş/union ilişkisine ' +
-        'sokulamaz — önce ilgili bireyin cinsiyeti netleştirilmeli.',
+      reason: t('Cinsiyeti belirtilmemiş (bilinmiyor) bir birey doğrudan eş/union ilişkisine ') +
+        t('sokulamaz — önce ilgili bireyin cinsiyeti netleştirilmeli.'),
     };
   }
   if (ind1.sex === ind2.sex) {
     return {
       ok: false,
-      reason: 'Bu iki birey aynı cinsiyette olduğu için eş/union oluşturulamaz — union yalnızca ' +
-        'kadın+erkek çiftler arasında kurulabilir.',
+      reason: t('Bu iki birey aynı cinsiyette olduğu için eş/union oluşturulamaz — union yalnızca ') +
+        t('kadın+erkek çiftler arasında kurulabilir.'),
     };
   }
 
@@ -148,7 +149,7 @@ export function computeUnionCreationPlan(pedigreeData, id1, id2) {
   if (isParentOf(id1, id2) || isParentOf(id2, id1)) {
     return {
       ok: false,
-      reason: 'Doğrudan ebeveyn-çocuk ilişkisi olan bireyler eş/union yapılamaz.',
+      reason: t('Doğrudan ebeveyn-çocuk ilişkisi olan bireyler eş/union yapılamaz.'),
     };
   }
 
@@ -161,7 +162,7 @@ export function computeUnionCreationPlan(pedigreeData, id1, id2) {
   if (typeof ind1.generation === 'number' && typeof ind2.generation === 'number' &&
       ind1.generation !== ind2.generation) {
     if (Math.abs(ind1.generation - ind2.generation) > 1) {
-      return { ok: false, reason: 'Şimdilik en fazla bir kuşak farklı iki kişi eş yapılabilir.' };
+      return { ok: false, reason: t('Şimdilik en fazla bir kuşak farklı iki kişi eş yapılabilir.') };
     }
     const ancestors = (id) => {
       const out = new Set();
@@ -175,14 +176,14 @@ export function computeUnionCreationPlan(pedigreeData, id1, id2) {
       return out;
     };
     if (ancestors(id1).has(id2) || ancestors(id2).has(id1)) {
-      return { ok: false, reason: 'Bu iki kişi arasında doğrudan soy bağı var (dede–torun gibi); eş yapılamaz.' };
+      return { ok: false, reason: t('Bu iki kişi arasında doğrudan soy bağı var (dede–torun gibi); eş yapılamaz.') };
     }
     crossGeneration = true;
   }
 
   const alreadyPartnered = unions.some(u => u.partners.includes(id1) && u.partners.includes(id2));
   if (alreadyPartnered) {
-    return { ok: false, reason: 'Bu iki kişi zaten eş.' };
+    return { ok: false, reason: t('Bu iki kişi zaten eş.') };
   }
 
   const childToUnion = {};
@@ -191,7 +192,7 @@ export function computeUnionCreationPlan(pedigreeData, id1, id2) {
   if (sameParentUnion) {
     return {
       ok: false,
-      reason: 'Bu iki kişi kardeş; kardeşler eş olamaz.',
+      reason: t('Bu iki kişi kardeş; kardeşler eş olamaz.'),
     };
   }
 
@@ -231,15 +232,15 @@ export function computeSiblingCreationPlan(pedigreeData, id1, id2) {
   const pcrs = pedigreeData.parentChildRelationships || [];
 
   if (!id1 || !id2 || id1 === id2) {
-    return { ok: false, reason: 'Aynı birey kendisiyle kardeş yapılamaz.' };
+    return { ok: false, reason: t('Aynı birey kendisiyle kardeş yapılamaz.') };
   }
   const ind1 = individuals.find(i => i.id === id1);
   const ind2 = individuals.find(i => i.id === id2);
   if (!ind1 || !ind2) {
-    return { ok: false, reason: 'Bireylerden biri grafikte bulunamadı.' };
+    return { ok: false, reason: t('Bireylerden biri grafikte bulunamadı.') };
   }
   if (ind1.proband || ind2.proband) {
-    return { ok: false, reason: 'Proband için bu yoldan kardeş bağı kurulamaz.' };
+    return { ok: false, reason: t('Proband için bu yoldan kardeş bağı kurulamaz.') };
   }
   if (typeof ind1.generation === 'number' && typeof ind2.generation === 'number' && ind1.generation !== ind2.generation) {
     // Matches the same safeguard the former wizard's sibling linker
@@ -250,13 +251,13 @@ export function computeSiblingCreationPlan(pedigreeData, id1, id2) {
     // error. Block before the builder ever gets there.
     return {
       ok: false,
-      reason: 'Kardeşler aynı kuşakta olur; bu iki kişi çizimde farklı kuşaklarda.',
+      reason: t('Kardeşler aynı kuşakta olur; bu iki kişi çizimde farklı kuşaklarda.'),
     };
   }
 
   const alreadyPartnered = unions.some(u => u.partners.includes(id1) && u.partners.includes(id2));
   if (alreadyPartnered) {
-    return { ok: false, reason: 'Bu iki kişi eş; aynı zamanda kardeş yapılamaz.' };
+    return { ok: false, reason: t('Bu iki kişi eş; aynı zamanda kardeş yapılamaz.') };
   }
 
   const childToUnion = {};
@@ -265,7 +266,7 @@ export function computeSiblingCreationPlan(pedigreeData, id1, id2) {
   const p2Union = childToUnion[id2];
 
   if (p1Union && p2Union && p1Union === p2Union) {
-    return { ok: true, action: 'noop', reason: 'Bu iki birey zaten kardeş.' };
+    return { ok: true, action: 'noop', reason: t('Bu iki birey zaten kardeş.') };
   }
   if (p1Union && p2Union && p1Union !== p2Union) {
     // The unsafe case: the builder cannot merge two distinct existing
@@ -273,8 +274,8 @@ export function computeSiblingCreationPlan(pedigreeData, id1, id2) {
     // invariant — it would silently no-op today. Block explicitly instead.
     return {
       ok: false,
-      reason: 'İkisinin de anne-babası ayrı ayrı çizili; bir kişinin tek biyolojik anne-babası olur. ' +
-        'Kardeşlerse, birinin çizili anne-babasını silip sonra kardeş yapın.',
+      reason: t('İkisinin de anne-babası ayrı ayrı çizili; bir kişinin tek biyolojik anne-babası olur. ') +
+        t('Kardeşlerse, birinin çizili anne-babasını silip sonra kardeş yapın.'),
     };
   }
 
@@ -297,11 +298,11 @@ export function computeAddParentsPlan(pedigreeData, targetId) {
 
   const target = individuals.find(i => i.id === targetId);
   if (!target) {
-    return { ok: false, reason: 'Birey grafikte bulunamadı.' };
+    return { ok: false, reason: t('Birey grafikte bulunamadı.') };
   }
   const alreadyHasParent = pcrs.some(rel => rel.children.includes(targetId));
   if (alreadyHasParent) {
-    return { ok: false, reason: 'Bu bireyin zaten ebeveyni var — tekrar eklenemez (yinelenen ebeveyn oluşturulmaz).' };
+    return { ok: false, reason: t('Bu bireyin zaten ebeveyni var — tekrar eklenemez (yinelenen ebeveyn oluşturulmaz).') };
   }
   return { ok: true };
 }
@@ -322,13 +323,13 @@ export function computeAddSiblingPlan(pedigreeData, targetId) {
 
   const target = individuals.find(i => i.id === targetId);
   if (!target) {
-    return { ok: false, reason: 'Birey grafikte bulunamadı.' };
+    return { ok: false, reason: t('Birey grafikte bulunamadı.') };
   }
   const parentRel = pcrs.find(rel => rel.children.includes(targetId));
   if (!parentRel) {
     return {
       ok: false,
-      reason: 'Bu bireyin ebeveyni yok — önce ebeveyn ekleyin, ardından kardeş eklenebilir.',
+      reason: t('Bu bireyin ebeveyni yok — önce ebeveyn ekleyin, ardından kardeş eklenebilir.'),
     };
   }
   return { ok: true, unionId: parentRel.unionId };

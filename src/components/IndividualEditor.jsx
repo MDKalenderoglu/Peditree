@@ -8,7 +8,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { X, Trash2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { computeSiblingCreationPlan, computeUnionCreationPlan } from '../state/usePedigreeStore';
-import { AGE_EXAMPLE } from '../utils/age';
+import { AGE_EXAMPLE, shownAge } from '../utils/age';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { degreeLabel, kinshipOf, kinshipCoefficient, childInbreeding, formatCoefficient, cousinMarriageName } from '../graph/kinship';
 import { groupOf, multipleName, zygosityLabel, ZYGOSITY } from '../graph/multiples';
@@ -17,12 +17,13 @@ import { isPregnancy, pregnancyKind, PREGNANCY_LABEL, GENETIC_TESTED, geneticLin
 import { parseGroupCount } from '../graph/ops';
 import DraftField from './DraftField';
 import { pendingDrafts } from '../utils/drafts';
+import { t, tk, currentLang, shownLabel } from '../i18n';
 
-const SEX_WORD = { male: 'Erkek', female: 'Kadın', unknown: 'Cinsiyet bilinmiyor' };
+const SEX_WORD = { male: tk('Erkek'), female: tk('Kadın'), unknown: tk('Cinsiyet bilinmiyor') };
 // several people in one symbol (clinician decisions 2026-11-01)
-const GROUP_WORD = { male: 'erkek', female: 'kadın', unknown: 'kişi (cinsiyetleri karışık ya da bilinmiyor)' };
+const GROUP_WORD = { male: tk('erkek'), female: tk('kadın'), unknown: tk('kişi (cinsiyetleri karışık ya da bilinmiyor)') };
 // same options and wording as the wizard; an older 'separated' shows as the combined one
-const STATUS_OPTIONS = [['together', 'Birlikte'], ['divorced', 'Boşanmış/Ayrılmış'], ['unknown', 'Bilinmiyor']];
+const STATUS_OPTIONS = [['together', tk('Birlikte')], ['divorced', tk('Boşanmış/Ayrılmış')], ['unknown', tk('Bilinmiyor')]];
 
 /**
  * A box that adds one line: Enter (or leaving the box) writes it and the box
@@ -58,7 +59,7 @@ function Header({ title, sub, onClose }) {
         {sub && <div className="person-sub">{sub}</div>}
       </div>
       {onClose && (
-        <button className="ui-btn ui-btn-ghost ui-btn-icon" onClick={onClose} aria-label="Seçimi kapat" title="Seçimi kapat">
+        <button className="ui-btn ui-btn-ghost ui-btn-icon" onClick={onClose} aria-label={t('Seçimi kapat')} title={t('Seçimi kapat')}>
           <X size={16} />
         </button>
       )}
@@ -68,31 +69,31 @@ function Header({ title, sub, onClose }) {
 
 // what can be added under a couple or beside a sibling: [label, sex, extra]
 const KIN_KINDS = [
-  ['Erkek', 'male', {}], ['Kız', 'female', {}], ['Bilinmeyen', 'unknown', {}],
-  ['Düşük', 'unknown', { pregnancyLoss: true }], ['Ölü doğum', 'unknown', { stillbirth: true }],
-  ['Gebelik (P)', 'unknown', { ongoingPregnancy: true }], ['Sonlandırma', 'unknown', { termination: true }], ['Dış gebelik', 'unknown', { ectopic: true }],
+  [tk('Erkek'), 'male', {}], [tk('Kız'), 'female', {}], [tk('Bilinmeyen'), 'unknown', {}],
+  [tk('Düşük'), 'unknown', { pregnancyLoss: true }], [tk('Ölü doğum'), 'unknown', { stillbirth: true }],
+  [tk('Gebelik (P)'), 'unknown', { ongoingPregnancy: true }], [tk('Sonlandırma'), 'unknown', { termination: true }], [tk('Dış gebelik'), 'unknown', { ectopic: true }],
 ];
 
 function AddButtons({ onAdd, title }) {
   return (
     <div className="add-grid">
-      {KIN_KINDS.map(([t, sex, extra]) => (
-        <button key={t} className="ui-btn ui-btn-sm" onClick={() => onAdd(sex, extra)} title={title}>{t}</button>
+      {KIN_KINDS.map(([label, sex, extra]) => (
+        <button key={label} className="ui-btn ui-btn-sm" onClick={() => onAdd(sex, extra)} title={title}>{t(label)}</button>
       ))}
     </div>
   );
 }
 
 const PATH_TEXT = {
-  mothers_paternal_is_fathers_paternal: 'Annenin babası ile babanın babası kardeş',
-  mothers_maternal_is_fathers_maternal: 'Annenin annesi ile babanın annesi kardeş',
-  cross_cousin_1: 'Annenin annesi ile babanın babası kardeş',
-  cross_cousin_2: 'Annenin babası ile babanın annesi kardeş',
+  mothers_paternal_is_fathers_paternal: tk('Annenin babası ile babanın babası kardeş'),
+  mothers_maternal_is_fathers_maternal: tk('Annenin annesi ile babanın annesi kardeş'),
+  cross_cousin_1: tk('Annenin annesi ile babanın babası kardeş'),
+  cross_cousin_2: tk('Annenin babası ile babanın annesi kardeş'),
 };
 const DEGREE_OPTIONS = [
-  ['unknown', 'Bilinmiyor'], ['first_cousin', '1. derece kuzen'], ['second_cousin', '2. derece kuzen'], ['third_cousin', '3. derece kuzen'],
-  ['first_cousin_once_removed', '1. kuzenin çocuğu (bir kuşak fark)'], ['second_cousin_once_removed', '2. kuzenin çocuğu (bir kuşak fark)'],
-  ['double_first_cousin', 'Çift 1. derece kuzen'], ['multiple_relationship', 'Birden fazla akrabalık yolu'], ['other', 'Diğer'],
+  ['unknown', tk('Bilinmiyor')], ['first_cousin', tk('1. derece kuzen')], ['second_cousin', tk('2. derece kuzen')], ['third_cousin', tk('3. derece kuzen')],
+  ['first_cousin_once_removed', tk('1. kuzenin çocuğu (bir kuşak fark)')], ['second_cousin_once_removed', tk('2. kuzenin çocuğu (bir kuşak fark)')],
+  ['double_first_cousin', tk('Çift 1. derece kuzen')], ['multiple_relationship', tk('Birden fazla akrabalık yolu')], ['other', tk('Diğer')],
 ];
 
 /**
@@ -110,16 +111,16 @@ function RelationshipChoice({ u, onSetBackground, parentsCons, graph }) {
   // informational, for counselling and homozygosity comparison (clinician request 2026-10-25)
   const cousinName = graph ? cousinMarriageName(graph, u.partners[0], u.partners[1]) : null;
   const F = graph ? childInbreeding(graph, u.id) : 0;
-  const inbreeding = F > 0 && <span className="field-hint">Bu çiftin çocuklarında akrabalık (inbreeding) katsayısı: <b>F = {formatCoefficient(F)}</b></span>;
+  const inbreeding = F > 0 && <span className="field-hint">{t('Bu çiftin çocuklarında akrabalık (inbreeding) katsayısı:')} <b>F = {formatCoefficient(F)}</b></span>;
   if (drawn) {
     const nameOf = parentsCons ? parentsCons.nameOf : (x) => x;
     return (
       <div className="field-col">
-        <span className="field-label">Akrabalık: var</span>
+        <span className="field-label">{t('Akrabalık: var')}</span>
         <span className="field-hint">
-          Çizimden anlaşılan akrabalık: {degreeLabel(isParents ? kin.degree : u.consanguinityDegree) || 'akraba'}
+          {t('Çizimden anlaşılan akrabalık:')} {degreeLabel(isParents ? kin.degree : u.consanguinityDegree) || t('akraba')}
           {cousinName ? ` (${cousinName})` : ''}
-          {isParents && PATH_TEXT[parents.consanguinityPath] ? ` — ${PATH_TEXT[parents.consanguinityPath]}` : ''}.
+          {isParents && PATH_TEXT[parents.consanguinityPath] ? ` — ${t(PATH_TEXT[parents.consanguinityPath])}` : ''}.
         </span>
         {inbreeding}
         {isParents && <span className="field-hint">Ortak atalar: {kin.ancestors.map(nameOf).join(', ')}</span>}
@@ -139,34 +140,34 @@ function RelationshipChoice({ u, onSetBackground, parentsCons, graph }) {
   };
   return (
     <div className="field-col">
-      <span className="field-label">Akrabalık</span>
-      <div className="segmented" role="radiogroup" aria-label="Akrabalık">
-        {[['yes', 'Var'], ['no', 'Yok'], ['village', 'Aynı köy']].map(([v, t]) => (
-          <button key={v} className={value === v ? 'on' : undefined} role="radio" aria-checked={value === v} onClick={() => choose(v)}>{t}</button>
+      <span className="field-label">{t('Akrabalık')}</span>
+      <div className="segmented" role="radiogroup" aria-label={t('Akrabalık')}>
+        {[['yes', t('Var')], ['no', t('Yok')], ['village', t('Aynı köy')]].map(([v, label]) => (
+          <button key={v} className={value === v ? 'on' : undefined} role="radio" aria-checked={value === v} onClick={() => choose(v)}>{label}</button>
         ))}
       </div>
-      {value === 'village' && <span className="field-hint">Aynı köyden ya da bölgeden olmak akrabalık sayılmaz; eşleri bağlayan çizgi tek kalır.</span>}
+      {value === 'village' && <span className="field-hint">{t('Aynı köyden ya da bölgeden olmak akrabalık sayılmaz; eşleri bağlayan çizgi tek kalır.')}</span>}
       {isParents && value === 'yes' && (
         <>
-          <select className="select input-wide" value={parents.consanguinityDegree} aria-label="Akrabalık derecesi"
+          <select className="select input-wide" value={parents.consanguinityDegree} aria-label={t('Akrabalık derecesi')}
             onChange={e => parentsCons.onSet('consanguinityDegree', e.target.value)}>
-            {DEGREE_OPTIONS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+            {DEGREE_OPTIONS.map(([v, label]) => <option key={v} value={v}>{t(label)}</option>)}
           </select>
           {parents.consanguinityDegree === 'first_cousin' && (
-            <select className="select input-wide" value={parents.consanguinityPath} aria-label="Ortak atalar kimin üzerinden"
+            <select className="select input-wide" value={parents.consanguinityPath} aria-label={t('Ortak atalar kimin üzerinden')}
               onChange={e => parentsCons.onSet('consanguinityPath', e.target.value)}>
-              <option value="unknown">Ortak ata hangi taraftan? (bilinmiyor)</option>
-              {Object.entries(PATH_TEXT).map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+              <option value="unknown">{t('Ortak ata hangi taraftan? (bilinmiyor)')}</option>
+              {Object.entries(PATH_TEXT).map(([v, label]) => <option key={v} value={v}>{t(label)}</option>)}
             </select>
           )}
           {kin
-            ? <span className="field-hint">Ortak atalar çizime eklendi: {kin.ancestors.map(parentsCons.nameOf).join(', ')}</span>
-            : <span className="field-hint">Akrabalık derecesini seçin (1. kuzenlerde ortak atanın hangi taraftan olduğunu da). Ortak atalar çizime kendiliğinden eklenir. Seçmezseniz eşlerin arasına yalnızca çift çizgi çizilir.</span>}
-          {kin && cousinName && <span className="field-hint">Eşler {cousinName}.</span>}
+            ? <span className="field-hint">{t('Ortak atalar çizime eklendi: {names}', { names: kin.ancestors.map(parentsCons.nameOf).join(', ') })}</span>
+            : <span className="field-hint">{t('Akrabalık derecesini seçin (1. kuzenlerde ortak atanın hangi taraftan olduğunu da). Ortak atalar çizime kendiliğinden eklenir. Seçmezseniz eşlerin arasına yalnızca çift çizgi çizilir.')}</span>}
+          {kin && cousinName && <span className="field-hint">{t('Eşler {relation}.', { relation: cousinName })}</span>}
           {inbreeding}
         </>
       )}
-      {!isParents && value === 'yes' && <span className="field-hint">Ortak atalar çizimde yok; çift çizgi yalnızca ailenin söylediğine dayanıyor.</span>}
+      {!isParents && value === 'yes' && <span className="field-hint">{t('Ortak atalar çizimde yok; çift çizgi yalnızca ailenin söylediğine dayanıyor.')}</span>}
     </div>
   );
 }
@@ -178,10 +179,10 @@ function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelati
     <>
       {onSetUnionStatus && (
         <label className="field">
-          <span className="field-label">İlişki</span>
+          <span className="field-label">{t('İlişki')}</span>
           <select className="select" value={u.status === 'separated' ? 'divorced' : (u.status || 'together')}
             onChange={e => onSetUnionStatus(u.id, e.target.value)}>
-            {STATUS_OPTIONS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+            {STATUS_OPTIONS.map(([v, label]) => <option key={v} value={v}>{t(label)}</option>)}
           </select>
         </label>
       )}
@@ -191,23 +192,23 @@ function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelati
       {/* NSGC: no children by choice / reason unknown (one bar) or infertile (two bars), shown while they have none */}
       {onSetChildlessness && children.length === 0 && (
         <div className="field-col">
-          <span className="field-label">Çocukları yok</span>
-          <div className="segmented" role="radiogroup" aria-label="Çocukları yok">
-            {[['', '—'], ['by_choice', 'Çocuksuz'], ['infertile', 'İnfertil']].map(([v, t]) => (
+          <span className="field-label">{t('Çocukları yok')}</span>
+          <div className="segmented" role="radiogroup" aria-label={t('Çocukları yok')}>
+            {[['', '—'], ['by_choice', t('Çocuksuz')], ['infertile', t('İnfertil')]].map(([v, label]) => (
               <button key={v} role="radio" aria-checked={(u.childless || '') === v} className={(u.childless || '') === v ? 'on' : undefined}
-                onClick={() => onSetChildlessness(u.id, v || null)}>{t}</button>
+                onClick={() => onSetChildlessness(u.id, v || null)}>{label}</button>
             ))}
           </div>
           {u.childless && (
             <DraftField key={`${u.id}-childless`} type="text" className="input input-wide" value={u.childlessReason || ''}
-              placeholder="Nedeni (isteğe bağlı), ör. azospermi" onCommit={v => onSetChildlessness(u.id, undefined, v)} />
+              placeholder={t('Nedeni (isteğe bağlı), ör. azospermi')} onCommit={v => onSetChildlessness(u.id, undefined, v)} />
           )}
-          <span className="field-hint">{u.childless === 'infertile' ? 'Çizimde çift kısa çizgi: kısırlık (infertilite).' : u.childless ? 'Çizimde tek kısa çizgi: kendi isteğiyle çocuksuz ya da nedeni bilinmiyor.' : 'Çiftin çocuğu yoksa nedenini seçin: “Çocuksuz” tek kısa çizgiyle, “İnfertil” çift kısa çizgiyle çizilir.'}</span>
+          <span className="field-hint">{u.childless === 'infertile' ? t('Çizimde çift kısa çizgi: kısırlık (infertilite).') : u.childless ? t('Çizimde tek kısa çizgi: kendi isteğiyle çocuksuz ya da nedeni bilinmiyor.') : t('Çiftin çocuğu yoksa nedenini seçin: “Çocuksuz” tek kısa çizgiyle, “İnfertil” çift kısa çizgiyle çizilir.')}</span>
         </div>
       )}
       {withChildren && (
         <div className="field-col">
-          <span className="field-label">Çocuk ekle{children.length > 0 ? ` (şu an ${children.length})` : ''}</span>
+          <span className="field-label">{children.length > 0 ? t('Çocuk ekle (şu an {n})', { n: children.length }) : t('Çocuk ekle')}</span>
           <AddButtons onAdd={(sex, extra) => onAddChild(u.id, sex, null, extra)} />
         </div>
       )}
@@ -227,28 +228,28 @@ function AdoptionCard({ info, onSet }) {
   const kind = current ? current.kind : 'none';
   return (
     <div className="card">
-      <div className="card-title">Evlat edinme</div>
-      <div className="segmented" role="radiogroup" aria-label="Evlat edinme">
+      <div className="card-title">{t('Evlat edinme')}</div>
+      <div className="segmented" role="radiogroup" aria-label={t('Evlat edinme')}>
         <button role="radio" aria-checked={kind === 'none'} className={kind === 'none' ? 'on' : undefined}
-          disabled={kind === 'in'} title={kind === 'in' ? 'Bu kişinin biyolojik ebeveynleri çizili değil; önce onları ekleyin' : undefined}
-          onClick={() => onSet(null)}>Yok</button>
+          disabled={kind === 'in'} title={kind === 'in' ? t('Bu kişinin biyolojik ebeveynleri çizili değil; önce onları ekleyin') : undefined}
+          onClick={() => onSet(null)}>{t('Yok')}</button>
         <button role="radio" aria-checked={kind === 'out'} className={kind === 'out' ? 'on' : undefined}
-          disabled={!hasParents} title={!hasParents ? 'Önce biyolojik ebeveynleri ekleyin' : undefined}
-          onClick={() => onSet('out')}>Evlat verildi</button>
+          disabled={!hasParents} title={!hasParents ? t('Önce biyolojik ebeveynleri ekleyin') : undefined}
+          onClick={() => onSet('out')}>{t('Evlat verildi')}</button>
       </div>
       <label className="field">
-        <span className="field-label">Evlat edinen aile (çizimde)</span>
+        <span className="field-label">{t('Evlat edinen aile (çizimde)')}</span>
         <select className="input" value={current && current.unionId ? current.unionId : ''}
           onChange={e => e.target.value && onSet(e.target.value)}>
-          <option value="">— seçin —</option>
+          <option value="">{t('— seçin —')}</option>
           {couples.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </label>
       <span className="field-hint">
-        {kind === 'out' ? 'Evlat verildi: sembol köşeli parantez içinde, biyolojik ailesinden düz çizgi. Evlat edinen aile çizimde yok.'
-          : kind === 'relative' ? 'Evlat edinildi; biyolojik ve evlat edinen ailesi çizimde: biyolojik ailesinden düz, evlat edinen aileden kesikli çizgi.'
-          : kind === 'in' ? 'Evlat edinildi: evlat edinen ailesinin altında, kesikli çizgiyle.'
-          : 'Evlat verildiyse ve evlat edinen aile çizimde yoksa “Evlat verildi”; aile çizimdeyse (ör. teyze ve eşi) listeden seçin.'}
+        {kind === 'out' ? t('Evlat verildi: sembol köşeli parantez içinde, biyolojik ailesinden düz çizgi. Evlat edinen aile çizimde yok.')
+          : kind === 'relative' ? t('Evlat edinildi; biyolojik ve evlat edinen ailesi çizimde: biyolojik ailesinden düz, evlat edinen aileden kesikli çizgi.')
+          : kind === 'in' ? t('Evlat edinildi: evlat edinen ailesinin altında, kesikli çizgiyle.')
+          : t('Evlat verildiyse ve evlat edinen aile çizimde yoksa “Evlat verildi”; aile çizimdeyse (ör. teyze ve eşi) listeden seçin.')}
       </span>
     </div>
   );
@@ -261,10 +262,10 @@ function AdoptionCard({ info, onSet }) {
  * whom they are a donor or carrier for.
  */
 const REPRO_BUTTONS = [
-  ['sperm_donor', 'Sperm donörü', 'Çocuğun genetik babası; çizimde D, çiftle arasında ilişki çizgisi yok'],
-  ['egg_donor', 'Yumurta donörü', 'Çocuğun genetik annesi; çizimde D'],
-  ['gestational_carrier', 'Gestasyonel taşıyıcı (G)', 'Gebeliği taşır, yumurtası kullanılmaz; çocuk onun altında'],
-  ['surrogate', 'Taşıyıcı anne (D)', 'Yumurtasını verir ve gebeliği taşır; çocuk onun altında'],
+  ['sperm_donor', tk('Sperm donörü'), tk('Çocuğun genetik babası; çizimde D, çiftle arasında ilişki çizgisi yok')],
+  ['egg_donor', tk('Yumurta donörü'), tk('Çocuğun genetik annesi; çizimde D')],
+  ['gestational_carrier', tk('Gestasyonel taşıyıcı (G)'), tk('Gebeliği taşır, yumurtası kullanılmaz; çocuk onun altında')],
+  ['surrogate', tk('Taşıyıcı anne (D)'), tk('Yumurtasını verir ve gebeliği taşır; çocuk onun altında')],
 ];
 function ReproCard({ info, onAdd, onRemove }) {
   const [who, setWho] = useState('');
@@ -272,35 +273,35 @@ function ReproCard({ info, onAdd, onRemove }) {
   const { links, canHave, candidates, roleOf } = info;
   return (
     <div className="card">
-      <div className="card-title">Yardımcı üreme</div>
+      <div className="card-title">{t('Yardımcı üreme')}</div>
       {roleOf.length > 0 && (
-        <span className="field-hint">{roleOf.map(r => `${r.childName} için ${r.label.toLocaleLowerCase('tr')}`).join('; ')}. Aile öyküsünü not ve bulgu olarak girin.</span>
+        <span className="field-hint">{roleOf.map(r => t('{child} için {role}', { child: r.childName, role: t(r.label).toLocaleLowerCase(currentLang()) })).join('; ')}. {t('Aile öyküsünü not ve bulgu olarak girin.')}</span>
       )}
       {canHave ? (
         <>
           {links.map(l => (
             <div key={l.personId + l.role} className="btn-row">
-              <span>{l.label}: {l.name}</span>
-              <button className="ui-btn ui-btn-sm" onClick={() => onRemove(l.personId)}>Kaldır</button>
+              <span>{t(l.label)}: {l.name}</span>
+              <button className="ui-btn ui-btn-sm" onClick={() => onRemove(l.personId)}>{t('Kaldır')}</button>
             </div>
           ))}
           <label className="field">
-            <span className="field-label">Kim?</span>
+            <span className="field-label">{t('Kim?')}</span>
             <select className="input" value={who} onChange={e => setWho(e.target.value)}>
-              <option value="">Yeni kişi (çizime eklenir)</option>
+              <option value="">{t('Yeni kişi (çizime eklenir)')}</option>
               {candidates.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </label>
           <div className="btn-row btn-wrap">
             {REPRO_BUTTONS.map(([role, text, title]) => (
-              <button key={role} className="ui-btn ui-btn-sm" title={title} disabled={!!info.blocked[role]}
-                onClick={() => onAdd(role, who ? { personId: who } : {})}>{text}</button>
+              <button key={role} className="ui-btn ui-btn-sm" title={t(title)} disabled={!!info.blocked[role]}
+                onClick={() => onAdd(role, who ? { personId: who } : {})}>{t(text)}</button>
             ))}
           </div>
-          <span className="field-hint">Donörün ve taşıyıcının ailesi çizilmez; aile öyküsünü onların not ve bulgu alanına yazın. Akrabalık katsayısı genetik ebeveynlere göre hesaplanır.</span>
+          <span className="field-hint">{t('Donörün ve taşıyıcının ailesi çizilmez; aile öyküsünü onların not ve bulgu alanına yazın. Akrabalık katsayısı genetik ebeveynlere göre hesaplanır.')}</span>
         </>
       ) : roleOf.length === 0 && (
-        <span className="field-hint">Yardımcı üreme işaretlemek için önce bu kişinin anne-babasını (ya da tek ebeveynini) ekleyin.</span>
+        <span className="field-hint">{t('Yardımcı üreme işaretlemek için önce bu kişinin anne-babasını (ya da tek ebeveynini) ekleyin.')}</span>
       )}
     </div>
   );
@@ -310,7 +311,7 @@ function MultiplesCard({ node, pedigreeData, displayNameFor, onAddMultiple, onSe
   const found = groupOf(pedigreeData, node.id);
   const hasParents = (pedigreeData.parentChildRelationships || []).some(r => r.children.includes(node.id));
   if (!hasParents || !onAddMultiple) return null;
-  const sexes = [['male', 'Erkek'], ['female', 'Kız'], ['unknown', 'Bilinmeyen']];
+  const sexes = [['male', t('Erkek')], ['female', t('Kız')], ['unknown', t('Bilinmeyen')]];
   // a new twin is added from the ring (İkiz); here only an existing group
   if (!found) return null;
   const { group } = found;
@@ -320,22 +321,22 @@ function MultiplesCard({ node, pedigreeData, displayNameFor, onAddMultiple, onSe
       <div className="card-title">{multipleName(n)}</div>
       <span className="field-hint">{group.children.map(displayNameFor).join(', ')}</span>
       <label className="field-col">
-        <span className="field-label">Zigosite</span>
+        <span className="field-label">{t('Zigosite')}</span>
         <select className="select input-wide" value={group.zygosity} onChange={e => onSetZygosity(node.id, e.target.value)}>
           {ZYGOSITY.map(v => <option key={v} value={v}>{zygosityLabel(v, n)}</option>)}
         </select>
       </label>
       <div className="field-col">
-        <span className="field-label">{multipleName(n + 1)} yap: bir kardeş daha</span>
+        <span className="field-label">{t('{name} yap: bir kardeş daha', { name: multipleName(n + 1) })}</span>
         {group.zygosity === 'monozygotic' ? (
-          <button className="ui-btn ui-btn-sm" onClick={() => onAddMultiple(node.id, {})}>Ekle (aynı cinsiyet)</button>
+          <button className="ui-btn ui-btn-sm" onClick={() => onAddMultiple(node.id, {})}>{t('Ekle (aynı cinsiyet)')}</button>
         ) : (
           <div className="add-grid">
-            {sexes.map(([v, t]) => <button key={v} className="ui-btn ui-btn-sm" onClick={() => onAddMultiple(node.id, { sex: v })}>{t}</button>)}
+            {sexes.map(([v, label]) => <button key={v} className="ui-btn ui-btn-sm" onClick={() => onAddMultiple(node.id, { sex: v })}>{label}</button>)}
           </div>
         )}
       </div>
-      <button className="ui-btn ui-btn-sm ui-btn-ghost" onClick={() => onLeaveMultiple(node.id)}>Bu kişiyi gruptan çıkar</button>
+      <button className="ui-btn ui-btn-sm ui-btn-ghost" onClick={() => onLeaveMultiple(node.id)}>{t('Bu kişiyi gruptan çıkar')}</button>
     </div>
   );
 }
@@ -357,20 +358,20 @@ function PairKinship({ a, b, graph }) {
   const parentsOf = (id) => unions.find((u) => u.id === (pcrs.find((r) => r.children.includes(id)) || {}).unionId)?.partners || [];
   const sameParents = pcrs.some((r) => r.children.includes(a.id) && r.children.includes(b.id));
   const kin = kinshipOf(graph, a.id, b.id);
-  const what = parentsOf(b.id).includes(a.id) || parentsOf(a.id).includes(b.id) ? 'Ebeveyn – çocuk'
-    : sameParents ? 'Kardeş'
+  const what = parentsOf(b.id).includes(a.id) || parentsOf(a.id).includes(b.id) ? t('Ebeveyn – çocuk')
+    : sameParents ? t('Kardeş')
       : kin ? `${degreeLabel(kin.degree)}${cousinMarriageName(graph, a.id, b.id) ? ` (${cousinMarriageName(graph, a.id, b.id)})` : ''}`
-        : 'Akraba';
+        : t('Akraba');
   return (
     <div className="card">
-      <div className="card-title">Akrabalık</div>
+      <div className="card-title">{t('Akrabalık')}</div>
       <span className="field-hint">{what}</span>
-      <span className="field-hint">Ortak gen oranı (ortak atalardan gelen aynı genlerin beklenen oranı): <b>{formatCoefficient(2 * phi)}</b></span>
+      <span className="field-hint">{t('Ortak gen oranı (ortak atalardan gelen aynı genlerin beklenen oranı):')} <b>{formatCoefficient(2 * phi)}</b></span>
     </div>
   );
 }
 
-const GROUP_SHAPE = { male: 'kare', female: 'daire', unknown: 'baklava' };
+const GROUP_SHAPE = { male: tk('kare'), female: tk('daire'), unknown: tk('baklava') };
 
 /** "Tek sembolde birleştir" — siblings chosen together become one numbered symbol (the reverse of "Tek tek ayır"). */
 function MergeCard({ check, onMerge, ids }) {
@@ -378,13 +379,13 @@ function MergeCard({ check, onMerge, ids }) {
   const made = check.ok ? check.doc.graph.individuals.find(i => i.id === check.created.groupId) : null;
   return (
     <div className="card">
-      <div className="card-title">Tek sembolde birleştir</div>
+      <div className="card-title">{t('Tek sembolde birleştir')}</div>
       <span className="field-hint">
         {made
-          ? `Seçili kardeşler tek bir ${GROUP_SHAPE[made.sex || 'unknown']} olarak çizilir, içinde ${made.count} yazar. Gerekirse “Tek tek ayır” ile yeniden ayrılır.`
+          ? t('Seçili kardeşler tek bir {shape} olarak çizilir, içinde {count} yazar. Gerekirse “Tek tek ayır” ile yeniden ayrılır.', { shape: t(GROUP_SHAPE[made.sex || 'unknown']), count: made.count })
           : check.reason}
       </span>
-      <button className="ui-btn" disabled={!made} onClick={() => onMerge(ids)}>Birleştir</button>
+      <button className="ui-btn" disabled={!made} onClick={() => onMerge(ids)}>{t('Birleştir')}</button>
     </div>
   );
 }
@@ -403,51 +404,51 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
   const pedigreeIds = computePedigreeIds(pedigreeData?.nodes || []);
   const label = (p) => {
     const pid = pedigreeIds.get(p.id)?.displayId;
-    const human = p.displayLabel || p.label;
-    return pid ? (human ? `${pid} — ${human}` : pid) : (human || 'birey');
+    const human = p.displayLabel || shownLabel(p.label);
+    return pid ? (human ? `${pid} — ${human}` : pid) : (human || t('birey'));
   };
 
   return (
     <>
-      <Header title={couple ? 'İlişki' : 'İki kişi seçili'} sub={`${label(node)}  +  ${label(node2)}`} onClose={onClearSelection} />
+      <Header title={couple ? t('İlişki') : t('İki kişi seçili')} sub={`${label(node)}  +  ${label(node2)}`} onClose={onClearSelection} />
       <div className="editor-body">
         {couple && (
           <div className="card">
-            <div className="card-title">Bu çift</div>
+            <div className="card-title">{t('Bu çift')}</div>
             <UnionControls u={couple} pcrs={pedigreeData.parentChildRelationships || []} {...unionProps} graph={pedigreeData} />
           </div>
         )}
         {!couple && <PairKinship a={node} b={node2} graph={pedigreeData} />}
         {siblings && onSetMultipleBirth && (
           <div className="card">
-            <div className="card-title">İkiz yap</div>
+            <div className="card-title">{t('İkiz yap')}</div>
             <div className="btn-row">
               {ZYGOSITY.map(v => (
                 <button key={v} className="ui-btn ui-btn-sm" onClick={() => onSetMultipleBirth([node.id, node2.id], v)}>
-                  {{ monozygotic: 'Tek yumurta', dizygotic: 'Çift yumurta', unknown: 'Bilinmiyor' }[v]}
+                  {{ monozygotic: t('Tek yumurta'), dizygotic: t('Çift yumurta'), unknown: t('Bilinmiyor') }[v]}
                 </button>
               ))}
             </div>
-            <span className="field-hint">Biri zaten ikizse diğeri de aynı gruba katılır ve üçüz olurlar.</span>
+            <span className="field-hint">{t('Biri zaten ikizse diğeri de aynı gruba katılır ve üçüz olurlar.')}</span>
           </div>
         )}
         {siblings && merge}
         {!couple && (
         <div className="card">
-          <div className="card-title">Bu iki kişiyi</div>
+          <div className="card-title">{t('Bu iki kişiyi')}</div>
           <button className="ui-btn ui-btn-primary" disabled={!unionPlan.ok} onClick={() => onCreateUnion(node.id, node2.id)}>
-            Eş yap
+            {t('Eş yap')}
           </button>
           {!unionPlan.ok && <div className="field-hint">{unionPlan.reason}</div>}
           {/* creates a real biological parent union (existing or new), not a flag */}
           <button className="ui-btn" disabled={siblingBlocked} onClick={() => onMakeSiblings(node.id, node2.id)}>
-            Kardeş yap
+            {t('Kardeş yap')}
           </button>
           {siblingBlocked && <div className="field-hint">{siblingPlan.reason}</div>}
         </div>
         )}
         {bulk}
-        <div className="field-hint">İpucu: Cmd (Mac) ya da Ctrl (Windows) tuşuna basılı tutup kişilere tıklarsanız birden çok kişi seçilir. İki eşi bağlayan çizgiye tıklarsanız o çift seçilir.</div>
+        <div className="field-hint">{t('İpucu: Cmd (Mac) ya da Ctrl (Windows) tuşuna basılı tutup kişilere tıklarsanız birden çok kişi seçilir. İki eşi bağlayan çizgiye tıklarsanız o çift seçilir.')}</div>
       </div>
     </>
   );
@@ -467,8 +468,8 @@ export default function IndividualEditor({
   const nameOfId = (id) => {
     const p = pedigreeData?.individuals?.find(i => i.id === id);
     const pid = ids.get(id)?.displayId;
-    const label = p?.displayLabel || p?.label;
-    return pid ? (label ? `${pid} (${label})` : pid) : (label || 'birey');
+    const label = p?.displayLabel || shownLabel(p?.label);
+    return pid ? (label ? `${pid} (${label})` : pid) : (label || t('birey'));
   };
   const parentsCons = wizardParents && onSetParentsField ? { parents: wizardParents, onSet: onSetParentsField, nameOf: nameOfId } : null;
   const bulk = onUpdateMany && selectedNodes.length >= 2 ? (
@@ -482,11 +483,11 @@ export default function IndividualEditor({
   if (selectedNodes.length >= 3) {
     return (
       <>
-        <Header title={`${selectedNodes.length} kişi seçili`} sub={selectedNodes.map(n => ids.get(n.id)?.displayId || '—').join(', ')} onClose={onClearSelection} />
+        <Header title={t('{n} kişi seçili', { n: selectedNodes.length })} sub={selectedNodes.map(n => ids.get(n.id)?.displayId || '—').join(', ')} onClose={onClearSelection} />
         <div className="editor-body">
           {merge}
           {bulk}
-          <div className="field-hint">Seçime kişi eklemek ya da çıkarmak için Cmd (Mac) ya da Ctrl (Windows) tuşuna basılı tutup o kişiye tıklayın.</div>
+          <div className="field-hint">{t('Seçime kişi eklemek ya da çıkarmak için Cmd (Mac) ya da Ctrl (Windows) tuşuna basılı tutup o kişiye tıklayın.')}</div>
         </div>
       </>
     );
@@ -508,8 +509,8 @@ export default function IndividualEditor({
   const displayNameFor = (id) => {
     const person = pedigreeData?.individuals?.find(i => i.id === id);
     const pid = pedigreeIds.get(id)?.displayId;
-    const label = person?.displayLabel || person?.label;
-    return pid ? (label ? `${pid} (${label})` : pid) : (label || 'birey');
+    const label = person?.displayLabel || shownLabel(person?.label);
+    return pid ? (label ? `${pid} (${label})` : pid) : (label || t('birey'));
   };
 
   const unions = pedigreeData?.unions || [];
@@ -519,9 +520,9 @@ export default function IndividualEditor({
   const siblingOrder = ownParentRel ? ownParentRel.children : null;
   const ownIndexInOrder = siblingOrder ? siblingOrder.indexOf(node.id) : -1;
 
-  const kind = group ? `${node.count === 'n' ? 'Sayısı bilinmeyen' : node.count} ${GROUP_WORD[node.sex || 'unknown']}`
-    : pregnancyKind(node) ? PREGNANCY_LABEL[pregnancyKind(node)] : SEX_WORD[node.sex || 'unknown'];
-  const sub = [kind, node.age ? `${node.age} yaş` : null, node.proband ? 'proband' : null, node.consultand ? 'danışan' : null].filter(Boolean).join(' · ');
+  const kind = group ? `${node.count === 'n' ? t('Sayısı bilinmeyen') : node.count} ${t(GROUP_WORD[node.sex || 'unknown'])}`
+    : pregnancyKind(node) ? t(PREGNANCY_LABEL[pregnancyKind(node)]) : t(SEX_WORD[node.sex || 'unknown']);
+  const sub = [kind, node.age ? t('{age} yaş', { age: shownAge(node.age) }) : null, node.proband ? 'proband' : null, node.consultand ? t('danışan') : null].filter(Boolean).join(' · ');
   const set = (patch) => onUpdate(node.id, patch);
   // genetic test: "+" done / "−" not; the clinician's lines, one per variant or result
   const tested = node.geneticTest === GENETIC_TESTED;
@@ -529,39 +530,39 @@ export default function IndividualEditor({
   const setGeneticLine = (k, text) => set({ geneticNote: withGeneticLine(node.geneticNote, k, text) });
   const familyNotes = [...new Set((pedigreeData?.individuals || [])
     .filter(i => i.id !== node.id).flatMap(geneticLines))]
-    .filter(t => !gLines.includes(t)).slice(0, 6);
+    .filter(line => !gLines.includes(line)).slice(0, 6);
 
   return (
     <>
-      <Header title={pedigreeId || '—'} sub={node.placeholder ? 'Belirtilmemiş ebeveyn' : sub} onClose={onClearSelection} />
+      <Header title={pedigreeId || '—'} sub={node.placeholder ? t('Belirtilmemiş ebeveyn') : sub} onClose={onClearSelection} />
       <div className="editor-body">
         {node.placeholder && (
-          <div className="field-hint">Bu boş sembol, silinen ya da bilinmeyen bir ebeveynin yerini tutar; çocuklar ebeveynsiz kalmasın diye çizilir.</div>
+          <div className="field-hint">{t('Bu boş sembol, silinen ya da bilinmeyen bir ebeveynin yerini tutar; çocuklar ebeveynsiz kalmasın diye çizilir.')}</div>
         )}
 
         {!node.placeholder && (
-          <div className="field-hint editor-tip">Akraba eklemek, bulgu, durum, ikiz ya da not girmek için çizimde bu kişinin çevresindeki düğmeleri kullanın. Düğmeler görünmüyorsa kişinin sembolüne yeniden tıklayın.</div>
+          <div className="field-hint editor-tip">{t('Akraba eklemek, bulgu, durum, ikiz ya da not girmek için çizimde bu kişinin çevresindeki düğmeleri kullanın. Düğmeler görünmüyorsa kişinin sembolüne yeniden tıklayın.')}</div>
         )}
 
         {/* several people in one symbol: the number, the sex, "Tek tek ayır" (clinician decisions 2026-11-01) */}
         {group && (
           <div className="card">
-            <div className="card-title">Birden çok kişi</div>
-            <div className="field-hint">Bu sembol birden çok kişiyi gösteriyor; sayı sembolün içine yazılır. Bulgu, eş, çocuk ya da proband gerekiyorsa kişileri “Tek tek ayır” ile ayrı çizin.</div>
+            <div className="card-title">{t('Birden çok kişi')}</div>
+            <div className="field-hint">{t('Bu sembol birden çok kişiyi gösteriyor; sayı sembolün içine yazılır. Bulgu, eş, çocuk ya da proband gerekiyorsa kişileri “Tek tek ayır” ile ayrı çizin.')}</div>
             <label className="field">
-              <span className="field-label">Kişi sayısı</span>
-              <DraftField key={`${node.id}-count`} type="text" className="input input-age" value={String(node.count)} placeholder="3 ya da n"
-                title="2–99; bilinmiyorsa n. 1 yazarsanız tek kişi olur."
+              <span className="field-label">{t('Kişi sayısı')}</span>
+              <DraftField key={`${node.id}-count`} type="text" className="input input-age" value={String(node.count)} placeholder={t('3 ya da n')}
+                title={t('2–99; bilinmiyorsa n. 1 yazarsanız tek kişi olur.')}
                 onCommit={v => onSetGroupCount && onSetGroupCount(node.id, v.trim() === '1' ? 1 : (parseGroupCount(v) ?? v))} />
             </label>
-            <div className="segmented" role="radiogroup" aria-label="Cinsiyet">
-              {[['male', 'Erkek'], ['female', 'Kadın'], ['unknown', 'Karışık / bilinmiyor']].map(([s, t]) => (
-                <button key={s} role="radio" aria-checked={node.sex === s} className={node.sex === s ? 'on' : undefined} onClick={() => set({ sex: s })}>{t}</button>
+            <div className="segmented" role="radiogroup" aria-label={t('Cinsiyet')}>
+              {[['male', t('Erkek')], ['female', t('Kadın')], ['unknown', t('Karışık / bilinmiyor')]].map(([s, label]) => (
+                <button key={s} role="radio" aria-checked={node.sex === s} className={node.sex === s ? 'on' : undefined} onClick={() => set({ sex: s })}>{label}</button>
               ))}
             </div>
             {onSplitGroup && (
-              <button className="ui-btn" disabled={node.count === 'n'} title={node.count === 'n' ? 'Ayırmak için önce kişi sayısını yazın' : undefined}
-                onClick={() => onSplitGroup(node.id)}>Tek tek ayır{node.count === 'n' ? '' : ` (${node.count} kişi)`}</button>
+              <button className="ui-btn" disabled={node.count === 'n'} title={node.count === 'n' ? t('Ayırmak için önce kişi sayısını yazın') : undefined}
+                onClick={() => onSplitGroup(node.id)}>{node.count === 'n' ? t('Tek tek ayır') : t('Tek tek ayır ({n} kişi)', { n: node.count })}</button>
             )}
           </div>
         )}
@@ -569,50 +570,50 @@ export default function IndividualEditor({
         {/* a pregnancy outcome (NSGC; clinician decision 2026-10-25): its kind, the week, born */}
         {isLoss && (
           <div className="card">
-            <div className="card-title">Gebelik sonucu</div>
-            <div className="segmented segmented-wrap" role="radiogroup" aria-label="Gebelik sonucu">
-              {Object.entries(PREGNANCY_LABEL).map(([k, t]) => (
+            <div className="card-title">{t('Gebelik sonucu')}</div>
+            <div className="segmented segmented-wrap" role="radiogroup" aria-label={t('Gebelik sonucu')}>
+              {Object.entries(PREGNANCY_LABEL).map(([k, label]) => (
                 <button key={k} role="radio" aria-checked={pregnancyKind(node) === k} className={pregnancyKind(node) === k ? 'on' : undefined}
-                  onClick={() => onSetPregnancyKind(node.id, k)}>{t}</button>
+                  onClick={() => onSetPregnancyKind(node.id, k)}>{t(label)}</button>
               ))}
             </div>
             <label className="field">
-              <span className="field-label">Gebelik haftası</span>
-              <DraftField key={`${node.id}-weeks`} type="text" className="input input-age" value={node.gestationWeeks || ''} placeholder="hf"
+              <span className="field-label">{t('Gebelik haftası')}</span>
+              <DraftField key={`${node.id}-weeks`} type="text" className="input input-age" value={node.gestationWeeks || ''} placeholder={t('hf')}
                 onCommit={v => onSetGestationWeeks(node.id, v)} />
             </label>
             {node.ongoingPregnancy && (
-              <button className="ui-btn" onClick={() => onSetPregnancyKind(node.id, '')}>Bebek doğdu: gebelik yerine kişi olarak göster</button>
+              <button className="ui-btn" onClick={() => onSetPregnancyKind(node.id, '')}>{t('Bebek doğdu: gebelik yerine kişi olarak göster')}</button>
             )}
           </div>
         )}
 
         {!node.placeholder && !group && (
           <div className="card">
-            <div className="card-title">Bilgiler</div>
+            <div className="card-title">{t('Bilgiler')}</div>
             <label className="field-col">
-              <span className="field-label">Etiket (çizimde görünür)</span>
-              <DraftField key={`${node.id}-label`} type="text" className="input input-wide" value={node.displayLabel || ''} placeholder="ör. ad ya da kısaltma (boş bırakılabilir)"
+              <span className="field-label">{t('Etiket (çizimde görünür)')}</span>
+              <DraftField key={`${node.id}-label`} type="text" className="input input-wide" value={node.displayLabel || ''} placeholder={t('ör. ad ya da kısaltma (boş bırakılabilir)')}
                 onCommit={v => set({ displayLabel: v })} />
             </label>
             {!isLoss && (
               <label className="field">
-                <span className="field-label">Yaş</span>
-                <DraftField key={`${node.id}-age`} type="text" className="input input-age" value={node.age || ''} placeholder="35, 3 ay…"
+                <span className="field-label">{t('Yaş')}</span>
+                <DraftField key={`${node.id}-age`} type="text" className="input input-age" value={node.age || ''} placeholder={t('35, 3 ay…')}
                   disabled={!!node.birthDate}
-                  title={node.birthDate ? 'Yaş, üstteki doğum tarihinden bugüne göre hesaplanıyor; değiştirmek için doğum tarihini düzeltin' : `Yıl, ay ya da gün — ${AGE_EXAMPLE}`}
+                  title={node.birthDate ? t('Yaş, üstteki doğum tarihinden bugüne göre hesaplanıyor; değiştirmek için doğum tarihini düzeltin') : `${t('Yıl, ay ya da gün')} — ${t(AGE_EXAMPLE)}`}
                   onCommit={v => set({ age: v.trim() })} />
               </label>
             )}
             {!!node.deceased && !isLoss && (
               <>
                 <label className="field">
-                  <span className="field-label">Ölüm yaşı</span>
+                  <span className="field-label">{t('Ölüm yaşı')}</span>
                   <DraftField key={`${node.id}-death-age`} type="text" className="input input-age" value={node.ageAtDeath || ''} placeholder="—"
-                    title={`Yıl, ay ya da gün — ${AGE_EXAMPLE}`} onCommit={v => set({ ageAtDeath: v.trim() })} />
+                    title={`${t('Yıl, ay ya da gün')} — ${t(AGE_EXAMPLE)}`} onCommit={v => set({ ageAtDeath: v.trim() })} />
                 </label>
                 <label className="field-col">
-                  <span className="field-label">Ölüm nedeni</span>
+                  <span className="field-label">{t('Ölüm nedeni')}</span>
                   <DraftField key={`${node.id}-cause`} type="text" className="input input-wide" value={node.causeOfDeath || ''}
                     onCommit={v => set({ causeOfDeath: v })} />
                 </label>
@@ -621,53 +622,51 @@ export default function IndividualEditor({
             {/* the week a child was born in (kept from a pregnancy; clinician decision 2026-10-25) */}
             {!isLoss && node.gestationWeeks && (
               <label className="field">
-                <span className="field-label">Doğum haftası</span>
-                <DraftField key={`${node.id}-birthweek`} type="text" className="input input-age" value={node.gestationWeeks || ''} placeholder="hf"
+                <span className="field-label">{t('Doğum haftası')}</span>
+                <DraftField key={`${node.id}-birthweek`} type="text" className="input input-age" value={node.gestationWeeks || ''} placeholder={t('hf')}
                   onCommit={v => onSetGestationWeeks(node.id, v)} />
               </label>
             )}
             {/* genetic test (clinician decision 2026-10-27): "−" none, "+" done; what
                 is written goes under the symbol line by line, no "E" (NSGC 2022) */}
             <div className="field-col">
-              <span className="field-label">Genetik test</span>
-              <div className="segmented" role="radiogroup" aria-label="Genetik test">
-                {[['', '−', 'Genetik test yapılmadı'], [GENETIC_TESTED, '+', 'Genetik test yapıldı']].map(([v, t, title]) => (
+              <span className="field-label">{t('Genetik test')}</span>
+              <div className="segmented" role="radiogroup" aria-label={t('Genetik test')}>
+                {[['', '−', t('Genetik test yapılmadı')], [GENETIC_TESTED, '+', t('Genetik test yapıldı')]].map(([v, sign, title]) => (
                   <button key={v} role="radio" aria-checked={(node.geneticTest || '') === v} className={`seg-sign${(node.geneticTest || '') === v ? ' on' : ''}`}
                     title={title} aria-label={title}
                     onClick={() => {
                       if ((node.geneticTest || '') === v) return;
-                      if (!v && gLines.length && !window.confirm(`Genetik test "−" yapılırsa yazılan ${gLines.length} satır da silinir. Devam edilsin mi?\n\n"Geri Al" (Cmd/Ctrl+Z) ile geri alınabilir.`)) return;
+                      if (!v && gLines.length && !window.confirm(t('Genetik test "−" yapılırsa yazılan {n} satır da silinir. Devam edilsin mi?\n\n"Geri Al" (Cmd/Ctrl+Z) ile geri alınabilir.', { n: gLines.length }))) return;
                       set({ geneticTest: v });
-                    }}>{t}</button>
+                    }}>{sign}</button>
                 ))}
               </div>
               <span className="field-hint">
-                <b>−</b>: genetik test yapılmadı. <b>+</b>: genetik test yapıldı. "+" seçtiyseniz bulunan varyantı ya da
-                sonucu (ör. "sonuç bekleniyor") aşağıya yazıp Enter'a basabilirsiniz; yazmak zorunlu değil. Her satır
-                pedigride sembolün altında ayrı bir satırda görünür. Hiçbir şey yazmazsanız sembolün altında "test yapıldı" yazar.
+                <b>−</b>{t(': genetik test yapılmadı.')} <b>+</b>{t(': genetik test yapıldı. "+" seçtiyseniz bulunan varyantı ya da sonucu (ör. "sonuç bekleniyor") aşağıya yazıp Enter\'a basabilirsiniz; yazmak zorunlu değil. Her satır pedigride sembolün altında ayrı bir satırda görünür. Hiçbir şey yazmazsanız sembolün altında "test yapıldı" yazar.')}
               </span>
               {tested && (
                 <div className="genetic-lines">
                   {gLines.map((line, k) => (
                     <div key={`${node.id}-gl-${k}`} className="genetic-line">
-                      <DraftField type="text" className="input input-wide" value={line} aria-label={`Genetik sonuç ${k + 1}`}
+                      <DraftField type="text" className="input input-wide" value={line} aria-label={t('Genetik sonuç {n}', { n: k + 1 })}
                         onCommit={v => setGeneticLine(k, v)} />
-                      <button className="ui-btn ui-btn-ghost ui-btn-icon" title="Bu satırı sil" aria-label={`Genetik sonuç ${k + 1} sil`}
+                      <button className="ui-btn ui-btn-ghost ui-btn-icon" title={t('Bu satırı sil')} aria-label={t('Genetik sonuç {n} sil', { n: k + 1 })}
                         onClick={() => setGeneticLine(k, '')}><X size={14} /></button>
                     </div>
                   ))}
                   <AddLineField key={`${node.id}-gadd`} type="text" className="input input-wide"
-                    aria-label="Varyant ya da sonuç ekle"
-                    placeholder={gLines.length ? 'Bir varyant / sonuç daha (Enter)' : 'Varyant ya da sonuç, ör. FBN1 c.1585C>T het'}
+                    aria-label={t('Varyant ya da sonuç ekle')}
+                    placeholder={gLines.length ? t('Bir varyant / sonuç daha (Enter)') : t('Varyant ya da sonuç, ör. FBN1 c.1585C>T het')}
                     onAdd={t => setGeneticLine(Infinity, t)} />
                 </div>
               )}
               {/* what was written for relatives, one tap away (clinician request 2026-10-25) */}
               {familyNotes.length > 0 && (
                 <div className="suggest-row">
-                  <span className="field-hint">Ailede girilen:</span>
-                  {familyNotes.map(t => (
-                    <button key={t} className="suggest-chip" title="Bu kişiye de ekle" onClick={() => setGeneticLine(Infinity, t)}>{t}</button>
+                  <span className="field-hint">{t('Ailede girilen:')}</span>
+                  {familyNotes.map(line => (
+                    <button key={line} className="suggest-chip" title={t('Bu kişiye de ekle')} onClick={() => setGeneticLine(Infinity, line)}>{line}</button>
                   ))}
                 </div>
               )}
@@ -675,7 +674,7 @@ export default function IndividualEditor({
             {node.condition && (
               // older free-text field: still shown under the symbol, editable/clearable here
               <label className="field-col">
-                <span className="field-label">Sembolün altındaki yazı (eski kayıt)</span>
+                <span className="field-label">{t('Sembolün altındaki yazı (eski kayıt)')}</span>
                 <DraftField key={`${node.id}-condition`} type="text" className="input input-wide" value={node.condition || ''}
                   onCommit={v => set({ condition: v })} />
               </label>
@@ -698,7 +697,7 @@ export default function IndividualEditor({
 
         {!isLoss && !node.placeholder && existingUnions.map(u => (
           <div className="card" key={u.id}>
-            <div className="card-title">Eş: {displayNameFor(u.partners.find(p => p !== node.id))}</div>
+            <div className="card-title">{t('Eş: {name}', { name: displayNameFor(u.partners.find(p => p !== node.id)) })}</div>
             <UnionControls u={u} pcrs={pcrs} onSetUnionStatus={onSetUnionStatus} withChildren={false} graph={pedigreeData}
               onSetUnionRelationshipBackground={onSetUnionRelationshipBackground} parentsCons={parentsCons} onSetChildlessness={onSetChildlessness} />
           </div>
@@ -707,13 +706,13 @@ export default function IndividualEditor({
         {/* moves this child within its own sibship only, never to another union */}
         {onReorderChild && siblingOrder && siblingOrder.length > 1 && (
           <div className="card">
-            <div className="card-title">Doğum sırası</div>
+            <div className="card-title">{t('Doğum sırası')}</div>
             <div className="btn-row">
               <button className="ui-btn ui-btn-sm" disabled={ownIndexInOrder <= 0}
-                onClick={() => onReorderChild(ownParentRel.unionId, node.id, 'left')}><ArrowLeft size={14} /> Sola</button>
+                onClick={() => onReorderChild(ownParentRel.unionId, node.id, 'left')}><ArrowLeft size={14} /> {t('Sola')}</button>
               <span className="muted small" style={{ alignSelf: 'center' }}>{ownIndexInOrder + 1}. / {siblingOrder.length}</span>
               <button className="ui-btn ui-btn-sm" disabled={ownIndexInOrder === -1 || ownIndexInOrder >= siblingOrder.length - 1}
-                onClick={() => onReorderChild(ownParentRel.unionId, node.id, 'right')}>Sağa <ArrowRight size={14} /></button>
+                onClick={() => onReorderChild(ownParentRel.unionId, node.id, 'right')}>{t('Sağa')} <ArrowRight size={14} /></button>
             </div>
           </div>
         )}
@@ -721,14 +720,14 @@ export default function IndividualEditor({
         {/* anyone but the proband can be deleted; children stay with the other parent */}
         {onDeleteIndividual && !node.placeholder && (
           node.proband ? (
-            <div className="field-hint">Proband silinemez. Silmek için önce başka bir kişiyi proband yapın (Durum → Proband).</div>
+            <div className="field-hint">{t('Proband silinemez. Silmek için önce başka bir kişiyi proband yapın (Durum → Proband).')}</div>
           ) : (
             <button className="ui-btn ui-btn-danger" onClick={() => {
-              if (window.confirm(`"${displayNameFor(node.id)}" silinsin mi?\n\nÇocukları silinmez; diğer ebeveynlerine bağlı kalırlar ve silinen kişinin yerinde boş bir "belirtilmemiş ebeveyn" sembolü görünür. Bu kişinin çocuğu olmayan eş ilişkileri de kaldırılır.\n\nYanlışlıkla sildiyseniz "Geri Al" ile geri getirebilirsiniz.`)) {
+              if (window.confirm(t('"{name}" silinsin mi?\n\nÇocukları silinmez; diğer ebeveynlerine bağlı kalırlar ve silinen kişinin yerinde boş bir "belirtilmemiş ebeveyn" sembolü görünür. Bu kişinin çocuğu olmayan eş ilişkileri de kaldırılır.\n\nYanlışlıkla sildiyseniz "Geri Al" ile geri getirebilirsiniz.', { name: displayNameFor(node.id) }))) {
                 onDeleteIndividual(node.id);
               }
             }}>
-              <Trash2 size={14} /> Kişiyi sil
+              <Trash2 size={14} /> {t('Kişiyi sil')}
             </button>
           )
         )}

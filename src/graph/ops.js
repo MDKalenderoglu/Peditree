@@ -25,6 +25,7 @@ import {
 } from './plans';
 import { reconcileOrder, moveChildInOrder } from '../utils/childOrdering';
 import { normalizeAge, ageFromBirthDate, AGE_EXAMPLE } from '../utils/age';
+import { t, tk } from '../i18n';
 
 const issueKey = (i) => `${i.code}|${[...(i.ids || [])].sort().join(',')}`;
 
@@ -61,7 +62,7 @@ export function commit(doc, mutate) {
   }
   const introduced = errorsOf(validateDocument(draft)).filter((i) => !before.has(issueKey(i)));
   if (introduced.length) {
-    return { ok: false, doc, reason: `İşlem grafiği tutarsız hâle getireceği için uygulanmadı: ${introduced[0].message}`, issues: introduced };
+    return { ok: false, doc, reason: t('İşlem grafiği tutarsız hâle getireceği için uygulanmadı: {v0}', { v0: introduced[0].message }), issues: introduced };
   }
   return { ok: true, doc: draft, created: {}, ...extra };
 }
@@ -89,7 +90,7 @@ function followAges(prev, graph) {
 
 function assertFreshId(draft, id) {
   const taken = draft.graph.individuals.some((i) => i.id === id) || draft.graph.unions.some((u) => u.id === id);
-  if (taken || draft.ids.retired.includes(id)) block(`Kimlik zaten kullanılmış: ${id}`);
+  if (taken || draft.ids.retired.includes(id)) block(t('Kimlik zaten kullanılmış: {id}', { id }));
 }
 
 export function draftAddPerson(draft, props) {
@@ -115,7 +116,7 @@ export function draftAddUnion(draft, id, a, b, fields = {}) {
 export function draftAddChild(draft, unionId, childId, { orderPolicy = 'byAge' } = {}) {
   const idx = indexGraph(draft.graph);
   const existing = idx.bioParentUnion.get(childId);
-  if (existing && existing !== unionId) block('Bu kişinin annesi ve babası zaten çizili; bir kişinin yalnızca bir biyolojik anne-babası olabilir.');
+  if (existing && existing !== unionId) block(t('Bu kişinin annesi ve babası zaten çizili; bir kişinin yalnızca bir biyolojik anne-babası olabilir.'));
   if (existing === unionId) return;
   let rel = idx.pcrByUnion.get(unionId);
   if (!rel) {
@@ -141,7 +142,7 @@ export function draftRemovePerson(draft, id) {
   const g = draft.graph;
   const idx = indexGraph(g);
   const person = idx.byId.get(id);
-  if (!person) block('Birey grafikte bulunamadı.');
+  if (!person) block(t('Birey grafikte bulunamadı.'));
   const removedIds = [id];
   const removedUnions = new Set();
 
@@ -201,18 +202,18 @@ function partnerSexConflict(graph, personId, newSex) {
     if (!u.partners.includes(personId)) continue;
     const partner = byId.get(u.partners.find((p) => p !== personId));
     if (!partner || partner.placeholder) continue;
-    if (newSex === 'unknown') return 'Bu bireyin bir eşi/birlikteliği var; cinsiyet "bilinmiyor" olarak değiştirilemez.';
-    if (partner.sex === newSex) return 'Bu cinsiyet değişikliği mevcut bir birlikteliği aynı cinsiyetli yapar; değişiklik uygulanmadı.';
+    if (newSex === 'unknown') return t('Bu bireyin bir eşi/birlikteliği var; cinsiyet "bilinmiyor" olarak değiştirilemez.');
+    if (partner.sex === newSex) return t('Bu cinsiyet değişikliği mevcut bir birlikteliği aynı cinsiyetli yapar; değişiklik uygulanmadı.');
   }
   return null;
 }
 
 // a pregnancy outcome is never a partner or a parent (Codex audit 2026-11-01;
 // validate.js PREGNANCY_PARTNER only warns, for older files)
-const PREGNANCY_NO_PARTNER = 'Bir gebelik sonucunun (düşük, ölü doğum, süren gebelik, sonlandırma, dış gebelik) eşi ya da çocuğu olamaz.';
+const PREGNANCY_NO_PARTNER = tk('Bir gebelik sonucunun (düşük, ölü doğum, süren gebelik, sonlandırma, dış gebelik) eşi ya da çocuğu olamaz.');
 
 // a donor or carrier added for assisted reproduction has no family of their own (clinician decision 2026-11-01)
-const DONOR_NO_FAMILY = 'Donör ya da taşıyıcının ailesi çizilmez; aile öyküsünü not ve bulgu olarak girin.';
+const DONOR_NO_FAMILY = tk('Donör ya da taşıyıcının ailesi çizilmez; aile öyküsünü not ve bulgu olarak girin.');
 
 const PROTECTED_FIELDS = new Set(['id', 'generation', 'proband', 'consultand', 'adoptedOut', 'placeholder', 'birthDate']);
 
@@ -222,7 +223,7 @@ const PROTECTED_FIELDS = new Set(['id', 'generation', 'proband', 'consultand', '
 export function updatePerson(doc, id, fields) {
   return commit(doc, (d) => {
     const p = d.graph.individuals.find((i) => i.id === id);
-    if (!p) block('Birey grafikte bulunamadı.');
+    if (!p) block(t('Birey grafikte bulunamadı.'));
     if (isGroup(p) && Object.entries(fields).some(([k, v]) => (GROUP_FORBIDDEN.includes(k) || k === 'conditions') && v && !(Array.isArray(v) && !v.length))) block(GROUP_ONE_BY_ONE);
     if (PREGNANCY_FIELDS.some((f) => fields[f] === true) && (indexGraph(d.graph).unionsOf.get(id) || []).length) block(PREGNANCY_NO_PARTNER);
     if (Object.prototype.hasOwnProperty.call(fields, 'sex')) {
@@ -230,19 +231,19 @@ export function updatePerson(doc, id, fields) {
       if (conflict) block(conflict);
     }
     if (Object.prototype.hasOwnProperty.call(fields, 'age') && p.birthDate && fields.age !== p.age) {
-      block('Bu kişinin yaşı doğum tarihinden hesaplanıyor; değiştirmek için üst çubuktaki doğum tarihini düzeltin ya da silin.');
+      block(t('Bu kişinin yaşı doğum tarihinden hesaplanıyor; değiştirmek için üst çubuktaki doğum tarihini düzeltin ya da silin.'));
     }
     for (const [k, v] of Object.entries(fields)) {
       if (PROTECTED_FIELDS.has(k)) continue;
       if (k === 'geneticTest') {
-        if (v && v !== GENETIC_TESTED) block('Genetik test "+" (yapıldı) ya da "−" (yapılmadı) olmalı.');
+        if (v && v !== GENETIC_TESTED) block(t('Genetik test "+" (yapıldı) ya da "−" (yapılmadı) olmalı.'));
         // "−": no test, so nothing written for it stays
         if (v) p.geneticTest = v; else { delete p.geneticTest; delete p.geneticNote; }
         continue;
       }
       if (k === 'age' || k === 'ageAtDeath') {
         const age = normalizeAge(v);
-        if (age === null) block(`Yaş anlaşılamadı: "${v}" (${AGE_EXAMPLE}).`);
+        if (age === null) block(t('Yaş anlaşılamadı: "{v}" ({AGE_EXAMPLE}).', { v, AGE_EXAMPLE }));
         p[k] = age;
         continue;
       }
@@ -261,14 +262,14 @@ export function updatePerson(doc, id, fields) {
 export function setBirthDate(doc, id, iso, today = new Date()) {
   return commit(doc, (d) => {
     const p = d.graph.individuals.find((i) => i.id === id);
-    if (!p) block('Birey grafikte bulunamadı.');
+    if (!p) block(t('Birey grafikte bulunamadı.'));
     if (!iso) { delete p.birthDate; return; }
     const age = ageFromBirthDate(iso, today);
     if (age === null) {
       block(/^\d{4}-\d{2}-\d{2}$/.test(iso) && ageFromBirthDate(iso, new Date(9999, 0, 1)) !== null
-        ? 'Doğum tarihi bugünden sonra olamaz.' : `Doğum tarihi anlaşılamadı: "${iso}" (ör. 3.5.25 ya da 03.05.2025).`);
+        ? t('Doğum tarihi bugünden sonra olamaz.') : t('Doğum tarihi anlaşılamadı: "{iso}" (ör. 3.5.25 ya da 03.05.2025).', { iso }));
     }
-    if (Number(iso.slice(0, 4)) < 1900) block('Doğum tarihi 1900 öncesi olamaz.');
+    if (Number(iso.slice(0, 4)) < 1900) block(t('Doğum tarihi 1900 öncesi olamaz.'));
     p.birthDate = iso;
     p.age = age;
   });
@@ -290,7 +291,7 @@ export function refreshBirthDateAges(doc, today = new Date()) {
  */
 export function setProband(doc, id) {
   return commit(doc, (d) => {
-    if (id !== null && !d.graph.individuals.some((i) => i.id === id)) block('Birey grafikte bulunamadı.');
+    if (id !== null && !d.graph.individuals.some((i) => i.id === id)) block(t('Birey grafikte bulunamadı.'));
     if (id !== null && isGroup(d.graph.individuals.find((i) => i.id === id))) block(GROUP_ONE_BY_ONE);
     for (const p of d.graph.individuals) p.proband = p.id === id;
     if (id !== null) d.wizardAnchorId = id;
@@ -304,9 +305,9 @@ export function setProband(doc, id) {
 export function setConsultand(doc, id) {
   return commit(doc, (d) => {
     const p = id === null ? null : d.graph.individuals.find((i) => i.id === id);
-    if (id !== null && !p) block('Birey grafikte bulunamadı.');
+    if (id !== null && !p) block(t('Birey grafikte bulunamadı.'));
     if (p && isGroup(p)) block(GROUP_ONE_BY_ONE);
-    if (p && (p.placeholder || isPregnancy(p))) block('Danışan bir gebelik ya da belirtilmemiş ebeveyn olamaz.');
+    if (p && (p.placeholder || isPregnancy(p))) block(t('Danışan bir gebelik ya da belirtilmemiş ebeveyn olamaz.'));
     for (const x of d.graph.individuals) {
       if (x.id === id) x.consultand = true;
       else delete x.consultand;
@@ -318,13 +319,13 @@ export function setConsultand(doc, id) {
 export function addPartner(doc, personId, opts = {}) {
   return commit(doc, (d) => {
     const target = d.graph.individuals.find((i) => i.id === personId);
-    if (!target) block('Birey grafikte bulunamadı.');
+    if (!target) block(t('Birey grafikte bulunamadı.'));
     if (isGroup(target)) block(GROUP_ONE_BY_ONE);
     if (isPregnancy(target)) block(PREGNANCY_NO_PARTNER);
     if (target.relation === ART_DONOR_RELATION) block(DONOR_NO_FAMILY);
     const sex = opts.sex || 'unknown';
-    if (target.sex === 'unknown') block('Eş eklemek için önce bu kişinin cinsiyetini seçin: kişinin çevresindeki Durum düğmesi → Erkek ya da Kadın.');
-    if (sex === 'unknown' || sex === target.sex) block('Eş/birliktelik yalnızca kadın ve erkek arasında kurulabilir.');
+    if (target.sex === 'unknown') block(t('Eş eklemek için önce bu kişinin cinsiyetini seçin: kişinin çevresindeki Durum düğmesi → Erkek ya da Kadın.'));
+    if (sex === 'unknown' || sex === target.sex) block(t('Eş/birliktelik yalnızca kadın ve erkek arasında kurulabilir.'));
     let spouseId = opts.spouseId;
     let unionId = opts.unionId;
     if (!spouseId || !unionId) {
@@ -364,7 +365,7 @@ export function linkPartners(doc, a, b, opts = {}) {
 export function addChild(doc, unionId, opts = {}) {
   return commit(doc, (d) => {
     const union = d.graph.unions.find((u) => u.id === unionId);
-    if (!union) block('Birliktelik grafikte bulunamadı.');
+    if (!union) block(t('Birliktelik grafikte bulunamadı.'));
     if (union.partners.some((id) => isPregnancy(d.graph.individuals.find((i) => i.id === id)))) block(PREGNANCY_NO_PARTNER);
     const parent = d.graph.individuals.find((i) => i.id === union.partners[0]);
     const sex = opts.sex || 'unknown';
@@ -380,10 +381,10 @@ export function addChild(doc, unionId, opts = {}) {
       ...pregnancyFlags(pregnancyKind(opts)),
       ...(opts.count !== undefined ? { count: opts.count } : {}),
     });
-    if (opts.reproRole !== undefined && (opts.adopted || opts.count !== undefined)) block('Yardımcı üremeyle doğan çocuk aynı anda evlat edinilmiş ya da sayılı sembol olarak eklenemez.');
+    if (opts.reproRole !== undefined && (opts.adopted || opts.count !== undefined)) block(t('Yardımcı üremeyle doğan çocuk aynı anda evlat edinilmiş ya da sayılı sembol olarak eklenemez.'));
     // an adopted-in child (clinician decisions 2026-11-01): the adoptive link only, no biological one
     if (opts.adopted) {
-      if (pregnancyKind(opts) || opts.count !== undefined) block('Evlat edinilen çocuk bir gebelik ya da sayılı sembol olamaz.');
+      if (pregnancyKind(opts) || opts.count !== undefined) block(t('Evlat edinilen çocuk bir gebelik ya da sayılı sembol olamaz.'));
       d.graph.socialParentLinks = [...(d.graph.socialParentLinks || []), { childId, unionId, kind: 'adoptive' }];
     } else {
       draftAddChild(d, unionId, childId, { orderPolicy: opts.orderPolicy || 'byAge' });
@@ -399,11 +400,11 @@ export function addChildToPerson(doc, personId, opts = {}) {
   const idx = indexGraph(doc.graph);
   const own = idx.unionsOf.get(personId) || [];
   // with several partners the clinician names the other parent (Codex audit 2026-11-01)
-  if (own.length > 1) return { ok: false, doc, reason: 'Bu kişinin birden çok eşi var: çocuğun hangi eşten olduğunu seçin.' };
+  if (own.length > 1) return { ok: false, doc, reason: t('Bu kişinin birden çok eşi var: çocuğun hangi eşten olduğunu seçin.') };
   if (doc.graph.individuals.find((i) => i.id === personId)?.relation === ART_DONOR_RELATION) return { ok: false, doc, reason: DONOR_NO_FAMILY };
   if (own.length === 1) return addChild(doc, own[0], opts);
   const target = idx.byId.get(personId);
-  if (!target) return { ok: false, doc, reason: 'Birey grafikte bulunamadı.' };
+  if (!target) return { ok: false, doc, reason: t('Birey grafikte bulunamadı.') };
   const spouseSex = target.sex === 'male' ? 'female' : target.sex === 'female' ? 'male' : 'unknown';
   const r1 = addPartner(doc, personId, { sex: spouseSex });
   if (!r1.ok) return r1;
@@ -452,7 +453,7 @@ export function addSibling(doc, personId, opts = {}) {
   // an adopted person's biological parents are drawn only when the clinician
   // says the new sibling is a biological one (Codex audit 2026-11-01)
   if (!biologicalSibling && (doc.graph.socialParentLinks || []).some((l) => l.childId === personId)) {
-    return { ok: false, doc, reason: 'Bu kişi evlat edinilmiş: yeni kardeşin evlat edinen ailenin çocuğu mu, yoksa biyolojik kardeşi mi olduğunu seçin.' };
+    return { ok: false, doc, reason: t('Bu kişi evlat edinilmiş: yeni kardeşin evlat edinen ailenin çocuğu mu, yoksa biyolojik kardeşi mi olduğunu seçin.') };
   }
   const r1 = addParents(doc, personId, {});
   if (!r1.ok) return r1;
@@ -493,7 +494,7 @@ export function removePerson(doc, id) {
 export function setUnionStatus(doc, unionId, status) {
   return commit(doc, (d) => {
     const u = d.graph.unions.find((x) => x.id === unionId);
-    if (!u) block('Birliktelik grafikte bulunamadı.');
+    if (!u) block(t('Birliktelik grafikte bulunamadı.'));
     u.status = status;
   });
 }
@@ -508,7 +509,7 @@ const CONSANGUINITY_BACKGROUNDS = new Set(['consanguinity_reported', 'consanguin
 export function setRelationshipBackground(doc, unionId, value) {
   return commit(doc, (d) => {
     const u = d.graph.unions.find((x) => x.id === unionId);
-    if (!u) block('Birliktelik grafikte bulunamadı.');
+    if (!u) block(t('Birliktelik grafikte bulunamadı.'));
     delete u.consanguinityFromStructure; // the clinician's own statement
     if (CONSANGUINITY_BACKGROUNDS.has(value)) {
       u.consanguineous = true;
@@ -524,7 +525,7 @@ export function setRelationshipBackground(doc, unionId, value) {
 export function setUnionConsanguineous(doc, unionId, value, extra = {}) {
   return commit(doc, (d) => {
     const u = d.graph.unions.find((x) => x.id === unionId);
-    if (!u) block('Birliktelik grafikte bulunamadı.');
+    if (!u) block(t('Birliktelik grafikte bulunamadı.'));
     delete u.consanguinityFromStructure; // the clinician's own statement
     u.consanguineous = !!value;
     Object.assign(u, extra);
@@ -549,9 +550,9 @@ function pregnancyFlags(kind) {
 export function setPregnancyKind(doc, id, kind) {
   return commit(doc, (d) => {
     const p = d.graph.individuals.find((i) => i.id === id);
-    if (!p) block('Birey grafikte bulunamadı.');
-    if (kind && !PREGNANCY_KINDS[kind]) block('Bilinmeyen gebelik sonucu.');
-    if (!isPregnancy(p) && kind) block('Bu kişi bir gebelik sonucu değil.');
+    if (!p) block(t('Birey grafikte bulunamadı.'));
+    if (kind && !PREGNANCY_KINDS[kind]) block(t('Bilinmeyen gebelik sonucu.'));
+    if (!isPregnancy(p) && kind) block(t('Bu kişi bir gebelik sonucu değil.'));
     const wasStillbirth = !!p.stillbirth;
     for (const f of PREGNANCY_FIELDS) p[f] = false;
     Object.assign(p, pregnancyFlags(kind));
@@ -567,11 +568,11 @@ export function setPregnancyKind(doc, id, kind) {
 export function setGestationWeeks(doc, id, weeks) {
   return commit(doc, (d) => {
     const p = d.graph.individuals.find((i) => i.id === id);
-    if (!p) block('Birey grafikte bulunamadı.');
+    if (!p) block(t('Birey grafikte bulunamadı.'));
     const w = String(weeks ?? '').trim();
     if (!w) { delete p.gestationWeeks; return; }
     const n = Number(w.replace(',', '.'));
-    if (!Number.isFinite(n) || n <= 0 || n > 45) block(`Gebelik haftası anlaşılamadı: "${w}" (1–45 arası bir sayı).`);
+    if (!Number.isFinite(n) || n <= 0 || n > 45) block(t('Gebelik haftası anlaşılamadı: "{w}" (1–45 arası bir sayı).', { w }));
     p.gestationWeeks = String(n).replace('.', ',');
   });
 }
@@ -580,8 +581,8 @@ export function setGestationWeeks(doc, id, weeks) {
 export function setChildlessness(doc, unionId, kind, reason) {
   return commit(doc, (d) => {
     const u = d.graph.unions.find((x) => x.id === unionId);
-    if (!u) block('Birliktelik grafikte bulunamadı.');
-    if (kind && !['by_choice', 'infertile'].includes(kind)) block('Bilinmeyen çocuksuzluk türü.');
+    if (!u) block(t('Birliktelik grafikte bulunamadı.'));
+    if (kind && !['by_choice', 'infertile'].includes(kind)) block(t('Bilinmeyen çocuksuzluk türü.'));
     if (kind !== undefined) { if (kind) u.childless = kind; else delete u.childless; }
     if (reason !== undefined) {
       const r = String(reason || '').trim();
@@ -597,8 +598,8 @@ export function setChildlessness(doc, unionId, kind, reason) {
 export function setLeftPartner(doc, unionId, personId) {
   return commit(doc, (d) => {
     const u = d.graph.unions.find((x) => x.id === unionId);
-    if (!u) block('Birliktelik grafikte bulunamadı.');
-    if (!u.partners.includes(personId)) block('Bu kişi bu çiftin eşlerinden biri değil.');
+    if (!u) block(t('Birliktelik grafikte bulunamadı.'));
+    if (!u.partners.includes(personId)) block(t('Bu kişi bu çiftin eşlerinden biri değil.'));
     u.leftPartner = personId;
   });
 }
@@ -607,7 +608,7 @@ export function setLeftPartner(doc, unionId, personId) {
 export function setChildOrder(doc, unionId, order) {
   return commit(doc, (d) => {
     const rel = d.graph.parentChildRelationships.find((r) => r.unionId === unionId);
-    if (!rel) block('Bu birlikteliğin çocuğu yok.');
+    if (!rel) block(t('Bu birlikteliğin çocuğu yok.'));
     rel.children = reconcileOrder(order, rel.children);
     rel.birthOrderExplicit = true;
   });
@@ -629,7 +630,7 @@ export function clearChildOrder(doc, unionId) {
  */
 export function moveChild(doc, unionId, childId, direction) {
   const rel = doc.graph.parentChildRelationships.find((r) => r.unionId === unionId);
-  if (!rel) return { ok: false, doc, reason: 'Bu birlikteliğin çocuğu yok.' };
+  if (!rel) return { ok: false, doc, reason: t('Bu birlikteliğin çocuğu yok.') };
   const groups = rel.multiples || [];
   if (!groups.length) return setChildOrder(doc, unionId, moveChildInOrder([...rel.children], childId, direction));
   // units: a group (members in order) or a single child
@@ -655,11 +656,11 @@ export function moveChild(doc, unionId, childId, direction) {
 
 /** Social (non-biological) parenthood: adoptive, foster, step, guardian. */
 export function addSocialParentLink(doc, childId, unionId, kind) {
-  if (!SOCIAL_LINK_KINDS.includes(kind)) return { ok: false, doc, reason: `Bilinmeyen sosyal ebeveynlik türü: ${kind}` };
+  if (!SOCIAL_LINK_KINDS.includes(kind)) return { ok: false, doc, reason: t('Bilinmeyen sosyal ebeveynlik türü: {kind}', { kind }) };
   return commit(doc, (d) => {
-    if (!d.graph.individuals.some((i) => i.id === childId)) block('Birey grafikte bulunamadı.');
-    if (!d.graph.unions.some((u) => u.id === unionId)) block('Birliktelik grafikte bulunamadı.');
-    if ((d.graph.socialParentLinks || []).some((l) => l.childId === childId && l.unionId === unionId)) block('Bu sosyal ebeveynlik bağı zaten var.');
+    if (!d.graph.individuals.some((i) => i.id === childId)) block(t('Birey grafikte bulunamadı.'));
+    if (!d.graph.unions.some((u) => u.id === unionId)) block(t('Birliktelik grafikte bulunamadı.'));
+    if ((d.graph.socialParentLinks || []).some((l) => l.childId === childId && l.unionId === unionId)) block(t('Bu sosyal ebeveynlik bağı zaten var.'));
     d.graph.socialParentLinks = [...(d.graph.socialParentLinks || []), { childId, unionId, kind }];
   });
 }
@@ -674,28 +675,28 @@ export function setAdoption(doc, id, to) {
   return commit(doc, (d) => {
     const g = d.graph;
     const p = g.individuals.find((i) => i.id === id);
-    if (!p) block('Birey grafikte bulunamadı.');
+    if (!p) block(t('Birey grafikte bulunamadı.'));
     if (isGroup(p)) block(GROUP_ONE_BY_ONE);
     const idx = indexGraph(g);
     const bio = idx.bioParentUnion.has(id);
     const others = (g.socialParentLinks || []).filter((l) => !(l.childId === id && l.kind === 'adoptive'));
     if (to === null) {
       if (!bio && (g.socialParentLinks || []).some((l) => l.childId === id && l.kind === 'adoptive')) {
-        block('Bu kişinin biyolojik ebeveynleri çizili değil; evlat edinmeyi kaldırmak için önce biyolojik ebeveynlerini ekleyin.');
+        block(t('Bu kişinin biyolojik ebeveynleri çizili değil; evlat edinmeyi kaldırmak için önce biyolojik ebeveynlerini ekleyin.'));
       }
       delete p.adoptedOut;
       g.socialParentLinks = others;
       return undefined;
     }
     if (to === 'out') {
-      if (!bio) block('Evlat verildi işareti için kişinin biyolojik ebeveynleri çizili olmalı.');
+      if (!bio) block(t('Evlat verildi işareti için kişinin biyolojik ebeveynleri çizili olmalı.'));
       p.adoptedOut = true;
       g.socialParentLinks = others;
       return undefined;
     }
-    if (!idx.unionById.has(to)) block('Birliktelik grafikte bulunamadı.');
-    if (idx.bioParentUnion.get(id) === to) block('Evlat edinen aile, kişinin kendi biyolojik ebeveynleri olamaz.');
-    if (idx.unionById.get(to).partners.includes(id)) block('Kişi kendi evlat edineni olamaz.');
+    if (!idx.unionById.has(to)) block(t('Birliktelik grafikte bulunamadı.'));
+    if (idx.bioParentUnion.get(id) === to) block(t('Evlat edinen aile, kişinin kendi biyolojik ebeveynleri olamaz.'));
+    if (idx.unionById.get(to).partners.includes(id)) block(t('Kişi kendi evlat edineni olamaz.'));
     delete p.adoptedOut;
     g.socialParentLinks = [...others, { childId: id, unionId: to, kind: 'adoptive' }];
     return undefined;
@@ -716,13 +717,13 @@ export function addReproductiveLink(doc, childId, role, opts = {}) {
 function draftAddReproductiveLink(d, childId, role, existingId) {
   const g = d.graph;
   const child = g.individuals.find((i) => i.id === childId);
-  if (!child) block('Birey grafikte bulunamadı.');
-  if (!REPRO_ROLES.includes(role)) block('Bilinmeyen yardımcı üreme rolü.');
+  if (!child) block(t('Birey grafikte bulunamadı.'));
+  if (!REPRO_ROLES.includes(role)) block(t('Bilinmeyen yardımcı üreme rolü.'));
   const links = g.reproductiveLinks || [];
   const taken = (list) => links.some((l) => l.childId === childId && list.includes(l.role));
-  if (role === 'sperm_donor' && taken(['sperm_donor'])) block('Bu çocuğun sperm donörü zaten çizili.');
-  if (EGG_SOURCE.includes(role) && taken(EGG_SOURCE)) block('Bu çocuğun yumurtası zaten bir donörden ya da taşıyıcı anneden geliyor.');
-  if (CARRIER_ROLES.includes(role) && taken(CARRIER_ROLES)) block('Bu gebeliği taşıyan kişi zaten çizili.');
+  if (role === 'sperm_donor' && taken(['sperm_donor'])) block(t('Bu çocuğun sperm donörü zaten çizili.'));
+  if (EGG_SOURCE.includes(role) && taken(EGG_SOURCE)) block(t('Bu çocuğun yumurtası zaten bir donörden ya da taşıyıcı anneden geliyor.'));
+  if (CARRIER_ROLES.includes(role) && taken(CARRIER_ROLES)) block(t('Bu gebeliği taşıyan kişi zaten çizili.'));
   let personId = existingId;
   if (!personId) {
     personId = `de_art_${editNumber(d)}`;
@@ -763,15 +764,15 @@ export function removeSocialParentLink(doc, childId, unionId) {
 
 // ── several people in one symbol (model.js isGroup; clinician decisions 2026-11-01) ──
 
-const GROUP_ONE_BY_ONE = 'Bu sembol birden çok kişiyi gösteriyor; bulgu, eş, çocuk ya da proband için önce "Tek tek ayır" ile kişileri ayrı çizin.';
-const GROUP_COUNT_HINT = `Kişi sayısı 2 ile ${GROUP_MAX} arasında olmalı; sayı bilinmiyorsa "n" yazın.`;
-const GROUP_LABEL = { male: 'Erkek kardeşler', female: 'Kız kardeşler', unknown: 'Kardeşler' };
+const GROUP_ONE_BY_ONE = tk('Bu sembol birden çok kişiyi gösteriyor; bulgu, eş, çocuk ya da proband için önce "Tek tek ayır" ile kişileri ayrı çizin.');
+const GROUP_COUNT_HINT = t('Kişi sayısı 2 ile {GROUP_MAX} arasında olmalı; sayı bilinmiyorsa "n" yazın.', { GROUP_MAX });
+const GROUP_LABEL = { male: tk('Erkek kardeşler'), female: tk('Kız kardeşler'), unknown: tk('Kardeşler') };
 
 /** "3", " 12 ", "n", "N" → 3, 12, 'n'; anything else → null. */
 export function parseGroupCount(text) {
-  const t = String(text ?? '').trim().toLocaleLowerCase('tr');
-  if (t === 'n') return 'n';
-  const n = /^\d+$/.test(t) ? Number(t) : NaN;
+  const s = String(text ?? '').trim().toLocaleLowerCase('tr');
+  if (s === 'n') return 'n';
+  const n = /^\d+$/.test(s) ? Number(s) : NaN;
   return validGroupCount(n) ? n : null;
 }
 
@@ -779,11 +780,11 @@ export function parseGroupCount(text) {
 export function setGroupCount(doc, id, count) {
   return commit(doc, (d) => {
     const p = d.graph.individuals.find((i) => i.id === id);
-    if (!p) block('Birey grafikte bulunamadı.');
+    if (!p) block(t('Birey grafikte bulunamadı.'));
     if (count === 1) { delete p.count; return undefined; }
     if (!validGroupCount(count)) block(GROUP_COUNT_HINT);
     if ((indexGraph(d.graph).unionsOf.get(id) || []).length || GROUP_FORBIDDEN.some((f) => p[f]) || (p.conditions || []).length) {
-      block('Eşi, çocuğu, bulgusu ya da işareti olan bir kişi sayılı sembole çevrilemez.');
+      block(t('Eşi, çocuğu, bulgusu ya da işareti olan bir kişi sayılı sembole çevrilemez.'));
     }
     p.count = count;
   });
@@ -797,8 +798,8 @@ export function setGroupCount(doc, id, count) {
 export function splitGroup(doc, id) {
   return commit(doc, (d) => {
     const p = d.graph.individuals.find((i) => i.id === id);
-    if (!p || !isGroup(p)) block('Bu sembol birden çok kişiyi göstermiyor.');
-    if (p.count === 'n') block('Kişi sayısı bilinmiyor ("n"); ayırmak için önce sayıyı yazın.');
+    if (!p || !isGroup(p)) block(t('Bu sembol birden çok kişiyi göstermiyor.'));
+    if (p.count === 'n') block(t('Kişi sayısı bilinmiyor ("n"); ayırmak için önce sayıyı yazın.'));
     const n = p.count;
     delete p.count;
     p.label = p.sex === 'male' ? 'Cocuk (E)' : p.sex === 'female' ? 'Cocuk (K)' : 'Cocuk';
@@ -829,16 +830,16 @@ export function mergeIntoGroup(doc, ids) {
     const g = d.graph;
     const idx = indexGraph(g);
     const people = [...new Set(ids)].map((id) => idx.byId.get(id));
-    if (people.length < 2 || people.some((p) => !p)) block('Birleştirmek için en az iki kardeş seçin.');
+    if (people.length < 2 || people.some((p) => !p)) block(t('Birleştirmek için en az iki kardeş seçin.'));
     const parents = new Set(people.map((p) => idx.bioParentUnion.get(p.id)));
-    if (parents.size !== 1 || parents.has(undefined)) block('Yalnızca aynı anne-babanın çocukları tek sembolde birleştirilebilir.');
+    if (parents.size !== 1 || parents.has(undefined)) block(t('Yalnızca aynı anne-babanın çocukları tek sembolde birleştirilebilir.'));
     const rel = g.parentChildRelationships.find((r) => r.unionId === [...parents][0]);
     for (const p of people) {
-      if (p.placeholder || (idx.unionsOf.get(p.id) || []).length) block('Eşi ya da çocuğu olan kişi birleştirilemez.');
-      if (GROUP_FORBIDDEN.some((f) => p[f]) || (p.conditions || []).length) block('Bulgusu, taşıyıcılık, ölüm, genetik test, proband ya da danışan işareti olan kişi birleştirilemez.');
-      if (MERGE_LOSES.some((f) => p[f] !== undefined && p[f] !== null && p[f] !== '')) block('Yaşı, doğum tarihi ya da adı yazılmış kişi birleştirilemez; bunlar tek sembolde gösterilemez.');
-      if ((rel.multiples || []).some((m) => m.children.includes(p.id))) block('İkiz/üçüz grubundaki kişi birleştirilemez.');
-      if ((g.socialParentLinks || []).some((l) => l.childId === p.id)) block('Evlat edinilmiş ya da koruyucu aile yanındaki kişi birleştirilemez.');
+      if (p.placeholder || (idx.unionsOf.get(p.id) || []).length) block(t('Eşi ya da çocuğu olan kişi birleştirilemez.'));
+      if (GROUP_FORBIDDEN.some((f) => p[f]) || (p.conditions || []).length) block(t('Bulgusu, taşıyıcılık, ölüm, genetik test, proband ya da danışan işareti olan kişi birleştirilemez.'));
+      if (MERGE_LOSES.some((f) => p[f] !== undefined && p[f] !== null && p[f] !== '')) block(t('Yaşı, doğum tarihi ya da adı yazılmış kişi birleştirilemez; bunlar tek sembolde gösterilemez.'));
+      if ((rel.multiples || []).some((m) => m.children.includes(p.id))) block(t('İkiz/üçüz grubundaki kişi birleştirilemez.'));
+      if ((g.socialParentLinks || []).some((l) => l.childId === p.id)) block(t('Evlat edinilmiş ya da koruyucu aile yanındaki kişi birleştirilemez.'));
     }
     const order = new Map(rel.children.map((c, k) => [c, k]));
     people.sort((a, b) => order.get(a.id) - order.get(b.id));

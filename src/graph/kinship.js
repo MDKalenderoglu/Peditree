@@ -8,6 +8,7 @@
  * operation, so every panel reads the same answer.
  */
 import { indexGraph } from './model';
+import { t, tk } from '../i18n';
 
 /** ancestor id → fewest generations up from `id` (parents = 1). */
 function ancestorDepths(idx, id) {
@@ -29,17 +30,17 @@ function ancestorDepths(idx, id) {
 }
 
 const DEGREE_LABEL = {
-  first_cousin: '1. derece kuzen',
-  second_cousin: '2. derece kuzen',
-  third_cousin: '3. derece kuzen',
-  first_cousin_once_removed: '1. kuzenin çocuğu (bir kuşak fark)',
-  second_cousin_once_removed: '2. kuzenin çocuğu (bir kuşak fark)',
-  double_first_cousin: 'Çift 1. derece kuzen',
-  avuncular: 'Amca/dayı/hala/teyze – yeğen',
-  multiple_relationship: 'Birden fazla akrabalık yolu',
-  other: 'Diğer akrabalık',
+  first_cousin: tk('1. derece kuzen'),
+  second_cousin: tk('2. derece kuzen'),
+  third_cousin: tk('3. derece kuzen'),
+  first_cousin_once_removed: tk('1. kuzenin çocuğu (bir kuşak fark)'),
+  second_cousin_once_removed: tk('2. kuzenin çocuğu (bir kuşak fark)'),
+  double_first_cousin: tk('Çift 1. derece kuzen'),
+  avuncular: tk('Amca/dayı/hala/teyze – yeğen'),
+  multiple_relationship: tk('Birden fazla akrabalık yolu'),
+  other: tk('Diğer akrabalık'),
 };
-export const degreeLabel = (degree) => DEGREE_LABEL[degree] || null;
+export const degreeLabel = (degree) => (DEGREE_LABEL[degree] ? t(DEGREE_LABEL[degree]) : null);
 
 function degreeFor(m, n, half) {
   const lo = Math.min(m, n), hi = Math.max(m, n);
@@ -87,7 +88,7 @@ export function kinshipOf(graph, a, b, idx = indexGraph(graph)) {
   } else {
     degree = 'multiple_relationship';
   }
-  return { degree, label: DEGREE_LABEL[degree], ancestors: nearest, couples };
+  return { degree, label: DEGREE_LABEL[degree] ? t(DEGREE_LABEL[degree]) : undefined, ancestors: nearest, couples };
 }
 
 /**
@@ -170,8 +171,8 @@ export function cousinMarriageName(graph, a, b, idx = indexGraph(graph)) {
   }
   if (pairs.length !== 1) return null;
   const [sa, sb] = pairs[0].map((id) => idx.byId.get(id)?.sex);
-  if (sa === 'male' && sb === 'male') return 'amca çocukları';
-  if (sa === 'female' && sb === 'female') return 'teyze çocukları';
-  if ((sa === 'male' && sb === 'female') || (sa === 'female' && sb === 'male')) return 'hala–dayı çocukları';
+  if (sa === 'male' && sb === 'male') return t('amca çocukları');
+  if (sa === 'female' && sb === 'female') return t('teyze çocukları');
+  if ((sa === 'male' && sb === 'female') || (sa === 'female' && sb === 'male')) return t('hala–dayı çocukları');
   return null;
 }

@@ -20,7 +20,7 @@ const TURKISH_LETTER = /[çğıöşüÇĞİÖŞÜ]/;
 // proper names that keep their letters: the language's own name, the author's
 const KEPT = /Türkçe|Kalenderoğlu|Doğukan/g;
 // Turkish words with no Turkish letter, as they would slip through untranslated
-const TURKISH_WORD = /\b(ve|ile|bir|veya|ya da|Yeni|Kaydet|Ekle|Sil|Anne|Baba|Kardes|Durum|Bulgu|Diger|Kapat|Evet|Hayir|Tamam|Vazgec|Uyari|Geri al|yok|var|kisi|Kisi)\b/;
+const TURKISH_WORD = /\b(ve|ile|bir|veya|ya da|Yeni|Kaydet|Ekle|Sil|Anne|Baba|Kardes|Durum|Bulgu|Diger|Kapat|Evet|Hayir|Tamam|Vazgec|Uyari|Geri al|yok|var|kisi|Kisi|Vefat|Erkek|erkek|Birlikte|Bilinmiyor|bilinmiyor|Bilinmeyen|Gebelik|gebelik|yumurta|Daha az|Akraba|akraba|Evlat|evlat|Hala|Amca|Teyze|Dede|Anneanne|Babaanne|Kaldir|Etiket|Yaz|Bilgi|Hata|Sorulmadi|Sola|Yukari|Asagi|Varsayilana|Zigosite|Bilgiler|Genetik|Ailede|girilen|Cocuk|Hepsine|birden|Birden)\b/;
 const placeholders = (s) => (String(s).match(/\{\w+\}/g) || []).sort();
 
 describe('the English dictionary', () => {
@@ -51,6 +51,31 @@ describe('the English dictionary', () => {
   });
 });
 
+describe('what is stored does not depend on the language', () => {
+  it('the same edits in English and in Turkish give the same document: labels and ages stay in their stored form; English age input is read', async () => {
+    const { usePedigreeStore: store } = await import('../state/usePedigreeStore');
+    const run = (lang, age) => {
+      useLang.getState().setLang({ ui: lang });
+      const S = store.getState;
+      S().resetPedigree();
+      S().addSpouseTo('proband', 'female');
+      const spouse = S().doc.graph.unions.find((u) => u.partners.includes('proband')).partners.find((x) => x !== 'proband');
+      S().addParentsTo(spouse, {});
+      S().addChildTo('proband', 'unknown', { pregnancyLoss: true });
+      S().updateIndividual('proband', { age });
+      S().addChildTo('proband', 'unknown', { stillbirth: true });
+      return JSON.parse(S().exportProjectFile());
+    };
+    const strip = (d) => ({ graph: d.graph, ids: d.ids });
+    const tr = run('tr', '3 ay');
+    const en = run('en', '3 mo');
+    useLang.getState().setLang({ ui: 'tr' });
+    expect(strip(en)).toEqual(strip(tr));
+    expect(en.graph.individuals.find((i) => i.id === 'proband').age).toBe('3 ay');
+    expect(en.graph.individuals.map((i) => i.label)).toEqual(expect.arrayContaining(['Anne', 'Baba']));
+  });
+});
+
 describe('the screens in English', () => {
   let view;
   const S = () => usePedigreeStore.getState();
@@ -62,7 +87,15 @@ describe('the screens in English', () => {
   /** what a region says: its text and the words in its attributes */
   const said = (root) => [root.textContent, ...[...root.querySelectorAll('[title],[aria-label],[placeholder],[alt]')]
     .flatMap((el) => ['title', 'aria-label', 'placeholder', 'alt'].map((a) => el.getAttribute(a)).filter(Boolean))].join('\n');
-  const turkishIn = (text) => text.replace(KEPT, '').split('\n').filter((line) => TURKISH_LETTER.test(line) || TURKISH_WORD.test(line));
+  // what the clinician typed (names, notes, findings, results) is never translated: left out of the check
+  const typed = () => S().doc.graph.individuals.flatMap((p) => [p.displayLabel, p.notes, p.causeOfDeath, ...String(p.geneticNote || '').split('\n'),
+    ...(p.conditions || []).map((c) => c.label)]).concat(S().doc.graph.unions.map((u) => u.childlessReason), S().doc.patientName)
+    .filter((x) => x && String(x).trim()).map(String).sort((a, b) => b.length - a.length);
+  const turkishIn = (text) => {
+    let rest = text.replace(KEPT, '');
+    for (const x of typed()) rest = rest.split(x.trim()).join(' ');
+    return rest.split('\n').filter((line) => TURKISH_LETTER.test(line) || TURKISH_WORD.test(line));
+  };
 
   beforeAll(async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -112,7 +145,52 @@ describe('the screens in English', () => {
     await key('Escape');
   });
 
+  it('in the family with every mark: each person’s side panel and every part of the ring, also "More…" and the sibling and child choices', async () => {
+    const { buildMarkFamily } = await import('../audit/markCollisions');
+    await settle(() => buildMarkFamily(usePedigreeStore));
+    const seen = [];
+    const sweep = () => {
+      for (const sel of ['.editor-panel', '.radial-menu']) { const el = $(sel); if (el) seen.push(said(el)); }
+    };
+    const people = S().doc.graph.individuals.filter((p) => !p.placeholder);
+    for (const p of people) {
+      await settle(() => S().selectIndividual(p.id));
+      sweep();
+      for (const k of ['b', 'c', 'a', 'f', 't', 'n']) {
+        await key(k);
+        sweep();
+        const more = buttons().find((b) => b.textContent.trim() === 'More…');
+        if (more) { await click(more); sweep(); }
+      }
+      await key('Escape');
+    }
+    // two people, and several people, selected together
+    await settle(() => S().selectIndividual(people[1].id));
+    await settle(() => S().selectIndividual(people[2].id, { additive: true }));
+    sweep();
+    await settle(() => S().selectIndividual(people[3].id, { additive: true }));
+    sweep();
+    expect(seen.length).toBeGreaterThan(people.length * 3);
+    expect(turkishIn(seen.join('\n'))).toEqual([]);
+    expect([...missing]).toEqual([]);
+  });
+
+  it('a notice on screen is worded again when the language changes; the drawing does not move', async () => {
+    await settle(() => S().resetPedigree());
+    await settle(() => S().clearProband());
+    const strip = () => $('.notice-strip');
+    await click(strip().querySelector('button'));
+    expect(strip().textContent).toMatch(/No proband is marked/);
+    const before = S().pedigreeData.nodes.map((n) => [n.id, n.x, n.y]);
+    await settle(() => useLang.getState().setLang({ ui: 'tr' }));
+    expect(strip().textContent).toMatch(/Proband işaretlenmedi/);
+    expect(S().pedigreeData.nodes.map((n) => [n.id, n.x, n.y])).toEqual(before);
+    await settle(() => useLang.getState().setLang({ ui: 'en' }));
+    expect(strip().textContent).toMatch(/No proband is marked/);
+  });
+
   it('keyboard letters follow the language: S adds a partner in English, the Turkish E does nothing', async () => {
+    await settle(() => S().resetPedigree());
     await settle(() => S().selectIndividual('proband'));
     const partners = () => S().doc.graph.unions.filter((u) => u.partners.includes('proband')).length;
     await key('e');

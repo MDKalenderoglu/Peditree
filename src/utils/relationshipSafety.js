@@ -16,6 +16,7 @@
  */
 
 import { buildWarningId } from './warningIds';
+import { t } from '../i18n';
 
 /**
  * @param {Array<{severity:string}>} issues
@@ -57,9 +58,9 @@ export function describeNewGraphErrors(beforeIssues, afterIssues) {
     i => i.severity === 'error' && !beforeKeys.has(buildWarningId(i))
   );
   if (newErrors.length === 0) {
-    return 'Bu ilişki şu anda güvenli çizilemiyor; önce ebeveyn ilişkisini netleştirin.';
+    return t('Bu ilişki şu anda güvenli çizilemiyor; önce ebeveyn ilişkisini netleştirin.');
   }
-  return 'Bu ilişki şu anda güvenli çizilemiyor: ' + newErrors.map(e => e.message).join(' ');
+  return t('Bu ilişki şu anda güvenli çizilemiyor: ') + newErrors.map(e => e.message).join(' ');
 }
 
 // v0.3a.4 — layout-ambiguity (readability) codes. These are WARNING severity
@@ -104,8 +105,8 @@ export function assessRelationshipMutation(beforeIssues, afterIssues) {
   if (introducesNewLayoutAmbiguity(beforeIssues, afterIssues)) {
     return {
       blocked: true,
-      reason: 'Bu işlem soy ağacını okunamaz hale getirecekti (ilişki çizgileri birbirine karışıyor) — ' +
-        'işlem uygulanmadı. Daha az çakışan bir düzen için önce ilgili dalları sadeleştirin.',
+      reason: t('Bu işlem soy ağacını okunamaz hale getirecekti (ilişki çizgileri birbirine karışıyor) — ') +
+        t('işlem uygulanmadı. Daha az çakışan bir düzen için önce ilgili dalları sadeleştirin.'),
     };
   }
   return { blocked: false, reason: '' };

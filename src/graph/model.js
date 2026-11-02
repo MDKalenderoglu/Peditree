@@ -10,6 +10,7 @@
  *   conditionKey              — the legend: [{ id, label }], derived from the
  *                               people's conditions (conditionKey.js)
  */
+import { tk } from '../i18n';
 
 export const SCHEMA_VERSION = 2;
 
@@ -43,7 +44,8 @@ export const PERSON_DEFAULTS = {
  */
 export const PREGNANCY_FIELDS = ['pregnancyLoss', 'stillbirth', 'ongoingPregnancy', 'termination', 'ectopic'];
 export const PREGNANCY_KINDS = { loss: 'pregnancyLoss', stillbirth: 'stillbirth', ongoing: 'ongoingPregnancy', termination: 'termination', ectopic: 'ectopic' };
-export const PREGNANCY_LABEL = { loss: 'Düşük', stillbirth: 'Ölü doğum', ongoing: 'Devam eden gebelik', termination: 'Sonlandırma (TOP)', ectopic: 'Dış gebelik (ECT)' };
+// stored as a pregnancy's label (Turkish, like every label the program writes) and shown through `t`
+export const PREGNANCY_LABEL = { loss: tk('Düşük'), stillbirth: tk('Ölü doğum'), ongoing: tk('Devam eden gebelik'), termination: tk('Sonlandırma (TOP)'), ectopic: tk('Dış gebelik (ECT)') };
 export const isPregnancy = (p) => !!p && PREGNANCY_FIELDS.some((f) => p[f]);
 export const pregnancyKind = (p) => (!p ? null : p.ongoingPregnancy ? 'ongoing' : p.stillbirth ? 'stillbirth'
   : p.termination ? 'termination' : p.ectopic ? 'ectopic' : p.pregnancyLoss ? 'loss' : null);
@@ -61,10 +63,10 @@ export const geneticLines = (p) => String((p && p.geneticNote) || '').split('\n'
 /** The note with line `index` replaced by `text` (appended past the end; an empty text removes the line). */
 export function withGeneticLine(note, index, text) {
   const lines = geneticLines({ geneticNote: note });
-  const t = String(text ?? '').trim();
-  if (!t) lines.splice(index, 1);
-  else if (index >= lines.length) lines.push(t);
-  else lines[index] = t;
+  const line = String(text ?? '').trim();
+  if (!line) lines.splice(index, 1);
+  else if (index >= lines.length) lines.push(line);
+  else lines[index] = line;
   return lines.join('\n');
 }
 // results stored before 2026-10-27 (E+ / E− / E VUS) become the first line,
@@ -150,7 +152,7 @@ export const isConsultand = (p) => !!p && !!p.consultand;
 export const REPRO_ROLES = ['sperm_donor', 'egg_donor', 'gestational_carrier', 'surrogate'];
 export const EGG_SOURCE = ['egg_donor', 'surrogate'];
 export const CARRIER_ROLES = ['gestational_carrier', 'surrogate'];
-export const REPRO_LABEL = { sperm_donor: 'Sperm donörü', egg_donor: 'Yumurta donörü', gestational_carrier: 'Gestasyonel taşıyıcı', surrogate: 'Taşıyıcı anne' };
+export const REPRO_LABEL = { sperm_donor: tk('Sperm donörü'), egg_donor: tk('Yumurta donörü'), gestational_carrier: tk('Gestasyonel taşıyıcı'), surrogate: tk('Taşıyıcı anne') };
 export const ART_DONOR_RELATION = 'art_donor';
 /** the letter inside a person's symbol: 'G' for a gestational carrier, 'D' for a donor or surrogate */
 export function reproMarkOf(graph, id) {
@@ -284,3 +286,16 @@ export function displayParentage(graph) {
   }
   return { graph: { ...graph, parentChildRelationships: pcrs }, socialChildren };
 }
+
+/**
+ * The labels the program writes on people (wizard, builder, operations),
+ * stored in Turkish whatever the screen's language and shown through
+ * i18n `shownLabel` ("Dayı 2" → "Maternal uncle 2").
+ */
+export const DEFAULT_LABELS = [
+  tk('Anne'), tk('Baba'), tk('Proband'), tk('Erkek Kardeş'), tk('Kız Kardeş'), tk('Kardeş'), tk('Düşük'), tk('Ölü Doğum'),
+  tk('Belirtilmemiş ebeveyn'), tk('İkiz'), tk('Ortak Baba'), tk('Ortak Anne'), tk('Dede'), tk('Dede (Anne)'), tk('Dede (Baba)'),
+  tk('Anneanne'), tk('Babaanne'), tk('Büyük Dede'), tk('Büyük Anne'), tk('B.Dede'), tk('B.Anne'), tk('Ata Dede'), tk('Ata Anne'),
+  tk('Dayı'), tk('Teyze'), tk('Amca'), tk('Hala'), tk('B.Dayı'), tk('B.Teyze'), tk('B.Amca'), tk('B.Hala'), tk('Anne Eşi'), tk('Baba Eşi'), tk('Diğer Ebeveyn (belirtilmedi)'),
+  tk('Cocuk'), tk('Cocuk (E)'), tk('Cocuk (K)'),
+];

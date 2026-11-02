@@ -9,11 +9,18 @@
  *
  * The proband's optional birth date gives the age as of today: days under a
  * month, months under two years, then full years.
+ *
+ * The stored form stays the Turkish one whatever the screen's language (a
+ * file reads the same everywhere); `shownAge` writes it in the language of
+ * the screen or the drawing ("3 mo", "12 d", "2.5"), and English input is
+ * read too ("3 months", "12 days", "35 y").
  */
+import { tk, currentLang } from '../i18n';
+
 const UNITS = [
-  { unit: 'y', re: /^(yıl|yil|yaş|yas|y)?$/ },
-  { unit: 'm', re: /^ay$/ },
-  { unit: 'd', re: /^(gün|gun|g)$/ },
+  { unit: 'y', re: /^(yıl|yil|yaş|yas|y|yr|yrs|years?)?$/ },
+  { unit: 'm', re: /^(ay|mo|mos|months?)$/ },
+  { unit: 'd', re: /^(gün|gun|g|d|days?)$/ },
 ];
 const DAYS = { y: 365.25, m: 30.4375, d: 1 };
 
@@ -47,7 +54,16 @@ export function ageInDays(raw) {
   return a ? a.value * DAYS[a.unit] : null;
 }
 
-export const AGE_EXAMPLE = 'örnek: 35, 2,5, 3 ay, 12 gün';
+export const AGE_EXAMPLE = tk('örnek: 35, 2,5, 3 ay, 12 gün');
+
+/** A stored age as the reader's language writes it: "3 ay" → "3 mo", "2,5" → "2.5" in English. */
+export function shownAge(raw, lang = currentLang()) {
+  if (lang !== 'en' || raw === null || raw === undefined) return raw;
+  const a = parseAge(raw);
+  if (!a) return raw;
+  const n = String(a.value);
+  return a.unit === 'm' ? `${n} mo` : a.unit === 'd' ? `${n} d` : n;
+}
 
 /** 'YYYY-MM-DD' → the age on `today`, or null for a future or impossible date. */
 export function ageFromBirthDate(iso, today = new Date()) {
@@ -56,10 +72,10 @@ export function ageFromBirthDate(iso, today = new Date()) {
   const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
   const birth = new Date(y, mo - 1, d);
   if (birth.getFullYear() !== y || birth.getMonth() !== mo - 1 || birth.getDate() !== d) return null;
-  const t = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const days = Math.round((t - birth) / 86400000);
+  const now = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const days = Math.round((now - birth) / 86400000);
   if (days < 0) return null;
-  const months = (t.getFullYear() - y) * 12 + (t.getMonth() - (mo - 1)) - (t.getDate() < d ? 1 : 0);
+  const months = (now.getFullYear() - y) * 12 + (now.getMonth() - (mo - 1)) - (now.getDate() < d ? 1 : 0);
   if (months < 1) return `${days} gün`;
   if (months < 24) return `${months} ay`;
   return String(Math.floor(months / 12));
@@ -86,8 +102,8 @@ export function parseTypedDate(raw, today = new Date()) {
     if (year > today.getFullYear()) year -= 100;
   }
   const iso = `${year}-${String(Number(m)).padStart(2, '0')}-${String(Number(d)).padStart(2, '0')}`;
-  const t = new Date(year, Number(m) - 1, Number(d));
-  return t.getFullYear() === year && t.getMonth() === Number(m) - 1 && t.getDate() === Number(d) ? iso : null;
+  const date = new Date(year, Number(m) - 1, Number(d));
+  return date.getFullYear() === year && date.getMonth() === Number(m) - 1 && date.getDate() === Number(d) ? iso : null;
 }
 
 /** 'YYYY-MM-DD' → '03.05.2025' (how the clinician writes it). */

@@ -3,6 +3,7 @@
  *
  * Validates the pedigree graph for clinical correctness.
  */
+import { t } from '../i18n';
 
 export function validatePedigree(data) {
   const warnings = [];
@@ -15,7 +16,7 @@ export function validatePedigree(data) {
   parentChildRelationships.forEach(rel => {
     rel.children.forEach(cid => {
       if (childToUnion[cid]) {
-        warnings.push(`Hata: Birey "${cid}" birden fazla ebeveyn birliğine bağlı.`);
+        warnings.push(t('Hata: Birey "{cid}" birden fazla ebeveyn birliğine bağlı.', { cid }));
       }
       childToUnion[cid] = rel.unionId;
     });
@@ -26,7 +27,7 @@ export function validatePedigree(data) {
     const p1 = indById[u.partners[0]];
     const p2 = indById[u.partners[1]];
     if (!p1 || !p2) {
-      warnings.push(`Hata: Union ${u.id} eksik partner referansı.`);
+      warnings.push(t('Hata: Union {id} eksik partner referansı.', { id: u.id }));
       return;
     }
     // Check if both partners are siblings (share a parent union)
@@ -36,13 +37,13 @@ export function validatePedigree(data) {
       // Both are children of the same union — they're siblings!
       // This is only valid for consanguineous unions
       if (!u.consanguineous) {
-        warnings.push(`Hata: Union ${u.id} iki kardeşi (${p1.id}, ${p2.id}) eş olarak birleştiriyor!`);
+        warnings.push(t('Hata: Union {id} iki kardeşi ({id1}, {id2}) eş olarak birleştiriyor!', { id: u.id, id1: p1.id, id2: p2.id }));
       }
     }
     // Check if proband is in a union with a sibling
     if ((p1.relation === 'proband' && p2.relation === 'sibling') ||
         (p2.relation === 'proband' && p1.relation === 'sibling')) {
-      warnings.push(`Hata: Proband bir kardeşiyle union'da! Union: ${u.id}`);
+      warnings.push(t('Hata: Proband bir kardeşiyle union\'da! Union: {id}', { id: u.id }));
     }
   });
 
@@ -58,7 +59,7 @@ export function validatePedigree(data) {
   (data.socialParentLinks || []).forEach(l => { childToUnion[l.childId] = childToUnion[l.childId] || l.unionId; });
   individuals.forEach(ind => {
     if (ind.generation >= 3 && !childToUnion[ind.id] && !hasPartner.has(ind.id)) {
-      warnings.push(`Uyarı: "${ind.displayLabel || ind.label || ind.id}" ne bir ebeveyn çiftine ne de bir eşe bağlı.`);
+      warnings.push(t('Uyarı: "{v0}" ne bir ebeveyn çiftine ne de bir eşe bağlı.', { v0: ind.displayLabel || ind.label || ind.id }));
     }
   });
 
@@ -66,7 +67,7 @@ export function validatePedigree(data) {
   const seenIds = new Set();
   individuals.forEach(ind => {
     if (seenIds.has(ind.id)) {
-      warnings.push(`Hata: Duplicate birey: ${ind.id}`);
+      warnings.push(t('Hata: Aynı kimlik iki kez: {id}', { id: ind.id }));
     }
     seenIds.add(ind.id);
   });
@@ -75,9 +76,9 @@ export function validatePedigree(data) {
   unions.forEach(u => {
     if (u.consanguineous) {
       if (!u.consanguinityDegree || u.consanguinityDegree === 'yok') {
-        warnings.push('Uyarı: Akraba evliliği işaretli ancak derece seçilmemiş.');
+        warnings.push(t('Uyarı: Akraba evliliği işaretli ancak derece seçilmemiş.'));
       } else if (u.consanguinityDegree === 'unknown' && u.consanguinityStatus !== 'known_supported') {
-        warnings.push('Bilgi: Akraba evliliği derecesi bilinmiyor — üst soy bağlantısı çizilmeyecek.');
+        warnings.push(t('Bilgi: Akraba evliliği derecesi bilinmiyor — üst soy bağlantısı çizilmeyecek.'));
       }
     }
     // Distinct from the degree-specific messages above: this fires whenever
@@ -95,9 +96,7 @@ export function validatePedigree(data) {
       // the degree/common ancestor has not yet been structurally modeled,
       // which does not change the drawn line at all.
       warnings.push(
-        `Bilgi: Union ${u.id} akraba evliliği olarak bildirildi. Derece / ortak ata bilgisi ` +
-        `grafikte henüz modellenmedi — bu, çizimi etkilemez (standart siyah çift çizgi zaten gösteriliyor); ` +
-        `sadece bu bilgi kayıt amaçlı henüz eksik.`
+        t('Bilgi: Union {id} akraba evliliği olarak bildirildi. Derece / ortak ata bilgisi grafikte henüz modellenmedi — bu, çizimi etkilemez (standart siyah çift çizgi zaten gösteriliyor); sadece bu bilgi kayıt amaçlı henüz eksik.', { id: u.id })
       );
     }
   });
@@ -108,7 +107,7 @@ export function validatePedigree(data) {
   nodes.forEach(n => {
     const key = `${Math.round(n.x)},${Math.round(n.y)}`;
     if (positions[key]) {
-      warnings.push(`Uyarı: Node çakışması: ${positions[key]} ve ${n.id} aynı pozisyonda.`);
+      warnings.push(t('Uyarı: Node çakışması: {v0} ve {id} aynı pozisyonda.', { v0: positions[key], id: n.id }));
     }
     positions[key] = n.id;
   });

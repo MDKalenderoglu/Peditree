@@ -82,6 +82,13 @@ function App() {
   const t = useT();
   const { ui: uiLang, drawing: drawingChoice, setLang } = useLang();
   const drawLang = drawingLangOf({ ui: uiLang, drawing: drawingChoice });
+  // notices already on screen are worded again in the new language
+  const shownLang = React.useRef(uiLang);
+  React.useEffect(() => {
+    if (shownLang.current === uiLang) return;
+    shownLang.current = uiLang;
+    usePedigreeStore.getState().retell();
+  }, [uiLang]);
   // the top bar's birth date: the proband's, else the consultand's (clinician decision 2026-11-01)
   const probandNode = subjectOf(doc.graph.individuals);
   // tablet: taps add people to the selection while this is on (a mouse has Cmd/Ctrl/Shift-click)

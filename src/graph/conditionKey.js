@@ -14,13 +14,14 @@
  * edited. An entry nobody has any more is dropped. finalize.js keeps the key
  * in step after every operation.
  */
+import { t, tk } from '../i18n';
 
 export const normLabel = (label) => String(label ?? '').trim().toLocaleLowerCase('tr');
 
 export const REGIONS = ['q1', 'q2', 'q3', 'q4'];
-export const REGION_LABEL = { q1: 'Sol üst', q2: 'Sağ üst', q3: 'Sağ alt', q4: 'Sol alt' };
+export const REGION_LABEL = { q1: tk('Sol üst'), q2: tk('Sağ üst'), q3: tk('Sağ alt'), q4: tk('Sol alt') };
 export const FILLS = ['solid', 'hatch', 'dots', 'grey'];
-export const FILL_LABEL = { solid: 'Siyah', hatch: 'Tarama', dots: 'Noktalı', grey: 'Gri' };
+export const FILL_LABEL = { solid: tk('Siyah'), hatch: tk('Tarama'), dots: tk('Noktalı'), grey: tk('Gri') };
 /**
  * A carrier without a named finding (person.carrier): the left half in a
  * pattern of its own, never a finding's, explained in the key as
@@ -42,7 +43,7 @@ const validStyle = (e) => REGIONS.includes(e.region) && FILLS.includes(e.fill);
 // from the others; adding one is refused with this message (clinician
 // decision 2026-10-25: an explicit warning, the clinician simplifies)
 export const KEY_CAPACITY = REGIONS.length * FILLS.length;
-export const KEY_FULL_MESSAGE = '16 bulgu sınırına ulaşıldı: her bulgu sembolde kendine ait bir çeyrek ve dolguyla gösteriliyor ve boş işaret kalmadı. Yeni bulgu eklemek için benzer bulguları tek bir adda toplayın ya da gereksiz bir bulguyu kaldırın.';
+export const KEY_FULL_MESSAGE = tk('16 bulgu sınırına ulaşıldı: her bulgu sembolde kendine ait bir çeyrek ve dolguyla gösteriliyor ve boş işaret kalmadı. Yeni bulgu eklemek için benzer bulguları tek bir adda toplayın ya da gereksiz bir bulguyu kaldırın.');
 
 export function keyFull(key = []) {
   return new Set(key.filter(validStyle).map(signature)).size >= KEY_CAPACITY;
@@ -130,7 +131,7 @@ function keepCarriersFindingsRight(graph, key) {
       const e = key.find((x) => normLabel(x.label) === normLabel(c.label));
       if (!e || e.fill !== 'solid') continue;
       const tries = order.filter((f) => f !== 'solid').flatMap((fill) => [e.region, ...REGIONS.filter((r) => r !== e.region)].map((region) => ({ region, fill })));
-      const free = tries.find((t) => !styleTaken(key, t, e.label));
+      const free = tries.find((st) => !styleTaken(key, st, e.label));
       if (free) Object.assign(e, free);
     }
   }
@@ -163,7 +164,7 @@ function keepCarriersFindingsRight(graph, key) {
       const regions = [MIRROR[e.region] || e.region, ...RIGHT].filter((r, k, a) => RIGHT.includes(r) && a.indexOf(r) === k)
         .sort((a, b) => nearRegions.has(a) - nearRegions.has(b));
       const tries = fills.flatMap((fill) => regions.map((region) => ({ region, fill })));
-      const free = tries.find((t) => !styleTaken(key, t, e.label));
+      const free = tries.find((st) => !styleTaken(key, st, e.label));
       if (free) Object.assign(e, free);
     }
   }
@@ -269,7 +270,7 @@ export function carrierFindingIssues(graph) {
     if (carried.map(fillOf).some((f) => right.has(f))) {
       issues.push({
         severity: 'error', code: 'CARRIER_FINDING_INDISTINCT', ids: [p.id],
-        message: 'Bu kişinin taşıyıcılığı ile bulgusu aynı dolguyla çizilir ve ayırt edilemez; boş işaret kalmadı. Benzer bulguları tek adda toplayın ya da birini kaldırın.',
+        message: t('Bu kişinin taşıyıcılığı ile bulgusu aynı dolguyla çizilir ve ayırt edilemez; boş işaret kalmadı. Benzer bulguları tek adda toplayın ya da birini kaldırın.'),
       });
     }
   }

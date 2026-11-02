@@ -15,20 +15,21 @@
 import { commit, block, draftAddPerson, draftAddChild } from './ops';
 import { indexGraph } from './model';
 import { allocateId } from './ids';
+import { t, tk } from '../i18n';
 
 export const ZYGOSITY = ['monozygotic', 'dizygotic', 'unknown'];
-export const ZYGOSITY_LABEL = { monozygotic: 'Tek yumurta (monozigotik)', dizygotic: 'Çift yumurta (dizigotik)', unknown: 'Zigositesi bilinmiyor' };
+export const ZYGOSITY_LABEL = { monozygotic: tk('Tek yumurta (monozigotik)'), dizygotic: tk('Çift yumurta (dizigotik)'), unknown: tk('Zigositesi bilinmiyor') };
 
 /** Zygosity in words for a group of n (three dizygotic = trizygotic). */
 export function zygosityLabel(zygosity, n) {
-  if (zygosity === 'monozygotic') return 'Tek yumurta (monozigotik)';
-  if (zygosity === 'dizygotic') return n === 2 ? 'Çift yumurta (dizigotik)' : n === 3 ? 'Trizigotik' : 'Polizigotik';
-  return 'Zigositesi bilinmiyor';
+  if (zygosity === 'monozygotic') return t('Tek yumurta (monozigotik)');
+  if (zygosity === 'dizygotic') return n === 2 ? t('Çift yumurta (dizigotik)') : n === 3 ? 'Trizigotik' : 'Polizigotik';
+  return t('Zigositesi bilinmiyor');
 }
 
 /** Turkish name of a group: ikiz / üçüz / dördüz … */
 export function multipleName(n) {
-  return ({ 2: 'İkiz', 3: 'Üçüz', 4: 'Dördüz', 5: 'Beşiz' })[n] || `${n}'li çoğul gebelik`;
+  return ({ 2: t('İkiz'), 3: t('Üçüz'), 4: t('Dördüz'), 5: t('Beşiz') })[n] || t('{n}\'li çoğul gebelik', { n });
 }
 
 /** The group a child belongs to, with its relationship, or null. */
@@ -83,8 +84,8 @@ export function setMultipleBirth(doc, childIds, zygosity = 'unknown') {
     if (!ZYGOSITY.includes(zygosity)) block(`Bilinmeyen zigosite: ${zygosity}`);
     const idx = indexGraph(d.graph);
     const uids = new Set(childIds.map((c) => idx.bioParentUnion.get(c)));
-    if (childIds.length < 2 || uids.size !== 1 || uids.has(undefined)) block('İkiz/üçüz yalnızca aynı anne-babanın çocukları arasında olabilir.');
-    if (childIds.some((c) => idx.byId.get(c)?.placeholder)) block('Belirtilmemiş ebeveyn ikiz yapılamaz.');
+    if (childIds.length < 2 || uids.size !== 1 || uids.has(undefined)) block(t('İkiz/üçüz yalnızca aynı anne-babanın çocukları arasında olabilir.'));
+    if (childIds.some((c) => idx.byId.get(c)?.placeholder)) block(t('Belirtilmemiş ebeveyn ikiz yapılamaz.'));
     const rel = d.graph.parentChildRelationships.find((r) => r.unionId === [...uids][0]);
     rel.multiples = rel.multiples || [];
     const existing = rel.multiples.filter((m) => m.children.some((c) => childIds.includes(c)));
@@ -101,7 +102,7 @@ export function addMultipleSibling(doc, personId, { sex = 'unknown', zygosity } 
   return commit(doc, (d) => {
     const idx = indexGraph(d.graph);
     const uid = idx.bioParentUnion.get(personId);
-    if (!uid) block('İkiz eklemek için önce anne ve baba çizili olmalı.');
+    if (!uid) block(t('İkiz eklemek için önce anne ve baba çizili olmalı.'));
     const person = idx.byId.get(personId);
     const rel = d.graph.parentChildRelationships.find((r) => r.unionId === uid);
     const r = allocateId(d.ids, d.graph, 'twin_');
@@ -127,7 +128,7 @@ export function setMultipleZygosity(doc, personId, zygosity) {
   return commit(doc, (d) => {
     if (!ZYGOSITY.includes(zygosity)) block(`Bilinmeyen zigosite: ${zygosity}`);
     const found = groupOf(d.graph, personId);
-    if (!found) block('Bu kişi bir ikiz/üçüz grubunda değil.');
+    if (!found) block(t('Bu kişi bir ikiz/üçüz grubunda değil.'));
     found.group.zygosity = zygosity;
   });
 }
@@ -150,7 +151,7 @@ export function multiplesWarnings(graph) {
       if (m.zygosity !== 'monozygotic') continue;
       const sexes = new Set(m.children.map((c) => byId.get(c)?.sex).filter((s) => s === 'male' || s === 'female'));
       if (sexes.size > 1) {
-        out.push({ severity: 'warning', code: 'MONOZYGOTIC_SEX_DIFFERS', message: 'Tek yumurta ikizleri olarak işaretli kişilerin cinsiyeti farklı; kontrol edin.', ids: m.children });
+        out.push({ severity: 'warning', code: 'MONOZYGOTIC_SEX_DIFFERS', message: t('Tek yumurta ikizleri olarak işaretli kişilerin cinsiyeti farklı; kontrol edin.'), ids: m.children });
       }
     }
   }

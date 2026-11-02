@@ -7,6 +7,7 @@
  * everyone. Used in the ring menu and in the right panel.
  */
 import { useId, useState } from 'react';
+import { t } from '../i18n';
 import DraftField from './DraftField';
 import { REGIONS, REGION_LABEL, FILLS, FILL_LABEL, REGION_ANGLES, suggestStyle, styleTaken, normLabel, KEY_FULL_MESSAGE } from '../graph/conditionKey';
 
@@ -50,7 +51,7 @@ export function StylePicker({ value, onChange, isTaken }) {
     <div className="style-picker">
       <div className="style-row">
         {REGIONS.map(r => (
-          <button key={r} className={`style-opt${value.region === r ? ' on' : ''}`} title={REGION_LABEL[r]} aria-label={REGION_LABEL[r]}
+          <button key={r} className={`style-opt${value.region === r ? ' on' : ''}`} title={t(REGION_LABEL[r])} aria-label={t(REGION_LABEL[r])}
             disabled={isTaken({ region: r, fill: value.fill })} onClick={() => onChange({ ...value, region: r })}>
             <FindingGlyph region={r} fill="solid" />
           </button>
@@ -58,7 +59,7 @@ export function StylePicker({ value, onChange, isTaken }) {
       </div>
       <div className="style-row">
         {FILLS.map(f => (
-          <button key={f} className={`style-opt${value.fill === f ? ' on' : ''}`} title={FILL_LABEL[f]} aria-label={FILL_LABEL[f]}
+          <button key={f} className={`style-opt${value.fill === f ? ' on' : ''}`} title={t(FILL_LABEL[f])} aria-label={t(FILL_LABEL[f])}
             disabled={isTaken({ region: value.region, fill: f })} onClick={() => onChange({ ...value, fill: f })}>
             <FindingGlyph region={value.region} fill={f} />
           </button>
@@ -93,23 +94,23 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
             const st = stateOf(e.label);
             return (
               <div key={e.id} className="finding-row">
-                <button className="finding-glyph" title="Bu bulgunun sembolde gösterildiği yeri ve deseni değiştir (bu bulgusu olan herkeste değişir)"
+                <button className="finding-glyph" title={t('Bu bulgunun sembolde gösterildiği yeri ve deseni değiştir (bu bulgusu olan herkeste değişir)')}
                   onClick={() => setEditing(editing === e.id ? null : e.id)}>
                   <FindingGlyph region={e.region} fill={e.fill} shape={shape} carrier={st === 'carrier'} />
                 </button>
                 <span className="finding-name" title={e.label}>{e.label}</span>
                 <div className="segmented finding-state" role="radiogroup" aria-label={e.label}>
-                  {[['none', 'Yok'], ['affected', 'Var'], ['carrier', 'Taşıyıcı'], ['unknown', '?']].map(([v, t]) => (
+                  {[['none', t('Yok')], ['affected', t('Var')], ['carrier', t('Taşıyıcı')], ['unknown', '?']].map(([v, label]) => (
                     <button key={v} className={st === v ? 'on' : undefined} role="radio" aria-checked={st === v}
-                      title={{ none: 'Bu kişide bu bulgu yok', affected: 'Bu kişide bu bulgu var (hasta)', carrier: 'Bu kişi hasta değil, taşıyıcı', unknown: 'Bilinmiyor: bu kişide olup olmadığından emin değilim' }[v]} aria-label={v === 'unknown' ? 'Bilinmiyor' : undefined}
-                      onClick={() => onSetStatus(node.id, e.label, v)}>{t}</button>
+                      title={{ none: t('Bu kişide bu bulgu yok'), affected: t('Bu kişide bu bulgu var (hasta)'), carrier: t('Bu kişi hasta değil, taşıyıcı'), unknown: t('Bilinmiyor: bu kişide olup olmadığından emin değilim') }[v]} aria-label={v === 'unknown' ? t('Bilinmiyor') : undefined}
+                      onClick={() => onSetStatus(node.id, e.label, v)}>{label}</button>
                   ))}
                 </div>
                 {/* the age it was diagnosed at (shown in the notes; clinician decision 2026-10-25) */}
                 {onSetOnset && (st === 'affected' || st === 'carrier') && (
                   <label className="finding-onset">
-                    <span>Tanı yaşı</span>
-                    <DraftField key={`${node.id}-${e.id}-onset`} type="text" className="input input-age" placeholder="ör. 12 ya da 3 ay"
+                    <span>{t('Tanı yaşı')}</span>
+                    <DraftField key={`${node.id}-${e.id}-onset`} type="text" className="input input-age" placeholder={t('ör. 12 ya da 3 ay')}
                       value={(conds.find(x => normLabel(x.label) === normLabel(e.label)) || {}).onsetAge || ''}
                       onCommit={v => onSetOnset(node.id, e.label, v.trim())} />
                   </label>
@@ -128,16 +129,16 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
         <>
         <div className="finding-new">
           <FindingGlyph region={suggested.region} fill={suggested.fill} shape={shape} />
-          <input type="text" className="input" value={draft} placeholder="Yeni bulgu adı, ör. miyop (Enter ile ekle)"
+          <input type="text" className="input" value={draft} placeholder={t('Yeni bulgu adı, ör. miyop (Enter ile ekle)')}
             onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }} />
-          <button className="ui-btn ui-btn-sm ui-btn-primary" disabled={!draft.trim()} onClick={add}>Ekle</button>
+          <button className="ui-btn ui-btn-sm ui-btn-primary" disabled={!draft.trim()} onClick={add}>{t('Ekle')}</button>
         </div>
         {draft.trim() && (
           <StylePicker value={suggested} isTaken={(st2) => styleTaken(conditionKey, st2)} onChange={setStyle} />
         )}
         </>
       ) : (
-        <div className="field-hint finding-limit" role="alert">{KEY_FULL_MESSAGE}</div>
+        <div className="field-hint finding-limit" role="alert">{t(KEY_FULL_MESSAGE)}</div>
       )}
     </div>
   );

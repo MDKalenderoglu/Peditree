@@ -12,6 +12,7 @@
 import { commit, block } from './ops';
 import { normalizeAge, AGE_EXAMPLE } from '../utils/age';
 import { normLabel, keyEntry, styleTaken, keyFull, KEY_FULL_MESSAGE, rightSideFindings, REGIONS, FILLS } from './conditionKey';
+import { t } from '../i18n';
 
 // 'unknown': the clinician is not sure (clinician decision 2026-10-25:
 // written as unknown, never as "no", e.g. in a PED file)
@@ -37,10 +38,10 @@ function applyStatus(person, label, status) {
 export function setFindingStatus(doc, personId, label, status) {
   return commit(doc, (d) => {
     if (!STATUSES.includes(status)) block(`Bilinmeyen durum: ${status}`);
-    if (!String(label || '').trim()) block('Bulgunun adı boş olamaz.');
+    if (!String(label || '').trim()) block(t('Bulgunun adı boş olamaz.'));
     const p = d.graph.individuals.find((i) => i.id === personId);
-    if (!p) block('Birey grafikte bulunamadı.');
-    if (status !== 'none' && !keyEntry(d.graph.conditionKey, label) && keyFull(d.graph.conditionKey)) block(KEY_FULL_MESSAGE);
+    if (!p) block(t('Birey grafikte bulunamadı.'));
+    if (status !== 'none' && !keyEntry(d.graph.conditionKey, label) && keyFull(d.graph.conditionKey)) block(t(KEY_FULL_MESSAGE));
     applyStatus(p, label, status);
   });
 }
@@ -52,14 +53,14 @@ export function setFindingStatus(doc, personId, label, status) {
 export function addFinding(doc, personId, label, style = null) {
   return commit(doc, (d) => {
     const name = String(label || '').trim();
-    if (!name) block('Bulgunun adı boş olamaz.');
+    if (!name) block(t('Bulgunun adı boş olamaz.'));
     const p = d.graph.individuals.find((i) => i.id === personId);
-    if (!p) block('Birey grafikte bulunamadı.');
+    if (!p) block(t('Birey grafikte bulunamadı.'));
     d.graph.conditionKey = d.graph.conditionKey || [];
-    if (!keyEntry(d.graph.conditionKey, name) && keyFull(d.graph.conditionKey)) block(KEY_FULL_MESSAGE);
+    if (!keyEntry(d.graph.conditionKey, name) && keyFull(d.graph.conditionKey)) block(t(KEY_FULL_MESSAGE));
     if (style && !keyEntry(d.graph.conditionKey, name)) {
-      if (!REGIONS.includes(style.region) || !FILLS.includes(style.fill)) block('Geçersiz bölge ya da dolgu.');
-      if (styleTaken(d.graph.conditionKey, style)) block('Bu yer ve desen başka bir bulguyu gösteriyor; iki bulgu karışmasın diye başka bir yer ya da desen seçin.');
+      if (!REGIONS.includes(style.region) || !FILLS.includes(style.fill)) block(t('Geçersiz bölge ya da dolgu.'));
+      if (styleTaken(d.graph.conditionKey, style)) block(t('Bu yer ve desen başka bir bulguyu gösteriyor; iki bulgu karışmasın diye başka bir yer ya da desen seçin.'));
       const n = Math.max(0, ...d.graph.conditionKey.map((e) => Number(String(e.id).replace(/^k/, '')) || 0)) + 1;
       d.graph.conditionKey.push({ id: `k${n}`, label: name, region: style.region, fill: style.fill });
     }
@@ -71,15 +72,15 @@ export function addFinding(doc, personId, label, style = null) {
 export function setFindingStyle(doc, label, style) {
   return commit(doc, (d) => {
     const e = keyEntry(d.graph.conditionKey, label);
-    if (!e) block('Bu bulgu açıklamada yok.');
-    if (!REGIONS.includes(style.region) || !FILLS.includes(style.fill)) block('Geçersiz bölge ya da dolgu.');
-    if (styleTaken(d.graph.conditionKey, style, label)) block('Bu yer ve desen başka bir bulguyu gösteriyor; iki bulgu karışmasın diye başka bir yer ya da desen seçin.');
+    if (!e) block(t('Bu bulgu açıklamada yok.'));
+    if (!REGIONS.includes(style.region) || !FILLS.includes(style.fill)) block(t('Geçersiz bölge ya da dolgu.'));
+    if (styleTaken(d.graph.conditionKey, style, label)) block(t('Bu yer ve desen başka bir bulguyu gösteriyor; iki bulgu karışmasın diye başka bir yer ya da desen seçin.'));
     const beside = rightSideFindings(d.graph).get(normLabel(label));
     if (beside && !['q2', 'q3'].includes(style.region)) {
-      block('Bu bulgu taşıyıcı bir kişide de var; taşıyıcılık sembolün sol yarısında çizildiği için bulgu sağ üst ya da sağ alt çeyrekte olmalı.');
+      block(t('Bu bulgu taşıyıcı bir kişide de var; taşıyıcılık sembolün sol yarısında çizildiği için bulgu sağ üst ya da sağ alt çeyrekte olmalı.'));
     }
     if (beside && beside.has(style.fill)) {
-      block('Bu dolgu, aynı kişinin sol yarısındaki taşıyıcılık işaretiyle aynı; bulgu ayırt edilemez. Başka bir dolgu seçin.');
+      block(t('Bu dolgu, aynı kişinin sol yarısındaki taşıyıcılık işaretiyle aynı; bulgu ayırt edilemez. Başka bir dolgu seçin.'));
     }
     e.region = style.region;
     e.fill = style.fill;
@@ -94,11 +95,11 @@ export function setFindingStyle(doc, label, style) {
 export function renameFinding(doc, oldLabel, newLabel) {
   return commit(doc, (d) => {
     const name = String(newLabel || '').trim();
-    if (!name) block('Bulgunun adı boş olamaz.');
+    if (!name) block(t('Bulgunun adı boş olamaz.'));
     const e = keyEntry(d.graph.conditionKey, oldLabel);
-    if (!e) block('Bu bulgu açıklamada yok.');
+    if (!e) block(t('Bu bulgu açıklamada yok.'));
     const clash = keyEntry(d.graph.conditionKey, name);
-    if (clash && clash !== e) block(`"${name}" adında başka bir bulgu zaten var.`);
+    if (clash && clash !== e) block(t('"{name}" adında başka bir bulgu zaten var.', { name }));
     for (const p of d.graph.individuals) {
       if (!Array.isArray(p.conditions)) continue;
       p.conditions = p.conditions.map((c) => (normLabel(c.label) === normLabel(oldLabel) ? { ...c, label: name } : c));
@@ -114,11 +115,11 @@ export function renameFinding(doc, oldLabel, newLabel) {
 export function setFindingOnset(doc, personId, label, onset) {
   return commit(doc, (d) => {
     const p = d.graph.individuals.find((i) => i.id === personId);
-    if (!p) block('Birey grafikte bulunamadı.');
+    if (!p) block(t('Birey grafikte bulunamadı.'));
     const c = (p.conditions || []).find((x) => x && normLabel(x.label) === normLabel(label));
-    if (!c) block('Bu kişide bu bulgu yok.');
+    if (!c) block(t('Bu kişide bu bulgu yok.'));
     const age = normalizeAge(onset);
-    if (age === null) block(`Tanı yaşı anlaşılamadı: "${onset}" (${AGE_EXAMPLE}).`);
+    if (age === null) block(t('Tanı yaşı anlaşılamadı: "{onset}" ({AGE_EXAMPLE}).', { onset, AGE_EXAMPLE }));
     if (age) c.onsetAge = age; else delete c.onsetAge;
   });
 }

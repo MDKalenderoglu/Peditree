@@ -86,6 +86,26 @@ export function t(text, params, lang = current) {
 /** Marks a text kept in a list or a constant and given to `t` when shown (the dictionary test finds it). */
 export const tk = (text) => text;
 
+const has = (s) => Object.prototype.hasOwnProperty.call(EN, s);
+const SIDE_EN = { Anne: 'mother’s side', Baba: 'father’s side' };
+
+/**
+ * A person's stored default label (written by the program, in Turkish:
+ * "Baba", "Anne Eşi 2", "B.Dede (Anne)"; model.js DEFAULT_LABELS) in the
+ * reader's language. The stored label never changes; a label someone typed
+ * stays as it is.
+ */
+export function shownLabel(label, lang = current) {
+  if (!label || lang !== 'en') return label;
+  const s = String(label);
+  if (has(s)) return EN[s];
+  let m = /^(.*\S) (\d+)$/.exec(s);
+  if (m) return `${shownLabel(m[1], lang)} ${m[2]}`;
+  m = /^(.*\S) \((.+)\)$/.exec(s);
+  if (m) return `${shownLabel(m[1], lang)} (${SIDE_EN[m[2]] || shownLabel(m[2], lang)})`;
+  return s;
+}
+
 /** A `t` bound to one language (the drawing's). */
 export const tFor = (lang) => (text, params) => t(text, params, lang);
 

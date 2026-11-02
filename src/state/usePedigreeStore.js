@@ -51,6 +51,7 @@ import {
   computeDeletionPlan, computeUnionCreationPlan, computeSiblingCreationPlan,
   computeAddParentsPlan, computeAddSiblingPlan,
 } from '../graph/plans';
+import { t } from '../i18n';
 export {
   computeDeletionPlan, computeUnionCreationPlan, computeSiblingCreationPlan,
   computeAddParentsPlan, computeAddSiblingPlan,
@@ -113,8 +114,8 @@ function layoutFor(graph, ctx) {
   }
   if (ctx && ctx.tidy && selectedPacker() === 'pcl') {
     // "Konumlandır": the layout with the fewest bends (tidy.js)
-    const t = computeTidyLayout(graph);
-    return { nodes: t.nodes, edges: t.edges, layoutInfo: { level: 'full', reason: `Konumlandır (en az kırılma: ${t.variant})` } };
+    const tidy = computeTidyLayout(graph);
+    return { nodes: tidy.nodes, edges: tidy.edges, layoutInfo: { level: 'full', reason: t('Konumlandır (en az kırılma: {variant})', { variant: tidy.variant }) } };
   }
   const l = computePedigreeLayout(graph, ctx && ctx.straightStart ? { straightStart: true } : {});
   return { nodes: l.nodes, edges: l.edges, layoutInfo: { level: 'full', reason: ctx && ctx.reason ? ctx.reason : 'fresh layout' } };
@@ -177,7 +178,7 @@ function bootstrap() {
     doc = loaded.doc;
     if (loaded.notice) notice = loaded.notice;
     else if (loaded.source === 'migrated-v1') {
-      notice = 'Kayıtlı pedigri yeni veri biçimine taşındı (veri kaybı yok; eski kayıt yedeklendi).';
+      notice = t('Kayıtlı pedigri yeni veri biçimine taşındı (veri kaybı yok; eski kayıt yedeklendi).');
     }
   } catch (err) {
     console.warn('[usePedigreeStore] Failed to read saved pedigree — starting clean.', err);
@@ -193,7 +194,7 @@ function bootstrap() {
       // passed the checks but could not be drawn: kept apart, and said so (Codex audit 2026-11-01)
       console.error('[usePedigreeStore] Saved pedigree failed to load — starting clean (saved data kept apart).', err);
       keepBrokenSession(typeof window !== 'undefined' ? window.sessionStorage : null, JSON.stringify(doc));
-      actionNotice = { message: 'Bu sekmede kayıtlı pedigri çizilemedi; boş bir pedigriyle başlandı. Kayıt silinmedi, üzerine yazılmasın diye ayrı saklandı.', at: Date.now() };
+      actionNotice = { message: t('Bu sekmede kayıtlı pedigri çizilemedi; boş bir pedigriyle başlandı. Kayıt silinmedi, üzerine yazılmasın diye ayrı saklandı.'), at: Date.now() };
     }
   }
   const fresh = starterDocument();
@@ -222,7 +223,7 @@ export const usePedigreeStore = create((zSet, get) => {
       const xOf = (pid) => (st.pedigreeData.nodes.find((n) => n.id === pid) || {}).x;
       const other = u && u.partners.find((p) => p !== m.leftPartner);
       if (res.ok && u && !(xOf(m.leftPartner) < xOf(other))) {
-        zSet(deriveAll(st.doc, st.ui, { tidy: true, reason: 'Eşler yer değiştirdi' }));
+        zSet(deriveAll(st.doc, st.ui, { tidy: true, reason: t('Eşler yer değiştirdi') }));
       }
       return res;
     }
@@ -240,14 +241,14 @@ export const usePedigreeStore = create((zSet, get) => {
     const result = apply({ ok: true, doc: d });
     const st = get();
     if (result.ok && againstAges({ ...st.pedigreeData, parentChildRelationships: st.doc.graph.parentChildRelationships }, m.unionId)) {
-      zSet({ actionNotice: { message: 'Bu doğum sırası bilinen yaşlarla uyuşmuyor; çizim elle verdiğiniz sırayı gösteriyor.', kind: 'info', at: Date.now() } });
+      zSet({ actionNotice: { message: t('Bu doğum sırası bilinen yaşlarla uyuşmuyor; çizim elle verdiğiniz sırayı gösteriyor.'), kind: 'info', at: Date.now() } });
     }
     return result;
   };
 
   const apply = (result, extra = {}, derived = null) => {
     if (!result || !result.ok) {
-      zSet({ actionNotice: { message: (result && result.reason) || 'İşlem uygulanamadı.', at: Date.now() } });
+      zSet({ actionNotice: { message: (result && result.reason) || t('İşlem uygulanamadı.'), at: Date.now() } });
       return result;
     }
     const state = get();
@@ -336,6 +337,15 @@ export const usePedigreeStore = create((zSet, get) => {
       return sel(ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]);
     }),
     dismissActionNotice: () => zSet(() => ({ actionNotice: null })),
+    // the language changed (i18n): the notices on screen are worded again; the drawing does not move
+    retell: () => zSet((state) => {
+      const layout = { nodes: state.pedigreeData.nodes, edges: state.pedigreeData.edges };
+      return {
+        warnings: validatePedigree(state.pedigreeData),
+        integrityIssues: [...tagIssues(validateDocument(state.doc), 'graph'), ...tagIssues(auditLayoutIntegrity(layout, layoutParentage(state.doc.graph)), 'layout')],
+        actionNotice: null,
+      };
+    }),
     clearSelection: () => zSet(() => sel([])),
     // clicking a relationship line selects the couple (pair panel: status, children)
     selectUnion: (unionId) => zSet((state) => {
@@ -404,7 +414,7 @@ export const usePedigreeStore = create((zSet, get) => {
     // the proband's (else the consultand's) birth date (optional): their age follows it, as of today
     setProbandBirthDate: (iso) => {
       const subject = subjectOf(get().doc.graph.individuals);
-      if (!subject) return apply({ ok: false, reason: 'Önce bir kişiyi proband ya da danışan yapın.' });
+      if (!subject) return apply({ ok: false, reason: t('Önce bir kişiyi proband ya da danışan yapın.') });
       return apply(ops.setBirthDate(get().doc, subject.id, iso || ''));
     },
 
@@ -512,7 +522,7 @@ export const usePedigreeStore = create((zSet, get) => {
     // "Yeni", nothing to undo; drawn with the fewest bends
     newFromTemplate: (spec) => {
       const r = buildTemplate(starterDocument(), spec);
-      if (!r.ok) return apply({ ok: false, reason: `Şablon kurulamadı: ${r.reason}` });
+      if (!r.ok) return apply({ ok: false, reason: t('Şablon kurulamadı: {reason}', { reason: r.reason }) });
       zSet(() => {
         clearAllSessions();
         const ui = { gen4Pending: [] };
@@ -521,7 +531,7 @@ export const usePedigreeStore = create((zSet, get) => {
           _history: [], _future: [], _viewHistory: [], _viewFuture: [],
           ...sel([]),
           dismissedWarningIds: [], openSectionId: 'proband', actionNotice: null,
-          ...deriveAll(r.doc, ui, { tidy: true, reason: 'Şablon' }),
+          ...deriveAll(r.doc, ui, { tidy: true, reason: t('Şablon') }),
         };
       });
       return { ok: true };
@@ -538,7 +548,7 @@ export const usePedigreeStore = create((zSet, get) => {
       _history: [...(state._history || []), state.doc].slice(-MAX_UNDO_HISTORY),
       _viewHistory: [...(state._viewHistory || []), viewOf(state)].slice(-MAX_UNDO_HISTORY),
       _future: [], _viewFuture: [],
-      ...deriveAll(state.doc, state.ui, { reason: 'Yeniden Düzenle', tidy: true }),
+      ...deriveAll(state.doc, state.ui, { reason: t('Yeniden Düzenle'), tidy: true }),
     })),
 
     /** Open a project file (v2, or v1 which is migrated). Undoable. */
@@ -553,10 +563,10 @@ export const usePedigreeStore = create((zSet, get) => {
       } catch (err) {
         // a file that passes the checks but cannot be drawn leaves the open pedigree as it is
         console.warn('[openProjectFile] could not draw the file:', err);
-        return apply({ ok: false, reason: 'Dosyadaki pedigri çizilemedi, açılmadı.' });
+        return apply({ ok: false, reason: t('Dosyadaki pedigri çizilemedi, açılmadı.') });
       }
       const result = apply({ ok: true, doc }, sel([]), derived);
-      if (parsed.migrated) zSet({ actionNotice: { message: 'Eski biçimdeki dosya yeni veri biçimine taşınarak açıldı.', kind: 'info', at: Date.now() } });
+      if (parsed.migrated) zSet({ actionNotice: { message: t('Eski biçimdeki dosya yeni veri biçimine taşınarak açıldı.'), kind: 'info', at: Date.now() } });
       return { ...result, migrated: parsed.migrated };
     },
 
@@ -566,10 +576,10 @@ export const usePedigreeStore = create((zSet, get) => {
       if (!r.ok) return apply({ ok: false, reason: r.reason });
       let derived;
       try {
-        derived = deriveAll(r.doc, get().ui, { tidy: true, reason: 'PED dosyası' });
+        derived = deriveAll(r.doc, get().ui, { tidy: true, reason: t('PED dosyası') });
       } catch (err) {
         console.warn('[importPedFile] could not draw the file:', err);
-        return apply({ ok: false, reason: 'PED dosyasındaki aile çizilemedi, açılmadı.' });
+        return apply({ ok: false, reason: t('PED dosyasındaki aile çizilemedi, açılmadı.') });
       }
       const result = apply({ ok: true, doc: withDocId(r.doc) }, sel([]), derived);
       zSet({ actionNotice: { message: r.notice, kind: 'info', at: Date.now() } });
