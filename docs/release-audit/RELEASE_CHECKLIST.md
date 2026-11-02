@@ -23,7 +23,6 @@
   - [ ] Presymptomatic carrier and the "documented evaluation" asterisk (G-3)
 - [ ] **Privacy:**
   - [ ] Add the shared-device sentences to About and README
-  - [ ] KVKK officer reviews the data-flow table in SECURITY_PRIVACY_AUDIT.md
 - [ ] **Deployment:**
   - [ ] Cloudflare Pages preview deploy (`docs/PEDITREE_DEPLOYMENT.md`)
   - [ ] Check the response headers live, CSP above all

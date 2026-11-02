@@ -10,12 +10,12 @@ Companion files: [CLINICAL_NOMENCLATURE_AUDIT.md](CLINICAL_NOMENCLATURE_AUDIT.md
 
 **NO-GO: release blocked, on missing evidence and sign-off rather than on a known defect.**
 No P0 or P1 defect was found. The production build, all 1046 automated tests, the layout gates
-and the twelve clinical acceptance scenarios pass. The block comes from four items:
+and the twelve clinical acceptance scenarios pass. The block comes from three items:
 
 1. Safari / iPad and Firefox were never run (only Chromium); the clinician uses tablets.
 2. Three NSGC 2022 coverage gaps need the clinician's decision, or need to be stated on the page:
    gender identity, same-sex couples, presymptomatic carrier.
-3. KVKK / institutional review of the privacy notice and of shared-device use is not done.
+3. (Removed 2026-11-02: no institutional or KVKK review applies — PediTree is the clinician's personal tool.)
 4. The security headers have never been checked on a live preview deployment.
 
 The steps are in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md). A GO after them would not mean
