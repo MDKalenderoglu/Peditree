@@ -7,11 +7,13 @@
  * @returns {{ text, kind: 'age' | 'ageAtDeath', value } | null}
  */
 import { isPregnancy, pregnancyKind } from '../graph/model';
+import { t } from '../i18n';
+import { shownAge } from './age';
 
-export function annotationAge(d) {
+export function annotationAge(d, lang) {
   if (!d || isPregnancy(d)) return null;
-  if (d.deceased && d.ageAtDeath) return { text: `d.${d.ageAtDeath}`, kind: 'ageAtDeath', value: d.ageAtDeath };
-  if (d.age) return { text: String(d.age), kind: 'age', value: d.age };
+  if (d.deceased && d.ageAtDeath) return { text: `d.${shownAge(d.ageAtDeath, lang)}`, kind: 'ageAtDeath', value: d.ageAtDeath };
+  if (d.age) return { text: String(shownAge(d.age, lang)), kind: 'age', value: d.age };
   return null;
 }
 
@@ -19,10 +21,10 @@ export function annotationAge(d) {
  * The line below a pregnancy outcome (NSGC): "SB 28 hf", "TOP 16 hf",
  * "ECT", the week for a loss or an ongoing pregnancy ("12 hf").
  */
-export function pregnancyLine(d) {
+export function pregnancyLine(d, lang) {
   const kind = pregnancyKind(d);
   if (!kind) return null;
-  const w = d.gestationWeeks ? `${d.gestationWeeks} hf` : '';
+  const w = d.gestationWeeks ? `${d.gestationWeeks} ${t('hf', null, lang)}` : '';
   const text = { stillbirth: ['SB', w], termination: ['TOP', w], ectopic: ['ECT', w], loss: [w], ongoing: [w] }[kind].filter(Boolean).join(' ');
   return text || null;
 }

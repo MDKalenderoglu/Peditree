@@ -37,6 +37,8 @@ import { packLines } from '../utils/textWrap';
 import { keyGrid } from '../utils/keyGrid';
 import { nameCase } from '../utils/nameCase';
 import { chainOf, offsetPolyline } from '../utils/doubleLine';
+import { t, tFor, currentLang } from '../i18n';
+import { shownAge } from '../utils/age';
 
 const EDGE_COLOR = '#64748b';
 const NODE_STROKE = '#1e293b';
@@ -139,7 +141,7 @@ function drawStroke(g, edge, dx = 0, dy = 0) {
 // belt-and-suspenders fallback for exportUtils.js and for tests/tools
 // that query the DOM directly.
 const PedigreeCanvas = forwardRef(function PedigreeCanvas(
-  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar, patientName = '', onEditText, multiSelect = false, focusTick = 0, onNodeDrop, onBackgroundClick, drawing = null },
+  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar, patientName = '', onEditText, multiSelect = false, focusTick = 0, onNodeDrop, onBackgroundClick, drawing = null, lang = 'tr' },
   forwardedRef
 ) {
   const svgRef = useRef(null);
@@ -213,6 +215,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const editable = (sel, kind, target, value) => sel.classed('editable', true).style('cursor', 'text')
       .on('click', (event) => { event.stopPropagation(); startEdit(kind, target, value, event.currentTarget); });
 
+    // the drawing's own words in the drawing's language (Settings: same as the screens, or apart);
+    // the screen-only parts (titles, labels for screen readers) in the screens' language
+    const td = tFor(lang);
     if (nodes.length === 0) {
       // Draw a placeholder message
       svg.attr('viewBox', '0 0 800 400');
@@ -221,7 +226,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         .attr('text-anchor', 'middle')
         .attr('fill', '#94a3b8')
         .attr('font-size', '16px')
-        .text('Yeni bir pedigri başlatmak için üstteki "Yeni" düğmesine basın.');
+        .text(t('Yeni bir pedigri başlatmak için üstteki "Yeni" düğmesine basın.'));
       return;
     }
 
@@ -240,8 +245,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const plainCarrier = nodes.some(n => n.carrier && fillFor(n, conditionKey).parts?.some(p => p.fill === CARRIER_FILL));
     const shownKey = [
       ...conditionKey.filter(e => has('affected', e)).map(e => ({ ...e, carrier: false, text: e.label })),
-      ...conditionKey.filter(e => has('carrier', e)).map(e => ({ ...e, carrier: true, text: `${e.label} taşıyıcısı` })),
-      ...(plainCarrier ? [{ label: null, region: 'q1', fill: CARRIER_FILL, carrier: true, text: 'Taşıyıcı' }] : []),
+      ...conditionKey.filter(e => has('carrier', e)).map(e => ({ ...e, carrier: true, text: td('{label} taşıyıcısı', { label: e.label }) })),
+      ...(plainCarrier ? [{ label: null, region: 'q1', fill: CARRIER_FILL, carrier: true, text: td('Taşıyıcı') }] : []),
     ];
     const onsetsOf = (n) => (n.conditions || []).filter(c => c && c.label && c.onsetAge && (c.status === 'affected' || c.status === 'carrier'));
     const unsureOf = (n) => (n.conditions || []).filter(c => c && c.label && c.status === 'unknown');
@@ -275,12 +280,12 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       const segs = [{ text: `[${i + 1}] ${who}: `, head: true }];
       const parts = [];
       if (n.condition) parts.push(['condition', n.condition, n.condition]);
-      if (n.deceased && n.causeOfDeath) parts.push(['causeOfDeath', `Ölüm: ${n.causeOfDeath}`, n.causeOfDeath]);
+      if (n.deceased && n.causeOfDeath) parts.push(['causeOfDeath', td('Ölüm: {cause}', { cause: n.causeOfDeath }), n.causeOfDeath]);
       // the age a finding was diagnosed at (clinician decision 2026-10-25: here, not under the symbol)
-      onsetsOf(n).forEach(c => parts.push(['onset', `${c.label}: tanı ${/^\d+(,\d+)?$/.test(c.onsetAge) ? `${c.onsetAge} yaş` : c.onsetAge}`, c.onsetAge, `${n.id}\u0001${c.label}`]));
+      onsetsOf(n).forEach(c => parts.push(['onset', td('{finding}: tanı {age}', { finding: c.label, age: /^\d+(,\d+)?$/.test(c.onsetAge) ? td('{age} yaş', { age: shownAge(c.onsetAge, lang) }) : shownAge(c.onsetAge, lang) }), c.onsetAge, `${n.id}\u0001${c.label}`]));
       // a finding the clinician is unsure about, and the week a child was born in (clinician decisions 2026-10-25)
-      unsureOf(n).forEach(c => parts.push(['unsure', `${c.label}: bilinmiyor`, null]));
-      if (bornWeek(n)) parts.push(['gestationWeeks', `doğum: ${bornWeek(n)} hf`, bornWeek(n)]);
+      unsureOf(n).forEach(c => parts.push(['unsure', td('{finding}: bilinmiyor', { finding: c.label }), null]));
+      if (bornWeek(n)) parts.push(['gestationWeeks', td('doğum: {week} hf', { week: bornWeek(n) }), bornWeek(n)]);
       if (n.notes) parts.push(['note', n.notes, n.notes]);
       parts.forEach(([kind, shown, value, target], k) => {
         if (k) segs.push({ text: ' | ' });
@@ -331,14 +336,14 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const geneticRows = (d) => {
       if (d.geneticTest !== GENETIC_TESTED) return [];
       const lines = geneticLines(d);
-      if (!lines.length) return [{ text: TESTED_TEXT, k: 0, value: '', placeholder: true }];
+      if (!lines.length) return [{ text: td(TESTED_TEXT), k: 0, value: '', placeholder: true }];
       // ~20 characters fit between two siblings (100 apart), so a variant with
       // its zygosity ("TGFBR2 c.1609C>T het") stays on one line
       return lines.flatMap((line, k) => packLines([{ text: line }], d.proband || d.consultand ? 17 : 20)
         .map(part => ({ text: part.map(x => x.text).join(''), k, value: line })));
     };
     const annotationBottom = (d) => {
-      const lines = [annotationAge(d), pregnancyLine(d), d.displayLabel, d.condition, notedNodes.includes(d)].filter(Boolean).length;
+      const lines = [annotationAge(d, lang), pregnancyLine(d, lang), d.displayLabel, d.condition, notedNodes.includes(d)].filter(Boolean).length;
       return (isSmallSymbol(d) ? LOSS_SIZE : HALF) + 14 + lines * 13 + geneticRows(d).length * GENETIC_ROW;
     };
     const lowest = d3.max(nodes, d => d.y + annotationBottom(d));
@@ -506,7 +511,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
             .attr('stroke', 'transparent').attr('stroke-width', 12).attr('fill', 'none')
             .style('cursor', 'pointer').style('pointer-events', 'stroke')
             .on('click', (event) => { event.stopPropagation(); onUnionSelect(edge.unionId); })
-            .append('title').text('İlişkiyi düzenle');
+            .append('title').text(t('İlişkiyi düzenle'));
         });
     }
 
@@ -593,9 +598,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       .attr('role', 'button')
       .attr('aria-label', d => [
         pedigreeIds.get(d.id)?.displayId, d.displayLabel,
-        isGroup(d) ? `${d.count === 'n' ? 'sayısı bilinmeyen' : d.count} ${{ male: 'erkek', female: 'kadın' }[d.sex] || 'kişi'}`
-          : pregnancyKind(d) ? PREGNANCY_LABEL[pregnancyKind(d)].toLocaleLowerCase('tr') : { male: 'erkek', female: 'kadın' }[d.sex] || 'cinsiyeti bilinmiyor',
-        d.proband && 'proband', d.consultand && 'danışan', d.reproMark === 'G' && 'gestasyonel taşıyıcı', d.reproMark === 'D' && 'donör', d.affected && 'etkilenmiş', d.carrier && 'taşıyıcı', d.deceased && 'vefat',
+        isGroup(d) ? `${d.count === 'n' ? t('sayısı bilinmeyen') : d.count} ${t({ male: 'erkek', female: 'kadın' }[d.sex] || 'kişi')}`
+          : pregnancyKind(d) ? t(PREGNANCY_LABEL[pregnancyKind(d)]).toLocaleLowerCase(currentLang()) : t({ male: 'erkek', female: 'kadın' }[d.sex] || 'cinsiyeti bilinmiyor'),
+        d.proband && 'proband', d.consultand && t('danışan'), d.reproMark === 'G' && t('gestasyonel taşıyıcı'), d.reproMark === 'D' && t('donör'), d.affected && t('etkilenmiş'), d.carrier && t('taşıyıcı'), d.deceased && t('vefat'),
       ].filter(Boolean).join(', '))
       .on('click', (event, d) => {
         event.stopPropagation();
@@ -772,7 +777,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       const ann = el.append('g').attr('class', 'annotations').attr('transform', d.proband || d.consultand ? 'translate(14,0)' : null);
 
       // Age, or "d." and the age at death (also without an age filled in)
-      const ageLine = annotationAge(d);
+      const ageLine = annotationAge(d, lang);
       if (ageLine) {
         editable(ann.append('text')
           .attr('y', lineY).attr('text-anchor', 'middle')
@@ -782,7 +787,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       }
 
       // a pregnancy outcome: "SB 28 hf", "TOP 16 hf", "ECT", the week
-      const pLine = pregnancyLine(d);
+      const pLine = pregnancyLine(d, lang);
       if (pLine) {
         editable(ann.append('text')
           .attr('y', lineY).attr('text-anchor', 'middle')
@@ -901,7 +906,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       legendG.append('text')
         .attr('x', legendX).attr('y', legendY + 12 * LK)
         .attr('font-size', `${13 * LK}px`).attr('font-weight', '700').attr('fill', '#1e293b')
-        .text('Notlar');
+        .text(td('Notlar'));
       legendY += TITLE_ROW;
       noteLines.forEach((lines) => {
         lines.forEach((line) => {
@@ -971,7 +976,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // Store for external reset
     svg.node().__zoom_ref = zoom;
 
-  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar, patientName, startEdit, multiSelect, focusTick, onNodeDrop, onBackgroundClick, drawing, fontsTick]);
+  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar, patientName, startEdit, multiSelect, focusTick, onNodeDrop, onBackgroundClick, drawing, fontsTick, lang]);
 
   // a menu around the selected person that needs more room slides the
   // drawing by (dx, dy) screen pixels (a narrow tablet screen)
@@ -998,9 +1003,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
   return (
     <div ref={boxRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
       <div className="zoom-controls" style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 10 }}>
-        <button onClick={() => zoomBy(1.25)} title="Yakınlaştır" aria-label="Yakınlaştır">+</button>
-        <button onClick={() => zoomBy(0.8)} title="Uzaklaştır" aria-label="Uzaklaştır">−</button>
-        <button onClick={fitZoom} title="Tüm pedigriyi ekrana sığdır (0)" aria-label="Sığdır">Sığdır</button>
+        <button onClick={() => zoomBy(1.25)} title={t('Yakınlaştır')} aria-label={t('Yakınlaştır')}>+</button>
+        <button onClick={() => zoomBy(0.8)} title={t('Uzaklaştır')} aria-label={t('Uzaklaştır')}>−</button>
+        <button onClick={fitZoom} title={t('Tüm pedigriyi ekrana sığdır (0)')} aria-label={t('Sığdır')}>{t('Sığdır')}</button>
       </div>
       <svg
         id="pedigree-svg"

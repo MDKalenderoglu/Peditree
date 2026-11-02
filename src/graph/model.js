@@ -58,7 +58,7 @@ export const isSmallSymbol = (p) => ['loss', 'termination', 'ectopic'].includes(
 // bekleniyor" …), drawn one under another below the symbol with no "E"
 // prefix (NSGC 2022 §4.2). A test with no line written shows TESTED_TEXT.
 export const GENETIC_TESTED = 'tested';
-export const TESTED_TEXT = 'test yapıldı';
+export const TESTED_TEXT = tk('test yapıldı');
 export const geneticLines = (p) => String((p && p.geneticNote) || '').split('\n').map((s) => s.trim()).filter(Boolean);
 /** The note with line `index` replaced by `text` (appended past the end; an empty text removes the line). */
 export function withGeneticLine(note, index, text) {

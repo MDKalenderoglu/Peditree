@@ -854,6 +854,23 @@ const EN = {
   '3 ya da n': '3 or n',
   'hf': 'wk',
   'Cinsiyet': 'Sex',
+  // ── the drawing (PedigreeCanvas.jsx, utils/annotations.js) ───────────────
+  'Yeni bir pedigri başlatmak için üstteki "Yeni" düğmesine basın.': 'To start a new pedigree, press “New” at the top.',
+  '{label} taşıyıcısı': '{label} carrier',
+  'Ölüm: {cause}': 'Died: {cause}',
+  '{finding}: tanı {age}': '{finding}: diagnosed {age}',
+  '{finding}: bilinmiyor': '{finding}: unknown',
+  'doğum: {week} hf': 'born: {week} wk',
+  'test yapıldı': 'tested',
+  'İlişkiyi düzenle': 'Edit the relationship',
+  'sayısı bilinmeyen': 'unknown number of',
+  'cinsiyeti bilinmiyor': 'sex unknown',
+  'donör': 'donor',
+  'etkilenmiş': 'affected',
+  'taşıyıcı': 'carrier',
+  'vefat': 'deceased',
+  'Notlar': 'Notes',
+  'Tüm pedigriyi ekrana sığdır (0)': 'Fit the whole pedigree on the screen (0)',
 };
 
 export default EN;
