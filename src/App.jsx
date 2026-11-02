@@ -82,6 +82,8 @@ function App() {
   const t = useT();
   const { ui: uiLang, drawing: drawingChoice, setLang } = useLang();
   const drawLang = drawingLangOf({ ui: uiLang, drawing: drawingChoice });
+  // the page's language, for screen readers and the browser's spelling and hyphenation
+  React.useEffect(() => { document.documentElement.lang = uiLang; }, [uiLang]);
   // notices already on screen are worded again in the new language
   const shownLang = React.useRef(uiLang);
   React.useEffect(() => {

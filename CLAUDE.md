@@ -2,7 +2,7 @@
 
 ## Project Purpose
 
-Turkish-language, clinical-grade pedigree drawing tool for genetic counseling. Produces structurally valid pedigree graphs per ACMG/NSGC nomenclature standards. Not a family tree app — clinical correctness of the graph model takes priority over visual polish. A clinician must never misread who is whose child, sibling, partner, or consanguineous relative.
+Turkish- and English-language, clinical-grade pedigree drawing tool for genetic counseling. Produces structurally valid pedigree graphs per ACMG/NSGC nomenclature standards. Not a family tree app — clinical correctness of the graph model takes priority over visual polish. A clinician must never misread who is whose child, sibling, partner, or consanguineous relative.
 
 Living documentation (source of truth for status, decisions, risks): `docs/PEDITREE_*.md` — audit report, clinical requirements, layout architecture, stress test matrix, UX review, data model. The early `PEDIGREE_*.md` notes in `docs/archive/` are historical.
 
@@ -11,6 +11,10 @@ Living documentation (source of truth for status, decisions, risks): `docs/PEDIT
 ## Stack
 
 React 19 + Vite · D3.js (SVG) · Zustand · Vitest (node env) · UUID
+
+## Languages (Turkish / English)
+
+`src/i18n/` (clinician decisions 2026-11-02): the Turkish text stays in the code and is the key; `t('…', { name })` gives it in the screens' language from `en.js` (NSGC 2022 English terms), `td = tFor(lang)` in the drawing's language, `tk('…')` marks a text kept in a list and translated where it is shown. The first opening follows the browser (Turkish browser → Turkish, any other → English); Settings chooses the screens' language and, apart, the drawing's (also exports, print, file names) — a device preference in localStorage, never in the pedigree file. **Stored data never depends on the language**: labels the program writes stay Turkish (`model.DEFAULT_LABELS`, shown through `shownLabel`), ages are stored "3 ay" / "12 gün" (shown "3 mo" / "12 d" by `age.shownAge`, English input read too); what the clinician types is never translated. A new text: write it in Turkish inside `t()`, add the English to `en.js`; `node scripts/i18n-missing.mjs` lists what is missing. Guards: `english.test.js` (dictionary complete with the same placeholders; every screen, panel, ring part and the drawing in English read for Turkish; storage identical in both languages); tests start in Turkish (`support/lang.js`).
 
 ---
 

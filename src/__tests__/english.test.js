@@ -12,7 +12,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { mount, settle, createElement } from './support/dom';
 import { translationKeys } from '../i18n/keys';
 import EN from '../i18n/en';
-import { useLang, missing, t } from '../i18n';
+import { useLang, missing, t, normalizeLang } from '../i18n';
 import App from '../App';
 import { usePedigreeStore } from '../state/usePedigreeStore';
 
@@ -39,6 +39,17 @@ describe('the English dictionary', () => {
   it('writes no Turkish letter', () => {
     const wrong = Object.values(EN).filter((v) => TURKISH_LETTER.test(v.replace(KEPT, '')));
     expect(wrong).toEqual([]);
+  });
+
+  it('the first opening follows the browser: Turkish for a Turkish browser, English for any other; a choice made is kept', () => {
+    const real = Object.getOwnPropertyDescriptor(window.navigator, 'language') || Object.getOwnPropertyDescriptor(Object.getPrototypeOf(window.navigator), 'language');
+    const as = (l) => Object.defineProperty(window.navigator, 'language', { value: l, configurable: true });
+    as('tr-TR'); expect(normalizeLang(null).ui).toBe('tr');
+    as('en-US'); expect(normalizeLang(null).ui).toBe('en');
+    as('de-DE'); expect(normalizeLang(null).ui).toBe('en');
+    expect(normalizeLang({ ui: 'tr' }).ui).toBe('tr');
+    expect(normalizeLang({ ui: 'xx', drawing: 'yy' })).toEqual({ ui: 'en', drawing: 'same' });
+    if (real) Object.defineProperty(window.navigator, 'language', real); else delete window.navigator.language;
   });
 
   it('gives a text in the language asked for, and Turkish when the dictionary lacks it', () => {
@@ -136,10 +147,12 @@ describe('the screens in English', () => {
   });
 
   it('the language can be changed in Settings, and the screens follow at once', async () => {
+    expect(document.documentElement.lang).toBe('en');
     await click(byText('Settings'));
     await click(byText('Türkçe'));
     expect(byText('Kaydet')).toBeTruthy();
     expect(useLang.getState().ui).toBe('tr');
+    expect(document.documentElement.lang).toBe('tr');
     await click(byText('English'));
     expect(byText('Save')).toBeTruthy();
     await key('Escape');
