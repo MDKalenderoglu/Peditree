@@ -336,7 +336,7 @@ function App() {
   const handleExportPed = () => {
     flushDrafts();
     const st = usePedigreeStore.getState();
-    const text = toPed(st.doc.graph, st.pedigreeData.nodes, { phenotype: pedPhenotype });
+    const text = toPed(st.doc.graph, st.pedigreeData.nodes, { phenotype: pedPhenotype, familyId: drawLang === 'en' ? 'FAM1' : 'AILE1' });
     // no patient name in the file, nor in its name (it goes to a lab)
     downloadBlob(new Blob([text], { type: 'text/plain' }), exportFileName('', 'ped', undefined, drawLang));
     setDownloadOpen(false);
