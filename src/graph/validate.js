@@ -10,7 +10,7 @@
 import { auditPedigreeGraph } from '../utils/graphIntegrity';
 import { SOCIAL_LINK_KINDS, SEX_AT_BIRTH, indexGraph, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, isPregnancy, ancestorsOf, PREGNANCY_FIELDS, REPRO_ROLES, EGG_SOURCE, CARRIER_ROLES, ART_DONOR_RELATION } from './model';
 
-const FLAG_FIELDS = ['affected', 'carrier', 'presymptomatic', 'deceased', 'proband', 'consultand', 'adoptedOut', 'placeholder', ...PREGNANCY_FIELDS];
+const FLAG_FIELDS = ['affected', 'carrier', 'presymptomatic', 'recordsReviewed', 'deceased', 'proband', 'consultand', 'adoptedOut', 'placeholder', ...PREGNANCY_FIELDS];
 const FINDING_STATUSES = ['affected', 'carrier', 'unknown'];
 import { multiplesWarnings } from './multiples';
 import { carrierFindingIssues } from './conditionKey';

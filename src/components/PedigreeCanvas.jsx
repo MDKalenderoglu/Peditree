@@ -249,6 +249,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       ...(plainCarrier ? [{ label: null, region: 'q1', fill: CARRIER_FILL, carrier: true, text: td('Taşıyıcı') }] : []),
       // the vertical line is explained in the key too (NSGC 2022 Fig 2)
       ...(nodes.some(n => n.presymptomatic && !isSmallSymbol(n)) ? [{ label: null, presymptomatic: true, text: td('Belirtisiz taşıyıcı (şu an belirtisi yok)') }] : []),
+      ...(nodes.some(n => n.recordsReviewed) ? [{ label: null, recordsReviewed: true, text: td('Kayıtlarla doğrulandı (tıbbi kayıt ya da rapor görüldü)') }] : []),
     ];
     const onsetsOf = (n) => (n.conditions || []).filter(c => c && c.label && c.onsetAge && (c.status === 'affected' || c.status === 'carrier'));
     const unsureOf = (n) => (n.conditions || []).filter(c => c && c.label && c.status === 'unknown');
@@ -604,7 +605,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         pedigreeIds.get(d.id)?.displayId, d.displayLabel,
         isGroup(d) ? `${d.count === 'n' ? t('sayısı bilinmeyen') : d.count} ${t({ male: 'erkek', female: 'kadın' }[d.sex] || 'kişi')}`
           : pregnancyKind(d) ? t(PREGNANCY_LABEL[pregnancyKind(d)]).toLocaleLowerCase(currentLang()) : t({ male: 'erkek', female: 'kadın' }[d.sex] || 'cinsiyeti bilinmiyor'),
-        d.proband && 'proband', d.consultand && t('danışan'), d.reproMark === 'G' && t('gestasyonel taşıyıcı'), d.reproMark === 'D' && t('donör'), d.affected && t('etkilenmiş'), d.carrier && t('taşıyıcı'), d.presymptomatic && t('belirtisiz taşıyıcı'), d.sexAtBirth, d.deceased && t('vefat'),
+        d.proband && 'proband', d.consultand && t('danışan'), d.reproMark === 'G' && t('gestasyonel taşıyıcı'), d.reproMark === 'D' && t('donör'), d.affected && t('etkilenmiş'), d.carrier && t('taşıyıcı'), d.presymptomatic && t('belirtisiz taşıyıcı'), d.recordsReviewed && t('kayıtlarla doğrulandı'), d.sexAtBirth, d.deceased && t('vefat'),
       ].filter(Boolean).join(', '))
       .on('click', (event, d) => {
         event.stopPropagation();
@@ -729,6 +730,15 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         el.append('line').attr('class', 'presymptomatic-line')
           .attr('x1', 0).attr('y1', -sz).attr('x2', 0).attr('y2', sz)
           .attr('stroke', NODE_STROKE).attr('stroke-width', 2);
+      }
+
+      // Records reviewed: an asterisk at the lower right, outside the brackets of an
+      // adopted person (NSGC 2022 Fig 2 "documented evaluation"; clinician 2026-11-03)
+      if (d.recordsReviewed) {
+        const ax = (adopted ? sz + BRACKET_OUT + 2 : sz + 2);
+        el.append('text').attr('class', 'records-reviewed')
+          .attr('x', ax).attr('y', sz + 4).attr('text-anchor', 'start')
+          .attr('font-size', '15px').attr('font-weight', '700').attr('fill', NODE_STROKE).text('*');
       }
 
       // Ongoing pregnancy: "P" inside the symbol (NSGC)
@@ -916,7 +926,10 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         const cell = keyG.append('g').attr('transform', `translate(${ex + s},${ey + s})`);
         const box = cell.append('rect').attr('x', -s).attr('y', -s).attr('width', 2 * s).attr('height', 2 * s)
           .attr('fill', NODE_FILL).attr('stroke', NODE_STROKE).attr('stroke-width', 1.5);
-        if (entry.presymptomatic) {
+        if (entry.recordsReviewed) {
+          cell.append('text').attr('class', 'records-reviewed').attr('x', s + 1).attr('y', s + 3)
+            .attr('font-size', `${12 * LK}px`).attr('font-weight', '700').attr('fill', NODE_STROKE).text('*');
+        } else if (entry.presymptomatic) {
           cell.append('line').attr('class', 'presymptomatic-line').attr('x1', 0).attr('y1', -s).attr('x2', 0).attr('y2', s)
             .attr('stroke', NODE_STROKE).attr('stroke-width', 1.5);
         } else {

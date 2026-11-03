@@ -28,10 +28,11 @@ Individual   { id, sex, age, generation, relation, label, displayLabel,
                pregnancyLoss, stillbirth, ongoingPregnancy?, termination?, ectopic?, gestationWeeks?,
                notes, condition?, conditions?,
                ageAtDeath?, causeOfDeath?, birthDate?, geneticTest?, geneticNote?, count?, consultand?, adoptedOut?,
-               presymptomatic?, sexAtBirth?, lmp? }
+               presymptomatic?, recordsReviewed?, sexAtBirth?, lmp? }
                          // NSGC 2022 additions (clinician 2026-11-02): presymptomatic = vertical line through the symbol, in the key,
                          // never with affected (affected clears it); sexAtBirth 'AMAB'|'AFAB'|'UAAB' under the symbol (the symbol is gender);
-                         // lmp 'YYYY-MM-DD' of an ongoing pregnancy, "SAT/LMP …" under the P; an ended union is drawn "//"
+                         // lmp 'YYYY-MM-DD' of an ongoing pregnancy, "SAT/LMP …" under the P; an ended union is drawn "//";
+                         // recordsReviewed (2026-11-03): "*" at the symbol's lower right (outside brackets), in the key
                          // The side panel's optional parts follow Ayarlar → Yan panel (utils/panelPrefs.js; hidden parts under
                          // "Diğer bilgiler…", a filled part always shows), like the ring (utils/ringPrefs.js, rare choices under "Diğer…")
                          // adoptedOut: adopted out (brackets, solid line from the drawn parents); adoption by a drawn couple is a

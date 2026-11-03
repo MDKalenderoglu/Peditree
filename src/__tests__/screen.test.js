@@ -868,6 +868,32 @@ describe('NSGC 2022 additions (clinician decisions 2026-11-02) and the trimmed s
     expect($$('.relationship-ended')).toHaveLength(2);
   });
 
+  it('records reviewed (*): from the panel (under "Diğer bilgiler…" at first), at the lower right, outside brackets, in the key; About names what is not supported', async () => {
+    await select('mother');
+    expect(panelText()).not.toMatch(/Kayıtlarla doğrulandı/);
+    await click(buttons().find(b => b.textContent.startsWith('Diğer bilgiler')));
+    const box = [...$$('.editor-body label.check')].find(l => l.textContent.includes('Kayıtlarla doğrulandı'));
+    await click(box.querySelector('input'));
+    expect(g().individuals.find(i => i.id === 'mother').recordsReviewed).toBe(true);
+    const star = drawn('mother').querySelector('.records-reviewed');
+    expect(star.textContent).toBe('*');
+    expect(+star.getAttribute('x')).toBeGreaterThan(0);
+    expect(+star.getAttribute('y')).toBeGreaterThan(0);
+    expect($('.condition-legend').textContent).toMatch(/Kayıtlarla doğrulandı/);
+    // an adopted person: the asterisk stands outside the brackets
+    const plainX = +star.getAttribute('x');
+    await run(() => S().setAdoption('mother', 'out'));
+    expect(+drawn('mother').querySelector('.records-reviewed').getAttribute('x')).toBeGreaterThan(plainX);
+    // unticked: gone, from the drawing and the key
+    await run(() => S().updateIndividual('mother', { recordsReviewed: false }));
+    expect(drawn('mother').querySelector('.records-reviewed')).toBeNull();
+    expect(g().individuals.find(i => i.id === 'mother').recordsReviewed).toBeUndefined();
+    await key('Escape'); await key('Escape');
+    await click(button('PediTree hakkında'));
+    expect($('[data-popup="about"]').textContent).toMatch(/aynı cinsiyetten eşler/);
+    await key('Escape');
+  });
+
   it('Ayarlar → Yan panel: a part hidden there leaves the panel, comes back under "Diğer bilgiler…", and is kept on this device', async () => {
     await click(button('Ayarlar') || buttons().find(b => b.textContent.includes('Ayarlar')));
     const box = [...$$('.settings-popover label.check')].find(l => l.textContent.includes('Genetik test'));

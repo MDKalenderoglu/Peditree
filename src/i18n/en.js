@@ -897,6 +897,12 @@ const EN = {
   'Son adet tarihi (süren gebelikte)': 'LMP (ongoing pregnancy)',
   'Doğumda atanan cinsiyet (AMAB / AFAB / UAAB)': 'Sex assigned at birth (AMAB / AFAB / UAAB)',
   'Belirtisiz taşıyıcı': 'Presymptomatic carrier',
+  'Şimdilik çizilemeyenler: aynı cinsiyetten eşler (NSGC 2022 bunu öngörür).': 'Not supported yet: same-sex partners (provided for in NSGC 2022).',
+  'Kayıtlarla doğrulandı (tıbbi kayıt ya da rapor görüldü)': 'Records reviewed (medical records or report seen)',
+  'kayıtlarla doğrulandı': 'records reviewed',
+  'Kayıtlarla doğrulandı (*)': 'Records reviewed (*)',
+  'Bulguları tıbbi kayıt, epikriz ya da test raporu görülerek doğrulandıysa işaretleyin; sembolün sağ altında yıldız (*) çıkar (NSGC 2022). Aileden duyulan bilgi işaretsiz kalır.':
+    'Tick when the findings were confirmed from medical records, a discharge summary or a test report; an asterisk (*) appears at the symbol’s lower right (NSGC 2022). What the family reports stays unmarked.',
 };
 
 export default EN;
