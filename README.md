@@ -31,6 +31,11 @@ uygulama bu yüzden önce ilişkilerin doğruluğunu, sonra görünümü gözeti
 - Akraba evliliği çizimden hesaplanır: ortak ataları çizilmiş eşler çift
   çizgiyle ve derecesiyle gösterilir.
 - İkizler, çocuksuzluk, genetik test sonuçları ve tanı yaşı çizilebilir.
+- NSGC 2022 işaretleri: belirtisiz taşıyıcı, doğumda atanan cinsiyet
+  (AMAB / AFAB / UAAB), kayıtlarla doğrulanmış tanı (*), son adet tarihi.
+- Arayüz Türkçe ya da İngilizce; çizimin dili ayrıca seçilebilir.
+- Halka menü ve yan panel kişiye göre sadeleştirilir: nadir kullanılanlar
+  gizlenir, "Diğer…" altında durur.
 - PNG, SVG, PDF (A4) ve PED olarak indirilir; yazdırılır; cihazın paylaşma
   menüsüyle gönderilir.
 
@@ -41,10 +46,13 @@ ile kendi bilgisayarınıza indirirsiniz.
 PediTree bir çizim aracıdır, tıbbi cihaz değildir. Klinik kararlar çizime
 değil, klinik değerlendirmeye dayanır.
 
+**Şimdilik çizilemeyenler:** aynı cinsiyetten eşler (NSGC 2022 bunu öngörür).
+
 ## English
 
 PediTree is a browser-based tool for drawing family pedigrees in standard
-NSGC nomenclature for genetic counselling. The interface is in Turkish.
+NSGC nomenclature for genetic counselling. The interface is in Turkish or
+English; the drawing's language can be chosen separately.
 Structural correctness comes first: the graph model guarantees that every
 child has at most one biological parent couple, that consanguinity is shown
 only where shared ancestors are drawn, and that pregnancy outcomes keep their
@@ -55,6 +63,8 @@ account; the drawing lives in the open tab and is gone when the tab closes.
 Clinicians download what they want to keep.
 
 PediTree is a drawing tool, not a medical device.
+
+**Not supported yet:** same-sex partners (provided for in NSGC 2022).
 
 ## Atıf / Citation
 

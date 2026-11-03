@@ -251,6 +251,10 @@ export function updatePerson(doc, id, fields) {
         if (v) p.presymptomatic = true; else delete p.presymptomatic;
         continue;
       }
+      if (k === 'recordsReviewed') {
+        if (v === true) p.recordsReviewed = true; else delete p.recordsReviewed;
+        continue;
+      }
       if (k === 'lmp') {
         // the last menstrual period of an ongoing pregnancy (NSGC: "LMP" under the P)
         const raw = String(v ?? '').trim();

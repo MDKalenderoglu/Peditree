@@ -325,5 +325,7 @@ Onay sonrası her kural için:
 | 2026-11-02 | son adet tarihi (SAT / LMP) | süren gebelikte P'nin altında "SAT 03.05.2026" (İngilizce "LMP"); gelecek tarih ve doğmuş kişi reddedilir (uygulandı) | kullanıcı (klinisyen) |
 | 2026-11-02 | danışan oku ve taşıyıcı noktası | bir ders kitabı şekli (Fig 7.2) danışan okuna "C" ekliyor ve resesif taşıyıcıyı noktayla gösteriyor; Bennett 2022'ye uyulur: harfsiz ok, nokta yok (değişiklik yok) | kullanıcı (klinisyen) |
 | 2026-11-02 | kullanıcının kendi paneli | nadir durumlar ekranı kalabalıklaştırmasın: Ayarlar → "Yan panel" ile bölümler gizlenir, "Diğer bilgiler…" ile açılır; dolu bilgi her zaman görünür (uygulandı) | kullanıcı (klinisyen) |
+| 2026-11-03 | kayıtlarla doğrulandı (*) | NSGC 2022 Şekil 2 "documented evaluation, records reviewed": sembolün sağ altında **yıldız**, evlat edinilmiş kişide parantezin dışında; açıklamada "Kayıtlarla doğrulandı"; yan panelde "Diğer bilgiler…" altında başlar (uygulandı) | kullanıcı (klinisyen) |
+| 2026-11-03 | aynı cinsiyetten eşler | şimdilik eklenmeyecek; Hakkında penceresinde ve README'de "şimdilik çizilemeyenler" olarak yazılı; makalede sınırlılık | kullanıcı (klinisyen) |
 | | K2–K4, K6–K9, K13 | bekliyor (K10 danışan: 2026-11-01'de karara bağlandı; K11 gebelik ve K12 ikizler: yukarıda karara bağlandı) | |
 | | §4 "Standart" özetleri (orijinal yayına karşı) | bekliyor | |

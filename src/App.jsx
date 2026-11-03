@@ -590,6 +590,7 @@ function App() {
                 </div>
               </div>
               <p className="share-note">{t('PediTree bir çizim aracıdır, tıbbi cihaz değildir. Çizimi kullanmadan önce kontrol edin; tanı ve danışmanlık kararı klinik değerlendirmeye dayanır.')}</p>
+              <p className="share-note">{t('Şimdilik çizilemeyenler: aynı cinsiyetten eşler (NSGC 2022 bunu öngörür).')}</p>
               <p className="share-note">{t('Hasta bilgisi hiçbir sunucuya gönderilmez. Çalışma yalnızca bu sekmede tutulur; “Kaydet” ile indirdiğiniz dosyalar sizin cihazınızda kalır.')}</p>
               <div className="more-title">{t('Atıf')}</div>
               <p className="share-note">{t('PediTree ile çizdiğiniz pedigriler sizindir. Bir yayında, sunumda ya da eğitim materyalinde kullandıysanız şöyle atıf yapmanız rica edilir:')}</p>
