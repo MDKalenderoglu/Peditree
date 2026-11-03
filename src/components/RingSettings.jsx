@@ -7,6 +7,7 @@
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import { useT } from '../i18n';
 import { useRingPrefs, RING_ROWS, RING_PREGNANCY, RING_STATUS, DEFAULT_RING, moveInRing, toggleInRing } from '../utils/ringPrefs';
+import { usePanelPrefs, PANEL_PARTS, DEFAULT_PANEL, togglePanelPart } from '../utils/panelPrefs';
 
 function OrderedList({ list, items, ring, setRing, children }) {
   const t = useT();
@@ -56,6 +57,30 @@ export default function RingSettings() {
       <span className="field-hint">{t('Durum düğmesindeki seçenekler')}</span>
       <OrderedList list="status" items={RING_STATUS} ring={ring} setRing={setRing} />
       <button className="ui-btn ui-btn-sm" disabled={!changed} onClick={() => setRing(DEFAULT_RING)}>{t('Varsayılana dön')}</button>
+    </div>
+  );
+}
+
+/**
+ * Ayarlar → "Yan panel" (clinician request 2026-11-02): which optional parts
+ * of a person's panel show; a hidden part waits under "Diğer bilgiler…" and
+ * shows anyway for a person who already has something in it (panelPrefs.js).
+ */
+export function PanelSettings() {
+  const { panel, setPanel } = usePanelPrefs();
+  const t = useT();
+  const changed = JSON.stringify(panel.hidden.slice().sort()) !== JSON.stringify(DEFAULT_PANEL.hidden.slice().sort());
+  return (
+    <div className="settings-group">
+      <div className="more-title">{t('Yan panel')}</div>
+      <p className="share-note">{t('Seçili kişinin panelinde nadiren kullandıklarınızı gizleyin. Gizlenenler kaybolmaz: panelin altındaki “Diğer bilgiler…” düğmesiyle açılır; bir kişide dolu olan bilgi her zaman görünür.')}</p>
+      {PANEL_PARTS.map((x) => (
+        <label key={x.id} className="check">
+          <input type="checkbox" checked={!panel.hidden.includes(x.id)} onChange={() => setPanel(togglePanelPart(panel, x.id))} />
+          {t(x.label)}
+        </label>
+      ))}
+      <button className="ui-btn ui-btn-sm" disabled={!changed} onClick={() => setPanel(DEFAULT_PANEL)}>{t('Varsayılana dön')}</button>
     </div>
   );
 }

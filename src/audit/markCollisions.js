@@ -65,6 +65,13 @@ export function buildMarkFamily(store) {
   // assisted reproduction: a sperm donor ("D") for the ongoing pregnancy, a gestational carrier ("G") for the deceased sister
   ok(S().addReproductiveLink(g().individuals.find((i) => i.ongoingPregnancy).id, 'sperm_donor'), 'sperm donor');
   ok(S().addReproductiveLink(dec, 'gestational_carrier'), 'gestational carrier');
+  // NSGC 2022 additions (2026-11-02): sex at birth under a symbol with brackets and genetic lines, LMP under
+  // the P, a presymptomatic carrier, an ended relationship ("//") beside brackets
+  ok(S().updateIndividual('proband', { sexAtBirth: 'AFAB' }), 'sex at birth');
+  const lmp = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
+  ok(S().updateIndividual(g().individuals.find((i) => i.ongoingPregnancy).id, { lmp }), 'LMP');
+  ok(S().updateIndividual('father', { presymptomatic: true }), 'presymptomatic');
+  ok(S().setUnionStatus(unionOf(sister), 'divorced'), 'divorce');
   S().clearSelection();
 }
 
