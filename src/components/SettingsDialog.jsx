@@ -12,10 +12,11 @@ import { X, Globe, Palette, CircleDot, PanelRight, FolderOpen } from 'lucide-rea
 import { useT, useLang, tk } from '../i18n';
 import { useViewSettings, DRAWING_FONTS, LEGEND_SIZES } from '../utils/drawingStyle';
 import { RingSection, PanelSection, Switch } from './RingSettings';
+import { PAPERS } from '../utils/paper';
 
 const SECTIONS = [
   { id: 'language', label: tk('Dil'), Icon: Globe, intro: tk('Ekranın dili ve çizimin dili ayrı seçilebilir; örneğin Türkçe ekranla İngilizce çizim indirilebilir.') },
-  { id: 'drawing', label: tk('Çizim'), Icon: Palette, intro: tk('Çizimin görünümü, yazı tipi ve yazı boyutu. Sembollerin ve çizgilerin anlamı hiçbir seçenekte değişmez.') },
+  { id: 'drawing', label: tk('Çizim'), Icon: Palette, intro: tk('Çizimin görünümü, sayfa zemini, yazı tipi ve yazı boyutu. Sembollerin ve çizgilerin anlamı hiçbir seçenekte değişmez.') },
   { id: 'ring', label: tk('Halka menü'), Icon: CircleDot, intro: tk('Kişinin çevresindeki halkada sık kullandıklarınızı öne alın, kullanmadıklarınızı gizleyin. Gizlenenler kaybolmaz: halkada “Diğer…” düğmesinin altında durur.') },
   { id: 'panel', label: tk('Yan panel'), Icon: PanelRight, intro: tk('Seçili kişinin panelinde nadiren kullandıklarınızı gizleyin. Gizlenenler kaybolmaz: panelin altındaki “Diğer bilgiler…” düğmesiyle açılır; bir kişide dolu olan bilgi her zaman görünür.') },
   { id: 'files', label: tk('Dosyalar'), Icon: FolderOpen, intro: tk('Dosya açarken.') },
@@ -72,6 +73,11 @@ function DrawingSection() {
         <Row title={t('Çizimin görünümü')} hint={t('El çiziminde çizgiler ve semboller kalemle çizilmiş gibi hafifçe titrer.')}>
           <Segmented label={t('Çizimin görünümü')} value={view.drawStyle} onChange={(v) => setView({ drawStyle: v })}
             options={[['standard', t('Standart')], ['hand', t('El çizimi')]]} />
+        </Row>
+        {/* clinician request 2026-11-03: squared or dotted paper, like other tools */}
+        <Row title={t('Sayfa zemini')} hint={t('Yalnızca ekranda: çizimle birlikte kayar ve büyür. İndirilen ve yazdırılan çizim düz kalır.')}>
+          <Segmented label={t('Sayfa zemini')} value={view.paper} onChange={(v) => setView({ paper: v })}
+            options={PAPERS.map((p) => [p.id, <><span className="paper-swatch" data-paper={p.id} aria-hidden="true" />{t(p.label)}</>])} />
         </Row>
         <Row title={t('Açıklama yazılarının boyutu')} hint={t('Hasta adı, bulgular açıklaması ve notlar; indirilen ve yazdırılan çizimde de. Sembollerin altındaki yazılar aynı boyutta kalır.')}>
           <Segmented label={t('Açıklama yazılarının boyutu')} value={view.legendSize} onChange={(v) => setView({ legendSize: v })}

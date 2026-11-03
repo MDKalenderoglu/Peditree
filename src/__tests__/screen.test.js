@@ -15,6 +15,8 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vites
 import { mount, settle, createElement } from './support/dom';
 import App from '../App';
 import { usePedigreeStore } from '../state/usePedigreeStore';
+import { useViewSettings } from '../utils/drawingStyle';
+import { prepareExportSvg } from '../utils/exportUtils';
 
 const S = () => usePedigreeStore.getState();
 const g = () => S().doc.graph;
@@ -638,6 +640,70 @@ describe('more of what the clinician sees', () => {
     expect(g().individuals.find(i => i.id === 'mother').notes).toBe('');
     await key('Enter', {}, note);
     expect(g().individuals.find(i => i.id === 'mother').notes).toBe('birinci satır');
+  });
+
+  it('a finding added with a typo is corrected in the ring: a click on its name, Enter saves for everyone; Escape keeps the old name', async () => {
+    await run(() => { S().addFinding('mother', 'Miyp', null); S().setFindingStatus('father', 'Miyp', 'affected'); });
+    await select('mother');
+    await key('b');
+    const nameButton = () => buttons($('.radial-panel')).find(b => b.getAttribute('aria-label') === 'Miyp: adı düzelt');
+    expect(nameButton()).toBeDefined();
+    await click(nameButton());
+    let box = $('.radial-panel input.finding-name-edit');
+    expect(box.value).toBe('Miyp');
+    await typeInto(box, 'Miyop');
+    await key('Enter', {}, box);
+    const labels = (id) => g().individuals.find(i => i.id === id).conditions.map(c => c.label);
+    expect(labels('mother')).toEqual(['Miyop']);
+    expect(labels('father')).toEqual(['Miyop']);
+    expect(g().conditionKey.map(e => e.label)).toEqual(['Miyop']);
+    expect($$('.condition-legend text').map(t => t.textContent)).toContain('Miyop');
+    // Escape: nothing changes
+    await click(buttons($('.radial-panel')).find(b => b.getAttribute('aria-label') === 'Miyop: adı düzelt'));
+    box = $('.radial-panel input.finding-name-edit');
+    await typeInto(box, 'Yanlış');
+    await key('Escape', {}, box);
+    expect(g().conditionKey.map(e => e.label)).toEqual(['Miyop']);
+    expect($('.radial-panel')).not.toBeNull(); // Escape ended the correction only
+  });
+
+  it('the note in the ring says under the box where it goes; the box is not left to a long placeholder', async () => {
+    await select('mother');
+    await key('n');
+    const note = $('textarea.radial-note');
+    expect(note.getAttribute('placeholder').length).toBeLessThan(40);
+    const help = document.getElementById(note.getAttribute('aria-describedby'));
+    expect(help.textContent).toMatch(/Notlar/);
+    expect(help.textContent).toMatch(/Shift\+Enter/);
+  });
+
+  it('the status bands: every word upright, each band within half the circle, the choices split evenly', async () => {
+    await select('mother');
+    await key('d');
+    const angles = $$('.radial-arcs text').map(t => Number(/rotate\((-?[\d.]+)/.exec(t.getAttribute('transform'))[1]));
+    expect(angles.length).toBeGreaterThan(5);
+    for (const a of angles) expect(Math.abs(a)).toBeLessThan(90); // upright: never turned past the vertical
+    // the "Diğer…" choices too: then seven outer choices on two bands, 4 + 3
+    await click([...$$('.radial-arcs .radial-arc')].find(a => a.textContent.includes('Diğer')));
+    const radii = $$('.radial-arcs .radial-arc text').map(t => Math.round(Math.hypot(Number(t.getAttribute('x')), Number(t.getAttribute('y')) + 5.5 * (t.querySelectorAll('tspan').length - 1))));
+    const perBand = [...radii.reduce((m, r) => m.set(r, (m.get(r) || 0) + 1), new Map()).values()];
+    expect(perBand).toEqual([3, 4, 3]);
+    for (const t of $$('.radial-arcs text')) expect(Math.abs(Number(/rotate\((-?[\d.]+)/.exec(t.getAttribute('transform'))[1]))).toBeLessThan(90);
+  });
+
+  it('Ayarlar → Çizim → Sayfa zemini: squared or dotted paper is kept on this device; a download stays plain', async () => {
+    await click(button('Ayarlar'));
+    await click(document.getElementById('set-tab-drawing')); // the window stands on the page itself
+    const group = document.querySelector('.segmented[aria-label="Sayfa zemini"]');
+    expect([...group.querySelectorAll('button')].map(b => b.textContent)).toEqual(['Düz', 'Kareli', 'Noktalı']);
+    await click([...group.querySelectorAll('button')].find(b => b.textContent === 'Kareli'));
+    expect(useViewSettings.getState().view.paper).toBe('grid');
+    expect(JSON.parse(window.localStorage.getItem('peditree.view.v1')).paper).toBe('grid');
+    // the copy for a download loses the screen's background
+    const svg = $('#pedigree-svg');
+    svg.style.backgroundImage = 'linear-gradient(red, red)';
+    expect(prepareExportSvg(svg).getAttribute('style')).toBeNull();
+    await run(() => useViewSettings.getState().setView({ paper: 'plain' }));
   });
 
   it('the findings key: every name can be corrected where it stands; the entries follow one another with the same gap', async () => {

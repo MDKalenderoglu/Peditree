@@ -6,7 +6,7 @@
  * the box unmounts (another person selected) and, through flushDrafts(),
  * before the page is left.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { pendingDrafts as pending } from '../utils/drafts';
 
 const IDLE_MS = 700;
@@ -44,9 +44,19 @@ export default function DraftField({ value, onCommit, as = 'input', ...rest }) {
 
   useEffect(() => () => { if (commitRef.current) commitRef.current(); }, []);
 
+  // a note grows with what is written, so all of it shows (clinician request
+  // 2026-11-03); past the stylesheet's max-height it scrolls
+  const boxRef = useRef(null);
+  useLayoutEffect(() => {
+    const el = boxRef.current;
+    if (as !== 'textarea' || !el || !el.scrollHeight) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight + (el.offsetHeight - el.clientHeight)}px`;
+  }, [as, draft]);
+
   const Tag = as;
   return (
-    <Tag {...rest} value={draft}
+    <Tag {...rest} ref={boxRef} value={draft}
       onFocus={() => setFocused(true)}
       onChange={(e) => { setDraft(e.target.value); schedule(e.target.value); }}
       onBlur={() => { commitNow(); setFocused(false); }}

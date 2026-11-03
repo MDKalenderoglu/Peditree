@@ -35,7 +35,7 @@ function samplePath(d, steps = 20) {
 
 describe('drawing style settings', () => {
   it('starts standard, with plain pedigree numbers and exports as on screen', () => {
-    expect(DEFAULT_VIEW).toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal' });
+    expect(DEFAULT_VIEW).toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain' });
     expect(drawingSpec(DEFAULT_VIEW)).toMatchObject({ hand: false, family: STANDARD_FAMILY, k: 1, numberK: 1 });
   });
 
@@ -52,8 +52,9 @@ describe('drawing style settings', () => {
   });
 
   it('keeps only known values from storage', () => {
-    expect(normalizeView({ drawStyle: 'crayon', fontId: 'comic', plainNumbers: 'no', exportAs: 'x', openHelp: 'maybe', legendSize: 'huge' }))
-      .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal' });
+    expect(normalizeView({ drawStyle: 'crayon', fontId: 'comic', plainNumbers: 'no', exportAs: 'x', openHelp: 'maybe', legendSize: 'huge', paper: 'tartan' }))
+      .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain' });
+    expect(normalizeView({ paper: 'dots' }).paper).toBe('dots');
     // "Bir daha gösterme" (Aç) is kept
     expect(normalizeView({ openHelp: false }).openHelp).toBe(false);
     expect(normalizeView(null)).toEqual(DEFAULT_VIEW);
