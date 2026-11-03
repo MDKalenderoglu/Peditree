@@ -14,7 +14,7 @@
 
 ## Before a public release (blocking)
 
-- [ ] **Safari / iPad and Firefox:** on each, do the core journey once:
+- [ ] **iPad (Safari) and Firefox** (Safari on the Mac is the clinician's own browser — done): on each, do the core journey once:
       New → add family → findings → save → open → download PNG / PDF → print → share
 - [ ] **Clinician decisions**, or a visible "not supported" note in About and README:
   - [x] Relationship ended: "//" as in NSGC 2022 Fig 3 (2026-11-02)
