@@ -61,6 +61,15 @@ export const BRACKET_OUT = 7;
 const BRACKET_LINE = BRACKET_OUT + 2;
 const XGEN_DROP_CLEAR = 14; // the couple's line of descent keeps off the stand-in's vertical
 
+/** How far above its centre a symbol's outline is, `dx` off the centre. */
+function outlineAbove(ind, h, dx) {
+  if (isGhost(ind) || !h) return 0;
+  const d = Math.min(Math.abs(dx), h);
+  if (ind.sex === 'female') return Math.sqrt(h * h - d * d);
+  if (ind.sex !== 'male') return h - d; // diamond
+  return h;
+}
+
 function assignLevels(items, levels) {
   // greedy interval colouring, deterministic (items pre-sorted by x)
   const used = levels.map(() => []);
@@ -74,8 +83,14 @@ function assignLevels(items, levels) {
   }
 }
 
+// Lanes get their heights shortest first: a lane that spans another one runs
+// above it, so lanes from one person nest like a rainbow and their risers
+// never cross another lane (clinician report 2026-11-03: a woman with four
+// partners — the lanes crossed one another and needed line jumps).
+const byNesting = (p, q) => ((p.x2 - p.x1) - (q.x2 - q.x1)) || (p.x1 - q.x1);
+
 function levelCount(intervals) {
-  const items = intervals.map(([x1, x2]) => ({ x1, x2 })).sort((p, q) => (p.x1 - q.x1) || (p.x2 - q.x2));
+  const items = intervals.map(([x1, x2]) => ({ x1, x2 })).sort(byNesting);
   const many = Array.from({ length: Math.max(1, items.length) }, (_, k) => k);
   assignLevels(items, many);
   return items.reduce((m, it) => Math.max(m, it.level + 1), 1);
@@ -220,38 +235,58 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
 
   // Lanes: heights per row, then geometry.
   const sideUsed = new Set();   // `${person}|${dir}` — side stub taken
-  const topRisers = new Map();  // `${person}|${dir}` → top risers already used
+  const topRisers = new Map();  // `${person}|${dir}` → lanes rising from the top, lowest first
   for (const [g, lanes] of lanesByRow) {
-    lanes.sort((p, q) => (p.x1 - q.x1) || (p.x2 - q.x2) || (p.u.id < q.u.id ? -1 : 1));
+    lanes.sort((p, q) => byNesting(p, q) || (p.x2 - q.x2) || (p.u.id < q.u.id ? -1 : 1));
     assignLevels(lanes, planOf(g).laneLevels);
+    // Where each lane leaves its partners, lowest lane first: the side stub
+    // (outermost) goes to the lowest lane; further lanes rise from the top of
+    // the symbol, the higher the lane the nearer the centre — so no riser
+    // crosses a lower lane of the same person.
+    const order = lanes.slice().sort((p, q) => (q.level - p.level) || byNesting(p, q));
+    const ends = new Map(); // lane → { l: 'side' | 'top', r: … }
+    for (const lane of order) {
+      const pick = (p, dir) => {
+        const key = `${p}|${dir}`;
+        const neighbour = rowOf(p)[rowIndex.get(p) + dir];
+        if (!sideUsed.has(key) && !(neighbour !== undefined && S.isPartners(p, neighbour))) { sideUsed.add(key); return 'side'; }
+        if (!topRisers.has(key)) topRisers.set(key, []);
+        topRisers.get(key).push(lane);
+        return 'top';
+      };
+      ends.set(lane, { l: pick(lane.l, +1), r: pick(lane.r, -1) });
+    }
     for (const lane of lanes) {
       const { u, l, r, y, between, edgeType } = lane;
       const laneY = y + lane.level;
       const common = { type: edgeType, unionId: u.id, relationshipBackground: u.relationshipBackground };
-      const attach = (p, dir) => {
+      const attach = (p, dir, how) => {
         // dir = +1: the other partner is to the right; −1: to the left
-        const key = `${p}|${dir}`;
-        const neighbour = rowOf(p)[rowIndex.get(p) + dir];
-        const sideTaken = sideUsed.has(key) || (neighbour !== undefined && S.isPartners(p, neighbour));
-        const h = halfOf(S.indById.get(p));
-        if (!sideTaken) {
+        if (how === 'side') {
           const hs = sideHalf(p);
-          sideUsed.add(key);
           const sx = xPos[p] + dir * (hs + STUB);
           edges.push({ ...common, x1: xPos[p] + dir * hs, y1: y, x2: sx, y2: y });
           edges.push({ ...common, x1: sx, y1: y, x2: sx, y2: laneY });
           verticals.push({ owner: u.id, x: sx, y1: laneY, y2: y });
           return sx;
         }
-        const k = topRisers.get(key) || 0;
-        topRisers.set(key, k + 1);
-        const tx = xPos[p] + dir * (TOP_RISER + k * TOP_RISER_STEP);
-        edges.push({ ...common, x1: tx, y1: y - h, x2: tx, y2: laneY });
-        verticals.push({ owner: u.id, x: tx, y1: laneY, y2: y - h });
+        const ind = S.indById.get(p);
+        const h = halfOf(ind);
+        const risers = topRisers.get(`${p}|${dir}`);
+        const n = risers.length;
+        // the highest lane nearest the centre; several risers share the symbol's top
+        const k = n - 1 - risers.indexOf(lane);
+        const step = n > 1 ? Math.max(4, Math.min(TOP_RISER_STEP, (h - 3 - TOP_RISER) / (n - 1))) : 0;
+        const dx = TOP_RISER + k * step;
+        const tx = xPos[p] + dir * dx;
+        // the riser starts on the symbol's outline (a circle's or diamond's top is lower off-centre)
+        const top = y - outlineAbove(ind, h, dx);
+        edges.push({ ...common, x1: tx, y1: top, x2: tx, y2: laneY });
+        verticals.push({ owner: u.id, x: tx, y1: laneY, y2: top });
         return tx;
       };
-      const lx = attach(l, +1);
-      const rx = attach(r, -1);
+      const lx = attach(l, +1, ends.get(lane).l);
+      const rx = attach(r, -1, ends.get(lane).r);
       edges.push({ ...common, x1: lx, y1: laneY, x2: rx, y2: laneY, lane: true });
 
       // Where the line of descent may leave the lane: a free gap between two
