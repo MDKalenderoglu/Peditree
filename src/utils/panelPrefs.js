@@ -19,9 +19,10 @@ export const PANEL_PARTS = [
   { id: 'lmp', label: tk('Son adet tarihi (süren gebelikte)') },
   { id: 'repro', label: tk('Yardımcı üreme') },
   { id: 'sexAtBirth', label: tk('Doğumda atanan cinsiyet (AMAB / AFAB / UAAB)') },
+  { id: 'recordsReviewed', label: tk('Kayıtlarla doğrulandı (*)') },
 ];
 /** rare in the clinic: hidden until the clinician brings them forward — also for a preference stored before they existed */
-const HIDDEN_AT_FIRST = ['repro', 'sexAtBirth'];
+const HIDDEN_AT_FIRST = ['repro', 'sexAtBirth', 'recordsReviewed'];
 const KNOWN = new Set(PANEL_PARTS.map((p) => p.id));
 const PANEL_KEY = 'peditree.panel.v1';
 

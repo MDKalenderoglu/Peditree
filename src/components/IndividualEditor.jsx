@@ -468,6 +468,9 @@ export default function IndividualEditor({
 }) {
   const { panel } = usePanelPrefs();
   const [moreFor, setMoreFor] = useState(null); // the person whose "Diğer bilgiler…" is open
+  // closed again whenever the selection changes (also deselecting and selecting the same person)
+  const [shownFor, setShownFor] = useState(node ? node.id : null);
+  if (shownFor !== (node ? node.id : null)) { setShownFor(node ? node.id : null); setMoreFor(null); }
   const ids = computePedigreeIds(pedigreeData?.nodes || []);
   const nameOfId = (id) => {
     const p = pedigreeData?.individuals?.find(i => i.id === id);
@@ -540,13 +543,13 @@ export default function IndividualEditor({
   // part waits under "Diğer bilgiler…"; a part that holds something for this person shows anyway
   const person = !node.placeholder && !group;
   const applies = {
-    genetic: person, adoption: person && !isLoss, sexAtBirth: person && !isLoss,
+    genetic: person, adoption: person && !isLoss, sexAtBirth: person && !isLoss, recordsReviewed: person && !isLoss,
     birthOrder: !!onReorderChild && !!siblingOrder && siblingOrder.length > 1,
     lmp: !!node.ongoingPregnancy, repro: person && !!onAddRepro,
   };
   const holds = {
     genetic: !!node.geneticTest || gLines.length > 0, adoption: !!(adoptionInfo && adoptionInfo.current),
-    sexAtBirth: !!node.sexAtBirth, birthOrder: !!ownParentRel?.birthOrderExplicit, lmp: !!node.lmp,
+    sexAtBirth: !!node.sexAtBirth, recordsReviewed: !!node.recordsReviewed, birthOrder: !!ownParentRel?.birthOrderExplicit, lmp: !!node.lmp,
     repro: !!(reproInfo && (reproInfo.links.length || reproInfo.roleOf.length)),
   };
   const moreOpen = moreFor === node.id;
@@ -632,6 +635,13 @@ export default function IndividualEditor({
                   disabled={!!node.birthDate}
                   title={node.birthDate ? t('Yaş, üstteki doğum tarihinden bugüne göre hesaplanıyor; değiştirmek için doğum tarihini düzeltin') : `${t('Yıl, ay ya da gün')} — ${t(AGE_EXAMPLE)}`}
                   onCommit={v => set({ age: v.trim() })} />
+              </label>
+            )}
+            {shows('recordsReviewed') && (
+              <label className="check">
+                <input type="checkbox" checked={!!node.recordsReviewed} onChange={e => set({ recordsReviewed: e.target.checked })} />
+                {t('Kayıtlarla doğrulandı (*)')}
+                <span className="field-hint">{t('Bulguları tıbbi kayıt, epikriz ya da test raporu görülerek doğrulandıysa işaretleyin; sembolün sağ altında yıldız (*) çıkar (NSGC 2022). Aileden duyulan bilgi işaretsiz kalır.')}</span>
               </label>
             )}
             {shows('sexAtBirth') && (

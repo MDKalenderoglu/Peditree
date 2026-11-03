@@ -19,8 +19,8 @@
 - [ ] **Clinician decisions**, or a visible "not supported" note in About and README:
   - [x] Relationship ended: "//" as in NSGC 2022 Fig 3 (2026-11-02)
   - [x] Sex assigned at birth, AMAB / AFAB / UAAB (G-1, 2026-11-02)
-  - [ ] Same-sex and unknown-sex partners (G-2)
-  - [x] Presymptomatic carrier (G-3, 2026-11-02); the "documented evaluation" asterisk still open
+  - [x] Same-sex and unknown-sex partners (G-2): not now — stated in About and README (2026-11-03)
+  - [x] Presymptomatic carrier (G-3, 2026-11-02); "documented evaluation" asterisk (2026-11-03)
 - [ ] **Privacy:**
   - [ ] Add the shared-device sentences to About and README
 - [ ] **Deployment:**

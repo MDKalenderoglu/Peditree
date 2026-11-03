@@ -36,7 +36,7 @@ The "Test" column names the automated test that exercises the item.
 | Proband | arrow + "P", always affected [B2022 Fig 2] | Arrow + "P"; "always affected" is **not enforced** (no-proband families and screening allowed, clinician 2026-11-01) | App decision, documented | `consultand.test.js` |
 | Consultand | arrow without "P" [B2022 Fig 2] | Arrow without "P"; at most one; the same person as the proband → one arrow with "P" | Conforms | `screen.test.js` first test |
 | Evaluation / test results | "E" eliminated; results listed below the symbol [B2022 §4.2] | "+" in the panel; the clinician's lines below the symbol; "tested" when no line is written | Conforms | `screen.test.js` genetic test |
-| "Documented evaluation" asterisk | `*` [B2022 Fig 2] | Not available | Gap (minor) | — |
+| "Documented evaluation" asterisk | `*` at the lower right [B2022 Fig 2] | `*` at the lower right, outside brackets; explained in the key (2026-11-03) | Conforms | `screen.test.js` records reviewed |
 | Pregnancy (P) | diamond with P; LMP may be written below | Diamond with P, full size; LMP "SAT 03.05.2026" / "LMP …" below (2026-11-02) | Conforms | `acceptance` 8, `screen.test.js` |
 | Spontaneous abortion (SAB) | small triangle [B2008, B2022 Fig 4] | Small triangle | Conforms | `acceptance` 8 |
 | Termination (TOP) | small triangle with slash | Small triangle with slash, "TOP" below | Conforms | `acceptance` 8 |
@@ -56,7 +56,7 @@ The "Test" column names the automated test that exercises the item.
 | Assisted reproduction | D = donor, G = gestational carrier, surrogate D; no relationship line to the donor [C2025 Fig 5] | Same; donor beside the parent replaced; carried child under the carrier | Conforms (2026-11-01, per C2025) | `art.test.js`, `screen.test.js` ART |
 | Key / legend | all clinical information needed to read the pedigree [B2022 Box 1 §3] | Name, proband's findings, every finding's fill, "Carrier" when used, numbered notes | Conforms | `screen.test.js` key |
 | Clinical-pedigree header items | proband name, recorder, historian, date, indication, ancestry [B2022 Box 1 §4] | Only the patient's name and the print date | **Gap** (recorder, historian, indication, ancestry fields) | — |
-| Same-sex / unknown-sex partners | allowed (Fig 5 shows same-sex couples with donor gametes) [B2022, C2025] | **Refused** (`UNION_PARTNER_SEX_CONFLICT`; product rule pending) | **Gap / deviation**, CLINICAL REVIEW REQUIRED | `dataIntegrityRegressions.test.js` |
+| Same-sex / unknown-sex partners | allowed (Fig 5 shows same-sex couples with donor gametes) [B2022, C2025] | **Refused** (`UNION_PARTNER_SEX_CONFLICT`; product rule pending) | **Gap**, decided 2026-11-03: not now; stated in About and README as not supported | `dataIntegrityRegressions.test.js` |
 
 ## Rules that must not be broken: verified
 
@@ -86,7 +86,7 @@ All require approval before implementation (notation spec rule 10):
 1. ~~Relationship ended: change to "//"~~ — done 2026-11-02.
 2. Decide on G-1 (gender identity with AMAB/AFAB/UAAB) and same-sex partners. Until then, state
    in Help / About that these are not supported.
-3. ~~Presymptomatic carrier~~ — done 2026-11-02. The "documented evaluation" asterisk: still open.
+3. ~~Presymptomatic carrier~~ — done 2026-11-02; ~~the "documented evaluation" asterisk~~ — done 2026-11-03.
 4. English drawings: consider "35 y" / "d. 35 y" as in B2022 Fig 2. Turkish stays "35" by the
    2026-10-25 decision.
 5. Optional header fields for clinical pedigrees: recorder, historian, date, indication.

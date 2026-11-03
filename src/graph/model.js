@@ -72,6 +72,12 @@ export const SEX_AT_BIRTH = ['AMAB', 'AFAB', 'UAAB'];
  * affected clears it (ops.updatePerson); clinician decision 2026-11-02.
  */
 export const PRESYMPTOMATIC = 'presymptomatic';
+/**
+ * recordsReviewed: the clinician saw the medical records / test report behind
+ * this person's findings ("documented evaluation, records reviewed", NSGC 2022
+ * Fig 2): an asterisk at the symbol's lower right, explained in the key;
+ * clinician decision 2026-11-03.
+ */
 export const TESTED_TEXT = tk('test yapıldı');
 export const geneticLines = (p) => String((p && p.geneticNote) || '').split('\n').map((s) => s.trim()).filter(Boolean);
 /** The note with line `index` replaced by `text` (appended past the end; an empty text removes the line). */
@@ -115,7 +121,7 @@ export const validGroupCount = (c) => c === 'n' || (Number.isInteger(c) && c >= 
 /** "3", or "n" */
 export const groupText = (p) => String(p.count);
 /** what a group may not carry */
-export const GROUP_FORBIDDEN = ['affected', 'carrier', 'presymptomatic', 'sexAtBirth', 'deceased', 'geneticTest', 'proband', 'consultand', 'adoptedOut', ...PREGNANCY_FIELDS];
+export const GROUP_FORBIDDEN = ['affected', 'carrier', 'presymptomatic', 'recordsReviewed', 'sexAtBirth', 'deceased', 'geneticTest', 'proband', 'consultand', 'adoptedOut', ...PREGNANCY_FIELDS];
 
 /**
  * Adoption (NSGC; clinician decisions 2026-11-01). The adopted person is
@@ -186,7 +192,7 @@ export const subjectOf = (individuals) => (individuals || []).find((i) => i.prob
 export const CLINICAL_FIELDS = [
   'age', 'displayLabel', 'affected', 'carrier', 'notes', 'condition',
   'ageAtDeath', 'causeOfDeath', 'conditions', 'geneticTest', 'geneticNote', 'birthDate',
-  'presymptomatic', 'sexAtBirth', 'lmp',
+  'presymptomatic', 'recordsReviewed', 'sexAtBirth', 'lmp',
 ];
 
 export function makePerson(props) {
