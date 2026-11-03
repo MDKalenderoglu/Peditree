@@ -6,7 +6,8 @@
  * region and fill; the mark of an existing finding can be changed for
  * everyone. Used in the ring menu and in the right panel.
  */
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
+import { Pencil } from 'lucide-react';
 import { t } from '../i18n';
 import DraftField from './DraftField';
 import { REGIONS, REGION_LABEL, FILLS, FILL_LABEL, REGION_ANGLES, suggestStyle, styleTaken, normLabel, KEY_FULL_MESSAGE } from '../graph/conditionKey';
@@ -69,7 +70,40 @@ export function StylePicker({ value, onChange, isTaken }) {
   );
 }
 
-export default function FindingsPalette({ node, conditionKey = [], onSetStatus, onAdd, onSetStyle, onSetOnset, compact = false }) {
+/**
+ * A finding's name, corrected where it stands (clinician request 2026-11-03:
+ * a typo noticed after Enter must still be fixable). A click opens it; Enter
+ * or leaving the box saves, Escape keeps the old name. The name changes for
+ * everyone with this finding and in the key (findings.renameFinding).
+ */
+function FindingName({ label, onRename }) {
+  const [text, setText] = useState(null); // null: not being corrected
+  const cancelled = useRef(false);
+  if (!onRename) return <span className="finding-name" title={label}>{label}</span>;
+  if (text === null) {
+    return (
+      <button className="finding-name finding-name-btn" title={t('Adı düzeltmek için tıklayın (bu bulgusu olan herkeste ve açıklamada düzelir)')}
+        aria-label={t('{label}: adı düzelt', { label })} onClick={() => { cancelled.current = false; setText(label); }}>
+        <span className="finding-name-text">{label}</span><Pencil size={12} aria-hidden="true" />
+      </button>
+    );
+  }
+  const done = () => {
+    const name = text.trim();
+    setText(null);
+    if (!cancelled.current && name && name !== label) onRename(label, name);
+  };
+  return (
+    <input className="input finding-name-edit" value={text} autoFocus aria-label={t('Bulgunun adı')}
+      onFocus={(e) => e.currentTarget.select()} onChange={(e) => setText(e.target.value)} onBlur={done}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
+        if (e.key === 'Escape') { e.stopPropagation(); cancelled.current = true; e.currentTarget.blur(); } // only the correction ends
+      }} />
+  );
+}
+
+export default function FindingsPalette({ node, conditionKey = [], onSetStatus, onAdd, onSetStyle, onSetOnset, onRename, compact = false }) {
   const [draft, setDraft] = useState('');
   const [style, setStyle] = useState(null);
   const [editing, setEditing] = useState(null);
@@ -98,7 +132,7 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
                   onClick={() => setEditing(editing === e.id ? null : e.id)}>
                   <FindingGlyph region={e.region} fill={e.fill} shape={shape} carrier={st === 'carrier'} />
                 </button>
-                <span className="finding-name" title={e.label}>{e.label}</span>
+                <FindingName key={e.label} label={e.label} onRename={onRename} />
                 <div className="segmented finding-state" role="radiogroup" aria-label={e.label}>
                   {[['none', t('Yok')], ['affected', t('Var')], ['carrier', t('Taşıyıcı')], ['unknown', '?']].map(([v, label]) => (
                     <button key={v} className={st === v ? 'on' : undefined} role="radio" aria-checked={st === v}
@@ -110,7 +144,7 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
                 {onSetOnset && (st === 'affected' || st === 'carrier') && (
                   <label className="finding-onset">
                     <span>{t('Tanı yaşı')}</span>
-                    <DraftField key={`${node.id}-${e.id}-onset`} type="text" className="input input-age" placeholder={t('ör. 12 ya da 3 ay')}
+                    <DraftField key={`${node.id}-${e.id}-onset`} type="text" className="input input-age" placeholder={t('12, 3 ay')} aria-label={t('Tanı yaşı')}
                       value={(conds.find(x => normLabel(x.label) === normLabel(e.label)) || {}).onsetAge || ''}
                       onCommit={v => onSetOnset(node.id, e.label, v.trim())} />
                   </label>
@@ -129,7 +163,7 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
         <>
         <div className="finding-new">
           <FindingGlyph region={suggested.region} fill={suggested.fill} shape={shape} />
-          <input type="text" className="input" value={draft} placeholder={t('Yeni bulgu adı, ör. miyop (Enter ile ekle)')}
+          <input type="text" className="input" value={draft} placeholder={t('Yeni bulgu, ör. miyop')} aria-label={t('Yeni bulgunun adı')}
             onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }} />
           <button className="ui-btn ui-btn-sm ui-btn-primary" disabled={!draft.trim()} onClick={add}>{t('Ekle')}</button>
         </div>

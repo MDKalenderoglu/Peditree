@@ -29,6 +29,7 @@ import * as d3 from 'd3';
 import { fillFor, REGION_ANGLES, CARRIER_FILL } from '../graph/conditionKey';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { applyDrawingStyle } from '../utils/drawingStyleSvg';
+import { paintPaper } from '../utils/paper';
 import { STANDARD_FAMILY } from '../utils/drawingStyle';
 import { annotationAge, pregnancyLine, lmpLine } from '../utils/annotations';
 import { BRACKET_OUT } from '../layout/pcl/routing';
@@ -989,6 +990,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       .scaleExtent([0.1, 4])
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
+        paintPaper(svg.node(), drawing && drawing.paper); // squared / dotted paper moves with the drawing
         placeQuickBar();
         const m = measureSelected();
         keepRef.current = m && selectedNodeId ? { id: selectedNodeId, ...m } : null;
@@ -1016,6 +1018,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       }
     }
     placeQuickBar();
+    paintPaper(svg.node(), drawing && drawing.paper);
     {
       const m = measureSelected();
       keepRef.current = m && selectedNodeId ? { id: selectedNodeId, ...m } : null;
@@ -1025,6 +1028,16 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     svg.node().__zoom_ref = zoom;
 
   }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar, patientName, startEdit, multiSelect, focusTick, onNodeDrop, onBackgroundClick, drawing, fontsTick, lang]);
+
+  // the drawing area changes size (window, side panel): the drawing moves on
+  // screen, and the paper with it
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const watch = new ResizeObserver(() => paintPaper(el, drawing && drawing.paper));
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, [drawing]);
 
   // a menu around the selected person that needs more room slides the
   // drawing by (dx, dy) screen pixels (a narrow tablet screen)
