@@ -18,6 +18,7 @@ import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { parseGroupCount } from '../graph/ops';
 import { useRingPrefs, RING_ROWS, RING_PREGNANCY } from '../utils/ringPrefs';
 import { t, tk } from '../i18n';
+import { RING_T, BAND_T, BAND_GAP, BUTTON_L, layoutBands, splitRows } from '../utils/ringGeometry';
 
 const S = 9; // glyph half-size
 
@@ -98,6 +99,19 @@ const pressKey = (e, fn) => {
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); fn(); }
 };
 /**
+ * How far to move the span [a, b] to lie within [lo, hi] (screen px, with a
+ * margin). One that cannot fit keeps its start (left / top) in view.
+ */
+function shiftInto(a, b, lo, hi, m = 8) {
+  if (b - a > hi - lo - 2 * m) return lo + m - a;
+  return a < lo + m ? lo + m - a : b > hi - m ? hi - m - b : 0;
+}
+/** The box around several screen boxes. */
+const spanOf = (boxes) => ({
+  left: Math.min(...boxes.map((b) => b.left)), right: Math.max(...boxes.map((b) => b.right)),
+  top: Math.min(...boxes.map((b) => b.top)), bottom: Math.max(...boxes.map((b) => b.bottom)),
+});
+/**
  * Hover opens menus for a mouse or a hovering pen only: a finger's tap
  * fires "enter" and then "click", which would open and close at once.
  */
@@ -108,8 +122,8 @@ function ArcButton({ a0, a1, r, R, label, on, disabled, onClick, title, flip = 0
   const mid = ((a0 + a1) / 2) * Math.PI / 180;
   const tr = (r + R) / 2;
   const lines = String(label).split('\n');
-  // text runs along the band (like a rainbow); the whole band reads one way
-  // (`flip` is chosen per band, so no label turns round on its own)
+  // text runs along the band (like a rainbow), upright: `flip` is the same
+  // for the whole band (layoutBands), so no word turns round on its own
   const rot = (a0 + a1) / 2 + 90 + flip;
   const cx = tr * Math.cos(mid), cy = tr * Math.sin(mid);
   return (
@@ -118,7 +132,8 @@ function ArcButton({ a0, a1, r, R, label, on, disabled, onClick, title, flip = 0
       onKeyDown={disabled ? undefined : (e) => pressKey(e, onClick)}>
       <title>{title || label.replace(/\n/g, ' ')}</title>
       <path d={sectorPath(a0, a1, r, R, 1.5)} />
-      <text x={cx} y={cy - (lines.length - 1) * 5.5} textAnchor="middle" dominantBaseline="central" transform={`rotate(${rot} ${cx} ${cy})`}>
+      <text x={cx} y={cy - (lines.length - 1) * 5.5} textAnchor="middle" dominantBaseline="central" transform={`rotate(${rot} ${cx} ${cy})`}
+        data-room={Math.round(BUTTON_L - 14)}>
         {lines.map((line, k) => <tspan key={k} x={cx} dy={k ? 11 : 0}>{line}</tspan>)}
       </text>
     </g>
@@ -134,7 +149,7 @@ function sectorPath(a0, a1, r, R, gapDeg = 3) {
 
 export default function RadialAddMenu({
   anchor, node, pedigreeData, onAddSibling, onAddChild, onAddSpouse, onAddParents, onAddTwin,
-  onUpdate, onSetProband, onClearProband, onSetConsultand, onClearConsultand, onAddFinding, onSetFindingStatus, onSetFindingStyle, onSetFindingOnset,
+  onUpdate, onSetProband, onClearProband, onSetConsultand, onClearConsultand, onAddFinding, onSetFindingStatus, onSetFindingStyle, onSetFindingOnset, onRenameFinding,
   onNeedRoom, ref,
 }) {
   const [active, setActive] = useState(null);   // sector under the pointer
@@ -158,18 +173,33 @@ export default function RadialAddMenu({
   // (read before the "no person" guard below: the person may be gone mid-render)
   const showMore = !!node && moreFor === node.id;
   const setShowMore = () => node && setMoreFor((v) => (v === node.id ? null : node.id));
+  const menuRef = useRef(null);
   useLayoutEffect(() => {
     const el = popRef.current;
     if (!el) { setNudge({ x: 0, y: 0 }); return; }
-    el.style.translate = '0px 0px';
-    const r = el.getBoundingClientRect(), host = el.closest('.canvas-stage') || document.body;
-    const h = host.getBoundingClientRect();
-    const m = 8;
-    const dx = r.left < h.left + m ? h.left + m - r.left : r.right > h.right - m ? h.right - m - r.right : 0;
-    const dy = r.top < h.top + m ? h.top + m - r.top : r.bottom > h.bottom - m ? h.bottom - m - r.bottom : 0;
-    el.style.translate = `${dx}px ${dy}px`;
-    setNudge((old) => (old.x === dx && old.y === dy ? old : { x: dx, y: dy }));
-  }, [active, panel, anchor.x, anchor.y]);
+    const fit = () => {
+      el.style.translate = '0px 0px';
+      const r = el.getBoundingClientRect(), host = el.closest('.canvas-stage') || document.body;
+      const h = host.getBoundingClientRect();
+      if (!r.width || !h.width) return; // nothing laid out (a test page)
+      // first the drawing slides, so the popup stays beside the ring and the
+      // person (clinician request 2026-11-03); only what still cannot fit moves the popup itself
+      const ringEl = menuRef.current && menuRef.current.querySelector('.radial-ring');
+      const u = ringEl ? spanOf([r, ringEl.getBoundingClientRect()]) : r;
+      const px = u.right - u.left <= h.width - 16 ? shiftInto(u.left, u.right, h.left, h.right) : 0;
+      const py = u.bottom - u.top <= h.height - 16 ? shiftInto(u.top, u.bottom, h.top, h.bottom) : 0;
+      if (onNeedRoom && (Math.abs(px) > 1 || Math.abs(py) > 1)) onNeedRoom(px, py);
+      const dx = shiftInto(r.left + px, r.right + px, h.left, h.right), dy = shiftInto(r.top + py, r.bottom + py, h.top, h.bottom);
+      el.style.translate = `${dx}px ${dy}px`;
+      setNudge((old) => (old.x === dx && old.y === dy ? old : { x: dx, y: dy }));
+    };
+    fit();
+    // it grows after opening ("Diğer…", a choice that shows another row): fit it again
+    if (typeof ResizeObserver === 'undefined') return;
+    const watch = new ResizeObserver(fit);
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, [active, panel, anchor.x, anchor.y, onNeedRoom]);
   // keyboard (App): a letter opens a sector's choices or a satellite's panel
   const kbOpen = useRef(false);
   const arcRef = useRef(null);
@@ -190,18 +220,42 @@ export default function RadialAddMenu({
       return true;
     },
   }), [active, panel]);
-  // the rainbow bands around the person must fit on screen: if they stick
-  // out, the drawing slides by that much (a narrow tablet screen)
+  // the ring, its buttons and the rainbow bands must be on screen whole: if
+  // they stick out (a person at the edge of the page, a narrow tablet screen)
+  // the drawing slides by that much (clinician request 2026-11-03)
   useLayoutEffect(() => {
-    const el = arcRef.current;
-    if (!el || !onNeedRoom) return;
-    const r = el.getBoundingClientRect(), host = el.closest('.canvas-stage');
+    const root = menuRef.current;
+    if (!root || !onNeedRoom) return;
+    const host = root.closest('.canvas-stage');
     if (!host) return;
-    const h = host.getBoundingClientRect(), m = 8;
-    const dx = r.left < h.left + m ? h.left + m - r.left : r.right > h.right - m ? h.right - m - r.right : 0;
-    const dy = r.top < h.top + m ? h.top + m - r.top : r.bottom > h.bottom - m ? h.bottom - m - r.bottom : 0;
+    const parts = [...root.querySelectorAll('.radial-ring, .radial-sat')].map((el) => el.getBoundingClientRect()).filter((b) => b.width);
+    const h = host.getBoundingClientRect();
+    if (!parts.length || !h.width) return;
+    const u = spanOf(parts);
+    const dx = shiftInto(u.left, u.right, h.left, h.right), dy = shiftInto(u.top, u.bottom, h.top, h.bottom);
     if (Math.abs(dx) > 1 || Math.abs(dy) > 1) onNeedRoom(dx, dy);
-  }, [panel, anchor.x, anchor.y, onNeedRoom]);
+  }, [panel, node?.id, anchor.x, anchor.y, onNeedRoom]);
+  // every word of the ring fits its part: measured, and made smaller when it
+  // does not — by the same amount for all of the ring (or all of the bands),
+  // so they stay even (a longer word in another language)
+  useLayoutEffect(() => {
+    const root = menuRef.current;
+    if (!root) return;
+    // each word carries the room it has (data-room, set where it is drawn)
+    for (const svg of root.querySelectorAll('.radial-ring')) {
+      svg.style.removeProperty('--fit');
+      let k = 1;
+      for (const text of svg.querySelectorAll('text[data-room]')) {
+        const room = Number(text.getAttribute('data-room'));
+        const parts = text.querySelectorAll('tspan').length ? [...text.querySelectorAll('tspan')] : [text];
+        for (const p of parts) {
+          const w = typeof p.getComputedTextLength === 'function' ? p.getComputedTextLength() : 0;
+          if (w > room) k = Math.min(k, room / w);
+        }
+      }
+      if (k < 1) svg.style.setProperty('--fit', String(Math.max(0.75, k)));
+    }
+  });
   // opened from the keyboard: its first control takes the focus (Tab moves on, Enter picks)
   useEffect(() => {
     if (!kbOpen.current) return;
@@ -343,7 +397,7 @@ export default function RadialAddMenu({
   };
 
   const r = Math.max(24, anchor.size / 2 + 8);
-  const R = r + 34;
+  const R = r + RING_T;
   const box = R + 2;
   // satellite distance from the centre (bigger buttons on a touch screen)
   const coarse = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
@@ -386,16 +440,8 @@ export default function RadialAddMenu({
   };
 
   // rainbow bands around the ring for short choices (clinician request 2026-10-25)
-  const T = R - r; // one thickness for the ring and every band
-  const B1 = [R + 40, R + 40 + T], B2 = [R + 44 + T, R + 44 + 2 * T];
-  const band = (centre, items, [r1, r2], per) => {
-    const start = centre - (items.length * per) / 2;
-    let base = centre + 90, norm = base;
-    while (norm > 90) norm -= 180;
-    while (norm <= -90) norm += 180;
-    const flip = norm - base;
-    return items.map((it, k) => <ArcButton key={it.label} a0={start + k * per} a1={start + (k + 1) * per} r={r1} R={r2} flip={flip} {...it} />);
-  };
+  const bands = (centre, rows) => layoutBands(centre, rows, R)
+    .map(({ it, ...geo }) => <ArcButton key={it.label} {...geo} {...it} />);
   const arcs = {
     status: () => {
       const inner = isLoss ? [] : [['male', t('Erkek')], ['female', t('Kadın')], ['unknown', t('Bilinmiyor')]].map(([v, label]) => ({
@@ -417,22 +463,23 @@ export default function RadialAddMenu({
         ...available.filter((id) => showMore || !hiddenHere.includes(id)).map((id) => byId[id]),
         ...(hiddenHere.length ? [{ label: showMore ? t('Daha az') : t('Diğer…'), on: false, onClick: () => setShowMore(), title: showMore ? t('Gizlediğiniz seçenekleri yeniden gizle') : t('Halka menüden gizlediğiniz seçenekler (Ayarlar → Halka menü)') }] : []),
       ];
-      return [...band(-135, inner, B1, 40), ...band(-135, outer, B2, 33)];
+      // a rainbow over the person: sex on the inner band, the rest on as few bands as fit, evenly
+      return bands(-90, [...(inner.length ? [inner] : []), ...splitRows(outer, inner.length ? 1 : 0, R)]);
     },
-    twins: () => band(135, [['monozygotic', t('Tek\nyumurta')], ['dizygotic', t('Çift\nyumurta')], ['unknown', t('Bilinmiyor')]].map(([z, label]) => ({
+    twins: () => bands(90, [[['monozygotic', t('Tek\nyumurta')], ['dizygotic', t('Çift\nyumurta')], ['unknown', t('Bilinmiyor')]].map(([z, label]) => ({
       label, title: `${twinGroup ? t('{name} yap', { name: multipleName(twinGroup.group.children.length + 1) }) : t('İkizini ekle')}: ${label.replace(/\n/g, ' ')}`,
       on: twinGroup?.group.zygosity === z,
       onClick: () => { onAddTwin(node.id, { sex: node.sex, zygosity: z }); setPanel(null); },
-    })), B1, 42),
+    }))]),
   };
   const twinsUsable = hasParents && !isLoss && !!onAddTwin;
   const arcPanel = panel === 'status' || (panel === 'twins' && twinsUsable);
-  const outerBox = B2[1] + 4;
+  const outerBox = R + 40 + 3 * (BAND_T + BAND_GAP) + 4;
 
   const panels = {
     findings: (
       <FindingsPalette node={node} conditionKey={pedigreeData.conditionKey || []} compact
-        onSetStatus={onSetFindingStatus} onAdd={onAddFinding} onSetStyle={onSetFindingStyle} onSetOnset={onSetFindingOnset} />
+        onSetStatus={onSetFindingStatus} onAdd={onAddFinding} onSetStyle={onSetFindingStyle} onSetOnset={onSetFindingOnset} onRename={onRenameFinding} />
     ),
     twins: !hasParents || isLoss || !onAddTwin ? (
       <span className="radial-hint">{isLoss ? t('Düşük, ölü doğum ya da süren gebelik kaydına buradan ikiz eklenemez.') : t('İkiz eklemek için önce bu kişinin anne ve babasını ekleyin (yukarıdaki Ebeveyn düğmesi).')}</span>
@@ -446,14 +493,18 @@ export default function RadialAddMenu({
         </div>
       </div>
     ),
+    // what the box is for is said under it: a long placeholder is cut off (clinician 2026-11-03)
     note: (
-      <DraftField key={`${node.id}-note`} as="textarea" className="input radial-note" value={node.notes || ''} placeholder={t('Bu kişiyle ilgili notunuz. Not, pedigrinin altındaki “Notlar” bölümünde çıkar. Alt satır için Shift+Enter.')}
-        onCommit={v => onUpdate(node.id, { notes: v })} autoFocus />
+      <div className="radial-panel-col">
+        <DraftField key={`${node.id}-note`} as="textarea" className="input radial-note" value={node.notes || ''} placeholder={t('Bu kişiyle ilgili notunuz')}
+          aria-describedby="radial-note-help" onCommit={v => onUpdate(node.id, { notes: v })} autoFocus />
+        <span id="radial-note-help" className="field-hint">{t('Pedigrinin altındaki “Notlar” bölümünde, numarasıyla çıkar. Alt satır için Shift+Enter.')}</span>
+      </div>
     ),
   };
 
   return (
-    <div className="radial-menu" style={{ left: anchor.x, top: anchor.y }} onClick={e => e.stopPropagation()}>
+    <div className="radial-menu" ref={menuRef} style={{ left: anchor.x, top: anchor.y }} onClick={e => e.stopPropagation()}>
       <svg className="radial-ring" width={2 * box} height={2 * box} viewBox={`${-box} ${-box} ${2 * box} ${2 * box}`}
         style={{ left: -box, top: -box }}>
         {Object.entries(SECTORS).map(([k, { a0, a1, label }]) => {
@@ -466,7 +517,10 @@ export default function RadialAddMenu({
               role="button" aria-label={t(label)} aria-disabled={!!disabled[k]}>
               <title>{disabled[k] || (k === 'top' ? t('Anne ve baba ekle') : k === 'right' ? (unions.length ? t('Başka bir eş ekle') : t('Eş ekle')) : t(label))}</title>
               <path d={sectorPath(a0, a1, r, R)} />
-              <text x={tr * Math.cos(mid)} y={tr * Math.sin(mid)} textAnchor="middle" dominantBaseline="central">{t(label)}</text>
+              {/* the room for the word: the ring's thickness at the sides; between the sector's
+                  edges (at 45°) just inside the word's lower edge at the top and bottom */}
+              <text x={tr * Math.cos(mid)} y={tr * Math.sin(mid)} textAnchor="middle" dominantBaseline="central"
+                data-room={Math.round(k === 'left' || k === 'right' ? RING_T - 8 : 2 * (tr - 7) - 14)}>{t(label)}</text>
             </g>
           );
         })}
@@ -486,7 +540,7 @@ export default function RadialAddMenu({
       {/* a sector with neither choices nor a reason (it became a one-click
           action, e.g. after "Tek tek ayır") shows nothing */}
       {active && (choices[active] || disabled[active]) && (
-        <div className="radial-flyout" ref={popRef} style={{ ...flyoutStyle(active), translate: `${nudge.x}px ${nudge.y}px` }} onPointerEnter={(e) => isHover(e) && open(active)} onPointerLeave={(e) => isHover(e) && leave()}>
+        <div className="radial-flyout" ref={popRef} style={{ ...flyoutStyle(active), translate: `${nudge.x}px ${nudge.y}px`, maxWidth: anchor.boxW ? anchor.boxW - 16 : undefined }} onPointerEnter={(e) => isHover(e) && open(active)} onPointerLeave={(e) => isHover(e) && leave()}>
           {disabled[active] ? (
             <span className="radial-hint">{disabled[active]}</span>
           ) : (

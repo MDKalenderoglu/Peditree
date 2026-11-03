@@ -16,6 +16,7 @@
  */
 import { create } from 'zustand';
 import { tk } from '../i18n';
+import { PAPERS } from './paper';
 import kalam400 from '@fontsource/kalam/files/kalam-latin-400-normal.woff2?url';
 import kalam400x from '@fontsource/kalam/files/kalam-latin-ext-400-normal.woff2?url';
 import kalam700 from '@fontsource/kalam/files/kalam-latin-700-normal.woff2?url';
@@ -68,7 +69,8 @@ export const fontById = (id) => DRAWING_FONTS.find(f => f.id === id) || DRAWING_
 
 // openHelp: "Aç" first explains which files it opens (clinician decision 2026-10-30; "Bir daha gösterme" turns it off)
 // legendSize: the text of the patient's name, the findings key and the notes (clinician request 2026-10-30)
-export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal' };
+// paper: the page under the drawing on screen (paper.js; clinician request 2026-11-03)
+export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain' };
 
 /**
  * Sizes for the name, key and notes. They lie above and below the family,
@@ -102,6 +104,7 @@ export function normalizeView(v) {
     exportAs: o.exportAs === 'standard' ? 'standard' : 'screen',
     openHelp: o.openHelp !== false,
     legendSize: LEGEND_SIZES.some(z => z.id === o.legendSize) ? o.legendSize : 'normal',
+    paper: PAPERS.some(p => p.id === o.paper) ? o.paper : 'plain',
   };
 }
 
@@ -136,6 +139,7 @@ export function drawingSpec(view) {
     numberK: numbersPlain ? 1 : font.k,
     fontId: font.id,
     legendScale: (LEGEND_SIZES.find(z => z.id === view.legendSize) || LEGEND_SIZES[1]).scale,
+    paper: view.paper || 'plain', // the screen only: an export loses it
   };
 }
 
