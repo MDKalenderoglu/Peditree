@@ -882,6 +882,21 @@ const EN = {
   'SAT': 'LMP',
   'Belirtisiz taşıyıcı (şu an belirtisi yok)': 'Presymptomatic carrier (no symptoms now)',
   'belirtisiz taşıyıcı': 'presymptomatic carrier',
+  'Son adet tarihi': 'LMP (last menstrual period)',
+  "Süren gebelikte son adet tarihi; çizimde P'nin altında yazar. Kısa da yazabilirsiniz: 3.5.26": 'The last menstrual period of an ongoing pregnancy; written under the P. Short forms work too: 3.5.26',
+  'Doğumda atanan cinsiyet': 'Sex assigned at birth',
+  'Sembol kişinin cinsiyet kimliğini gösterir. Doğumda atanan cinsiyet farklıysa seçin; sembolün altına yazılır (AMAB: doğumda erkek, AFAB: doğumda kadın, UAAB: doğumda atanmamış; NSGC 2022).':
+    'The symbol shows the person’s gender. If the sex assigned at birth differs, choose it; it is written under the symbol (AMAB: assigned male at birth, AFAB: assigned female at birth, UAAB: unassigned at birth; NSGC 2022).',
+  'Diğer bilgiler ({n})': 'More details ({n})',
+  'Belirtisiz\ntaşıyıcı': 'Presympto-\nmatic',
+  'Şu an belirtisi yok ama ileride belirti gösterebilir (çoğunlukla dominant hastalıklarda): sembolün ortasından dikey çizgi geçer, açıklamada yazılır':
+    'No symptoms now, but could show them later (typically dominant conditions): a vertical line through the symbol, explained in the key',
+  'Yan panel': 'Side panel',
+  'Seçili kişinin panelinde nadiren kullandıklarınızı gizleyin. Gizlenenler kaybolmaz: panelin altındaki “Diğer bilgiler…” düğmesiyle açılır; bir kişide dolu olan bilgi her zaman görünür.':
+    'Hide what you rarely use in a person’s panel. Nothing hidden is lost: “More details…” at the foot of the panel opens it, and anything already filled in for a person always shows.',
+  'Son adet tarihi (süren gebelikte)': 'LMP (ongoing pregnancy)',
+  'Doğumda atanan cinsiyet (AMAB / AFAB / UAAB)': 'Sex assigned at birth (AMAB / AFAB / UAAB)',
+  'Belirtisiz taşıyıcı': 'Presymptomatic carrier',
 };
 
 export default EN;

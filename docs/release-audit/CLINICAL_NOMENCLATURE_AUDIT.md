@@ -27,24 +27,24 @@ The "Test" column names the automated test that exercises the item.
 | Item | Source rule | PediTree behaviour | Status | Test |
 |---|---|---|---|---|
 | Male / female / unknown | square / circle / diamond [B2008, B2022 Box 1] | `sex` → rect / circle / diamond | Conforms | `screen.test.js`, `acceptance` 1–12 |
-| Gender identity vs sex assigned at birth | the symbol shows gender; AMAB / AFAB / UAAB written below; gender-diverse symbols [B2022 §4.1, Fig 1] | Not modelled: one `sex` field | **Gap**, CLINICAL REVIEW REQUIRED | — |
+| Gender identity vs sex assigned at birth | the symbol shows gender; AMAB / AFAB / UAAB written below; gender-diverse symbols [B2022 §4.1, Fig 1] | `sexAtBirth` AMAB / AFAB / UAAB written right under the symbol; the symbol is the gender (2026-11-02). Gender-diverse symbol variants beyond the diamond: not added | Conforms for the modifiers; diamond = unknown or non-binary | `screen.test.js` NSGC 2022 additions |
 | Affected | filled symbol; several conditions = divided symbol plus key [B2022 Fig 2] | Full fill; several findings = quadrants with distinct fills, explained in the key | Conforms | `screen.test.js` "two findings…", `acceptance` 11 |
 | Carrier | no dot; divided symbol with a fill defined in the key [B2022 §4.5] | Unnamed carrier: left half cross-hatched, key says "Carrier". Carrier of a named finding: half of that finding's fill | Conforms (dot removed 2026-11-02) | `screen.test.js` carrier test |
-| Asymptomatic / presymptomatic carrier | vertical line in the symbol [B2022 Fig 2] | Not available | **Gap**, CLINICAL REVIEW REQUIRED | — |
+| Asymptomatic / presymptomatic carrier | vertical line in the symbol [B2022 Fig 2] | Vertical line, explained in the key; never with affected (2026-11-02) | Conforms | `screen.test.js` NSGC 2022 additions |
 | Deceased | diagonal line; "d." with year or age [B2022 Box 1] | Diagonal line; "d.35", "d.3 ay" (EN "d.3 mo") | Conforms; age written without "y" (app decision 2026-10-25) | `acceptance`, `english.test.js` |
 | Age line | age, can note b./d. year; order: age, evaluation results, pedigree number [B2022 Box 1 §5] | Age, then genetic-test lines, then label; the pedigree number sits at the symbol's upper corner (KI-4) | Conforms in order; number position is an app decision | `screen.test.js` |
 | Proband | arrow + "P", always affected [B2022 Fig 2] | Arrow + "P"; "always affected" is **not enforced** (no-proband families and screening allowed, clinician 2026-11-01) | App decision, documented | `consultand.test.js` |
 | Consultand | arrow without "P" [B2022 Fig 2] | Arrow without "P"; at most one; the same person as the proband → one arrow with "P" | Conforms | `screen.test.js` first test |
 | Evaluation / test results | "E" eliminated; results listed below the symbol [B2022 §4.2] | "+" in the panel; the clinician's lines below the symbol; "tested" when no line is written | Conforms | `screen.test.js` genetic test |
 | "Documented evaluation" asterisk | `*` [B2022 Fig 2] | Not available | Gap (minor) | — |
-| Pregnancy (P) | diamond with P [B2008] | Diamond with P, full size | Conforms | `acceptance` 8 |
+| Pregnancy (P) | diamond with P; LMP may be written below | Diamond with P, full size; LMP "SAT 03.05.2026" / "LMP …" below (2026-11-02) | Conforms | `acceptance` 8, `screen.test.js` |
 | Spontaneous abortion (SAB) | small triangle [B2008, B2022 Fig 4] | Small triangle | Conforms | `acceptance` 8 |
 | Termination (TOP) | small triangle with slash | Small triangle with slash, "TOP" below | Conforms | `acceptance` 8 |
 | Ectopic (ECT) | triangle with slash and "ECT" [C2025 corrects B2022] | Slashed triangle, "ECT" below | Conforms (2026-11-02) | `screen.test.js` ECT |
 | Stillbirth (SB) | full-size symbol, slash, "SB" + weeks | Full size, slash, "SB 28 hf" (EN "SB 28 wk") | Conforms | `acceptance` 8 |
 | Pregnancy kinds kept apart | distinct types | Exactly one kind per pregnancy (`PREGNANCY_KIND_MULTIPLE`); no partner or children | Conforms | `acceptance` 8 |
 | Relationship line | solid horizontal line [B2022 §4.2: stays solid] | Solid | Conforms | `screen.test.js` |
-| Relationship ended | "a break in the relationship line" drawn as **two short strokes "//"** [B2022 Fig 3] | **One** slash, for separated and divorced alike (clinician 2026-10-23) | **Deviation**, CLINICAL REVIEW REQUIRED: under the 2026-11-02 principle this should become "//" | `screen.test.js` "separated and divorced: one slash" |
+| Relationship ended | "a break in the relationship line" drawn as two short strokes "//" [B2022 Fig 3] | "//" on the visible line, beside the line of descent when there are children (2026-11-02) | Conforms | `screen.test.js` separated and divorced |
 | Multiple partners | shown when relevant [B2022 Fig 3] | Any number; children belong to one union | Conforms | `acceptance` 6 |
 | Consanguinity | double relationship line; degree stated if not obvious [B2022 Fig 3] | Double line. Degree and F are derived from drawn shared ancestors; a declared one without ancestors stays "reported" with a notice | Conforms; the degree text is in the panel, not above the line (app decision) | `acceptance` 3, 10; `screen.test.js` |
 | Siblings in birth order | left to right, oldest first [B2022 Fig 3] | Explicit order or by age; losses keep their chronological place | Conforms | `pclLayout.test.js` |
@@ -83,11 +83,10 @@ The audit brief asks for these to be checked. Both are flagged; neither was chan
 
 All require approval before implementation (notation spec rule 10):
 
-1. Relationship ended: change to "//" (B2022 Fig 3).
+1. ~~Relationship ended: change to "//"~~ — done 2026-11-02.
 2. Decide on G-1 (gender identity with AMAB/AFAB/UAAB) and same-sex partners. Until then, state
    in Help / About that these are not supported.
-3. Asymptomatic / presymptomatic carrier (vertical line) and the "documented evaluation"
-   asterisk: implement, or state that they are not supported.
+3. ~~Presymptomatic carrier~~ — done 2026-11-02. The "documented evaluation" asterisk: still open.
 4. English drawings: consider "35 y" / "d. 35 y" as in B2022 Fig 2. Turkish stays "35" by the
    2026-10-25 decision.
 5. Optional header fields for clinical pedigrees: recorder, historian, date, indication.

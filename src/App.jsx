@@ -16,7 +16,7 @@ import { nextPerson, ringKeysFor, KEY_LETTERS } from './utils/keyboardNav';
 import { useT, useLang, t as tNow, tk, currentLang, drawingLangOf } from './i18n';
 import { toPed } from './graph/ped';
 import { mergeIntoGroup as checkMerge } from './graph/ops';
-import RingSettings from './components/RingSettings';
+import RingSettings, { PanelSettings } from './components/RingSettings';
 import RelationChooser from './components/RelationChooser';
 import { withGeneticLine, subjectOf, adoptionOf, ancestorsOf, REPRO_LABEL, EGG_SOURCE, CARRIER_ROLES, ART_DONOR_RELATION, isPregnancy } from './graph/model';
 import { clinicalNamer } from './utils/clinicalNotices';
@@ -830,6 +830,7 @@ function App() {
                   </div>
                 </div>
                 <RingSettings />
+                <PanelSettings />
                 <div className="settings-group">
                   <div className="more-title">{t('Dosya açma')}</div>
                   <label className="check">

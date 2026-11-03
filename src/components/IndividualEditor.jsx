@@ -17,6 +17,8 @@ import { isPregnancy, pregnancyKind, PREGNANCY_LABEL, GENETIC_TESTED, geneticLin
 import { parseGroupCount } from '../graph/ops';
 import DraftField from './DraftField';
 import { pendingDrafts } from '../utils/drafts';
+import { usePanelPrefs, PANEL_PARTS } from '../utils/panelPrefs';
+import { formatDate } from '../utils/age';
 import { t, tk, currentLang, shownLabel } from '../i18n';
 
 const SEX_WORD = { male: tk('Erkek'), female: tk('Kadın'), unknown: tk('Cinsiyet bilinmiyor') };
@@ -464,6 +466,8 @@ export default function IndividualEditor({
   wizardParents, onSetParentsField,
   selectedNodes = [], onUpdateMany, onSetFindingStatusMany, onAddFindingMany,
 }) {
+  const { panel } = usePanelPrefs();
+  const [moreFor, setMoreFor] = useState(null); // the person whose "Diğer bilgiler…" is open
   const ids = computePedigreeIds(pedigreeData?.nodes || []);
   const nameOfId = (id) => {
     const p = pedigreeData?.individuals?.find(i => i.id === id);
@@ -532,6 +536,23 @@ export default function IndividualEditor({
     .filter(i => i.id !== node.id).flatMap(geneticLines))]
     .filter(line => !gLines.includes(line)).slice(0, 6);
 
+  // the clinician's own panel (Ayarlar → Yan panel; clinician request 2026-11-02): a hidden
+  // part waits under "Diğer bilgiler…"; a part that holds something for this person shows anyway
+  const person = !node.placeholder && !group;
+  const applies = {
+    genetic: person, adoption: person && !isLoss, sexAtBirth: person && !isLoss,
+    birthOrder: !!onReorderChild && !!siblingOrder && siblingOrder.length > 1,
+    lmp: !!node.ongoingPregnancy, repro: person && !!onAddRepro,
+  };
+  const holds = {
+    genetic: !!node.geneticTest || gLines.length > 0, adoption: !!(adoptionInfo && adoptionInfo.current),
+    sexAtBirth: !!node.sexAtBirth, birthOrder: !!ownParentRel?.birthOrderExplicit, lmp: !!node.lmp,
+    repro: !!(reproInfo && (reproInfo.links.length || reproInfo.roleOf.length)),
+  };
+  const moreOpen = moreFor === node.id;
+  const tucked = PANEL_PARTS.filter(x => applies[x.id] && !holds[x.id] && panel.hidden.includes(x.id));
+  const shows = (id) => applies[id] && (holds[id] || moreOpen || !panel.hidden.includes(id));
+
   return (
     <>
       <Header title={pedigreeId || '—'} sub={node.placeholder ? t('Belirtilmemiş ebeveyn') : sub} onClose={onClearSelection} />
@@ -582,6 +603,14 @@ export default function IndividualEditor({
               <DraftField key={`${node.id}-weeks`} type="text" className="input input-age" value={node.gestationWeeks || ''} placeholder={t('hf')}
                 onCommit={v => onSetGestationWeeks(node.id, v)} />
             </label>
+            {shows('lmp') && (
+              <label className="field">
+                <span className="field-label">{t('Son adet tarihi')}</span>
+                <DraftField key={`${node.id}-lmp`} type="text" inputMode="numeric" className="input birth-date" value={formatDate(node.lmp)} placeholder={t('gg.aa.yyyy')}
+                  title={t('Süren gebelikte son adet tarihi; çizimde P\'nin altında yazar. Kısa da yazabilirsiniz: 3.5.26')}
+                  onCommit={v => set({ lmp: v.trim() })} />
+              </label>
+            )}
             {node.ongoingPregnancy && (
               <button className="ui-btn" onClick={() => onSetPregnancyKind(node.id, '')}>{t('Bebek doğdu: gebelik yerine kişi olarak göster')}</button>
             )}
@@ -604,6 +633,18 @@ export default function IndividualEditor({
                   title={node.birthDate ? t('Yaş, üstteki doğum tarihinden bugüne göre hesaplanıyor; değiştirmek için doğum tarihini düzeltin') : `${t('Yıl, ay ya da gün')} — ${t(AGE_EXAMPLE)}`}
                   onCommit={v => set({ age: v.trim() })} />
               </label>
+            )}
+            {shows('sexAtBirth') && (
+              <div className="field-col">
+                <span className="field-label">{t('Doğumda atanan cinsiyet')}</span>
+                <div className="segmented" role="radiogroup" aria-label={t('Doğumda atanan cinsiyet')}>
+                  {[['', '—'], ['AMAB', 'AMAB'], ['AFAB', 'AFAB'], ['UAAB', 'UAAB']].map(([v, label]) => (
+                    <button key={v} role="radio" aria-checked={(node.sexAtBirth || '') === v} className={(node.sexAtBirth || '') === v ? 'on' : undefined}
+                      onClick={() => set({ sexAtBirth: v })}>{label}</button>
+                  ))}
+                </div>
+                <span className="field-hint">{t('Sembol kişinin cinsiyet kimliğini gösterir. Doğumda atanan cinsiyet farklıysa seçin; sembolün altına yazılır (AMAB: doğumda erkek, AFAB: doğumda kadın, UAAB: doğumda atanmamış; NSGC 2022).')}</span>
+              </div>
             )}
             {!!node.deceased && !isLoss && (
               <>
@@ -629,7 +670,7 @@ export default function IndividualEditor({
             )}
             {/* genetic test (clinician decision 2026-10-27): "−" none, "+" done; what
                 is written goes under the symbol line by line, no "E" (NSGC 2022) */}
-            <div className="field-col">
+            {shows('genetic') && <div className="field-col">
               <span className="field-label">{t('Genetik test')}</span>
               <div className="segmented" role="radiogroup" aria-label={t('Genetik test')}>
                 {[['', '−', t('Genetik test yapılmadı')], [GENETIC_TESTED, '+', t('Genetik test yapıldı')]].map(([v, sign, title]) => (
@@ -670,7 +711,7 @@ export default function IndividualEditor({
                   ))}
                 </div>
               )}
-            </div>
+            </div>}
             {node.condition && (
               // older free-text field: still shown under the symbol, editable/clearable here
               <label className="field-col">
@@ -682,11 +723,11 @@ export default function IndividualEditor({
           </div>
         )}
 
-        {!node.placeholder && !group && !isLoss && (
+        {shows('adoption') && (
           <AdoptionCard info={adoptionInfo} onSet={to => onSetAdoption(node.id, to)} />
         )}
 
-        {!node.placeholder && !group && onAddRepro && (
+        {shows('repro') && (
           <ReproCard key={node.id} info={reproInfo} onAdd={(role, opts) => onAddRepro(node.id, role, opts)} onRemove={pid => onRemoveRepro(node.id, pid)} />
         )}
 
@@ -704,7 +745,7 @@ export default function IndividualEditor({
         ))}
 
         {/* moves this child within its own sibship only, never to another union */}
-        {onReorderChild && siblingOrder && siblingOrder.length > 1 && (
+        {shows('birthOrder') && (
           <div className="card">
             <div className="card-title">{t('Doğum sırası')}</div>
             <div className="btn-row">
@@ -715,6 +756,14 @@ export default function IndividualEditor({
                 onClick={() => onReorderChild(ownParentRel.unionId, node.id, 'right')}>{t('Sağa')} <ArrowRight size={14} /></button>
             </div>
           </div>
+        )}
+
+        {/* the parts hidden in Ayarlar → Yan panel, one tap away */}
+        {(tucked.length > 0 || moreOpen) && (
+          <button className="ui-btn ui-btn-ghost more-parts" aria-expanded={moreOpen} onClick={() => setMoreFor(moreOpen ? null : node.id)}
+            title={moreOpen ? undefined : tucked.map(x => t(x.label)).join(', ')}>
+            {moreOpen ? t('Daha az') : t('Diğer bilgiler ({n})', { n: tucked.length })}
+          </button>
         )}
 
         {/* anyone but the proband can be deleted; children stay with the other parent */}

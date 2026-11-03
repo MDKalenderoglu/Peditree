@@ -20,8 +20,8 @@ export const RING_ROWS = [
   // rare in the clinic (clinician 2026-11-02): under "Diğer…" until the clinician brings it forward
   { id: 'art', label: tk('Yardımcı üreme ile') },
 ];
-/** rows that start hidden — also for a stored preference made before they existed */
-const HIDDEN_AT_FIRST = ['art'];
+/** choices that start hidden — also for a stored preference made before they existed */
+const HIDDEN_AT_FIRST = ['art', 'presymptomatic'];
 export const RING_PREGNANCY = [
   { id: 'loss', label: tk('Düşük') },
   { id: 'stillbirth', label: tk('Ölü doğum (SB)') },
@@ -35,6 +35,8 @@ export const RING_STATUS = [
   { id: 'deceased', label: tk('Vefat') },
   { id: 'proband', label: tk('Proband') },
   { id: 'consultand', label: tk('Danışan') },
+  // rare (NSGC 2022 Fig 2; clinician 2026-11-02): under "Diğer…" until brought forward
+  { id: 'presymptomatic', label: tk('Belirtisiz taşıyıcı') },
 ];
 
 export const DEFAULT_RING = {
@@ -54,9 +56,9 @@ const ordered = (stored, all) => {
 
 export function normalizeRing(v) {
   const o = v && typeof v === 'object' ? v : {};
-  const storedRows = Array.isArray(o.rows) ? o.rows : [];
-  // a row the stored preference has never seen starts hidden if it is one of those
-  const unseen = HIDDEN_AT_FIRST.filter((id) => !storedRows.includes(id));
+  const seen = [...(Array.isArray(o.rows) ? o.rows : []), ...(Array.isArray(o.status) ? o.status : [])];
+  // a choice the stored preference has never seen starts hidden if it is one of those
+  const unseen = HIDDEN_AT_FIRST.filter((id) => !seen.includes(id));
   return {
     rows: ordered(o.rows, RING_ROWS),
     status: ordered(o.status, RING_STATUS),

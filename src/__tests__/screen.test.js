@@ -731,6 +731,9 @@ describe('assisted reproduction on the screen', () => {
   it('the child\'s panel adds a donor (a new person, or someone in the drawing) and takes it away', async () => {
     await run(() => S().addSiblingTo('mother', 'female'));
     await select('proband');
+    // rare: under "Diğer bilgiler…" until the clinician brings it forward (Ayarlar → Yan panel)
+    expect(panelText()).not.toMatch(/Yardımcı üreme/);
+    await click(buttons().find(b => b.textContent.startsWith('Diğer bilgiler')));
     expect(panelText()).toMatch(/Yardımcı üreme/);
     await click(button('Sperm donörü'));
     expect(g().reproductiveLinks.map(l => l.role)).toEqual(['sperm_donor']);
@@ -822,5 +825,61 @@ describe('the ring\'s "Yardımcı üreme ile" row', () => {
     const pregnancy = g().individuals.find(i => i.ongoingPregnancy);
     expect(pregnancy).toBeTruthy();
     expect(g().reproductiveLinks).toEqual([expect.objectContaining({ childId: pregnancy.id, role: 'sperm_donor' })]);
+  });
+});
+
+describe('NSGC 2022 additions (clinician decisions 2026-11-02) and the trimmed side panel', () => {
+  it('ended relationship, presymptomatic carrier, sex at birth and LMP: entered from the ring and the panel, drawn, explained in the key', async () => {
+    // presymptomatic: hidden in the ring at first, under "Diğer…" in Durum
+    await select('mother');
+    await key('d');
+    expect(arcLabels().join(' ')).not.toMatch(/Belirtisiz/);
+    await click([...$$('.radial-arcs .radial-arc')].find(a => a.textContent.includes('Diğer')));
+    const pre = [...$$('.radial-arcs .radial-arc')].find(a => a.textContent.includes('Belirtisiz'));
+    await click(pre);
+    expect(g().individuals.find(i => i.id === 'mother').presymptomatic).toBe(true);
+    expect(drawn('mother').querySelector('.presymptomatic-line')).not.toBeNull();
+    expect($('.condition-legend').textContent).toMatch(/Belirtisiz taşıyıcı/);
+    // affected: the line goes (symptoms now)
+    await run(() => S().updateIndividual('mother', { affected: true }));
+    expect(drawn('mother').querySelector('.presymptomatic-line')).toBeNull();
+    // sex at birth: hidden in the panel at first; shown once brought forward or filled
+    await key('Escape');
+    await select('father');
+    expect(panelText()).not.toMatch(/Doğumda atanan cinsiyet/);
+    await click(buttons().find(b => b.textContent.startsWith('Diğer bilgiler')));
+    await click(button('AFAB'));
+    expect(g().individuals.find(i => i.id === 'father').sexAtBirth).toBe('AFAB');
+    expect(drawn('father').querySelector('.sex-at-birth').textContent).toBe('AFAB');
+    await key('Escape'); await key('Escape');
+    await select('father');
+    expect(panelText()).toMatch(/Doğumda atanan cinsiyet/); // filled: shown without "Diğer bilgiler"
+    // LMP of an ongoing pregnancy, under the P
+    await run(() => S().addChildToUnion('U_PARENTS', 'unknown', { ongoingPregnancy: true }));
+    const p = g().individuals.find(i => i.ongoingPregnancy).id;
+    await run(() => S().updateIndividual(p, { lmp: '3.5.26' }));
+    expect(g().individuals.find(i => i.id === p).lmp).toBe('2026-05-03');
+    expect(drawn(p).querySelector('.lmp-line').textContent).toBe('SAT 03.05.2026');
+    // a born child has no LMP; a future date is refused
+    await run(() => S().updateIndividual('proband', { lmp: '3.5.26' }));
+    expect(g().individuals.find(i => i.id === 'proband').lmp).toBeUndefined();
+    // ended relationship: "//"
+    await run(() => S().setUnionStatus('U_PARENTS', 'divorced'));
+    expect($$('.relationship-ended')).toHaveLength(2);
+  });
+
+  it('Ayarlar → Yan panel: a part hidden there leaves the panel, comes back under "Diğer bilgiler…", and is kept on this device', async () => {
+    await click(button('Ayarlar') || buttons().find(b => b.textContent.includes('Ayarlar')));
+    const box = [...$$('.settings-popover label.check')].find(l => l.textContent.includes('Genetik test'));
+    await click(box.querySelector('input'));
+    await key('Escape');
+    await select('mother');
+    expect(panelText()).not.toMatch(/Genetik test/);
+    await click(buttons().find(b => b.textContent.startsWith('Diğer bilgiler')));
+    expect(panelText()).toMatch(/Genetik test/);
+    expect(JSON.parse(window.localStorage.getItem('peditree.panel.v1')).hidden).toContain('genetic');
+    // put back
+    const { usePanelPrefs, DEFAULT_PANEL } = await import('../utils/panelPrefs');
+    await run(() => usePanelPrefs.getState().setPanel(DEFAULT_PANEL));
   });
 });

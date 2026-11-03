@@ -17,10 +17,10 @@
 - [ ] **Safari / iPad and Firefox:** on each, do the core journey once:
       New → add family → findings → save → open → download PNG / PDF → print → share
 - [ ] **Clinician decisions**, or a visible "not supported" note in About and README:
-  - [ ] Relationship ended: "//" as in NSGC 2022 Fig 3 (now a single slash)
-  - [ ] Gender identity / AMAB-AFAB-UAAB (G-1)
+  - [x] Relationship ended: "//" as in NSGC 2022 Fig 3 (2026-11-02)
+  - [x] Sex assigned at birth, AMAB / AFAB / UAAB (G-1, 2026-11-02)
   - [ ] Same-sex and unknown-sex partners (G-2)
-  - [ ] Presymptomatic carrier and the "documented evaluation" asterisk (G-3)
+  - [x] Presymptomatic carrier (G-3, 2026-11-02); the "documented evaluation" asterisk still open
 - [ ] **Privacy:**
   - [ ] Add the shared-device sentences to About and README
 - [ ] **Deployment:**

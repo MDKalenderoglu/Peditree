@@ -323,7 +323,10 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
     const geom = unionGeom.get(u.id);
     if (!geom) continue;
     if (u.status === 'divorced' || u.status === 'separated') {
-      edges.push({ type: 'divorceSlash', x: geom.prefX, y: geom.y, status: u.status, unionId: u.id });
+      // "//" on the visible part of the line (clear of brackets), and beside the line of
+      // descent rather than on it when the couple has children (NSGC 2022 Fig 3)
+      const x = hasKids(u.id) && geom.prefX - geom.lo >= 16 ? (geom.lo + geom.prefX) / 2 : (geom.lo + geom.hi) / 2;
+      edges.push({ type: 'divorceSlash', x, y: geom.y, status: u.status, unionId: u.id });
     }
     // NSGC: a couple without children by choice / reason unknown (one bar)
     // or infertile (two bars), the reason below — only while they have none
