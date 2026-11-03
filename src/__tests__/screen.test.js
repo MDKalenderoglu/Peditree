@@ -945,3 +945,30 @@ describe('the two free texts of a person (clinician question 2026-11-03)', () =>
     expect(panelText()).toMatch(/Uzun yazı çizimi kalabalıklaştırır/);
   });
 });
+
+describe('the Settings window (clinician request 2026-11-03)', () => {
+  it('a window of its own: sections to choose, Tab stays inside, Escape closes, focus goes back to "Ayarlar"', async () => {
+    const opener = button('Ayarlar');
+    opener.focus();
+    await click(opener);
+    const dialog = document.querySelector('.settings-dialog');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(document.activeElement.getAttribute('role')).toBe('tab');
+    const tabs = [...dialog.querySelectorAll('[role="tab"]')].map(b => b.textContent.trim());
+    expect(tabs).toEqual(['Dil', 'Çizim', 'Halka menü', 'Yan panel', 'Dosyalar']);
+    // Tab from the last control comes back to the first; Shift+Tab from the first goes to the last
+    const focusable = [...dialog.querySelectorAll('button:not(:disabled):not([tabindex="-1"]), input:not(:disabled), [tabindex="0"]')];
+    focusable.at(-1).focus();
+    await key('Tab', {}, focusable.at(-1));
+    expect(document.activeElement).toBe(focusable[0]);
+    await key('Tab', { shiftKey: true }, focusable[0]);
+    expect(document.activeElement).toBe(focusable.at(-1));
+    // arrows move between sections
+    dialog.querySelector('[role="tab"][aria-selected="true"]').focus();
+    await key('ArrowDown', {}, document.activeElement);
+    expect(dialog.querySelector('[role="tab"][aria-selected="true"]').textContent).toMatch(/Çizim/);
+    await key('Escape');
+    expect(document.querySelector('.settings-dialog')).toBeNull();
+    expect(document.activeElement).toBe(opener);
+  });
+});
