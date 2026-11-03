@@ -166,22 +166,16 @@ const EN = {
   'Çizimin görünümü': 'The drawing’s look',
   'Standart': 'Standard',
   'El çizimi': 'Hand-drawn',
-  'El çiziminde çizgiler ve semboller kalemle çizilmiş gibi hafifçe titrer. Sembollerin ve çizgilerin anlamı değişmez.':
-    'Hand-drawn lines and symbols waver a little, as if drawn with a pen. What the symbols and lines mean does not change.',
   'Çizimdeki yazıların yazı tipi': 'Typeface of the text in the drawing',
   'Düz yazı tipleri': 'Plain typefaces',
   'El yazısı tipleri': 'Handwriting typefaces',
   'II-3 · 45 y · Ayşe Gül': 'II-3 · 45 y · Mary Ann',
   'Pedigri numaraları (I-1, II-3) el yazısında da düz yazılsın': 'Pedigree numbers (I-1, II-3) in plain type, also with handwriting',
-  'Hasta adı, bulgular açıklaması ve notların yazı boyutu': 'Text size of the patient’s name, the key to findings and the notes',
   'Açıklama yazılarının boyutu': 'Size of the explanatory text',
-  'İndirilen ve yazdırılan çizimde de bu boyutta olur. Sembollerin altındaki yazılar aynı boyutta kalır.':
-    'Downloaded and printed drawings use this size too. The text under the symbols keeps its size.',
   'İndirme, paylaşma ve yazdırma': 'Downloading, sharing and printing',
   'İndirilen resmin görünümü': 'Look of the downloaded image',
   'Ekrandaki gibi': 'As on the screen',
   'Her zaman standart': 'Always standard',
-  'Dosya açma': 'Opening files',
   '“Aç”a basınca hangi dosyaların açılabildiğini anlatan pencere görünsün': 'Show which files can be opened when “Open” is pressed',
   'Bu ayarlar yalnızca bu cihazda saklanır. Pedigri dosyası değişmez; dosyayı açan başka biri kendi ayarıyla görür.':
     'These settings are kept only on this device. The pedigree file does not change; someone else who opens it sees it with their own settings.',
@@ -369,8 +363,6 @@ const EN = {
   'Gebelik sonucu': 'Pregnancy outcome',
   'Gebelik haftası': 'Gestational week',
   'Bebek doğdu: gebelik yerine kişi olarak göster': 'The baby was born: show as a person instead of a pregnancy',
-  'Etiket (çizimde görünür)': 'Label (shown in the drawing)',
-  'ör. ad ya da kısaltma (boş bırakılabilir)': 'e.g. a name or initials (may stay empty)',
   'Yaş': 'Age',
   '35, 3 ay…': '35, 3 mo…',
   'Yaş, üstteki doğum tarihinden bugüne göre hesaplanıyor; değiştirmek için doğum tarihini düzeltin': 'The age is worked out from the date of birth at the top; to change it, correct the date of birth',
@@ -903,6 +895,19 @@ const EN = {
   'Kayıtlarla doğrulandı (*)': 'Records reviewed (*)',
   'Bulguları tıbbi kayıt, epikriz ya da test raporu görülerek doğrulandıysa işaretleyin; sembolün sağ altında yıldız (*) çıkar (NSGC 2022). Aileden duyulan bilgi işaretsiz kalır.':
     'Tick when the findings were confirmed from medical records, a discharge summary or a test report; an asterisk (*) appears at the symbol’s lower right (NSGC 2022). What the family reports stays unmarked.',
+  'Ad ya da kısaltma': 'Name or initials',
+  'sembolün altında': 'under the symbol',
+  'ör. Ayşe, A.Y. ya da “amca” (boş bırakılabilir)': 'e.g. Mary, M.S. or “uncle” (may stay empty)',
+  'Uzun yazı çizimi kalabalıklaştırır; ayrıntıyı aşağıdaki nota yazın.': 'Long text crowds the drawing; put the details in the note below.',
+  'pedigrinin altında, numaralı': 'numbered, under the pedigree',
+  'Öykü, muayene, tetkik… (sembolün yanında [1] çıkar)': 'History, examination, tests… ([1] appears by the symbol)',
+  'Ekranın dili ve çizimin dili ayrı seçilebilir; örneğin Türkçe ekranla İngilizce çizim indirilebilir.': 'The language of the screens and of the drawing can be chosen apart; for example, a Turkish screen can download an English drawing.',
+  'Çizim': 'Drawing',
+  'Çizimin görünümü, yazı tipi ve yazı boyutu. Sembollerin ve çizgilerin anlamı hiçbir seçenekte değişmez.': 'The drawing’s look, typeface and text size. What the symbols and lines mean never changes.',
+  'Dosyalar': 'Files',
+  'Dosya açarken.': 'When opening a file.',
+  'El çiziminde çizgiler ve semboller kalemle çizilmiş gibi hafifçe titrer.': 'Hand-drawn lines and symbols waver a little, as if drawn with a pen.',
+  'Hasta adı, bulgular açıklaması ve notlar; indirilen ve yazdırılan çizimde de. Sembollerin altındaki yazılar aynı boyutta kalır.': 'The patient’s name, the key and the notes; in downloaded and printed drawings too. The text under the symbols keeps its size.',
 };
 
 export default EN;

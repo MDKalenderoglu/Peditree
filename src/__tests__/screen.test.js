@@ -245,7 +245,14 @@ describe('the ring menu', () => {
       await key('d');
       expect(arcLabels().slice(3)).toEqual(['Proband', 'Etkilenmiş', 'Taşıyıcı', 'Vefat', 'Diğer…']);
       await click(button('Ayarlar'));
-      expect($('[aria-label="Ayarlar"]').textContent).toMatch(/Halka menü/);
+      const dialog = document.querySelector('.settings-dialog');
+      await click([...dialog.querySelectorAll('[role="tab"]')].find(b => b.textContent.includes('Halka menü')));
+      expect(dialog.querySelector('[role="tabpanel"]').textContent).toMatch(/Durum düğmesindeki seçenekler/);
+      // the order set above is the order shown, hidden choices switched off
+      const names = [...dialog.querySelectorAll('.set-list')][1].querySelectorAll('.set-list-name');
+      expect([...names].map(n => n.textContent)).toEqual(['Proband', 'Etkilenmiş', 'Taşıyıcı', 'Vefat', 'Danışan', 'Belirtisiz taşıyıcı']);
+      const consultand = [...dialog.querySelectorAll('.set-list-label')].find(l => l.textContent === 'Danışan').querySelector('input');
+      expect(consultand.checked).toBe(false);
       await key('Escape');
     } finally {
       await run(() => useRingPrefs.getState().setRing(DEFAULT_RING));
@@ -321,12 +328,14 @@ describe('stepping back, pop-ups and the keyboard', () => {
     for (const [open, name] of [['Ayarlar', 'settings'], ['Yeni', 'new']]) {
       await click(button(open) || buttons().find(b => b.textContent.includes(open)));
       expect($(`[data-popup="${name}"] [role="dialog"], [data-popup="${name}"] .keys-popover, [data-popup="${name}"] .new-menu`) || $$(`[data-popup="${name}"] *`).length > 1).toBeTruthy();
-      const opened = $$(`[data-popup="${name}"] *`).length;
+      // the settings window stands on the page itself, outside the app's frame
+      const inPopup = () => document.querySelectorAll(`[data-popup="${name}"] *`).length;
+      const opened = inPopup();
       await pointerDown(drawn('mother'));
-      expect($$(`[data-popup="${name}"] *`).length).toBeLessThan(opened);
+      expect(inPopup()).toBeLessThan(opened);
       await click(button(open) || buttons().find(b => b.textContent.includes(open)));
       await key('Escape');
-      expect($$(`[data-popup="${name}"] *`).length).toBeLessThan(opened);
+      expect(inPopup()).toBeLessThan(opened);
     }
   });
 
@@ -896,7 +905,10 @@ describe('NSGC 2022 additions (clinician decisions 2026-11-02) and the trimmed s
 
   it('Ayarlar → Yan panel: a part hidden there leaves the panel, comes back under "Diğer bilgiler…", and is kept on this device', async () => {
     await click(button('Ayarlar') || buttons().find(b => b.textContent.includes('Ayarlar')));
-    const box = [...$$('.settings-popover label.check')].find(l => l.textContent.includes('Genetik test'));
+    const dialog = document.querySelector('.settings-dialog');
+    await click([...dialog.querySelectorAll('[role="tab"]')].find(b => b.textContent.includes('Yan panel')));
+    const box = [...dialog.querySelectorAll('label.set-row')].find(l => l.textContent.includes('Genetik test'));
+    expect(box.querySelector('input').getAttribute('role')).toBe('switch');
     await click(box.querySelector('input'));
     await key('Escape');
     await select('mother');
@@ -907,5 +919,29 @@ describe('NSGC 2022 additions (clinician decisions 2026-11-02) and the trimmed s
     // put back
     const { usePanelPrefs, DEFAULT_PANEL } = await import('../utils/panelPrefs');
     await run(() => usePanelPrefs.getState().setPanel(DEFAULT_PANEL));
+  });
+});
+
+describe('the two free texts of a person (clinician question 2026-11-03)', () => {
+  it('"Ad ya da kısaltma" goes under the symbol, "Not" into the numbered notes; both in the panel, each saying where; a long name is warned about', async () => {
+    await select('mother');
+    const fields = $$('.editor-body label.field-col');
+    const nameField = fields.find(l => l.textContent.includes('Ad ya da kısaltma'));
+    const noteField = fields.find(l => l.textContent.includes('Not'));
+    expect(nameField.textContent).toMatch(/sembolün altında/);
+    expect(noteField.textContent).toMatch(/pedigrinin altında, numaralı/);
+    await typeInto(nameField.querySelector('input'), 'Ayşe');
+    await key('Enter', {}, nameField.querySelector('input'));
+    await typeInto(noteField.querySelector('textarea'), 'Kardiyoloji takibinde');
+    await key('Enter', {}, noteField.querySelector('textarea'));
+    const m = g().individuals.find(i => i.id === 'mother');
+    expect(m.displayLabel).toBe('Ayşe');
+    expect(m.notes).toBe('Kardiyoloji takibinde');
+    expect(drawn('mother').querySelector('.annotations').textContent).toMatch(/Ayşe/);
+    expect(drawn('mother').querySelector('.annotations').textContent).toMatch(/\[1\]/);
+    expect($('.notes-legend').textContent).toMatch(/Kardiyoloji takibinde/);
+    // a long name: the panel says to put the details in the note
+    await run(() => S().updateIndividual('mother', { displayLabel: 'Ayşe Yılmaz, 3 yıl önce opere' }));
+    expect(panelText()).toMatch(/Uzun yazı çizimi kalabalıklaştırır/);
   });
 });

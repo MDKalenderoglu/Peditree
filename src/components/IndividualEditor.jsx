@@ -623,10 +623,21 @@ export default function IndividualEditor({
         {!node.placeholder && !group && (
           <div className="card">
             <div className="card-title">{t('Bilgiler')}</div>
+            {/* two free texts, each saying where it goes (clinician question 2026-11-03): a short name
+                under the symbol, and a note in the numbered Notes under the pedigree */}
             <label className="field-col">
-              <span className="field-label">{t('Etiket (çizimde görünür)')}</span>
-              <DraftField key={`${node.id}-label`} type="text" className="input input-wide" value={node.displayLabel || ''} placeholder={t('ör. ad ya da kısaltma (boş bırakılabilir)')}
+              <span className="field-label">{t('Ad ya da kısaltma')} <span className="field-where">{t('sembolün altında')}</span></span>
+              <DraftField key={`${node.id}-label`} type="text" className="input input-wide" value={node.displayLabel || ''} placeholder={t('ör. Ayşe, A.Y. ya da “amca” (boş bırakılabilir)')}
                 onCommit={v => set({ displayLabel: v })} />
+              {(node.displayLabel || '').length > 24 && (
+                <span className="field-hint field-warn">{t('Uzun yazı çizimi kalabalıklaştırır; ayrıntıyı aşağıdaki nota yazın.')}</span>
+              )}
+            </label>
+            <label className="field-col">
+              <span className="field-label">{t('Not')} <span className="field-where">{t('pedigrinin altında, numaralı')}</span></span>
+              <DraftField key={`${node.id}-note`} as="textarea" rows={2} className="input input-wide" value={node.notes || ''}
+                placeholder={t('Öykü, muayene, tetkik… (sembolün yanında [1] çıkar)')}
+                onCommit={v => set({ notes: v })} />
             </label>
             {!isLoss && (
               <label className="field">
