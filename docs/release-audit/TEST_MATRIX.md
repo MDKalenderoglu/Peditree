@@ -100,7 +100,8 @@ memory over long sessions, export time on a phone.
 
 | Area | Why | Status |
 |---|---|---|
-| Firefox, WebKit / Safari, iPad | Playwright not installed (needs browser downloads); no Safari automation here | NOT TESTED |
+| Safari on macOS | The clinician has used the app in Safari throughout development (manual, informal, reported 2026-11-03) | PASS (manual, by the user) |
+| Firefox; Safari on iPad | Playwright not installed (needs browser downloads); the app is not online yet for the iPad | NOT TESTED |
 | Real screen readers (VoiceOver, NVDA) | Not available in this environment | NOT TESTED |
 | Real printing, PDF on paper | No printer | NOT TESTED |
 | Live deployment headers (CSP) | No deployment allowed in the audit | BLOCKED |
