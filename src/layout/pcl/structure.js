@@ -178,18 +178,29 @@ export function buildStructure(graph) {
   // man who married into the sibship) stand on that spouse's outer side.
   const expandLeft = (s) => [...(spousesOf.get(s) || []).slice().reverse().flatMap(expandLeft), s];
   const expandRight = (s) => [s, ...(spousesOf.get(s) || []).flatMap(expandRight)];
+  // several partners (clinician report 2026-11-03): those with children stand
+  // nearest, so their children hang from a short line of their own; a person
+  // who also has a partner in another drawn family keeps all married-in
+  // partners on one side (the ordering picks which: the block or its mirror),
+  // so none stands between that couple
+  const withChildren = (p, s) => (partnerUnions.get(p) || []).some((uid) => partnerIn(uid, p) === s && (childrenOf.get(uid) || []).length > 0);
+  const otherFamily = (p) => (partnerUnions.get(p) || []).some((uid) => {
+    const q = partnerIn(uid, p);
+    return !(spousesOf.get(p) || []).includes(q) && (indById.get(q) || {}).generation === (indById.get(p) || {}).generation;
+  });
   for (const atom of atoms) {
     for (const p of atom.core) {
-      const sp = spousesOf.get(p) || [];
+      const sp = (spousesOf.get(p) || []).slice().sort((a, b) => withChildren(p, b) - withChildren(p, a));
       const prefLeft = sexOf(p) === 'female';
       const left = [], right = [];
       // a twin's spouses stand outside the group (never between the twins)
       const mult = multipleOf.get(p);
       const outward = mult && mult.index === 0 ? 'left' : mult && mult.index === mult.members.length - 1 ? 'right' : null;
+      const oneSide = sp.length >= 2 && otherFamily(p) ? (prefLeft ? 'left' : 'right') : null;
       sp.forEach((s, k) => {
         // the clinician moved one of the two to the other side (union.leftPartner)
         const chosen = leftPartnerOf(p, s);
-        const goLeft = outward ? outward === 'left' : chosen ? chosen === s : (k % 2 === 0 ? prefLeft : !prefLeft);
+        const goLeft = outward ? outward === 'left' : chosen ? chosen === s : oneSide ? oneSide === 'left' : (k % 2 === 0 ? prefLeft : !prefLeft);
         (goLeft ? left : right).push(s);
       });
       blockOf.set(p, [...left.reverse().flatMap(expandLeft), p, ...right.flatMap(expandRight)]);
