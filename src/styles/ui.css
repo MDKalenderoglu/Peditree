@@ -490,3 +490,84 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 
 /* the ring asks first: which partner, what kind of sibling (Codex audit 2026-11-01) */
 .flyout-choose .quick-text.on { background: var(--accent-soft, #ece6f7); border-color: var(--accent, #5b3fa0); color: var(--accent, #5b3fa0); font-weight: 600; }
+
+/* ── Ayarlar: a window of its own (SettingsDialog.jsx; clinician request 2026-11-03) ── */
+.settings-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(21, 28, 51, 0.32); }
+.settings-dialog { width: 820px; max-width: 100%; height: min(640px, calc(100vh - 32px)); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-pop); overflow: hidden; }
+.settings-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 12px 22px; border-bottom: 1px solid var(--line-2); }
+.settings-head h2 { margin: 0; font-size: 17px; font-weight: 700; color: var(--ink); }
+.settings-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 196px minmax(0, 1fr); }
+.settings-nav { display: flex; flex-direction: column; gap: 2px; padding: 12px 10px; background: var(--frame); border-right: 1px solid var(--line-2); }
+.settings-nav button {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px; border: none; border-radius: 8px;
+  background: none; color: var(--ink-2); font: inherit; font-size: 14px; text-align: left; cursor: pointer;
+}
+.settings-nav button svg { color: var(--muted); flex: none; }
+.settings-nav button:hover:not(.on) { background: var(--sunken); color: var(--ink); }
+.settings-nav button.on { background: var(--accent-soft); color: var(--accent-ink); font-weight: 700; box-shadow: inset 3px 0 0 var(--accent); }
+.settings-nav button.on svg { color: var(--accent); }
+.settings-nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.settings-pane { overflow-y: auto; padding: 18px 24px 24px; }
+.settings-pane h3 { margin: 0; font-size: 16px; font-weight: 700; color: var(--ink); }
+.set-intro { margin: 4px 0 16px; max-width: 62ch; font-size: 13px; color: var(--muted); }
+.settings-foot { margin: 0; padding: 10px 22px; border-top: 1px solid var(--line-2); font-size: 12px; color: var(--muted); background: var(--frame); }
+
+.set-block { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 2px 16px; margin-bottom: 14px; }
+.set-block-title { padding: 12px 0 4px; font-size: 13px; font-weight: 700; color: var(--ink); }
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; }
+.set-block > .set-row + .set-row, .set-block > .set-row + label.set-row, .set-block > label.set-row + label.set-row { border-top: 1px solid var(--line-2); }
+.set-row-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.set-row-title { font-size: 14px; color: var(--ink); }
+.set-row-hint { font-size: 12px; color: var(--muted); max-width: 46ch; }
+.set-row-control { flex: none; }
+.set-row-switch { cursor: pointer; }
+.set-row.off .set-row-title { color: var(--muted); }
+.set-note { margin: 0; padding: 10px 0 12px; border-top: 1px solid var(--line-2); font-size: 12px; color: var(--muted); }
+.set-reset { margin-top: -4px; }
+
+/* on/off switch (a checkbox underneath) */
+.switch { appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 36px; height: 20px; margin: 0; border-radius: 999px; background: #c8ced6; cursor: pointer; transition: background 0.15s; }
+.switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(24, 33, 44, 0.25); transition: transform 0.15s; }
+.switch:checked { background: var(--accent); }
+.switch:checked::after { transform: translateX(16px); }
+.switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .switch, .switch::after { transition: none; } }
+
+/* ring menu rows: switch, name, order */
+.set-list { list-style: none; margin: 0; padding: 0 0 6px; }
+.set-list > li { border-top: 1px solid var(--line-2); }
+.set-list > li:first-child { border-top: none; }
+.set-list-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+.set-list-label { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; cursor: pointer; }
+.set-list-name { font-size: 14px; color: var(--ink); }
+.set-list > li.off .set-list-name { color: var(--muted); }
+.set-move { display: inline-flex; gap: 2px; opacity: 0.35; transition: opacity 0.12s; }
+.set-list-row:hover .set-move, .set-move:focus-within { opacity: 1; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 0 10px 48px; }
+.chip { padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
+.chip.on { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent-ink); }
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.font-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 4px 0 8px; }
+
+@media (max-width: 680px) {
+  .settings-dialog { height: calc(100vh - 32px); }
+  .settings-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .settings-nav { flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--line-2); padding: 8px; }
+  .settings-nav button { width: auto; white-space: nowrap; }
+  .settings-nav button.on { box-shadow: inset 0 -3px 0 var(--accent); }
+  .settings-pane { padding: 14px 16px 18px; }
+  .set-row { flex-wrap: wrap; }
+  .font-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (pointer: coarse) {
+  .settings-nav button { padding: 12px 14px; }
+  .set-move { opacity: 1; }
+  .switch { width: 44px; height: 26px; }
+  .switch::after { width: 22px; height: 22px; }
+  .switch:checked::after { transform: translateX(18px); }
+  .chip { padding: 8px 12px; font-size: 14px; }
+}
+/* where a free text appears (label vs note; clinician question 2026-11-03) */
+.field-where { margin-left: 6px; font-weight: 400; font-size: 12px; color: var(--muted); }
+.field-warn { color: var(--warn); }

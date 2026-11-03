@@ -124,13 +124,23 @@ describe('the screens in English', () => {
   it('the toolbar and each of its windows: About, keyboard help, New, Open, Download, Share, Settings', async () => {
     const toolbar = $('.canvas-toolbar');
     const seen = [said(toolbar)];
-    for (const open of ['About PediTree', 'New', 'Download', 'Settings']) {
+    for (const open of ['About PediTree', 'New', 'Download']) {
       const b = byText(open) || buttons().find((x) => x.textContent.includes(open));
       expect(b, open).toBeTruthy();
       await click(b);
       seen.push(said(toolbar));
       await key('Escape');
     }
+    // Settings: a window of its own on the page; every section read
+    await click(byText('Settings'));
+    const dialog = document.querySelector('.settings-dialog');
+    for (const tab of [...dialog.querySelectorAll('[role="tab"]')]) {
+      await click(tab);
+      seen.push(said(dialog));
+    }
+    expect(seen.join(' ')).toMatch(/Ring menu/);
+    expect(seen.join(' ')).toMatch(/Side panel/);
+    await key('Escape');
     // the keyboard help opens from the About window
     await click(byText('About PediTree'));
     await click(buttons().find((x) => x.textContent.includes('Keyboard shortcuts')));
@@ -149,11 +159,12 @@ describe('the screens in English', () => {
   it('the language can be changed in Settings, and the screens follow at once', async () => {
     expect(document.documentElement.lang).toBe('en');
     await click(byText('Settings'));
-    await click(byText('Türkçe'));
+    const pick = (text) => [...document.querySelectorAll('.settings-dialog button')].find((b) => b.textContent.trim() === text);
+    await click(pick('Türkçe'));
     expect(byText('Kaydet')).toBeTruthy();
     expect(useLang.getState().ui).toBe('tr');
     expect(document.documentElement.lang).toBe('tr');
-    await click(byText('English'));
+    await click(pick('English'));
     expect(byText('Save')).toBeTruthy();
     await key('Escape');
   });

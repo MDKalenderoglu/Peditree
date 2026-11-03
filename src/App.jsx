@@ -16,11 +16,11 @@ import { nextPerson, ringKeysFor, KEY_LETTERS } from './utils/keyboardNav';
 import { useT, useLang, t as tNow, tk, currentLang, drawingLangOf } from './i18n';
 import { toPed } from './graph/ped';
 import { mergeIntoGroup as checkMerge } from './graph/ops';
-import RingSettings, { PanelSettings } from './components/RingSettings';
+import SettingsDialog from './components/SettingsDialog';
 import RelationChooser from './components/RelationChooser';
 import { withGeneticLine, subjectOf, adoptionOf, ancestorsOf, REPRO_LABEL, EGG_SOURCE, CARRIER_ROLES, ART_DONOR_RELATION, isPregnancy } from './graph/model';
 import { clinicalNamer } from './utils/clinicalNotices';
-import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, DRAWING_FONTS, LEGEND_SIZES } from './utils/drawingStyle';
+import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss } from './utils/drawingStyle';
 import { versionLine, citationText, REPOSITORY_URL, CONTACT_EMAIL, issueUrl } from './utils/appInfo';
 import { nameCase } from './utils/nameCase';
 import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2 } from 'lucide-react';
@@ -80,7 +80,7 @@ function App() {
     exportProjectFile, openProjectFile, importPedFile, relayout, doc, setPatientName, setProbandBirthDate, newFromTemplate,
   } = usePedigreeStore();
   const t = useT();
-  const { ui: uiLang, drawing: drawingChoice, setLang } = useLang();
+  const { ui: uiLang, drawing: drawingChoice } = useLang();
   const drawLang = drawingLangOf({ ui: uiLang, drawing: drawingChoice });
   // the page's language, for screen readers and the browser's spelling and hyphenation
   React.useEffect(() => { document.documentElement.lang = uiLang; }, [uiLang]);
@@ -761,86 +761,12 @@ function App() {
               title={t('Ayarlar: dil, çizimin görünümü, yazı tipi, halka menü ve indirilen resimler')}>
               <SlidersHorizontal size={15} /> {t('Ayarlar')}
             </button>
-            {settingsOpen && (
-              <div className="keys-popover share-popover settings-popover" role="dialog" aria-label={t('Ayarlar')}>
-                <div className="keys-title">{t('Ayarlar')}</div>
-                {/* languages (clinician decisions 2026-11-02): each language by its own name */}
-                <div className="settings-group">
-                  <div className="more-title">{t('Dil')}</div>
-                  <div className="segmented" role="radiogroup" aria-label={t('Ekranın dili')}>
-                    {[['tr', 'Türkçe'], ['en', 'English']].map(([v, label]) => (
-                      <button key={v} role="radio" lang={v} aria-checked={uiLang === v} className={uiLang === v ? 'on' : undefined}
-                        onClick={() => setLang({ ui: v })}>{label}</button>
-                    ))}
-                  </div>
-                  <span className="field-hint">{t('Çizimin, indirilen ve yazdırılan dosyaların dili')}</span>
-                  <div className="segmented" role="radiogroup" aria-label={t('Çizimin dili')}>
-                    {[['same', t('Ekranla aynı')], ['tr', 'Türkçe'], ['en', 'English']].map(([v, label]) => (
-                      <button key={v} role="radio" lang={v === 'same' ? undefined : v} aria-checked={drawingChoice === v} className={drawingChoice === v ? 'on' : undefined}
-                        onClick={() => setLang({ drawing: v })}>{label}</button>
-                    ))}
-                  </div>
-                  <p className="share-note">{t('Yazdığınız adlar, notlar ve bulgular çevrilmez; yalnızca programın kendi yazıları değişir.')}</p>
-                </div>
-                <div className="settings-group">
-                  <div className="more-title">{t('Çizimin görünümü')}</div>
-                  <div className="segmented" role="radiogroup" aria-label={t('Çizimin görünümü')}>
-                    {[['standard', tk('Standart')], ['hand', tk('El çizimi')]].map(([v, label]) => (
-                      <button key={v} role="radio" aria-checked={view.drawStyle === v} className={view.drawStyle === v ? 'on' : undefined}
-                        onClick={() => setView({ drawStyle: v })}>{t(label)}</button>
-                    ))}
-                  </div>
-                  <p className="share-note">{t('El çiziminde çizgiler ve semboller kalemle çizilmiş gibi hafifçe titrer. Sembollerin ve çizgilerin anlamı değişmez.')}</p>
-                </div>
-                <div className="settings-group">
-                  <div className="more-title">{t('Çizimdeki yazıların yazı tipi')}</div>
-                  {[['plain', tk('Düz yazı tipleri')], ['hand', tk('El yazısı tipleri')]].map(([group, title]) => (
-                    <div key={group} className="font-list" role="radiogroup" aria-label={t(title)}>
-                      <span className="field-hint">{t(title)}</span>
-                      {DRAWING_FONTS.filter(f => f.group === group).map(f => (
-                        <button key={f.id} role="radio" aria-checked={view.fontId === f.id} className={`font-option${view.fontId === f.id ? ' on' : ''}`}
-                          onClick={() => setView({ fontId: f.id })}>
-                          <span className="font-sample" style={{ fontFamily: f.family }}>{t('II-3 · 45 y · Ayşe Gül')}</span>
-                          <span className="font-name">{f.id === 'standard' ? t(f.label) : f.label}{f.note ? ` — ${t(f.note)}` : ''}</span>
-                        </button>
-                      ))}
-                    </div>
-                  ))}
-                  <label className="check">
-                    <input type="checkbox" checked={view.plainNumbers} onChange={e => setView({ plainNumbers: e.target.checked })} />
-                    {t('Pedigri numaraları (I-1, II-3) el yazısında da düz yazılsın')}
-                  </label>
-                </div>
-                <div className="settings-group">
-                  <div className="more-title">{t('Hasta adı, bulgular açıklaması ve notların yazı boyutu')}</div>
-                  <div className="segmented" role="radiogroup" aria-label={t('Açıklama yazılarının boyutu')}>
-                    {LEGEND_SIZES.map(z => (
-                      <button key={z.id} role="radio" aria-checked={view.legendSize === z.id} className={view.legendSize === z.id ? 'on' : undefined}
-                        onClick={() => setView({ legendSize: z.id })}>{t(z.label)}</button>
-                    ))}
-                  </div>
-                  <p className="share-note">{t('İndirilen ve yazdırılan çizimde de bu boyutta olur. Sembollerin altındaki yazılar aynı boyutta kalır.')}</p>
-                </div>
-                <div className="settings-group">
-                  <div className="more-title">{t('İndirme, paylaşma ve yazdırma')}</div>
-                  <div className="segmented" role="radiogroup" aria-label={t('İndirilen resmin görünümü')}>
-                    {[['screen', tk('Ekrandaki gibi')], ['standard', tk('Her zaman standart')]].map(([v, label]) => (
-                      <button key={v} role="radio" aria-checked={view.exportAs === v} className={view.exportAs === v ? 'on' : undefined}
-                        onClick={() => setView({ exportAs: v })}>{t(label)}</button>
-                    ))}
-                  </div>
-                </div>
-                <RingSettings />
-                <PanelSettings />
-                <div className="settings-group">
-                  <div className="more-title">{t('Dosya açma')}</div>
-                  <label className="check">
-                    <input type="checkbox" checked={view.openHelp} onChange={e => setView({ openHelp: e.target.checked })} />
-                    {t('“Aç”a basınca hangi dosyaların açılabildiğini anlatan pencere görünsün')}
-                  </label>
-                </div>
-                <p className="share-note">{t('Bu ayarlar yalnızca bu cihazda saklanır. Pedigri dosyası değişmez; dosyayı açan başka biri kendi ayarıyla görür.')}</p>
-              </div>
+            {/* a window of its own, on the page (clinician request 2026-11-03) */}
+            {settingsOpen && createPortal(
+              <div className="settings-backdrop">
+                <SettingsDialog onClose={() => setSettingsOpen(false)} />
+              </div>,
+              document.body,
             )}
           </div>
         </div>
