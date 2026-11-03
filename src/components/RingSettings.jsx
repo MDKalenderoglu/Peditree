@@ -6,7 +6,7 @@
  * "Diğer…" in the ring and "Diğer bilgiler…" in the panel. The four
  * directions, the sex choices and the corner buttons do not change.
  */
-import { ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowUp, ArrowDown, Check, Plus } from 'lucide-react';
 import { useT } from '../i18n';
 import { useRingPrefs, RING_ROWS, RING_PREGNANCY, RING_STATUS, DEFAULT_RING, moveInRing, toggleInRing } from '../utils/ringPrefs';
 import { usePanelPrefs, PANEL_PARTS, DEFAULT_PANEL, togglePanelPart } from '../utils/panelPrefs';
@@ -61,7 +61,11 @@ export function RingSection() {
                 const on = !ring.hidden.includes(x.id);
                 return (
                   <button key={x.id} className={`chip${on ? ' on' : ''}`} role="checkbox" aria-checked={on}
-                    onClick={() => setRing(toggleInRing(ring, x.id))}>{t(x.label)}</button>
+                    onClick={() => setRing(toggleInRing(ring, x.id))}>
+                    {/* on / off by a mark too, never by colour alone */}
+                    <span className="chip-mark" aria-hidden="true">{on ? <Check size={12} strokeWidth={3} /> : <Plus size={12} strokeWidth={2.5} />}</span>
+                    {t(x.label)}
+                  </button>
                 );
               })}
             </div>

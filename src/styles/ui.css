@@ -493,7 +493,7 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 
 /* ── Ayarlar: a window of its own (SettingsDialog.jsx; clinician request 2026-11-03) ── */
 .settings-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(21, 28, 51, 0.32); }
-.settings-dialog { width: 820px; max-width: 100%; height: min(640px, calc(100vh - 32px)); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-pop); overflow: hidden; }
+.settings-dialog { animation: settings-in 0.16s ease-out; width: 820px; max-width: 100%; height: min(640px, calc(100vh - 32px)); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-pop); overflow: hidden; }
 .settings-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 12px 22px; border-bottom: 1px solid var(--line-2); }
 .settings-head h2 { margin: 0; font-size: 17px; font-weight: 700; color: var(--ink); }
 .settings-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 196px minmax(0, 1fr); }
@@ -526,7 +526,7 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 .set-reset { margin-top: -4px; }
 
 /* on/off switch (a checkbox underneath) */
-.switch { appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 36px; height: 20px; margin: 0; border-radius: 999px; background: #c8ced6; cursor: pointer; transition: background 0.15s; }
+.switch { appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 36px; height: 20px; margin: 0; border-radius: 999px; background: #8a939e; cursor: pointer; transition: background 0.15s; } /* off track 3.2:1 on white (WCAG 1.4.11) */
 .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(24, 33, 44, 0.25); transition: transform 0.15s; }
 .switch:checked { background: var(--accent); }
 .switch:checked::after { transform: translateX(16px); }
@@ -541,10 +541,12 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 .set-list-label { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; cursor: pointer; }
 .set-list-name { font-size: 14px; color: var(--ink); }
 .set-list > li.off .set-list-name { color: var(--muted); }
-.set-move { display: inline-flex; gap: 2px; opacity: 0.35; transition: opacity 0.12s; }
-.set-list-row:hover .set-move, .set-move:focus-within { opacity: 1; }
+.set-move { display: inline-flex; gap: 4px; } /* always visible: no hover on a tablet */
+.set-move .ui-btn-icon { color: var(--muted); }
+.set-move .ui-btn-icon:hover:not(:disabled) { color: var(--ink); }
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 0 10px 48px; }
-.chip { padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px 4px 7px; border: 1px solid #b4bcc6; border-radius: 999px; background: var(--surface); color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
+.chip-mark { display: inline-flex; }
 .chip.on { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent-ink); }
 .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
@@ -562,7 +564,6 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 }
 @media (pointer: coarse) {
   .settings-nav button { padding: 12px 14px; }
-  .set-move { opacity: 1; }
   .switch { width: 44px; height: 26px; }
   .switch::after { width: 22px; height: 22px; }
   .switch:checked::after { transform: translateX(18px); }
@@ -571,3 +572,5 @@ textarea.input { height: auto; min-height: 60px; padding: 7px 9px; resize: verti
 /* where a free text appears (label vs note; clinician question 2026-11-03) */
 .field-where { margin-left: 6px; font-weight: 400; font-size: 12px; color: var(--muted); }
 .field-warn { color: var(--warn); }
+@keyframes settings-in { from { opacity: 0; transform: translateY(6px) scale(0.985); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .settings-dialog { animation: none; } }

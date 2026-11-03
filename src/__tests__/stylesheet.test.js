@@ -26,6 +26,12 @@ describe('stylesheet rules', () => {
     expect(css('ui.css')).toMatch(/@keyframes pedigree-pulse/);
   });
 
+  it('settings: a switch that is off still shows its outline (3:1, WCAG 1.4.11); order arrows never hide until hover; motion respects reduced motion', () => {
+    expect(block('ui.css', '.switch')).toMatch(/background: #8a939e/);
+    expect(block('ui.css', '.set-move')).not.toMatch(/opacity/);
+    expect(css('ui.css')).toMatch(/prefers-reduced-motion: reduce\) \{ \.settings-dialog \{ animation: none; \}/);
+  });
+
   it('notices and the toolbar are in the page flow, never laid over the drawing; the toolbar wraps', () => {
     expect(block('app.css', '.warning-panel')).not.toMatch(/position:\s*absolute/);
     expect(block('app.css', '.canvas-toolbar')).toMatch(/flex-wrap:\s*wrap/);

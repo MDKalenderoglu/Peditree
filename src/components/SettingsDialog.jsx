@@ -128,7 +128,22 @@ export default function SettingsDialog({ onClose }) {
   const t = useT();
   const [section, setSection] = useState('language');
   const tabRef = useRef(null);
-  useEffect(() => { if (tabRef.current) tabRef.current.focus(); }, []);
+  const boxRef = useRef(null);
+  // focus starts on the section list and returns to where it was (the "Ayarlar" button) on closing
+  useEffect(() => {
+    const before = document.activeElement;
+    if (tabRef.current) tabRef.current.focus();
+    return () => { if (before && before.focus && document.contains(before)) before.focus(); };
+  }, []);
+  // a modal window keeps Tab inside it (WCAG 2.1.2 / 2.4.3)
+  const keepFocus = (e) => {
+    if (e.key !== 'Tab' || !boxRef.current) return;
+    const items = [...boxRef.current.querySelectorAll('button:not(:disabled):not([tabindex="-1"]), input:not(:disabled), [tabindex="0"]')];
+    if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  };
   const current = SECTIONS.find((s) => s.id === section);
   const Body = BODY[section];
   const step = (dir) => {
@@ -138,7 +153,7 @@ export default function SettingsDialog({ onClose }) {
     requestAnimationFrame(() => document.getElementById(`set-tab-${next.id}`)?.focus());
   };
   return (
-    <div className="settings-dialog" role="dialog" aria-modal="true" aria-label={t('Ayarlar')} data-popup="settings">
+    <div className="settings-dialog" role="dialog" aria-modal="true" aria-label={t('Ayarlar')} data-popup="settings" ref={boxRef} onKeyDown={keepFocus}>
       <div className="settings-head">
         <h2>{t('Ayarlar')}</h2>
         <button className="ui-btn ui-btn-ghost ui-btn-icon" onClick={onClose} aria-label={t('Kapat')} title={t('Kapat')}><X size={18} /></button>
