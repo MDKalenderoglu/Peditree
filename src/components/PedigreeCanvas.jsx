@@ -112,8 +112,12 @@ function drawRegions(el, defs, clipId, outline, parts, sz) {
   const R = sz * 1.8;
   regions.append('line').attr('class', 'region-divider').attr('x1', 0).attr('y1', -R).attr('x2', 0).attr('y2', R)
     .attr('stroke', NODE_STROKE).attr('stroke-width', 1);
-  regions.append('line').attr('class', 'region-divider').attr('x1', -R).attr('y1', 0).attr('x2', R).attr('y2', 0)
-    .attr('stroke', NODE_STROKE).attr('stroke-width', 1);
+  // a symbol in halves (a carrier, one finding beside it) has no quarters: a line
+  // across an empty half would read as a mark (clinician report 2026-11-04)
+  if (parts.some(p => p.a1 - p.a0 < 180)) {
+    regions.append('line').attr('class', 'region-divider').attr('x1', -R).attr('y1', 0).attr('x2', R).attr('y2', 0)
+      .attr('stroke', NODE_STROKE).attr('stroke-width', 1);
+  }
   for (const p of parts) {
     regions.append('path').attr('class', p.carrier ? 'condition-carrier' : 'condition-region')
       .attr('d', sectorPath(p.a0, p.a1, R))
@@ -122,6 +126,19 @@ function drawRegions(el, defs, clipId, outline, parts, sz) {
   // outline on top, so the regions never thin the symbol's border
   el.node().appendChild(outline.node().cloneNode());
   el.select(':scope > :last-child').attr('fill', 'none').attr('class', 'pedigree-shape-outline');
+}
+
+/**
+ * The classic carrier dot (Ayarlar: "Ortada nokta"; conditionKey.js
+ * CARRIER_MARKS): dark on an empty symbol, white on a filled one, with a
+ * white ring where findings' regions meet in the middle. y: lower in a
+ * symbol with a letter inside (P, D, G; the letter then moves up) or in a triangle.
+ */
+function drawCarrierDot(el, filling, sz, y = 0, r = Math.max(2.8, sz * 0.2)) {
+  const dot = (cls, rr, ink) => el.append('circle').attr('class', cls).attr('cx', 0).attr('cy', y).attr('r', rr)
+    .attr('fill', ink).style('stroke', 'none');
+  if (filling.mode === 'regions') dot('carrier-dot-ring', r + 1.6, NODE_FILL);
+  dot('carrier-dot', r, filling.mode === 'full' ? NODE_FILL : NODE_STROKE);
 }
 
 /** One stroke of a connector, optionally offset (dx, dy) — used for double lines. */
@@ -242,12 +259,17 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const has = (status, entry) => nodes.some(n => (status === 'carrier' || n !== headNode) && (n.conditions || []).some(c =>
       c && c.label && c.status === status
       && c.label.trim().toLocaleLowerCase('tr') === entry.label.trim().toLocaleLowerCase('tr')));
-    // a carrier without a named finding: its own pattern, explained in the key (NSGC 2022 §4.5)
-    const plainCarrier = nodes.some(n => n.carrier && fillFor(n, conditionKey).parts?.some(p => p.fill === CARRIER_FILL));
+    // a carrier without a named finding: its own pattern (NSGC 2022 §4.5) or the dot the
+    // viewer chose (Ayarlar), explained in the key
+    const carrierMark = (drawing && drawing.carrierMark) || 'split';
+    const plainCarrier = nodes.some(n => {
+      const f = n.carrier ? fillFor(n, conditionKey, carrierMark) : {};
+      return f.dot || f.parts?.some(p => p.fill === CARRIER_FILL);
+    });
     const shownKey = [
       ...conditionKey.filter(e => has('affected', e)).map(e => ({ ...e, carrier: false, text: e.label })),
       ...conditionKey.filter(e => has('carrier', e)).map(e => ({ ...e, carrier: true, text: td('{label} taşıyıcısı', { label: e.label }) })),
-      ...(plainCarrier ? [{ label: null, region: 'q1', fill: CARRIER_FILL, carrier: true, text: td('Taşıyıcı') }] : []),
+      ...(plainCarrier ? [{ label: null, region: 'q1', fill: CARRIER_FILL, carrier: true, dot: carrierMark === 'dot', text: td('Taşıyıcı') }] : []),
       // the vertical line is explained in the key too (NSGC 2022 Fig 2)
       ...(nodes.some(n => n.presymptomatic && !isSmallSymbol(n)) ? [{ label: null, presymptomatic: true, text: td('Belirtisiz taşıyıcı (şu an belirtisi yok)') }] : []),
       ...(nodes.some(n => n.recordsReviewed) ? [{ label: null, recordsReviewed: true, text: td('Kayıtlarla doğrulandı (tıbbi kayıt ya da rapor görüldü)') }] : []),
@@ -715,7 +737,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       // `affected` boolean; carrier rendering is untouched.
       // Several conditions in the pedigree: each condition fills its own
       // region of the symbol, defined in the legend (graph/conditionKey.js).
-      const filling = fillFor(d, conditionKey);
+      const filling = fillFor(d, conditionKey, carrierMark);
+      const dotBelow = filling.dot && !isSmall && (d.ongoingPregnancy || d.reproMark); // a letter inside moves up for it
       let fill = NODE_FILL;
       if (filling.mode === 'full') fill = NODE_STROKE;
 
@@ -733,6 +756,13 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           .attr('stroke', NODE_STROKE).attr('stroke-width', 2);
       }
 
+      // the carrier's dot, when the viewer chose it: in the middle, below a letter inside the symbol
+      if (filling.dot) {
+        if (isSmall) drawCarrierDot(el, filling, sz, sz / 3);
+        else if (dotBelow) drawCarrierDot(el, filling, sz, sz * 0.65, sz * 0.175);
+        else drawCarrierDot(el, filling, sz);
+      }
+
       // Records reviewed: an asterisk at the lower right, outside the brackets of an
       // adopted person (NSGC 2022 Fig 2 "documented evaluation"; clinician 2026-11-03)
       if (d.recordsReviewed) {
@@ -744,16 +774,16 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
 
       // Ongoing pregnancy: "P" inside the symbol (NSGC)
       if (d.ongoingPregnancy) {
-        el.append('text').attr('class', 'pregnancy-p').attr('y', 5).attr('text-anchor', 'middle')
+        el.append('text').attr('class', 'pregnancy-p').attr('y', dotBelow ? 2 : 5).attr('text-anchor', 'middle')
           .attr('font-size', '14px').attr('font-weight', '700').attr('fill', filling.mode === 'full' ? NODE_FILL : NODE_STROKE).text('P');
       }
       // Several people in one symbol: their number, or "n", inside (NSGC;
       // clinician decisions 2026-11-01)
       // "D" (donor, surrogate) or "G" (gestational carrier) inside the symbol; white on a filled one
       if (d.reproMark) {
-        el.append('text').attr('class', 'repro-mark').attr('y', 6).attr('text-anchor', 'middle')
+        el.append('text').attr('class', 'repro-mark').attr('y', dotBelow ? 3 : 6).attr('text-anchor', 'middle')
           .attr('font-size', '16px').attr('font-weight', '600')
-          .attr('fill', fillFor(d, conditionKey).mode === 'full' ? NODE_FILL : NODE_STROKE).text(d.reproMark);
+          .attr('fill', filling.mode === 'full' ? NODE_FILL : NODE_STROKE).text(d.reproMark);
       }
       if (isGroup(d)) {
         el.append('text').attr('class', 'group-count').attr('y', 6).attr('text-anchor', 'middle')
@@ -907,10 +937,11 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           : sex === 'female'
             ? cell.append('circle').attr('r', s)
             : cell.append('path').attr('d', `M0,${-s} L${s},0 L0,${s} L${-s},0 Z`);
-        const f = fillFor(probandNode, conditionKey);
+        const f = fillFor(probandNode, conditionKey, carrierMark);
         shape.attr('stroke', NODE_STROKE).attr('stroke-width', 1.5)
           .attr('fill', f.mode === 'full' ? NODE_STROKE : NODE_FILL);
         if (f.mode === 'regions') drawRegions(cell, defs, 'legend-proband-regions', shape, f.parts, s);
+        if (f.dot) drawCarrierDot(cell, f, s);
         headLines.forEach((line, li) => {
           const t = keyG.append('text')
             .attr('x', textX).attr('y', ky + s + 5 * LK + li * HEAD_LINE)
@@ -933,6 +964,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         } else if (entry.presymptomatic) {
           cell.append('line').attr('class', 'presymptomatic-line').attr('x1', 0).attr('y1', -s).attr('x2', 0).attr('y2', s)
             .attr('stroke', NODE_STROKE).attr('stroke-width', 1.5);
+        } else if (entry.dot) {
+          drawCarrierDot(cell, { mode: 'none' }, s);
         } else {
           const [a0, a1] = entry.carrier ? [90, 270] : (REGION_ANGLES[entry.region] || REGION_ANGLES.q1);
           drawRegions(cell, defs, `key-region-${row}`, box, [{ fill: entry.fill, a0, a1, carrier: entry.carrier }], s);

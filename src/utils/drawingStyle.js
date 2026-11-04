@@ -17,6 +17,7 @@
 import { create } from 'zustand';
 import { tk } from '../i18n';
 import { PAPERS } from './paper';
+import { CARRIER_MARKS } from '../graph/conditionKey';
 import kalam400 from '@fontsource/kalam/files/kalam-latin-400-normal.woff2?url';
 import kalam400x from '@fontsource/kalam/files/kalam-latin-ext-400-normal.woff2?url';
 import kalam700 from '@fontsource/kalam/files/kalam-latin-700-normal.woff2?url';
@@ -70,7 +71,8 @@ export const fontById = (id) => DRAWING_FONTS.find(f => f.id === id) || DRAWING_
 // openHelp: "Aç" first explains which files it opens (clinician decision 2026-10-30; "Bir daha gösterme" turns it off)
 // legendSize: the text of the patient's name, the findings key and the notes (clinician request 2026-10-30)
 // paper: the page under the drawing on screen (paper.js; clinician request 2026-11-03)
-export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain' };
+// carrierMark: a carrier without a named finding, half (NSGC 2022) or dot (conditionKey.js CARRIER_MARKS; 2026-11-04)
+export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split' };
 
 /**
  * Sizes for the name, key and notes. They lie above and below the family,
@@ -105,6 +107,7 @@ export function normalizeView(v) {
     openHelp: o.openHelp !== false,
     legendSize: LEGEND_SIZES.some(z => z.id === o.legendSize) ? o.legendSize : 'normal',
     paper: PAPERS.some(p => p.id === o.paper) ? o.paper : 'plain',
+    carrierMark: CARRIER_MARKS.some(m => m.id === o.carrierMark) ? o.carrierMark : 'split',
   };
 }
 
@@ -140,14 +143,19 @@ export function drawingSpec(view) {
     fontId: font.id,
     legendScale: (LEGEND_SIZES.find(z => z.id === view.legendSize) || LEGEND_SIZES[1]).scale,
     paper: view.paper || 'plain', // the screen only: an export loses it
+    carrierMark: view.carrierMark || 'split', // notation, not look: exports keep it
   };
 }
 
 /** The standard drawing (an export the clinician wants plain whatever the screen shows). */
 export const STANDARD_SPEC = drawingSpec(DEFAULT_VIEW);
 
-/** The spec an export uses: what the screen shows, or always the standard drawing. */
-export const exportSpec = (view) => (view.exportAs === 'standard' ? STANDARD_SPEC : drawingSpec(view));
+/**
+ * The spec an export uses: what the screen shows, or always the standard
+ * drawing — with the carrier drawn as on the screen either way (a choice of
+ * notation the key explains, not of look).
+ */
+export const exportSpec = (view) => (view.exportAs === 'standard' ? { ...STANDARD_SPEC, carrierMark: drawingSpec(view).carrierMark } : drawingSpec(view));
 
 /**
  * @font-face rules with the typeface inside (data: URLs), so an exported SVG

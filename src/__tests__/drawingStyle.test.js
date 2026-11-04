@@ -34,8 +34,8 @@ function samplePath(d, steps = 20) {
 }
 
 describe('drawing style settings', () => {
-  it('starts standard, with plain pedigree numbers and exports as on screen', () => {
-    expect(DEFAULT_VIEW).toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain' });
+  it('starts standard, with plain pedigree numbers and exports as on screen; the carrier as NSGC 2022 draws it', () => {
+    expect(DEFAULT_VIEW).toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split' });
     expect(drawingSpec(DEFAULT_VIEW)).toMatchObject({ hand: false, family: STANDARD_FAMILY, k: 1, numberK: 1 });
   });
 
@@ -52,9 +52,10 @@ describe('drawing style settings', () => {
   });
 
   it('keeps only known values from storage', () => {
-    expect(normalizeView({ drawStyle: 'crayon', fontId: 'comic', plainNumbers: 'no', exportAs: 'x', openHelp: 'maybe', legendSize: 'huge', paper: 'tartan' }))
-      .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain' });
+    expect(normalizeView({ drawStyle: 'crayon', fontId: 'comic', plainNumbers: 'no', exportAs: 'x', openHelp: 'maybe', legendSize: 'huge', paper: 'tartan', carrierMark: 'star' }))
+      .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split' });
     expect(normalizeView({ paper: 'dots' }).paper).toBe('dots');
+    expect(normalizeView({ carrierMark: 'dot' }).carrierMark).toBe('dot');
     // "Bir daha gösterme" (Aç) is kept
     expect(normalizeView({ openHelp: false }).openHelp).toBe(false);
     expect(normalizeView(null)).toEqual(DEFAULT_VIEW);
@@ -81,6 +82,12 @@ describe('drawing style settings', () => {
     const v = { ...DEFAULT_VIEW, drawStyle: 'hand', fontId: 'kalam' };
     expect(exportSpec(v).hand).toBe(true);
     expect(exportSpec({ ...v, exportAs: 'standard' })).toEqual(STANDARD_SPEC);
+  });
+
+  it('the carrier dot is notation, not look: an export "always standard" keeps it', () => {
+    const v = { ...DEFAULT_VIEW, drawStyle: 'hand', exportAs: 'standard', carrierMark: 'dot' };
+    expect(exportSpec(v)).toEqual({ ...STANDARD_SPEC, carrierMark: 'dot' });
+    expect(STANDARD_SPEC.carrierMark).toBe('split');
   });
 
   // moved to screen.test.js: the hand-drawn look leaves the family untouched; kept in localStorage

@@ -29,7 +29,7 @@ birlikte tanımlar. **Standart** ile **geliştirici/klinik tercih** her satırda
 | Cinsiyet kimliği ≠ doğumda atanan cinsiyet | Kimlik sembolü + altında AMAB/AFAB/UAAB | 22, 25 | ❌ | Faz 2b (model alanı) |
 | Etkilenmiş | Dolu sembol, lejantta tanımlı | 08, 22 | ✅ (lejant yalnız `conditions[]` için) | lejant her durumda |
 | Birden fazla durum | Bölünmüş sembol, her bölme ayrı desen, lejant | 08, 22 | ✅ bölünmüş sembol, her bulguya ayrı bölge ve desen, bulgu anahtarında tanımlı | korunur |
-| Taşıyıcı | **22: nokta artık önerilmiyor**; bölünmüş sembol + desen + lejant | 22 §4.5 | ✅ NSGC 2022: nokta yok; adı girilmemiş taşıyıcıda sol yarı çapraz tarama + anahtarda "Taşıyıcı"; adı girilmiş taşınan bulgu kendi deseniyle "… taşıyıcısı" (2026-11-02) | korunur |
+| Taşıyıcı | **22: nokta artık önerilmiyor**; bölünmüş sembol + desen + lejant | 22 §4.5 | ✅ NSGC 2022: nokta yok; adı girilmemiş taşıyıcıda sol yarı çapraz tarama + anahtarda "Taşıyıcı"; adı girilmiş taşınan bulgu kendi deseniyle "… taşıyıcısı" (2026-11-02); Ayarlar'dan "Ortada nokta" (NSGC 2008) da seçilebilir, anahtar seçileni açıklar (2026-11-04) | korunur |
 | Asemptomatik/presemptomatik taşıyıcı | Ortadan dikey çizgi | 08, 22 | ❌ | Faz 4 |
 | Ölmüş | Sembolü aşan eğik çizgi; altında "d." + yaş | 08, 22 | ✅ (çizgi) | "d." etiketi doğrulanacak |
 | Proband | Sol altta ok **+ "P"**; **her zaman etkilenmiş** | 08, 22 | ✅ ok + P (K10). En fazla bir; hiç olmayabilir — o zaman kapatılabilen bir not (2026-11-01). PED açılırken etkilenmiş kimse yoksa proband işaretlenmez | etkilenmemiş proband için uyarı **yok** (açık) |
