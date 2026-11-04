@@ -2,13 +2,14 @@
  * SettingsDialog.jsx — Ayarlar as a window of its own (clinician request
  * 2026-11-03: the settings looked crude; they should be clear and pleasant).
  * Sections on the left — language, the drawing, the ring menu, the side
- * panel, files — and the chosen section on the right, each setting as one
+ * panel, files; the keyboard help and About — and the chosen section on the right, each setting as one
  * row: what it is and what it does on the left, the control on the right.
  * Every choice is a preference of this device (localStorage); the pedigree
  * file never changes.
  */
 import { useEffect, useRef, useState } from 'react';
-import { X, Globe, Palette, CircleDot, PanelRight, FolderOpen } from 'lucide-react';
+import { X, Globe, Palette, CircleDot, PanelRight, FolderOpen, Keyboard, Info } from 'lucide-react';
+import { ProductInfo, CitationInfo, FeedbackInfo, LicenseInfo, KeyHelp } from './AboutParts';
 import { useT, useLang, tk } from '../i18n';
 import { useViewSettings, DRAWING_FONTS, LEGEND_SIZES } from '../utils/drawingStyle';
 import { RingSection, PanelSection, Switch } from './RingSettings';
@@ -21,6 +22,9 @@ const SECTIONS = [
   { id: 'ring', label: tk('Halka menü'), Icon: CircleDot, intro: tk('Kişinin çevresindeki halkada sık kullandıklarınızı öne alın, kullanmadıklarınızı gizleyin. Gizlenenler kaybolmaz: halkada “Diğer…” düğmesinin altında durur.') },
   { id: 'panel', label: tk('Yan panel'), Icon: PanelRight, intro: tk('Seçili kişinin panelinde nadiren kullandıklarınızı gizleyin. Gizlenenler kaybolmaz: panelin altındaki “Diğer bilgiler…” düğmesiyle açılır; bir kişide dolu olan bilgi her zaman görünür.') },
   { id: 'files', label: tk('Dosyalar'), Icon: FolderOpen, intro: tk('Dosya açarken.') },
+  // not settings but kept here (clinician request 2026-11-04): what to look up once in a while
+  { id: 'keys', label: tk('Klavye kısayolları'), Icon: Keyboard, intro: tk('Fareyle yaptığınız her şeyi klavyeyle de yapabilirsiniz.'), info: true },
+  { id: 'about', label: tk('Hakkında'), Icon: Info, intro: null, info: true },
 ];
 
 /** One setting: its name and what it does, the control beside it. */
@@ -134,11 +138,22 @@ function FilesSection() {
   );
 }
 
-const BODY = { language: LanguageSection, drawing: DrawingSection, ring: RingSection, panel: PanelSection, files: FilesSection };
+function AboutSection() {
+  return (
+    <div className="set-block about-text about-block">
+      <ProductInfo />
+      <CitationInfo />
+      <FeedbackInfo />
+      <LicenseInfo />
+    </div>
+  );
+}
 
-export default function SettingsDialog({ onClose }) {
+const BODY = { language: LanguageSection, drawing: DrawingSection, ring: RingSection, panel: PanelSection, files: FilesSection, keys: KeyHelp, about: AboutSection };
+
+export default function SettingsDialog({ onClose, initial = 'language' }) {
   const t = useT();
-  const [section, setSection] = useState('language');
+  const [section, setSection] = useState(SECTIONS.some((s) => s.id === initial) ? initial : 'language');
   const tabRef = useRef(null);
   const boxRef = useRef(null);
   // focus starts on the section list and returns to where it was (the "Ayarlar" button) on closing
@@ -185,11 +200,11 @@ export default function SettingsDialog({ onClose }) {
         </nav>
         <section className="settings-pane" id="set-panel" role="tabpanel" aria-labelledby={`set-tab-${section}`}>
           <h3>{t(current.label)}</h3>
-          <p className="set-intro">{t(current.intro)}</p>
+          {current.intro && <p className="set-intro">{t(current.intro)}</p>}
           <Body />
         </section>
       </div>
-      <p className="settings-foot">{t('Bu ayarlar yalnızca bu cihazda saklanır. Pedigri dosyası değişmez; dosyayı açan başka biri kendi ayarıyla görür.')}</p>
+      {!current.info && <p className="settings-foot">{t('Bu ayarlar yalnızca bu cihazda saklanır. Pedigri dosyası değişmez; dosyayı açan başka biri kendi ayarıyla görür.')}</p>}
     </div>
   );
 }

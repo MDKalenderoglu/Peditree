@@ -12,7 +12,7 @@ import RadialAddMenu from './components/RadialAddMenu';
 import { flushDrafts } from './utils/drafts';
 import { parseTypedDate, formatDate } from './utils/age';
 import DraftField from './components/DraftField';
-import { nextPerson, ringKeysFor, KEY_LETTERS } from './utils/keyboardNav';
+import { nextPerson, ringKeysFor } from './utils/keyboardNav';
 import { useT, useLang, t as tNow, tk, currentLang, drawingLangOf } from './i18n';
 import { toPed } from './graph/ped';
 import { mergeIntoGroup as checkMerge } from './graph/ops';
@@ -21,46 +21,14 @@ import RelationChooser from './components/RelationChooser';
 import { withGeneticLine, subjectOf, adoptionOf, ancestorsOf, REPRO_LABEL, EGG_SOURCE, CARRIER_ROLES, ART_DONOR_RELATION, isPregnancy } from './graph/model';
 import { clinicalNamer } from './utils/clinicalNotices';
 import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss } from './utils/drawingStyle';
-import { versionLine, citationText, REPOSITORY_URL, CONTACT_EMAIL, issueUrl } from './utils/appInfo';
+import { ProductInfo, LicenseInfo, CitationInfo, FeedbackInfo } from './components/AboutParts';
 import { nameCase } from './utils/nameCase';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Keyboard, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2 } from 'lucide-react';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2 } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
 // the clinician's logo (docs/brand/peditree-logo.webp): the tree, and the name in its own lettering
 import logoMark from './assets/logo-mark.png';
 import logoWordmark from './assets/logo-wordmark.png';
-
-// written for a clinician who has never used the program (clinician request 2026-10-27)
-const KEY_HELP = [
-  [tk('Kişiler arasında gezinmek'), [
-    ['Tab', tk('Sıradaki kişiye geçer.')],
-    [{ text: tk('Enter veya Boşluk') }, tk('Üzerinde durduğunuz kişiyi seçer; kişinin çevresinde düğmeler açılır.')],
-    ['← →', tk('Aynı kuşakta soldaki ya da sağdaki kişiye geçer.')],
-    ['↑', tk('Kişinin annesine ya da babasına geçer.')],
-    ['↓', tk('Kişinin çocuğuna geçer.')],
-    ['Esc', tk('Bir adım geri gider: önce açık paneli, sonra kişinin çevresindeki düğmeleri, en son seçimi kapatır. Çizimde boş bir yere tıklamak da aynısını yapar.')],
-    [{ text: tk('Cmd veya Ctrl + tıklama') }, tk('Birden çok kişiyi birlikte seçer (Mac’te Cmd, Windows’ta Ctrl). Tablette üstteki “Çoklu seçim” düğmesini kullanın.')],
-  ]],
-  [tk('Seçili kişi için (önce bir kişiye tıklayın)'), [
-    // a letter of the interface's language (keyboardNav.js KEY_LETTERS)
-    [{ action: 'parents' }, tk('Annesini ve babasını ekler.')],
-    [{ action: 'spouse' }, tk('Eşini ekler.')],
-    [{ action: 'left' }, tk('Kardeş ekler: kız, erkek, düşük … seçenekleri açılır.')],
-    [{ action: 'bottom' }, tk('Çocuk ekler: kız, erkek, düşük … seçenekleri açılır.')],
-    [{ action: 'findings' }, tk('Bulgu (hastalık ya da özellik) ekler ya da değiştirir.')],
-    [{ action: 'status' }, tk('Durumunu değiştirir: cinsiyet, hasta (etkilenmiş), taşıyıcı, vefat, proband, danışan.')],
-    [{ action: 'twins' }, tk('İkiz kardeş ekler.')],
-    [{ action: 'note' }, tk('Bilgiler düğmesini açar: yaş, genetik sonuç, not.')],
-    ['Shift + ← →', tk('Kişiyi yana kaydırır: eşiyle yer değiştirir ya da kardeşlerinin arasında bir sıra kayar. Kişiyi fareyle sürükleyerek de yapılır.')],
-    ['Delete', tk('Kişiyi siler (önce sorar).')],
-  ]],
-  [tk('Genel'), [
-    ['Cmd/Ctrl + Z', tk('Son işlemi geri alır. Shift ile birlikte: geri alınan işlemi yeniden yapar.')],
-    ['Cmd/Ctrl + S', tk('Pedigriyi bilgisayarınıza dosya olarak kaydeder.')],
-    ['Cmd/Ctrl + P', tk('Pedigriyi A4 sayfaya yazdırır.')],
-    ['+  −  0', tk('Yakınlaştırır, uzaklaştırır, tüm pedigriyi ekrana sığdırır.')],
-  ]],
-];
 
 function App() {
   const {
@@ -95,7 +63,8 @@ function App() {
   const probandNode = subjectOf(doc.graph.individuals);
   // tablet: taps add people to the selection while this is on (a mouse has Cmd/Ctrl/Shift-click)
   const [multiSelect, setMultiSelect] = React.useState(false);
-  const [showKeys, setShowKeys] = React.useState(false);
+  // the top bar's "Atıf" and "Geri bildirim" windows (clinician request 2026-11-04)
+  const [infoOpen, setInfoOpen] = React.useState(null); // 'cite' | 'feedback'
   const [focusTick, setFocusTick] = React.useState(0);
   const ringRef = React.useRef(null);
   // the ring can be put away while the person stays selected (clinician
@@ -109,13 +78,11 @@ function App() {
   const { view, setView } = useViewSettings();
   const drawing = React.useMemo(() => drawingSpec(view), [view]);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [settingsAt, setSettingsAt] = React.useState('language'); // the section Ayarlar opens at
+  const openSettings = (at = 'language') => { setSettingsAt(at); setSettingsOpen(true); };
   const [openHelp, setOpenHelp] = React.useState(false); // "Aç"'s window: which files it opens
-  // the logo: what PediTree is, its version, how to cite it, its licence
+  // the logo: what PediTree is, its version and licence (the rest: Ayarlar → Hakkında)
   const [aboutOpen, setAboutOpen] = React.useState(false);
-  const [citeCopied, setCiteCopied] = React.useState(false);
-  const copyCitation = async () => {
-    try { await navigator.clipboard.writeText(citationText()); setCiteCopied(true); } catch { setCiteCopied(false); }
-  };
   // an export in the style the clinician chose for exports, the typeface inside the file;
   // fontMissing: the typeface could not be put in (the file then shows a system typeface elsewhere)
   const exportOpts = async (extra = {}) => {
@@ -362,7 +329,7 @@ function App() {
 
   // the toolbar's pop-up windows (Yeni, Paylaş, Diğer, keyboard help) close
   // on a click anywhere outside them, or Escape (clinician request 2026-10-27)
-  const popupOpen = showKeys || newMenu || relationOpen || downloadOpen || !!share || settingsOpen || aboutOpen || openHelp;
+  const popupOpen = !!infoOpen || newMenu || relationOpen || downloadOpen || !!share || settingsOpen || aboutOpen || openHelp;
   const popupClosedAt = React.useRef(-Infinity);
   // The tap that closes a pop-up window does only that (clinician request
   // 2026-10-27): the click that ends that same tap is stopped before it
@@ -383,14 +350,14 @@ function App() {
   React.useEffect(() => {
     if (!popupOpen) return;
     const close = (except) => {
-      if (except !== 'keys') setShowKeys(false);
+      if (except !== 'cite' && except !== 'feedback') setInfoOpen(null);
       if (except !== 'new') setNewMenu(false);
       if (except !== 'relation') setRelationOpen(false);
       if (except !== 'download') setDownloadOpen(false);
       if (except !== 'open') setOpenHelp(false);
       if (except !== 'share') setShare(null);
       if (except !== 'settings') setSettingsOpen(false);
-      if (except !== 'about') { setAboutOpen(false); setCiteCopied(false); }
+      if (except !== 'about') setAboutOpen(false);
     };
     const onDown = (e) => {
       const inside = e.target.closest && e.target.closest('[data-popup]');
@@ -581,54 +548,13 @@ function App() {
             </span>
           </button>
           {aboutOpen && (
-            <div className="keys-popover share-popover about-popover" role="dialog" aria-label={t('PediTree hakkında')}>
-              <div className="about-head">
-                <img src={logoMark} alt="" width="56" height="56" />
-                <div>
-                  <div className="keys-title">PediTree</div>
-                  <div className="field-hint">{t('Genetik danışmanlık için pedigri çizimi')} · {versionLine()}</div>
-                </div>
-              </div>
-              <p className="share-note">{t('PediTree bir çizim aracıdır, tıbbi cihaz değildir. Çizimi kullanmadan önce kontrol edin; tanı ve danışmanlık kararı klinik değerlendirmeye dayanır.')}</p>
-              <p className="share-note">{t('Şimdilik çizilemeyenler: aynı cinsiyetten eşler (NSGC 2022 bunu öngörür).')}</p>
-              <p className="share-note">{t('Hasta bilgisi hiçbir sunucuya gönderilmez. Çalışma yalnızca bu sekmede tutulur; “Kaydet” ile indirdiğiniz dosyalar sizin cihazınızda kalır.')}</p>
-              <div className="more-title">{t('Atıf')}</div>
-              <p className="share-note">{t('PediTree ile çizdiğiniz pedigriler sizindir. Bir yayında, sunumda ya da eğitim materyalinde kullandıysanız şöyle atıf yapmanız rica edilir:')}</p>
-              <p className="about-cite">{citationText()}</p>
-              <button className="ui-btn" onClick={copyCitation}>{citeCopied ? t('Kopyalandı') : t('Atfı kopyala')}</button>
-              <div className="more-title">{t('Hata ve öneriler')}</div>
-              <p className="share-note">{t('Bir hata mı buldunuz, bir öneriniz ya da deneyiminiz mi var? GitHub’daki formu doldurun ya da e-posta gönderin.')}</p>
-              <div className="about-links">
-                <a className="ui-btn" href={issueUrl('hata-bildirimi')} target="_blank" rel="noreferrer">{t('Hata bildir')}</a>
-                <a className="ui-btn" href={issueUrl('oneri')} target="_blank" rel="noreferrer">{t('Öneri paylaş')}</a>
-                <a className="ui-btn" href={`mailto:${CONTACT_EMAIL}?subject=PediTree`}>{t('E-posta')}</a>
-              </div>
-              <p className="share-note">{CONTACT_EMAIL} · {t('Bildirime hasta adı, doğum tarihi ya da kimliği belli eden bir ekran görüntüsü eklemeyin.')}</p>
-              <div className="more-title">{t('Lisans')}</div>
-              <p className="share-note">{t('Kaynak kodu Apache 2.0 lisansıyla açıktır:')} <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">{REPOSITORY_URL.replace('https://', '')}</a>. {t('PediTree adı ve logosu lisansa dahil değildir.')}</p>
-              <p className="share-note">© 2026 Muhammed Doğukan Kalenderoğlu</p>
-              <button className="ui-btn mouse-only" onClick={() => { setAboutOpen(false); setShowKeys(true); }}><Keyboard size={15} /> {t('Klavye kısayolları')}</button>
+            <div className="keys-popover share-popover about-popover about-text" role="dialog" aria-label={t('PediTree hakkında')}>
+              <ProductInfo />
+              <LicenseInfo />
+              {/* the rest — citation, feedback, keyboard help — in Ayarlar (clinician request 2026-11-04) */}
+              <button className="ui-btn" onClick={() => { setAboutOpen(false); openSettings('about'); }}><Info size={15} /> {t('Atıf, geri bildirim ve klavye kısayolları: Ayarlar')}</button>
             </div>
           )}
-          {/* keyboard help: opened from this window (clinician decision 2026-10-30) */}
-          <div data-popup="keys">
-            {showKeys && (
-              <div className="keys-popover keys-help-popover" role="dialog" aria-label={t('Klavye kısayolları')}>
-                <div className="keys-title">{t('Klavye kısayolları')}</div>
-                {KEY_HELP.map(([group, rows]) => (
-                  <table key={group}>
-                    <caption>{t(group)}</caption>
-                    <tbody>
-                      {rows.map(([k, text]) => {
-                        const key = typeof k === 'string' ? k : k.action ? KEY_LETTERS[uiLang][k.action] : t(k.text);
-                        return <tr key={key}><td><kbd>{key}</kbd></td><td>{t(text)}</td></tr>;
-                      })}
-                    </tbody>
-                  </table>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
         <div className="toolbar-sep" />
         <input className="input patient-name" value={doc.patientName || ''} placeholder={t('Hasta adı soyadı')}
@@ -756,15 +682,37 @@ function App() {
           </div>
         </div>
         <div className="toolbar-sep" />
+        {/* what people share and ask about most, one click away (clinician request 2026-11-04) */}
+        <div className="toolbar-group">
+          <div className="keys-wrap" data-popup="cite">
+            <button className="ui-btn" onClick={() => setInfoOpen(v => (v === 'cite' ? null : 'cite'))} aria-expanded={infoOpen === 'cite'}
+              title={t('PediTree’ye nasıl atıf yapılır')}><Quote size={15} /> {t('Atıf')}</button>
+            {infoOpen === 'cite' && (
+              <div className="keys-popover share-popover info-popover about-text" role="dialog" aria-label={t('Atıf')}>
+                <CitationInfo />
+              </div>
+            )}
+          </div>
+          <div className="keys-wrap" data-popup="feedback">
+            <button className="ui-btn" onClick={() => setInfoOpen(v => (v === 'feedback' ? null : 'feedback'))} aria-expanded={infoOpen === 'feedback'}
+              title={t('Hata bildirin ya da öneri paylaşın')}><MessageSquareText size={15} /> {t('Geri bildirim')}</button>
+            {infoOpen === 'feedback' && (
+              <div className="keys-popover share-popover info-popover about-text" role="dialog" aria-label={t('Hata ve öneriler')}>
+                <FeedbackInfo />
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="toolbar-sep" />
           <div className="keys-wrap" data-popup="settings">
-            <button className="ui-btn" onClick={() => setSettingsOpen(v => !v)} aria-expanded={settingsOpen}
+            <button className="ui-btn" onClick={() => (settingsOpen ? setSettingsOpen(false) : openSettings())} aria-expanded={settingsOpen}
               title={t('Ayarlar: dil, çizimin görünümü, yazı tipi, halka menü ve indirilen resimler')}>
               <SlidersHorizontal size={15} /> {t('Ayarlar')}
             </button>
             {/* a window of its own, on the page (clinician request 2026-11-03) */}
             {settingsOpen && createPortal(
               <div className="settings-backdrop">
-                <SettingsDialog onClose={() => setSettingsOpen(false)} />
+                <SettingsDialog key={settingsAt} initial={settingsAt} onClose={() => setSettingsOpen(false)} />
               </div>,
               document.body,
             )}
@@ -798,18 +746,24 @@ function App() {
 
         {exportError && (
           <div className="warning-panel" data-tone="error" role="alert">
-            <h4 className="notice-title">
-              <AlertTriangle size={16} /> {t('Dışa aktarma hatası')}
-            </h4>
+            <div className="notice-head">
+              <h4 className="notice-title">
+                <AlertTriangle size={16} /> {t('Dışa aktarma hatası')}
+              </h4>
+              <button className="notice-dismiss" onClick={() => setExportError(null)} title={t('Kapat')} aria-label={t('Kapat')}>×</button>
+            </div>
             <p className="notice-text">{exportError}</p>
           </div>
         )}
 
         {exportNotice && (
           <div className="warning-panel" data-tone="warn" role="status">
-            <h4 className="notice-title">
-              <AlertTriangle size={16} /> {t('Dışa aktarma uyarısı')}
-            </h4>
+            <div className="notice-head">
+              <h4 className="notice-title">
+                <AlertTriangle size={16} /> {t('Dışa aktarma uyarısı')}
+              </h4>
+              <button className="notice-dismiss" onClick={() => setExportNotice(null)} title={t('Kapat')} aria-label={t('Kapat')}>×</button>
+            </div>
             <p className="notice-text">{exportNotice}</p>
           </div>
         )}
@@ -821,6 +775,10 @@ function App() {
               {notices.some(n => n.level === 'error') ? t('Düzeltilmesi gereken') : t('Uyarı')}: {notices.length}
               {!notices.some(n => n.level === 'error') && <span className="notice-strip-hint">{warningsOpen ? t('gizle') : t('göster')}</span>}
             </button>
+            {/* all of them away in one click, without opening the list (clinician request 2026-11-04);
+                display only: an export still checks the real state (gateExport) */}
+            <button className="notice-dismiss notice-dismiss-all" onClick={() => notices.forEach(n => n.ids.forEach(dismissWarning))}
+              title={t('Bu notların hepsini gizle')} aria-label={t('Bu notların hepsini gizle')}>×</button>
             {(warningsOpen || notices.some(n => n.level === 'error')) && (
               <ul>
                 {notices.map(n => (

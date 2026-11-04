@@ -379,12 +379,16 @@ describe('stepping back, pop-ups and the keyboard', () => {
     expect($$('script').filter(el => view.container.contains(el))).toHaveLength(0);
   });
 
-  it('the keyboard help is grouped and written in full sentences', async () => {
-    await click(button('PediTree hakkında'));
-    await click(buttons().find(b => b.textContent.includes('Klavye kısayolları')));
-    const text = $('[data-popup="keys"]').textContent;
+  it('the keyboard help is in Ayarlar → Klavye kısayolları, grouped and written in full sentences (clinician request 2026-11-04)', async () => {
+    await click(button('Ayarlar'));
+    const dialog = document.querySelector('.settings-dialog');
+    await click([...dialog.querySelectorAll('[role="tab"]')].find(b => b.textContent.includes('Klavye kısayolları')));
+    const text = dialog.querySelector('[role="tabpanel"]').textContent;
     expect(text).toMatch(/Kişiler arasında gezinmek/);
     expect(text).toMatch(/Seçili kişi için \(önce bir kişiye tıklayın\)/);
+    expect([...dialog.querySelectorAll('kbd')].map(k => k.textContent)).toEqual(expect.arrayContaining(['A', 'E', 'K', 'C veya Ç', 'N']));
+    // not a setting: no "kept on this device" line under it
+    expect(dialog.querySelector('.settings-foot')).toBeNull();
     await key('Escape');
   });
 });
@@ -561,6 +565,16 @@ describe('the page around the drawing', () => {
     const notices = $('.canvas-notices'), stage = $('.canvas-stage');
     expect(notices.querySelector('.notice-strip')).not.toBeNull();
     expect(notices.compareDocumentPosition(stage) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('the notes strip goes away in one click, without opening it (clinician request 2026-11-04); an export still checks them', async () => {
+    await run(() => S().clearProband());
+    const strip = () => $('.notice-strip');
+    expect(strip().querySelector('ul')).toBeNull(); // closed
+    await click(strip().querySelector('button[aria-label="Bu notların hepsini gizle"]'));
+    expect(strip()).toBeNull();
+    // dismissing only hides them: the warning itself is still in the data
+    expect(S().warnings.length + (S().integrityIssues || []).length).toBeGreaterThan(0);
   });
 });
 
@@ -854,17 +868,40 @@ describe('lines carry their meaning in every case', () => {
   });
 });
 
-describe('the About window (the logo)', () => {
-  it('says what PediTree is not, that patient data goes nowhere, and how to report a bug — with the real forms and e-mail', async () => {
-    const { REPOSITORY_URL, CONTACT_EMAIL } = await import('../utils/appInfo');
+describe('the About window (the logo), Atıf and Geri bildirim (clinician request 2026-11-04)', () => {
+  it('the logo: what PediTree is, that patient data goes nowhere, its licence and copyright — no trademark line; the rest in Ayarlar', async () => {
+    const { REPOSITORY_URL } = await import('../utils/appInfo');
     await click(button('PediTree hakkında'));
-    const about = $('[data-popup="about"]');
+    const about = $('[data-popup="about"] [role="dialog"]');
     const text = about.textContent;
     expect(text).toMatch(/tıbbi cihaz değildir/);
     expect(text).toMatch(/Hasta bilgisi hiçbir sunucuya gönderilmez/);
-    expect(text).toMatch(/PediTree adı ve logosu lisansa dahil değildir/);
-    expect(text).toMatch(/hasta adı, doğum tarihi/);
-    const links = [...about.querySelectorAll('a')].map(a => a.getAttribute('href'));
+    expect(text).toMatch(/Apache 2\.0/);
+    expect(text).toMatch(/© 2026 Muhammed Doğukan Kalenderoğlu/);
+    expect(text).not.toMatch(/lisansa dahil değildir/);
+    expect(text).not.toMatch(/Atfı kopyala|Hata bildir/); // in the top bar now
+    expect([...about.querySelectorAll('a')].map(a => a.getAttribute('href'))).toContain(REPOSITORY_URL);
+    // its button opens Ayarlar at Hakkında, where everything is
+    await click(buttons(about).find(b => b.textContent.includes('Ayarlar')));
+    const dialog = document.querySelector('.settings-dialog');
+    expect(dialog.querySelector('[role="tab"][aria-selected="true"]').textContent).toMatch(/Hakkında/);
+    const all = dialog.querySelector('[role="tabpanel"]').textContent;
+    for (const part of [/tıbbi cihaz değildir/, /Atfı kopyala/, /Hata bildir/, /Apache 2\.0/, /© 2026/]) expect(all).toMatch(part);
+    await key('Escape');
+  });
+
+  it('"Atıf" and "Geri bildirim" in the top bar: the citation to copy; the real forms and e-mail, with the warning about patient data', async () => {
+    const { REPOSITORY_URL, CONTACT_EMAIL, citationText } = await import('../utils/appInfo');
+    await click(button('Atıf'));
+    const cite = $('[data-popup="cite"] [role="dialog"]');
+    expect(cite.querySelector('.about-cite').textContent).toBe(citationText());
+    expect(buttons(cite).some(b => b.textContent === 'Atfı kopyala')).toBe(true);
+    await key('Escape');
+    expect($('[data-popup="cite"] [role="dialog"]')).toBeNull();
+    await click(button('Geri bildirim'));
+    const fb = $('[data-popup="feedback"] [role="dialog"]');
+    expect(fb.textContent).toMatch(/hasta adı, doğum tarihi/);
+    const links = [...fb.querySelectorAll('a')].map(a => a.getAttribute('href'));
     expect(links).toEqual(expect.arrayContaining([
       `${REPOSITORY_URL}/issues/new?template=hata-bildirimi.yml`,
       `${REPOSITORY_URL}/issues/new?template=oneri.yml`,
@@ -1159,7 +1196,7 @@ describe('the Settings window (clinician request 2026-11-03)', () => {
     expect(dialog.getAttribute('aria-modal')).toBe('true');
     expect(document.activeElement.getAttribute('role')).toBe('tab');
     const tabs = [...dialog.querySelectorAll('[role="tab"]')].map(b => b.textContent.trim());
-    expect(tabs).toEqual(['Dil', 'Çizim', 'Halka menü', 'Yan panel', 'Dosyalar']);
+    expect(tabs).toEqual(['Dil', 'Çizim', 'Halka menü', 'Yan panel', 'Dosyalar', 'Klavye kısayolları', 'Hakkında']);
     // Tab from the last control comes back to the first; Shift+Tab from the first goes to the last
     const focusable = [...dialog.querySelectorAll('button:not(:disabled):not([tabindex="-1"]), input:not(:disabled), [tabindex="0"]')];
     focusable.at(-1).focus();
