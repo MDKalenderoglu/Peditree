@@ -3,8 +3,8 @@
  * clinician request 2026-11-03: the ring's words must fit and the bands look
  * even). The ring is thick enough for the four directions' words across it;
  * every choice on a band is the same length along it, whatever band it is
- * on; a band stays within one half of the circle, so every word reads upright
- * and the words of one band all turn the same way.
+ * on; a band stays within one half of the circle, so every word reads upright,
+ * the words of one band all turn the same way, and a band reads from left to right.
  */
 export const RING_T = 48;   // ring thickness
 export const BAND_T = 34;   // band thickness
@@ -30,8 +30,11 @@ export function layoutBands(centre, rows, R) {
   const widest = Math.max(0, ...geo.map((g) => g.span));
   const c = Math.min(Math.max(c0, lo + widest / 2 + 2), hi - widest / 2 - 2);
   const flip = lower ? -180 : -360;
+  // angles grow clockwise: right to left below the person, so there the first choice
+  // is placed last and every band reads from left to right (clinician 2026-11-04)
   return geo.flatMap((g) => g.items.map((it, k) => {
-    const a0 = c - g.span / 2 + k * g.per;
+    const at = lower ? g.items.length - 1 - k : k;
+    const a0 = c - g.span / 2 + at * g.per;
     return { it, a0, a1: a0 + g.per, r: g.r1, R: g.r2, flip };
   }));
 }
