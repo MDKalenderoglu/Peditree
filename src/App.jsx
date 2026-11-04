@@ -50,7 +50,7 @@ const KEY_HELP = [
     [{ action: 'findings' }, tk('Bulgu (hastalık ya da özellik) ekler ya da değiştirir.')],
     [{ action: 'status' }, tk('Durumunu değiştirir: cinsiyet, hasta (etkilenmiş), taşıyıcı, vefat, proband, danışan.')],
     [{ action: 'twins' }, tk('İkiz kardeş ekler.')],
-    [{ action: 'note' }, tk('Kişi için not yazar.')],
+    [{ action: 'note' }, tk('Kişinin bilgileri: ad, yaş, genetik test ve not.')],
     ['Shift + ← →', tk('Kişiyi yana kaydırır: eşiyle yer değiştirir ya da kardeşlerinin arasında bir sıra kayar. Kişiyi fareyle sürükleyerek de yapılır.')],
     ['Delete', tk('Kişiyi siler (önce sorar).')],
   ]],
