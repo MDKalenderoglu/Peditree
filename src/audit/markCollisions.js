@@ -7,7 +7,8 @@
  * layout engine). `buildMarkFamily(store)` draws a family with every mark
  * next to every other — arrows (proband, consultand), brackets (adopted in,
  * out, by relatives), numbered symbols, pregnancies, twins, deceased,
- * genetic lines, ages, single and double relationship lines on both sides —
+ * genetic lines, ages, single and double relationship lines on both sides,
+ * carriers (the dot under a letter inside the symbol, when chosen) —
  * and `findMarkCollisions(svg)` lists every overlap. In development the app
  * exposes both as `window.__peditreeMarkAudit()` (main.jsx, through
  * `runMarkAudit`); run it after any change to symbols, marks or routing.
@@ -72,6 +73,9 @@ export function buildMarkFamily(store) {
   const lmp = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
   ok(S().updateIndividual(g().individuals.find((i) => i.ongoingPregnancy).id, { lmp }), 'LMP');
   ok(S().updateIndividual('father', { presymptomatic: true }), 'presymptomatic');
+  // carriers with a letter inside (P, D, G): the dot, when chosen (Ayarlar), stands below the letter
+  const donor = g().reproductiveLinks.find((l) => l.role === 'sperm_donor').personId;
+  for (const id of [g().individuals.find((i) => i.ongoingPregnancy).id, donor, dec, 'father']) ok(S().updateIndividual(id, { carrier: true }), 'carrier');
   ok(S().setUnionStatus(unionOf(sister), 'divorced'), 'divorce');
   S().clearSelection();
 }
@@ -129,8 +133,9 @@ export function findMarkCollisions(svg) {
     if (arrow) items.push({ kind: 'arrow', person, own, box: boxOf(arrow) });
     const p = node.querySelector('.proband-p');
     if (p) items.push({ kind: 'P', person, own, box: boxOf(p) });
-    const letter = node.querySelector('.repro-mark');
-    if (letter) items.push({ kind: 'letter', person, own, box: boxOf(letter) });
+    for (const letter of node.querySelectorAll('.repro-mark, .pregnancy-p')) items.push({ kind: 'letter', person, own, box: boxOf(letter) });
+    const dot = node.querySelector('.carrier-dot');
+    if (dot) items.push({ kind: 'dot', person, own, box: boxOf(dot) });
     const num = node.querySelector('.pedigree-number');
     if (num) items.push({ kind: 'number', person, own, box: boxOf(num) });
     for (const t of node.querySelectorAll('.annotations text')) {

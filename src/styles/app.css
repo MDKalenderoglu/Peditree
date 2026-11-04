@@ -109,6 +109,12 @@ body {
   stroke: #ffffff;
   stroke-width: 2.4px;
 }
+/* the carrier's dot and its white ring (also when hand-drawn as a path) have no outline */
+.node-group .carrier-dot,
+.node-group .carrier-dot-ring {
+  stroke: none;
+}
+
 /* …but the hand-drawn dividing lines (drawingStyleSvg.js) stay dark and thin, as the lines they redraw */
 .node-group .condition-regions path.region-divider-sketch {
   stroke: #1e293b;

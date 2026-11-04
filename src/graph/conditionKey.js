@@ -29,6 +29,17 @@ export const FILL_LABEL = { solid: tk('Siyah'), hatch: tk('Tarama'), dots: tk('N
  * pattern defined in the legend; clinician decision 2026-11-02).
  */
 export const CARRIER_FILL = 'cross';
+/**
+ * How the viewer wants that carrier drawn (Ayarlar → Çizim, a device
+ * preference — the file never changes; clinician decision 2026-11-04):
+ * 'split' the NSGC 2022 left half above, or 'dot' the classic dot in the
+ * middle (NSGC 2008, many textbooks), also explained in the key. A carried
+ * finding with a name keeps its own pattern in both: a dot cannot say which.
+ */
+export const CARRIER_MARKS = [
+  { id: 'split', label: tk('Bölünmüş (NSGC 2022)') },
+  { id: 'dot', label: tk('Ortada nokta') },
+];
 // angles (degrees, screen: 0 = east, clockwise)
 export const REGION_ANGLES = { q1: [180, 270], q2: [270, 360], q3: [0, 90], q4: [90, 180] };
 
@@ -199,9 +210,18 @@ export function keyIndex(key, label) {
  * upper and lower right quadrants; "affected" without a named finding fills
  * the right half (clinician decision 2026-10-25, replacing "half of the
  * finding's region"). A carrier without a named finding has the left half in
- * CARRIER_FILL, also alone and also beside "affected" (NSGC 2022: no dot).
+ * CARRIER_FILL, also alone and also beside "affected" (NSGC 2022: no dot);
+ * with carrierMark 'dot' it is drawn as the rest of the symbol plus
+ * { dot: true } — a dot in the middle (CARRIER_MARKS).
  */
-export function fillFor(person, key = []) {
+export function fillFor(person, key = [], carrierMark = 'split') {
+  if (carrierMark !== 'dot' || !person.carrier) return regionsFor(person, key);
+  // the dot: the rest of the symbol as for a non-carrier; a carried finding with a name keeps its half
+  const f = regionsFor(person, key, false);
+  return f.parts?.some((p) => p.carrier) ? f : { ...f, dot: true };
+}
+
+function regionsFor(person, key, plainCarrierHalf = !!person.carrier) {
   const conds = (Array.isArray(person.conditions) ? person.conditions : [])
     .filter((c) => c && c.label && (c.status === 'affected' || c.status === 'carrier'));
   const marks = [];
@@ -216,12 +236,12 @@ export function fillFor(person, key = []) {
   const plainCarrier = { region: 'q1', fill: CARRIER_FILL, carrier: true, a0: 90, a1: 270 };
   // a carrier without a named finding: the left half in its own pattern; beside it "affected"
   // without a name fills the right half (NSGC 2022 — it used to be the 2008 carrier dot)
-  if (person.carrier && !affected.length && !carried.length) {
+  if (plainCarrierHalf && !affected.length && !carried.length) {
     return { mode: 'regions', parts: [plainCarrier, ...(person.affected ? [{ region: 'q2', fill: 'solid', carrier: false, a0: 270, a1: 450 }] : [])] };
   }
   const byKey = (a, b) => keyIndex(key, a.label) - keyIndex(key, b.label);
   const upperFirst = (m) => (m.region === 'q1' || m.region === 'q2' ? 0 : 1);
-  if (carried.length || (person.carrier && affected.length)) {
+  if (carried.length || (plainCarrierHalf && affected.length)) {
     const parts = [];
     const left = carried.length ? [...carried].sort((a, b) => upperFirst(a) - upperFirst(b) || byKey(a, b))
       : [{ region: 'q1', fill: CARRIER_FILL }];
