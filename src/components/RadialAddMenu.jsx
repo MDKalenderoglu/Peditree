@@ -11,7 +11,7 @@
 import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import { Stethoscope, HeartPulse, Users, StickyNote } from 'lucide-react';
 import FindingsPalette from './FindingsPalette';
-import DraftField from './DraftField';
+import { NameField, AgeField, NoteField, GeneticField } from './InfoFields';
 import { groupOf, multipleName } from '../graph/multiples';
 import { isPregnancy, isGroup, adoptionOf, ART_DONOR_RELATION } from '../graph/model';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
@@ -91,7 +91,8 @@ const SATELLITES = [
   { key: 'findings', angle: -45, label: tk('Bulgu'), Icon: Stethoscope },
   { key: 'status', angle: -135, label: tk('Durum'), Icon: HeartPulse },
   { key: 'twins', angle: 135, label: tk('İkiz'), Icon: Users },
-  { key: 'note', angle: 45, label: tk('Not'), Icon: StickyNote },
+  // a person's Bilgiler as in the side panel (clinician request 2026-11-04); a group's note only
+  { key: 'note', angle: 45, label: tk('Bilgiler'), Icon: StickyNote },
 ];
 
 /** Enter / Space on an SVG "button" acts as a click (keyboard use). */
@@ -267,6 +268,8 @@ export default function RadialAddMenu({
   const isLoss = isPregnancy(node);
   // a symbol for several people takes parents, siblings and a note only (clinician decisions 2026-11-01)
   const group = isGroup(node);
+  const setInfo = (patch) => onUpdate(node.id, patch);
+  const satLabel = (s) => (s.key === 'note' && group ? t('Not') : t(s.label));
   const GROUP_HINT = t('Bu sembol birden çok kişiyi gösteriyor; eş, çocuk ya da bulgu için önce sağdaki panelden “Tek tek ayır”.');
 
   const pcrs = pedigreeData.parentChildRelationships || [];
@@ -493,12 +496,13 @@ export default function RadialAddMenu({
         </div>
       </div>
     ),
-    // what the box is for is said under it: a long placeholder is cut off (clinician 2026-11-03)
+    // the side panel's Bilgiler (InfoFields.jsx, the same fields): name, age, genetic test, note
     note: (
-      <div className="radial-panel-col">
-        <DraftField key={`${node.id}-note`} as="textarea" className="input radial-note" value={node.notes || ''} placeholder={t('Bu kişiyle ilgili notunuz')}
-          aria-describedby="radial-note-help" onCommit={v => onUpdate(node.id, { notes: v })} autoFocus />
-        <span id="radial-note-help" className="field-hint">{t('Pedigrinin altındaki “Notlar” bölümünde, numarasıyla çıkar. Alt satır için Shift+Enter.')}</span>
+      <div className="radial-panel-col radial-info">
+        {!group && <NameField node={node} set={setInfo} autoFocus />}
+        {!group && !isLoss && <AgeField node={node} set={setInfo} />}
+        {!group && <GeneticField node={node} set={setInfo} individuals={pedigreeData.individuals || []} compact />}
+        <NoteField node={node} set={setInfo} compact />
       </div>
     ),
   };
@@ -530,7 +534,7 @@ export default function RadialAddMenu({
         const { Icon } = s;
         return (
           <button key={s.key} className={`radial-sat${panel === s.key ? ' on' : ''}`} style={{ left: x, top: y }}
-            title={t(s.label)} aria-label={t(s.label)} aria-expanded={panel === s.key}
+            title={satLabel(s)} aria-label={satLabel(s)} aria-expanded={panel === s.key}
             onPointerEnter={(e) => isHover(e) && openPanel(s.key)} onPointerLeave={(e) => isHover(e) && leavePanel()}
             onClick={() => { setActive(null); setPanel(panel === s.key ? null : s.key); }}>
             <Icon size={15} />
@@ -594,7 +598,7 @@ export default function RadialAddMenu({
       {panel && !arcPanel && (
         <div className="radial-panel" ref={popRef} style={{ ...panelStyle(SATELLITES.find(s => s.key === panel)), translate: `${nudge.x}px ${nudge.y}px` }}
           onPointerEnter={(e) => isHover(e) && keepPanel()} onPointerLeave={(e) => isHover(e) && leavePanel()}>
-          <div className="radial-panel-title">{t(SATELLITES.find(s => s.key === panel).label)}</div>
+          <div className="radial-panel-title">{satLabel(SATELLITES.find(s => s.key === panel))}</div>
           {panels[panel]}
         </div>
       )}

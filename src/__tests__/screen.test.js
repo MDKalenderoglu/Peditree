@@ -232,6 +232,9 @@ describe('the ring menu', () => {
     expect(satellites).toContain('Not');
     expect(satellites).not.toContain('Durum');
     expect(satellites).not.toContain('Bulgu');
+    // its panel: the note alone (a group has number and sex only)
+    await key('n');
+    expect([...$('.radial-panel').querySelectorAll('.field-label')].map(l => l.firstChild.textContent.trim())).toEqual(['Not']);
   });
 
   it('Ayarlar → Halka menü: a hidden row is gone from the ring and comes back under "Diğer…"; the Durum order follows', async () => {
@@ -665,6 +668,50 @@ describe('more of what the clinician sees', () => {
     await key('Escape', {}, box);
     expect(g().conditionKey.map(e => e.label)).toEqual(['Miyop']);
     expect($('.radial-panel')).not.toBeNull(); // Escape ended the correction only
+  });
+
+  it('the ring\'s "Bilgiler" holds the side panel\'s fields — name, age, genetic test, note — and both show the same values (clinician request 2026-11-04)', async () => {
+    await select('mother');
+    await key('n');
+    const ring = () => $('.radial-panel');
+    expect(ring().querySelector('.radial-panel-title').textContent).toBe('Bilgiler');
+    const labels = [...ring().querySelectorAll('.field-label')].map(l => l.firstChild.textContent.trim());
+    expect(labels).toEqual(['Ad ya da kısaltma', 'Yaş', 'Genetik test', 'Not']);
+    const m = () => g().individuals.find(i => i.id === 'mother');
+    // name and age written in the ring
+    const name = ring().querySelector('input.input-wide');
+    expect(document.activeElement).toBe(name);
+    await typeInto(name, 'Ayşe');
+    await key('Enter', {}, name);
+    const age = ring().querySelector('input.input-age');
+    await typeInto(age, '52');
+    await key('Enter', {}, age);
+    expect([m().displayLabel, m().age]).toEqual(['Ayşe', '52']);
+    // genetic test "+" and a result line
+    await click(buttons(ring()).find(b => b.getAttribute('aria-label') === 'Genetik test yapıldı'));
+    const add = ring().querySelector('input[aria-label="Varyant ya da sonuç ekle"]');
+    await typeInto(add, 'BRCA1 c.68_69del het');
+    await key('Enter', {}, add);
+    expect([m().geneticTest, m().geneticNote]).toEqual(['tested', 'BRCA1 c.68_69del het']);
+    const note = ring().querySelector('textarea.radial-note');
+    await typeInto(note, 'Meme ca 45 yaşında');
+    await key('Enter', {}, note);
+    expect(m().notes).toBe('Meme ca 45 yaşında');
+    // the side panel shows the same
+    const side = $('.editor-body');
+    expect(side.querySelector('input.input-wide').value).toBe('Ayşe');
+    expect(side.querySelector('input.input-age').value).toBe('52');
+    expect(side.querySelector('input[aria-label="Genetik sonuç 1"]').value).toBe('BRCA1 c.68_69del het');
+    expect(side.querySelector('textarea').value).toBe('Meme ca 45 yaşında');
+    // and the ring shows what the side panel holds
+    expect(ring().querySelector('input[aria-label="Genetik sonuç 1"]').value).toBe('BRCA1 c.68_69del het');
+  });
+
+  it('the ring\'s "Bilgiler" of a pregnancy has no age', async () => {
+    await run(() => S().addSiblingTo('proband', 'unknown', { ongoingPregnancy: true }));
+    await select(g().individuals.find(i => i.ongoingPregnancy).id);
+    await key('n');
+    expect([...$('.radial-panel').querySelectorAll('.field-label')].map(l => l.firstChild.textContent.trim())).toEqual(['Ad ya da kısaltma', 'Genetik test', 'Not']);
   });
 
   it('the note in the ring says under the box where it goes; the box is not left to a long placeholder', async () => {
