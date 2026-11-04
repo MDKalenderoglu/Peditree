@@ -868,6 +868,22 @@ describe('lines carry their meaning in every case', () => {
   });
 });
 
+describe('the top bar (clinician request 2026-11-04: one row, no wasted room)', () => {
+  it('what folds to its icon, the least used first, and that Kaydet never does; a folded word stays for screen readers', async () => {
+    const parts = $$('.canvas-toolbar [data-fold-order]')
+      .sort((a, b) => a.dataset.foldOrder - b.dataset.foldOrder)
+      .filter(p => p.classList.contains('btn-label'))
+      .map(p => p.textContent);
+    expect(parts).toEqual(['Geri bildirim', 'Atıf', 'Paylaş', 'Yazdır', 'Konumlandır', 'Çoklu seçim', 'Ayarlar', 'İndir', 'Aç', 'Yeni']);
+    const save = buttons().find(b => b.textContent.includes('Kaydet'));
+    expect(save.querySelector('[data-fold-order]')).toBeNull();
+    // a folded word is hidden by the stylesheet only: the button still has its name
+    $$('.canvas-toolbar .btn-label').forEach(l => l.classList.add('folded'));
+    expect(button('Ayarlar')).toBeTruthy();
+    $$('.canvas-toolbar .btn-label').forEach(l => l.classList.remove('folded'));
+  });
+});
+
 describe('the About window (the logo), Atıf and Geri bildirim (clinician request 2026-11-04)', () => {
   it('the logo: what PediTree is, that patient data goes nowhere, its licence and copyright — no trademark line; the rest in Ayarlar', async () => {
     const { REPOSITORY_URL } = await import('../utils/appInfo');
