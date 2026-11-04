@@ -121,10 +121,10 @@ describe('the screens in English', () => {
     useLang.getState().setLang({ ui: 'tr', drawing: 'same' });
   });
 
-  it('the toolbar and each of its windows: About, keyboard help, New, Open, Download, Share, Settings', async () => {
+  it('the toolbar and each of its windows: About, Citation, Feedback, New, Open, Download, Share, Settings (with the keyboard help)', async () => {
     const toolbar = $('.canvas-toolbar');
     const seen = [said(toolbar)];
-    for (const open of ['About PediTree', 'New', 'Download']) {
+    for (const open of ['About PediTree', 'Citation', 'Feedback', 'New', 'Download']) {
       const b = byText(open) || buttons().find((x) => x.textContent.includes(open));
       expect(b, open).toBeTruthy();
       await click(b);
@@ -140,13 +140,10 @@ describe('the screens in English', () => {
     }
     expect(seen.join(' ')).toMatch(/Ring menu/);
     expect(seen.join(' ')).toMatch(/Side panel/);
-    await key('Escape');
-    // the keyboard help opens from the About window
-    await click(byText('About PediTree'));
-    await click(buttons().find((x) => x.textContent.includes('Keyboard shortcuts')));
-    seen.push(said(toolbar));
-    expect(said(toolbar)).toMatch(/Adds the mother and father/);
-    expect([...toolbar.querySelectorAll('kbd')].map((k) => k.textContent)).toEqual(expect.arrayContaining(['P', 'S', 'B', 'C', 'F', 'A', 'T', 'N']));
+    // the keyboard help: Settings → Keyboard shortcuts, the letters of the English keyboard
+    await click([...dialog.querySelectorAll('[role="tab"]')].find((x) => x.textContent.includes('Keyboard shortcuts')));
+    expect(said(dialog)).toMatch(/Adds the mother and father/);
+    expect([...dialog.querySelectorAll('kbd')].map((k) => k.textContent)).toEqual(expect.arrayContaining(['P', 'S', 'B', 'C', 'F', 'A', 'T', 'N']));
     await key('Escape');
     // "Open" explains first which files it opens
     await click(byText('Open'));

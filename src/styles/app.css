@@ -81,6 +81,9 @@ body {
   border-radius: var(--radius-sm);
 }
 .notice-strip-error { border-left-color: var(--danger); background: var(--danger-soft); color: var(--danger); }
+/* the strip's own ×: every note away at once, at the right of its first line */
+.notice-strip { position: relative; padding-right: 40px; }
+.notice-dismiss-all { position: absolute; top: 3px; right: 6px; }
 .notice-strip-toggle {
   display: flex; align-items: center; gap: 6px;
   background: none; border: none; padding: 3px 0; cursor: pointer;

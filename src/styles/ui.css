@@ -393,14 +393,13 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-pop);
   font-size: 13.5px; color: var(--ink-2);
 }
-.keys-popover td { padding: 4px 6px; vertical-align: top; line-height: 1.45; }
-.keys-popover:not(.share-popover) { width: 460px; max-width: calc(100vw - 24px); max-height: calc(100vh - 110px); overflow-y: auto; }
-.keys-popover table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.keys-popover table + table { margin-top: 8px; border-top: 1px solid var(--line-2); }
-.keys-popover caption { text-align: left; font-weight: 700; font-size: 13.5px; color: var(--ink); padding: 10px 6px 4px; }
-.keys-popover td:first-child { width: 172px; } /* the same key column in every group */
+.key-help td { padding: 4px 6px; vertical-align: top; line-height: 1.45; font-size: 13.5px; color: var(--ink-2); }
+.key-help table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.key-help table + table { margin-top: 8px; border-top: 1px solid var(--line-2); }
+.key-help caption { text-align: left; font-weight: 700; font-size: 13.5px; color: var(--ink); padding: 10px 6px 4px; }
+.key-help td:first-child { width: 172px; } /* the same key column in every group */
 .keys-title { font-weight: 700; font-size: 16px; color: var(--ink); padding: 2px 6px 0; }
-.keys-popover kbd { font: 700 12px/1.5 var(--font-ui); padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; background: var(--sunken); color: var(--ink); white-space: nowrap; }
+.key-help kbd { font: 700 12px/1.5 var(--font-ui); padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; background: var(--sunken); color: var(--ink); white-space: nowrap; }
 
 /* share menu, "Diğer", "Yeni" */
 .share-popover { width: 296px; display: flex; flex-direction: column; gap: 10px; }
@@ -421,7 +420,6 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .download-ped { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding: 10px 10px 4px; border-top: 1px solid var(--line-2); }
 .download-popover > .share-note { margin: 6px 10px 2px; }
 .about-popover { left: 0; right: auto; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 110px); overflow-y: auto; }
-.keys-help-popover { left: 0; right: auto; }
 .open-popover { left: 0; right: auto; width: 340px; max-width: calc(100vw - 24px); }
 .open-popover .download-item-head { padding: 2px 0; }
 /* a file dragged over the drawing */
@@ -429,9 +427,14 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .about-head { display: flex; align-items: center; gap: 12px; }
 .about-head img { flex: none; display: block; }
 .about-cite { margin: 0; padding: 8px 10px; background: var(--sunken); border-radius: var(--radius-sm); font-size: 13px; line-height: 1.5; color: var(--ink); user-select: all; overflow-wrap: anywhere; }
-.about-popover a { color: var(--accent-ink); }
+.about-text a { color: var(--accent-ink); }
 .about-links { display: flex; flex-wrap: wrap; gap: 8px; }
-.about-popover a.ui-btn { color: inherit; text-decoration: none; }
+.about-text a.ui-btn { color: inherit; text-decoration: none; }
+/* Atıf and Geri bildirim in the top bar; Ayarlar → Hakkında */
+.info-popover { width: 340px; max-width: calc(100vw - 24px); }
+.about-block { display: flex; flex-direction: column; gap: 10px; }
+.about-block .more-title { margin-top: 8px; }
+.about-block > .ui-btn { align-self: flex-start; }
 /* "Yeni" → a family whose parents are related: a window of its own (RelationChooser.jsx) */
 .relation-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(21, 28, 51, 0.32); }
 .relation-dialog { width: 760px; max-width: 100%; max-height: calc(100vh - 32px); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-pop); overflow: hidden; }
