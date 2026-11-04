@@ -884,6 +884,57 @@ describe('notation per the literature (NSGC 2022 and its 2025 correction)', () =
     await run(() => { S().updateIndividual('mother', { carrier: false }); S().updateIndividual('father', { carrier: false }); });
     expect($$('.condition-legend text').some(t => t.textContent === 'Taşıyıcı')).toBe(false);
   });
+
+  it('a symbol in halves has no line across its empty half (clinician report 2026-11-04); quarters keep both lines', async () => {
+    await run(() => { S().updateIndividual('mother', { carrier: true }); S().updateIndividual('father', { carrier: true, affected: true }); });
+    const across = (id) => [...drawn(id).querySelectorAll('.region-divider')].filter(l => l.getAttribute('y1') === l.getAttribute('y2'));
+    expect(across('mother')).toHaveLength(0);
+    expect(across('father')).toHaveLength(0);
+    expect(drawn('mother').querySelectorAll('.region-divider')).toHaveLength(1); // the line between the halves
+    // a finding in a quarter: the symbol keeps both lines
+    await run(() => { S().updateIndividual('mother', { carrier: false }); S().addFinding('mother', 'Miyop'); });
+    expect(across('mother')).toHaveLength(1);
+  });
+
+  it('Ayarlar → "Ortada nokta": the carrier as a dot, in the drawing, the key and a download; the file is untouched', async () => {
+    await run(() => { S().updateIndividual('mother', { carrier: true }); S().updateIndividual('father', { carrier: true, affected: true }); });
+    const doc = S().doc;
+    try {
+      await run(() => useViewSettings.getState().setView({ carrierMark: 'dot' }));
+      expect(S().doc).toBe(doc);
+      // the mother: an empty circle with a dark dot in the middle, no hatched half
+      expect(drawn('mother').querySelector('.condition-carrier')).toBeNull();
+      const dot = drawn('mother').querySelector('.carrier-dot');
+      expect([dot.getAttribute('cx'), dot.getAttribute('cy'), dot.getAttribute('fill')]).toEqual(['0', '0', '#1e293b']);
+      // the father, affected: a filled square with a white dot
+      expect(drawn('father').querySelector('.pedigree-shape').getAttribute('fill')).toBe('#1e293b');
+      expect(drawn('father').querySelector('.carrier-dot').getAttribute('fill')).toBe('#ffffff');
+      // the key explains the dot
+      const row = $$('.condition-legend text').find(t => t.textContent === 'Taşıyıcı');
+      expect(row.parentNode.querySelector('.carrier-dot') || row.previousElementSibling?.querySelector?.('.carrier-dot')).toBeTruthy();
+      expect($$('.condition-legend [fill="url(#fill-cross)"]')).toHaveLength(0);
+      // a download "always standard" still has the dot
+      await run(() => useViewSettings.getState().setView({ exportAs: 'standard' }));
+      const copy = prepareExportSvg($('.pedigree-viewport').ownerSVGElement);
+      expect(copy.querySelectorAll('.carrier-dot').length).toBeGreaterThanOrEqual(3);
+    } finally {
+      await run(() => useViewSettings.getState().setView({ carrierMark: 'split', exportAs: 'screen' }));
+    }
+    expect(drawn('mother').querySelector('.carrier-dot')).toBeNull();
+    expect(drawn('mother').querySelector('.condition-carrier')).toBeTruthy();
+  });
+
+  it('a carrier of a named finding keeps that finding\'s pattern with the dot chosen: a dot cannot say which', async () => {
+    await run(() => S().addFinding('mother', 'FMF'));
+    await run(() => { S().setFindingStatus('mother', 'FMF', 'carrier'); S().updateIndividual('mother', { carrier: true }); });
+    try {
+      await run(() => useViewSettings.getState().setView({ carrierMark: 'dot' }));
+      expect(drawn('mother').querySelector('.condition-carrier')).toBeTruthy();
+      expect(drawn('mother').querySelector('.carrier-dot')).toBeNull();
+    } finally {
+      await run(() => useViewSettings.getState().setView({ carrierMark: 'split' }));
+    }
+  });
 });
 
 describe('the ring\'s "Yardımcı üreme ile" row', () => {

@@ -589,3 +589,11 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .paper-swatch { display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px; border: 1px solid var(--line); border-radius: 3px; background-color: var(--paper); }
 .paper-swatch[data-paper="grid"] { background-image: linear-gradient(to right, rgba(100, 116, 139, 0.35) 1px, transparent 1px), linear-gradient(to bottom, rgba(100, 116, 139, 0.35) 1px, transparent 1px); background-size: 4px 4px; background-position: 1px 1px; }
 .paper-swatch[data-paper="dots"] { background-image: radial-gradient(circle, rgba(100, 116, 139, 0.6) 0.8px, transparent 1.2px); background-size: 4px 4px; }
+/* the two carrier marks in miniature (Ayarlar → Çizim → Taşıyıcı gösterimi) */
+.carrier-swatch { display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px; box-sizing: border-box; border: 1.5px solid var(--ink); border-radius: 50%; background-color: var(--paper); background-repeat: no-repeat; }
+.carrier-swatch[data-mark="split"] {
+  background-image: linear-gradient(to right, transparent calc(50% - 0.5px), var(--ink) calc(50% - 0.5px), var(--ink) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    repeating-linear-gradient(45deg, var(--ink) 0 1px, transparent 1px 3px), repeating-linear-gradient(-45deg, var(--ink) 0 1px, transparent 1px 3px);
+  background-size: 100% 100%, 50% 100%, 50% 100%;
+}
+.carrier-swatch[data-mark="dot"] { background-image: radial-gradient(circle, var(--ink) 2px, transparent 2.5px); }
