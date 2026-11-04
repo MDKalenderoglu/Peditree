@@ -3,7 +3,8 @@
  * 2026-11-01: "the ring keeps growing; let each user keep what they use
  * most"). What can change: the rows under Kardeş / Çocuk (pregnancy,
  * adopted, several in one symbol) and which pregnancy kinds show, and the
- * choices of the Durum arc — shown or hidden, and their order. The four
+ * choices of the Durum arc and of the Bilgiler arc (age, genetic, note; the
+ * short name — clinician request 2026-11-04) — shown or hidden, and their order. The four
  * directions, the sex choices and the corner buttons stay as they are.
  *
  * Nothing is ever lost: a hidden choice stays in the same ring under
@@ -21,7 +22,7 @@ export const RING_ROWS = [
   { id: 'art', label: tk('Yardımcı üreme ile') },
 ];
 /** choices that start hidden — also for a stored preference made before they existed */
-const HIDDEN_AT_FIRST = ['art', 'presymptomatic'];
+const HIDDEN_AT_FIRST = ['art', 'presymptomatic', 'name'];
 export const RING_PREGNANCY = [
   { id: 'loss', label: tk('Düşük') },
   { id: 'stillbirth', label: tk('Ölü doğum (SB)') },
@@ -39,13 +40,23 @@ export const RING_STATUS = [
   { id: 'presymptomatic', label: tk('Belirtisiz taşıyıcı') },
 ];
 
+// the Bilgiler arc: each part opens its own small box (clinician request 2026-11-04)
+export const RING_INFO = [
+  { id: 'age', label: tk('Yaş') },
+  { id: 'genetic', label: tk('Genetik') },
+  { id: 'note', label: tk('Not') },
+  // the side panel has it; under "Diğer…" until brought forward
+  { id: 'name', label: tk('Ad') },
+];
+
 export const DEFAULT_RING = {
   rows: RING_ROWS.map((r) => r.id),
   status: RING_STATUS.map((s) => s.id),
+  info: RING_INFO.map((s) => s.id),
   hidden: [...HIDDEN_AT_FIRST],
 };
 const RING_KEY = 'peditree.ring.v1';
-const KNOWN = new Set([...RING_ROWS, ...RING_PREGNANCY, ...RING_STATUS].map((x) => x.id));
+const KNOWN = new Set([...RING_ROWS, ...RING_PREGNANCY, ...RING_STATUS, ...RING_INFO].map((x) => x.id));
 
 /** Known ids only, every one once: a stored order keeps its place, new ones go to the end. */
 const ordered = (stored, all) => {
@@ -56,12 +67,13 @@ const ordered = (stored, all) => {
 
 export function normalizeRing(v) {
   const o = v && typeof v === 'object' ? v : {};
-  const seen = [...(Array.isArray(o.rows) ? o.rows : []), ...(Array.isArray(o.status) ? o.status : [])];
+  const seen = ['rows', 'status', 'info'].flatMap((k) => (Array.isArray(o[k]) ? o[k] : []));
   // a choice the stored preference has never seen starts hidden if it is one of those
   const unseen = HIDDEN_AT_FIRST.filter((id) => !seen.includes(id));
   return {
     rows: ordered(o.rows, RING_ROWS),
     status: ordered(o.status, RING_STATUS),
+    info: ordered(o.info, RING_INFO),
     hidden: [...new Set([...(Array.isArray(o.hidden) ? o.hidden : []), ...unseen].filter((id) => KNOWN.has(id)))],
   };
 }

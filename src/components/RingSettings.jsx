@@ -8,7 +8,7 @@
  */
 import { ArrowUp, ArrowDown, Check, Plus } from 'lucide-react';
 import { useT } from '../i18n';
-import { useRingPrefs, RING_ROWS, RING_PREGNANCY, RING_STATUS, DEFAULT_RING, moveInRing, toggleInRing } from '../utils/ringPrefs';
+import { useRingPrefs, RING_ROWS, RING_PREGNANCY, RING_STATUS, RING_INFO, DEFAULT_RING, moveInRing, toggleInRing } from '../utils/ringPrefs';
 import { usePanelPrefs, PANEL_PARTS, DEFAULT_PANEL, togglePanelPart } from '../utils/panelPrefs';
 
 /** An on/off switch (a checkbox for assistive technology). */
@@ -75,6 +75,10 @@ export function RingSection() {
       <div className="set-block">
         <div className="set-block-title">{t('Durum düğmesindeki seçenekler')}</div>
         <OrderedRows list="status" items={RING_STATUS} ring={ring} setRing={setRing} />
+      </div>
+      <div className="set-block">
+        <div className="set-block-title">{t('Bilgiler düğmesindeki seçenekler')}</div>
+        <OrderedRows list="info" items={RING_INFO} ring={ring} setRing={setRing} />
       </div>
       <button className="ui-btn ui-btn-sm set-reset" disabled={!changed} onClick={() => setRing(DEFAULT_RING)}>{t('Varsayılana dön')}</button>
     </>

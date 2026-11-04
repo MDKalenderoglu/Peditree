@@ -281,6 +281,11 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .radial-panel { padding: 12px 14px; width: 340px; max-width: calc(100vw - 24px); box-sizing: border-box; display: flex; flex-direction: column; gap: 9px; }
 .radial-panel-title { font-size: 14px; font-weight: 700; color: var(--ink); }
 .radial-panel-col { display: flex; flex-direction: column; gap: 8px; }
+/* one Bilgiler part under its band: the title says what and where; the field's label is for screen readers */
+.radial-info-box { width: 300px; }
+.radial-info-box .field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.radial-info-box .field { margin: 0; }
+.radial-info-box .input-age { width: 100%; text-align: left; }
 .radial-note { width: 100%; min-height: 76px; }
 
 /* findings palette (FindingsPalette.jsx) */
