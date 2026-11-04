@@ -96,13 +96,13 @@ button, input, select, textarea { font-family: inherit; }
 
 /* ── toolbar: the case on the left, the file in the middle, what goes out on the right ── */
 .toolbar {
-  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
-  padding: 8px 12px; min-height: 56px; box-sizing: border-box;
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  padding: 6px 12px; min-height: 52px; box-sizing: border-box;
   background: var(--frame); border-bottom: 1px solid var(--line);
 }
 .toolbar-brand { margin-right: 6px; }
 .toolbar-group { display: flex; align-items: center; gap: 2px; }
-.toolbar-sep { width: 1px; height: 24px; background: var(--line); margin: 0 6px; }
+.toolbar-sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; flex: none; }
 .toolbar-spacer { flex: 1; }
 .toolbar-end { display: flex; align-items: center; gap: 5px; margin-left: auto; }
 .toolbar-case { display: flex; align-items: center; gap: 10px; }
@@ -119,6 +119,15 @@ button, input, select, textarea { font-family: inherit; }
 .toolbar .patient-name::placeholder { font-weight: 400; color: var(--faint); }
 .toolbar-field { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); white-space: nowrap; }
 .toolbar-field .birth-date { width: 112px; padding-left: 8px; padding-right: 6px; font-variant-numeric: tabular-nums; }
+/* one row (toolbarFit.js measures and folds, the least used first): a word
+   gives way to its icon but stays for screen readers; every button keeps its tooltip */
+.toolbar .ui-btn:not(.ui-btn-icon) { padding: 0 10px; }
+.toolbar .btn-label.folded {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+.toolbar .ui-btn:has(> .btn-label.folded) { padding: 0 9px; }
+.toolbar .brand-sub.folded, .toolbar .brand-text.folded, .toolbar .toolbar-sep.folded { display: none; }
+.toolbar .patient-name.folded { width: 150px; }
 
 /* ── fields ── */
 .field { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -364,19 +373,9 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
   .input, .select { height: 40px; }
   .toolbar .patient-name { height: 40px; }
 }
-/* a narrow window or a tablet in portrait: a slimmer side panel, the brand's subtitle goes */
+/* a narrow window or a tablet in portrait: a slimmer side panel */
 @media (max-width: 1000px) {
   .app-shell.has-editor { grid-template-columns: minmax(0, 1fr) 296px; }
-  .toolbar .brand-sub { display: none; }
-  .toolbar .patient-name { width: 160px; }
-}
-/* when the toolbar takes two rows a divider would dangle at a row's end */
-@media (max-width: 1340px) {
-  .toolbar { column-gap: 6px; }
-  .toolbar-sep { display: none; }
-  /* a 1280 px laptop keeps the toolbar on one row */
-  .toolbar .ui-btn:not(.ui-btn-icon) { padding: 0 9px; }
-  .toolbar .patient-name { width: 160px; }
 }
 
 /* ── keyboard focus, visible only when the keyboard moves it ── */
