@@ -636,6 +636,7 @@ describe('more of what the clinician sees', () => {
   it('in a note, Shift+Enter is a new line; Enter saves', async () => {
     await select('mother');
     await key('n');
+    await click($$('.radial-arcs .radial-arc').find(a => a.getAttribute('aria-label') === 'Not'));
     const note = $('textarea.radial-note');
     note.focus();
     await typeInto(note, 'birinci satır');
@@ -670,58 +671,97 @@ describe('more of what the clinician sees', () => {
     expect($('.radial-panel')).not.toBeNull(); // Escape ended the correction only
   });
 
-  it('the ring\'s "Bilgiler" holds the side panel\'s fields — name, age, genetic test, note — and both show the same values (clinician request 2026-11-04)', async () => {
+  // the Bilgiler band (clinician request 2026-11-04): one choice per part, each opening its own box
+  const openInfo = async (part) => {
+    if (!$('.radial-arcs')) await key('n');
+    await click($$('.radial-arcs .radial-arc').find(a => a.getAttribute('aria-label') === part));
+    return $('.radial-info-box');
+  };
+
+  it('"Bilgiler" opens a band like Durum: Yaş, Genetik, Not (and "Ad" under "Diğer…"), read from left to right', async () => {
     await select('mother');
     await key('n');
-    const ring = () => $('.radial-panel');
-    expect(ring().querySelector('.radial-panel-title').textContent).toBe('Bilgiler');
-    const labels = [...ring().querySelectorAll('.field-label')].map(l => l.firstChild.textContent.trim());
-    expect(labels).toEqual(['Ad ya da kısaltma', 'Yaş', 'Genetik test', 'Not']);
+    expect($('.radial-panel')).toBeNull(); // no block of fields any more
+    const arcs = $$('.radial-arcs .radial-arc');
+    expect(arcs.map(a => a.getAttribute('aria-label'))).toEqual(['Yaş', 'Genetik', 'Not', 'Diğer…']);
+    // below the person the band still reads from left to right
+    const xs = arcs.map(a => Number(a.querySelector('text').getAttribute('x')));
+    expect(xs).toEqual([...xs].sort((a, b) => a - b));
+    await click(arcs[3]);
+    expect(arcLabels()).toContain('Ad');
+    const nameBox = await openInfo('Ad');
+    expect(nameBox.querySelector('.radial-panel-title').textContent).toMatch(/^Ad/);
+  });
+
+  it('each part writes in its own box, the same fields as the side panel: age, genetic result as free text, note', async () => {
+    await select('mother');
     const m = () => g().individuals.find(i => i.id === 'mother');
-    // name and age written in the ring
-    const name = ring().querySelector('input.input-wide');
-    expect(document.activeElement).toBe(name);
-    await typeInto(name, 'Ayşe');
-    await key('Enter', {}, name);
-    const age = ring().querySelector('input.input-age');
+    const side = () => $('.editor-body');
+    // Yaş
+    let box = await openInfo('Yaş');
+    expect(box.querySelector('.radial-panel-title').textContent).toBe('Yaş');
+    const age = box.querySelector('input.input-age');
+    expect(document.activeElement).toBe(age);
     await typeInto(age, '52');
     await key('Enter', {}, age);
-    expect([m().displayLabel, m().age]).toEqual(['Ayşe', '52']);
-    // genetic test "+" and a result line
-    await click(buttons(ring()).find(b => b.getAttribute('aria-label') === 'Genetik test yapıldı'));
-    const add = ring().querySelector('input[aria-label="Varyant ya da sonuç ekle"]');
-    await typeInto(add, 'BRCA1 c.68_69del het');
+    expect(m().age).toBe('52');
+    expect(side().querySelector('input.input-age').value).toBe('52');
+    // Genetik: no "−" / "+", a line written marks the test done
+    box = await openInfo('Genetik');
+    expect(buttons(box).some(b => /Genetik test yap/.test(b.getAttribute('aria-label') || ''))).toBe(false);
+    const add = box.querySelector('input[aria-label="Varyant ya da sonuç ekle"]');
+    expect(add.getAttribute('placeholder')).toMatch(/FBN1:c\./);
+    expect(document.activeElement).toBe(add);
+    await typeInto(add, 'FBN1:c.1585C>T het');
     await key('Enter', {}, add);
-    expect([m().geneticTest, m().geneticNote]).toEqual(['tested', 'BRCA1 c.68_69del het']);
-    const note = ring().querySelector('textarea.radial-note');
+    expect([m().geneticTest, m().geneticNote]).toEqual(['tested', 'FBN1:c.1585C>T het']);
+    expect(side().querySelector('input[aria-label="Genetik sonuç 1"]').value).toBe('FBN1:c.1585C>T het');
+    expect(drawn('mother').querySelector('.annotations').textContent).toMatch(/FBN1:c\.1585C>T het/);
+    // deleting the last line keeps "test yapıldı" and says so; "Kaldır" takes it away
+    await click(buttons($('.radial-info-box')).find(b => b.getAttribute('aria-label') === 'Genetik sonuç 1 sil'));
+    expect([m().geneticTest, m().geneticNote || '']).toEqual(['tested', '']);
+    expect($('.radial-info-box').textContent).toMatch(/test yapıldı/);
+    await click(button('Kaldır', $('.radial-info-box')));
+    expect(m().geneticTest || '').toBe('');
+    // Not
+    box = await openInfo('Not');
+    const note = box.querySelector('textarea.radial-note');
+    expect(document.activeElement).toBe(note);
     await typeInto(note, 'Meme ca 45 yaşında');
     await key('Enter', {}, note);
     expect(m().notes).toBe('Meme ca 45 yaşında');
-    // the side panel shows the same
-    const side = $('.editor-body');
-    expect(side.querySelector('input.input-wide').value).toBe('Ayşe');
-    expect(side.querySelector('input.input-age').value).toBe('52');
-    expect(side.querySelector('input[aria-label="Genetik sonuç 1"]').value).toBe('BRCA1 c.68_69del het');
-    expect(side.querySelector('textarea').value).toBe('Meme ca 45 yaşında');
-    // and the ring shows what the side panel holds
-    expect(ring().querySelector('input[aria-label="Genetik sonuç 1"]').value).toBe('BRCA1 c.68_69del het');
+    expect(side().querySelector('textarea').value).toBe('Meme ca 45 yaşında');
+    // the part shown is marked; a second click closes its box
+    expect($$('.radial-arcs .radial-arc.on').map(a => a.getAttribute('aria-label'))).toEqual(['Not']);
+    await openInfo('Not');
+    expect($('.radial-info-box')).toBeNull();
   });
 
-  it('the ring\'s "Bilgiler" of a pregnancy has no age', async () => {
+  it('a pregnancy\'s Bilgiler has no age; Ayarlar → Halka menü hides or orders the parts', async () => {
     await run(() => S().addSiblingTo('proband', 'unknown', { ongoingPregnancy: true }));
     await select(g().individuals.find(i => i.ongoingPregnancy).id);
     await key('n');
-    expect([...$('.radial-panel').querySelectorAll('.field-label')].map(l => l.firstChild.textContent.trim())).toEqual(['Ad ya da kısaltma', 'Genetik test', 'Not']);
-  });
-
-  it('the note in the ring says under the box where it goes; the box is not left to a long placeholder', async () => {
-    await select('mother');
-    await key('n');
-    const note = $('textarea.radial-note');
-    expect(note.getAttribute('placeholder').length).toBeLessThan(40);
-    const help = document.getElementById(note.getAttribute('aria-describedby'));
-    expect(help.textContent).toMatch(/Notlar/);
-    expect(help.textContent).toMatch(/Shift\+Enter/);
+    expect(arcLabels()).toEqual(['Genetik', 'Not', 'Diğer…']);
+    const { useRingPrefs, DEFAULT_RING } = await import('../utils/ringPrefs');
+    try {
+      await select('mother');
+      await click(button('Ayarlar'));
+      const dialog = document.querySelector('.settings-dialog');
+      await click([...dialog.querySelectorAll('[role="tab"]')].find(b => b.textContent.includes('Halka menü')));
+      expect(dialog.querySelector('[role="tabpanel"]').textContent).toMatch(/Bilgiler düğmesindeki seçenekler/);
+      const sw = (name) => [...dialog.querySelectorAll('.set-list-label')].filter(l => l.textContent === name).at(-1).querySelector('input');
+      expect(sw('Ad').checked).toBe(false);
+      await click(sw('Genetik'));
+      const up = () => buttons(dialog).filter(b => b.getAttribute('aria-label') === 'Not: yukarı').at(-1);
+      await click(up());
+      await click(up());
+      await key('Escape');
+      await select('mother');
+      await key('n');
+      expect(arcLabels()).toEqual(['Not', 'Yaş', 'Diğer…']);
+    } finally {
+      await run(() => useRingPrefs.getState().setRing(DEFAULT_RING));
+    }
   });
 
   it('the status bands: every word upright, each band within half the circle, the choices split evenly', async () => {
