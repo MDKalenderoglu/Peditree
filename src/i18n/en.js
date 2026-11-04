@@ -30,7 +30,7 @@ const EN = {
   'Bulgu (hastalık ya da özellik) ekler ya da değiştirir.': 'Adds or changes a finding (a condition or trait).',
   'Durumunu değiştirir: cinsiyet, hasta (etkilenmiş), taşıyıcı, vefat, proband, danışan.': 'Changes the status: sex, affected, carrier, deceased, proband, consultand.',
   'İkiz kardeş ekler.': 'Adds a twin.',
-  'Kişi için not yazar.': 'Writes a note for the person.',
+  'Kişinin bilgileri: ad, yaş, genetik test ve not.': 'The person’s details: name, age, genetic test and note.',
   'Kişiyi yana kaydırır: eşiyle yer değiştirir ya da kardeşlerinin arasında bir sıra kayar. Kişiyi fareyle sürükleyerek de yapılır.':
     'Moves the person sideways: swaps places with the partner, or moves one place among the siblings. Dragging the person with the mouse does the same.',
   'Kişiyi siler (önce sorar).': 'Deletes the person (asks first).',
@@ -173,6 +173,8 @@ const EN = {
   'Pedigri numaraları (I-1, II-3) el yazısında da düz yazılsın': 'Pedigree numbers (I-1, II-3) in plain type, also with handwriting',
   'Sayfa zemini': 'Page background',
   'Taşıyıcı gösterimi': 'Carrier symbol',
+  ': yapılmadı.': ': not done.',
+  ': yapıldı; bulunan varyantı ya da sonucu yazıp Enter’a basın, her satır sembolün altında çıkar.': ': done; type the variant or result found and press Enter — each line appears under the symbol.',
   'Adı girilmemiş taşıyıcı için. NSGC 2022 noktayı artık önermiyor. Anahtar seçileni açıklar.': 'For a carrier with no condition named. NSGC 2022 no longer recommends the dot. The key explains the one chosen.',
   'Bölünmüş (NSGC 2022)': 'Divided (NSGC 2022)',
   'Ortada nokta': 'Dot in the middle',

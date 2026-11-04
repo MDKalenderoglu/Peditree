@@ -5,7 +5,7 @@
  * the same store operations as before. The store re-validates every action
  * independently of what this panel offers.
  */
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { X, Trash2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { computeSiblingCreationPlan, computeUnionCreationPlan } from '../state/usePedigreeStore';
 import { AGE_EXAMPLE, shownAge } from '../utils/age';
@@ -13,10 +13,10 @@ import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { degreeLabel, kinshipOf, kinshipCoefficient, childInbreeding, formatCoefficient, cousinMarriageName } from '../graph/kinship';
 import { groupOf, multipleName, zygosityLabel, ZYGOSITY } from '../graph/multiples';
 import BulkEditor from './BulkEditor';
-import { isPregnancy, pregnancyKind, PREGNANCY_LABEL, GENETIC_TESTED, geneticLines, withGeneticLine, isGroup } from '../graph/model';
+import { isPregnancy, pregnancyKind, PREGNANCY_LABEL, geneticLines, isGroup } from '../graph/model';
 import { parseGroupCount } from '../graph/ops';
 import DraftField from './DraftField';
-import { pendingDrafts } from '../utils/drafts';
+import { NameField, AgeField, NoteField, GeneticField } from './InfoFields';
 import { usePanelPrefs, PANEL_PARTS } from '../utils/panelPrefs';
 import { formatDate } from '../utils/age';
 import { t, tk, currentLang, shownLabel } from '../i18n';
@@ -26,32 +26,6 @@ const SEX_WORD = { male: tk('Erkek'), female: tk('Kadın'), unknown: tk('Cinsiye
 const GROUP_WORD = { male: tk('erkek'), female: tk('kadın'), unknown: tk('kişi (cinsiyetleri karışık ya da bilinmiyor)') };
 // same options and wording as the wizard; an older 'separated' shows as the combined one
 const STATUS_OPTIONS = [['together', tk('Birlikte')], ['divorced', tk('Boşanmış/Ayrılmış')], ['unknown', tk('Bilinmiyor')]];
-
-/**
- * A box that adds one line: Enter (or leaving the box) writes it and the box
- * empties for the next one, keeping the focus (several variants in a row).
- * Never written mid-word; a half-typed line is written when the person
- * changes or the page is left.
- */
-function AddLineField({ onAdd, ...rest }) {
-  const [text, setText] = useState('');
-  const latest = useRef({ text, onAdd });
-  // the newest onAdd for a write after this render (refs are not written while rendering)
-  useLayoutEffect(() => { latest.current.onAdd = onAdd; });
-  const flush = useRef(() => {
-    const t = latest.current.text.trim();
-    pendingDrafts.delete(flush.current);
-    if (t) latest.current.onAdd(t);
-  });
-  useEffect(() => () => flush.current(), []);
-  const add = () => { flush.current(); setText(''); latest.current.text = ''; };
-  return (
-    <input {...rest} value={text}
-      onChange={(e) => { setText(e.target.value); latest.current.text = e.target.value; if (e.target.value.trim()) pendingDrafts.add(flush.current); else pendingDrafts.delete(flush.current); }}
-      onBlur={add}
-      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} />
-  );
-}
 
 function Header({ title, sub, onClose }) {
   return (
@@ -531,14 +505,7 @@ export default function IndividualEditor({
     : pregnancyKind(node) ? t(PREGNANCY_LABEL[pregnancyKind(node)]) : t(SEX_WORD[node.sex || 'unknown']);
   const sub = [kind, node.age ? t('{age} yaş', { age: shownAge(node.age) }) : null, node.proband ? 'proband' : null, node.consultand ? t('danışan') : null].filter(Boolean).join(' · ');
   const set = (patch) => onUpdate(node.id, patch);
-  // genetic test: "+" done / "−" not; the clinician's lines, one per variant or result
-  const tested = node.geneticTest === GENETIC_TESTED;
   const gLines = geneticLines(node);
-  const setGeneticLine = (k, text) => set({ geneticNote: withGeneticLine(node.geneticNote, k, text) });
-  const familyNotes = [...new Set((pedigreeData?.individuals || [])
-    .filter(i => i.id !== node.id).flatMap(geneticLines))]
-    .filter(line => !gLines.includes(line)).slice(0, 6);
-
   // the clinician's own panel (Ayarlar → Yan panel; clinician request 2026-11-02): a hidden
   // part waits under "Diğer bilgiler…"; a part that holds something for this person shows anyway
   const person = !node.placeholder && !group;
@@ -625,29 +592,9 @@ export default function IndividualEditor({
             <div className="card-title">{t('Bilgiler')}</div>
             {/* two free texts, each saying where it goes (clinician question 2026-11-03): a short name
                 under the symbol, and a note in the numbered Notes under the pedigree */}
-            <label className="field-col">
-              <span className="field-label">{t('Ad ya da kısaltma')} <span className="field-where">{t('sembolün altında')}</span></span>
-              <DraftField key={`${node.id}-label`} type="text" className="input input-wide" value={node.displayLabel || ''} placeholder={t('ör. Ayşe, A.Y. ya da “amca” (boş bırakılabilir)')}
-                onCommit={v => set({ displayLabel: v })} />
-              {(node.displayLabel || '').length > 24 && (
-                <span className="field-hint field-warn">{t('Uzun yazı çizimi kalabalıklaştırır; ayrıntıyı aşağıdaki nota yazın.')}</span>
-              )}
-            </label>
-            <label className="field-col">
-              <span className="field-label">{t('Not')} <span className="field-where">{t('pedigrinin altında, numaralı')}</span></span>
-              <DraftField key={`${node.id}-note`} as="textarea" rows={2} className="input input-wide" value={node.notes || ''}
-                placeholder={t('Öykü, muayene, tetkik… (sembolün yanında [1] çıkar)')}
-                onCommit={v => set({ notes: v })} />
-            </label>
-            {!isLoss && (
-              <label className="field">
-                <span className="field-label">{t('Yaş')}</span>
-                <DraftField key={`${node.id}-age`} type="text" className="input input-age" value={node.age || ''} placeholder={t('35, 3 ay…')}
-                  disabled={!!node.birthDate}
-                  title={node.birthDate ? t('Yaş, üstteki doğum tarihinden bugüne göre hesaplanıyor; değiştirmek için doğum tarihini düzeltin') : `${t('Yıl, ay ya da gün')} — ${t(AGE_EXAMPLE)}`}
-                  onCommit={v => set({ age: v.trim() })} />
-              </label>
-            )}
+            <NameField node={node} set={set} />
+            <NoteField node={node} set={set} />
+            {!isLoss && <AgeField node={node} set={set} />}
             {shows('recordsReviewed') && (
               <label className="check">
                 <input type="checkbox" checked={!!node.recordsReviewed} onChange={e => set({ recordsReviewed: e.target.checked })} />
@@ -689,50 +636,7 @@ export default function IndividualEditor({
                   onCommit={v => onSetGestationWeeks(node.id, v)} />
               </label>
             )}
-            {/* genetic test (clinician decision 2026-10-27): "−" none, "+" done; what
-                is written goes under the symbol line by line, no "E" (NSGC 2022) */}
-            {shows('genetic') && <div className="field-col">
-              <span className="field-label">{t('Genetik test')}</span>
-              <div className="segmented" role="radiogroup" aria-label={t('Genetik test')}>
-                {[['', '−', t('Genetik test yapılmadı')], [GENETIC_TESTED, '+', t('Genetik test yapıldı')]].map(([v, sign, title]) => (
-                  <button key={v} role="radio" aria-checked={(node.geneticTest || '') === v} className={`seg-sign${(node.geneticTest || '') === v ? ' on' : ''}`}
-                    title={title} aria-label={title}
-                    onClick={() => {
-                      if ((node.geneticTest || '') === v) return;
-                      if (!v && gLines.length && !window.confirm(t('Genetik test "−" yapılırsa yazılan {n} satır da silinir. Devam edilsin mi?\n\n"Geri Al" (Cmd/Ctrl+Z) ile geri alınabilir.', { n: gLines.length }))) return;
-                      set({ geneticTest: v });
-                    }}>{sign}</button>
-                ))}
-              </div>
-              <span className="field-hint">
-                <b>−</b>{t(': genetik test yapılmadı.')} <b>+</b>{t(': genetik test yapıldı. "+" seçtiyseniz bulunan varyantı ya da sonucu (ör. "sonuç bekleniyor") aşağıya yazıp Enter\'a basabilirsiniz; yazmak zorunlu değil. Her satır pedigride sembolün altında ayrı bir satırda görünür. Hiçbir şey yazmazsanız sembolün altında "test yapıldı" yazar.')}
-              </span>
-              {tested && (
-                <div className="genetic-lines">
-                  {gLines.map((line, k) => (
-                    <div key={`${node.id}-gl-${k}`} className="genetic-line">
-                      <DraftField type="text" className="input input-wide" value={line} aria-label={t('Genetik sonuç {n}', { n: k + 1 })}
-                        onCommit={v => setGeneticLine(k, v)} />
-                      <button className="ui-btn ui-btn-ghost ui-btn-icon" title={t('Bu satırı sil')} aria-label={t('Genetik sonuç {n} sil', { n: k + 1 })}
-                        onClick={() => setGeneticLine(k, '')}><X size={14} /></button>
-                    </div>
-                  ))}
-                  <AddLineField key={`${node.id}-gadd`} type="text" className="input input-wide"
-                    aria-label={t('Varyant ya da sonuç ekle')}
-                    placeholder={gLines.length ? t('Bir varyant / sonuç daha (Enter)') : t('Varyant ya da sonuç, ör. FBN1 c.1585C>T het')}
-                    onAdd={t => setGeneticLine(Infinity, t)} />
-                </div>
-              )}
-              {/* what was written for relatives, one tap away (clinician request 2026-10-25) */}
-              {familyNotes.length > 0 && (
-                <div className="suggest-row">
-                  <span className="field-hint">{t('Ailede girilen:')}</span>
-                  {familyNotes.map(line => (
-                    <button key={line} className="suggest-chip" title={t('Bu kişiye de ekle')} onClick={() => setGeneticLine(Infinity, line)}>{line}</button>
-                  ))}
-                </div>
-              )}
-            </div>}
+            {shows('genetic') && <GeneticField node={node} set={set} individuals={pedigreeData?.individuals || []} />}
             {node.condition && (
               // older free-text field: still shown under the symbol, editable/clearable here
               <label className="field-col">
