@@ -21,6 +21,7 @@ import { routeConnectors, estimateLevelNeeds, planBands } from './routing';
 import { displayParentage, isSmallSymbol, reproMarkOf } from '../../graph/model';
 import { withArt, artEdges, isArtUnion } from './art';
 import { withGhosts, isGhost } from './crossGeneration';
+import { textBox } from '../../utils/symbolText';
 
 export const PCL = {
   GEN_Y_SPACING: 160,
@@ -30,6 +31,11 @@ export const PCL = {
   FAMILY_GAP: 130,   // between different families on a row (visual grouping)
   X_MARGIN: 60,
 };
+
+// the text under a symbol (symbolText.js) keeps this far from a neighbour's
+// text and from the couple's line of descent (clinician report 2026-11-05)
+const TEXT_CLEAR = 8;
+const TEXT_LINE_CLEAR = 6;
 
 const W_CENTRE = 1;
 // opts.straightStart (a new pedigree): an only child stands right under a
@@ -111,6 +117,7 @@ export function computePclLayout(inputGraph, opts = {}) {
     ...individuals.filter((i) => i.adoptedOut).map((i) => i.id),
     ...(inputGraph.socialParentLinks || []).filter((l) => l.kind === 'adoptive').map((l) => l.childId),
   ]);
+  S.textBox = new Map(individuals.map((i) => [i.id, isGhost(i) ? null : textBox(i, { bracketed: S.bracketed.has(i.id) })]));
   const stability = opts.stability || null;
   const { order } = stability ? orderLayersStable(S, stability) : orderLayers(S);
   // orderOnly (after a removal): keep the previous left-to-right order,
@@ -141,10 +148,24 @@ export function computePclLayout(inputGraph, opts = {}) {
   const n = ids.length;
 
   const sameAtom = (a, b) => S.personAtom.get(a) !== undefined && S.personAtom.get(a) === S.personAtom.get(b);
+  // how far each person's text reaches (age, genetic result, label …): two
+  // texts never touch, and a couple's line of descent, which drops from the
+  // middle between them, never runs through either partner's text
+  const descends = new Set();
+  for (const u of S.unions) {
+    if (u.artVirtual || !(S.childrenOf.get(u.id) || []).length) continue;
+    const [a, b] = u.partners || [];
+    descends.add(`${a}\u0001${b}`).add(`${b}\u0001${a}`);
+  }
+  const textGap = (l, r) => {
+    const L = S.textBox.get(l), R = S.textBox.get(r);
+    if (!L || !R) return 0;
+    const apart = L.right + R.left + TEXT_CLEAR;
+    return descends.has(`${l}\u0001${r}`) ? Math.max(apart, 2 * (Math.max(L.right, R.left) + TEXT_LINE_CLEAR)) : apart;
+  };
   const gapBetween = (a, b) => {
-    if (S.isPartners(a, b)) return PCL.SPOUSE_GAP;
-    if (sameAtom(a, b)) return PCL.SIBLING_GAP;
-    return PCL.FAMILY_GAP;
+    const base = S.isPartners(a, b) ? PCL.SPOUSE_GAP : sameAtom(a, b) ? PCL.SIBLING_GAP : PCL.FAMILY_GAP;
+    return Math.max(base, Math.ceil(textGap(a, b)));
   };
 
   const layers = [];
@@ -178,7 +199,7 @@ export function computePclLayout(inputGraph, opts = {}) {
       const [l, r] = rowPos.get(a) <= rowPos.get(b) ? [a, b] : [b, a];
       const adjacent = Math.abs(rowPos.get(a) - rowPos.get(b)) === 1;
       terms.push(adjacent
-        ? { w: W_SPOUSE, idx: [index.get(r), index.get(l)], c: [1, -1], d: PCL.SPOUSE_GAP, couple: true }
+        ? { w: W_SPOUSE, idx: [index.get(r), index.get(l)], c: [1, -1], d: gapBetween(l, r), couple: true }
         : { w: W_FAR_PARTNERS, idx: [index.get(r), index.get(l)], c: [1, -1], d: PCL.SPOUSE_GAP });
     }
     const kids = (S.childrenOf.get(u.id) || []).filter(c => index.has(c));

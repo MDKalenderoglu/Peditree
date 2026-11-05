@@ -858,6 +858,23 @@ describe('lines carry their meaning in every case', () => {
     });
   };
 
+  it('the room the layout keeps under a symbol is the room the drawing\'s lines take (symbolText.js; clinician report 2026-11-05)', async () => {
+    const { textBox, TEXT } = await import('../utils/symbolText');
+    await run(() => S().updateIndividual('mother', { age: '52', sexAtBirth: 'AFAB', displayLabel: 'Ayşe', geneticTest: 'tested', geneticNote: 'APC:c.1234G>A Het\nBRCA2 VUS', notes: 'öykü' }));
+    await run(() => S().updateIndividual('father', { deceased: true, ageAtDeath: '61' }));
+    for (const id of ['mother', 'father', 'proband']) {
+      const texts = [...drawn(id).querySelectorAll('.annotations text')];
+      const genetic = texts.filter(t => t.getAttribute('font-size') === '9px' && !/^\[\d+\]$/.test(t.textContent)).length;
+      const lines = texts.length - genetic;
+      const drawnDepth = lines + genetic ? TEXT.HALF + TEXT.FIRST + lines * TEXT.LINE + genetic * TEXT.GENETIC : TEXT.HALF;
+      expect(textBox(g().individuals.find(i => i.id === id)).depth, id).toBe(drawnDepth);
+    }
+    // the widest line is no wider than the layout thinks (a character at most 0.68 of the font size)
+    const widest = Math.max(...[...drawn('mother').querySelectorAll('.annotations text')].map(t => t.textContent.length * parseFloat(t.getAttribute('font-size')) * TEXT.EM));
+    expect(2 * textBox(g().individuals.find(i => i.id === 'mother')).left).toBeGreaterThanOrEqual(widest - 0.01);
+    await run(() => S().resetPedigree());
+  });
+
   it('an older file whose note, cause of death or old text is only spaces gets no note number and no "Notlar" (clinician report 2026-11-05)', async () => {
     const { starterDocument } = await import('../state/usePedigreeStore');
     const doc = starterDocument();
