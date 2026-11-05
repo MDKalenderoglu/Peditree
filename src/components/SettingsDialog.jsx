@@ -92,8 +92,9 @@ function DrawingSection() {
           <Segmented label={t('Taşıyıcı gösterimi')} value={view.carrierMark} onChange={(v) => setView({ carrierMark: v })}
             options={CARRIER_MARKS.map((m) => [m.id, <><span className="carrier-swatch" data-mark={m.id} aria-hidden="true" />{t(m.label)}</>])} />
         </Row>
-        <Row title={t('Açıklama yazılarının boyutu')} hint={t('Hasta adı, açıklama ve notlar')} more={t('Hasta adı, bulgular açıklaması ve notlar; indirilen ve yazdırılan çizimde de. Sembollerin altındaki yazılar aynı boyutta kalır.')}>
-          <Segmented label={t('Açıklama yazılarının boyutu')} value={view.legendSize} onChange={(v) => setView({ legendSize: v })}
+        {/* every text of the drawing (clinician request 2026-11-05) */}
+        <Row title={t('Yazı boyutu')} hint={t('Çizimdeki bütün yazılar')} more={t('Sembollerin altındaki yazılar, pedigri numaraları, hasta adı, açıklama ve notlar; indirilen ve yazdırılan çizimde de. Yazı büyüyünce kişiler birbirinden biraz açılır; semboller aynı boyutta kalır.')}>
+          <Segmented label={t('Yazı boyutu')} value={view.legendSize} onChange={(v) => setView({ legendSize: v })}
             options={LEGEND_SIZES.map((z) => [z.id, t(z.label)])} />
         </Row>
         <Row title={t('İndirilen resmin görünümü')} hint={t('İndirme, paylaşma ve yazdırma')}>

@@ -44,13 +44,23 @@ export const TEXT = {
   EM: 0.68,
 };
 const LANGS = ['tr', 'en'];
+
+/**
+ * Ayarlar → Çizim → Yazı boyutu scales every text of the drawing (clinician
+ * request 2026-11-05: not only the key and the notes). A device preference
+ * (drawingStyle.js sets it); the layout reads it here, so a larger text gets
+ * more room. The symbols themselves keep their size.
+ */
+let SCALE = 1;
+export function setTextScale(k) { SCALE = Number.isFinite(k) && k > 0 ? k : 1; }
+export const textScale = () => SCALE;
 const CONDITION_MAX = 15;
 
 /** The words on a "same village" couple's relationship line: the clinician's, or "Aynı köy". */
 export const lineNoteText = (note, lang) => (filled(note) ? note : t('Aynı köy', null, lang));
 export const LINE_NOTE_SIZE = 10; // px, as drawn (PedigreeCanvas)
 /** How wide those words are at most (both languages, so the layout does not move with the language). */
-export const lineNoteWidth = (note) => Math.max(...LANGS.map((l) => lineNoteText(note, l).length)) * LINE_NOTE_SIZE * TEXT.EM;
+export const lineNoteWidth = (note) => Math.max(...LANGS.map((l) => lineNoteText(note, l).length)) * LINE_NOTE_SIZE * TEXT.EM * SCALE;
 
 /**
  * How far the text under a symbol reaches: `left` / `right` of the symbol's
@@ -66,7 +76,7 @@ export function textBox(d, { bracketed = !!d.adoptedOut } = {}) {
     const shown = texts.filter(Boolean);
     if (!shown.length) return;
     lines += 1;
-    widths.push(Math.max(...shown.map(s => String(s).length)) * size * TEXT.EM);
+    widths.push(Math.max(...shown.map(s => String(s).length)) * size * TEXT.EM * SCALE);
   };
   line([d.sexAtBirth], 11);
   line(LANGS.map(l => annotationAge(d, l)?.text), 11);
@@ -74,14 +84,14 @@ export function textBox(d, { bracketed = !!d.adoptedOut } = {}) {
   line(LANGS.map(l => lmpLine(d, l)), 11);
   const rows = LANGS.map(l => geneticRows(d, t(TESTED_TEXT, null, l)));
   const genetic = Math.max(...rows.map(r => r.length));
-  for (const r of rows) for (const row of r) widths.push(row.text.length * 9 * TEXT.EM);
+  for (const r of rows) for (const row of r) widths.push(row.text.length * 9 * TEXT.EM * SCALE);
   line([d.displayLabel], 11);
   line([filled(d.condition) ? d.condition.slice(0, CONDITION_MAX) : ''], 10);
   if (hasNoteNumber(d)) line(['[99]'], 9);
   const halfText = widths.length ? Math.max(...widths) / 2 : 0;
   const shift = d.proband || d.consultand ? TEXT.PROBAND_SHIFT : 0;
   const depth = lines || genetic
-    ? half + TEXT.FIRST + lines * TEXT.LINE + genetic * TEXT.GENETIC + (bracketed ? TEXT.ADOPTED_EXTRA : 0)
+    ? half + (TEXT.FIRST + lines * TEXT.LINE + genetic * TEXT.GENETIC) * SCALE + (bracketed ? TEXT.ADOPTED_EXTRA : 0)
     : half;
   return { left: Math.max(half, halfText - shift), right: Math.max(half, halfText ? halfText + shift : 0), depth };
 }

@@ -18,6 +18,7 @@ import { create } from 'zustand';
 import { tk } from '../i18n';
 import { PAPERS } from './paper';
 import { CARRIER_MARKS } from '../graph/conditionKey';
+import { setTextScale } from './symbolText';
 import kalam400 from '@fontsource/kalam/files/kalam-latin-400-normal.woff2?url';
 import kalam400x from '@fontsource/kalam/files/kalam-latin-ext-400-normal.woff2?url';
 import kalam700 from '@fontsource/kalam/files/kalam-latin-700-normal.woff2?url';
@@ -69,15 +70,16 @@ export const DRAWING_FONTS = [
 export const fontById = (id) => DRAWING_FONTS.find(f => f.id === id) || DRAWING_FONTS[0];
 
 // openHelp: "Aç" first explains which files it opens (clinician decision 2026-10-30; "Bir daha gösterme" turns it off)
-// legendSize: the text of the patient's name, the findings key and the notes (clinician request 2026-10-30)
+// legendSize: the size of every text of the drawing — under the symbols, the pedigree numbers, the patient's
+// name, the key and the notes (clinician requests 2026-10-30, 2026-11-05); the layout gives larger text more room
 // paper: the page under the drawing on screen (paper.js; clinician request 2026-11-03)
 // carrierMark: a carrier without a named finding, half (NSGC 2022) or dot (conditionKey.js CARRIER_MARKS; 2026-11-04)
 export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split' };
 
 /**
- * Sizes for the name, key and notes. They lie above and below the family,
- * outside what the layout places, so any size is safe; the text under the
- * symbols keeps its size (the layout leaves room for it).
+ * Text sizes. The key and notes lie outside the family; the text under the
+ * symbols gets the room it needs from the layout (symbolText.setTextScale),
+ * so any size is safe. The symbols keep their size.
  */
 export const LEGEND_SIZES = [
   { id: 'small', label: tk('Küçük'), scale: 0.85 },
@@ -118,10 +120,15 @@ export function applyViewChange(view, patch) {
   return next;
 }
 
+const scaleOf = (view) => (LEGEND_SIZES.find(z => z.id === view.legendSize) || LEGEND_SIZES[1]).scale;
+const initialView = readView();
+setTextScale(scaleOf(initialView));
+
 export const useViewSettings = create((set, get) => ({
-  view: readView(),
+  view: initialView,
   setView: (patch) => {
     const view = applyViewChange(get().view, patch);
+    setTextScale(scaleOf(view)); // before the drawing is laid out again (App)
     try { window.localStorage.setItem(VIEW_KEY, JSON.stringify(view)); } catch { /* private window: kept for this page only */ }
     set({ view });
   },
@@ -141,7 +148,7 @@ export function drawingSpec(view) {
     numberFamily: numbersPlain ? STANDARD_FAMILY : font.family,
     numberK: numbersPlain ? 1 : font.k,
     fontId: font.id,
-    legendScale: (LEGEND_SIZES.find(z => z.id === view.legendSize) || LEGEND_SIZES[1]).scale,
+    legendScale: scaleOf(view),
     paper: view.paper || 'plain', // the screen only: an export loses it
     carrierMark: view.carrierMark || 'split', // notation, not look: exports keep it
   };

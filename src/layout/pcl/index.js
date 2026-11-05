@@ -21,7 +21,7 @@ import { routeConnectors, estimateLevelNeeds, planBands } from './routing';
 import { displayParentage, isSmallSymbol, reproMarkOf } from '../../graph/model';
 import { withArt, artEdges, isArtUnion } from './art';
 import { withGhosts, isGhost } from './crossGeneration';
-import { textBox, lineNoteWidth, TEXT } from '../../utils/symbolText';
+import { textBox, lineNoteWidth, TEXT, textScale } from '../../utils/symbolText';
 
 export const PCL = {
   GEN_Y_SPACING: 160,
@@ -172,9 +172,12 @@ export function computePclLayout(inputGraph, opts = {}) {
     const apart = Math.max(L.right + R.left + TEXT_CLEAR, noteGap.get(`${l}\u0001${r}`) || 0);
     return descends.has(`${l}\u0001${r}`) ? Math.max(apart, 2 * (Math.max(L.right, R.left) + TEXT_LINE_CLEAR)) : apart;
   };
+  // larger text (Ayarlar → Yazı boyutu): two neighbours' pedigree numbers, which stand at
+  // their upper corners, grow too; the gap grows by as much (nothing changes at the usual size)
+  const numberGrowth = Math.max(0, textScale() - 1) * 2 * 36;
   const gapBetween = (a, b) => {
     const base = S.isPartners(a, b) ? PCL.SPOUSE_GAP : sameAtom(a, b) ? PCL.SIBLING_GAP : PCL.FAMILY_GAP;
-    return Math.max(base, Math.ceil(textGap(a, b)));
+    return Math.max(base + numberGrowth, Math.ceil(textGap(a, b)));
   };
 
   const layers = [];
