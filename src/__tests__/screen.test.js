@@ -1375,6 +1375,18 @@ describe('the side panel, calm and clear (clinician request 2026-11-05: "premium
 });
 
 describe('the Settings window (clinician request 2026-11-03)', () => {
+  it('few words: each setting says a few words at most, the longer explanation is in its tooltip (clinician 2026-11-05)', async () => {
+    await click(button('Ayarlar'));
+    const dialog = document.querySelector('.settings-dialog');
+    await click([...dialog.querySelectorAll('[role="tab"]')].find(b => b.textContent.includes('Çizim')));
+    const hints = [...dialog.querySelectorAll('.set-row-hint')].map(h => h.textContent);
+    for (const h of hints.filter(h => !h.includes('(I-1, II-3)'))) expect(h.length).toBeLessThanOrEqual(40);
+    const paper = [...dialog.querySelectorAll('.set-row')].find(r => r.textContent.includes('Sayfa zemini'));
+    expect(paper.getAttribute('title')).toMatch(/İndirilen ve yazdırılan çizim düz kalır/);
+    expect(dialog.querySelector('.set-intro').textContent.length).toBeLessThanOrEqual(80);
+    await key('Escape');
+  });
+
   it('a window of its own: sections to choose, Tab stays inside, Escape closes, focus goes back to "Ayarlar"', async () => {
     const opener = button('Ayarlar');
     opener.focus();
