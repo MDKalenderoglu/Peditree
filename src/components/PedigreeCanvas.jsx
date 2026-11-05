@@ -35,7 +35,7 @@ import { annotationAge, pregnancyLine, lmpLine } from '../utils/annotations';
 import { BRACKET_OUT } from '../layout/pcl/routing';
 import { isSmallSymbol, pregnancyKind, PREGNANCY_LABEL, TESTED_TEXT, isGroup, groupText, subjectOf } from '../graph/model';
 import { packLines } from '../utils/textWrap';
-import { filled, onsetsOf, unsureOf, bornWeek, hasNoteNumber, geneticRows as geneticRowsOf } from '../utils/symbolText';
+import { filled, onsetsOf, unsureOf, bornWeek, hasNoteNumber, geneticRows as geneticRowsOf, lineNoteText, LINE_NOTE_SIZE, TEXT } from '../utils/symbolText';
 import { keyGrid } from '../utils/keyGrid';
 import { nameCase } from '../utils/nameCase';
 import { chainOf, offsetPolyline } from '../utils/doubleLine';
@@ -412,12 +412,10 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       if (doubleChains.has(edge.unionId) && (edge.type === 'consanguineousUnion' || edge.type === 'consanguineousUnionUnresolved')) return;
       switch (edge.type) {
         case 'union':
-          // v0.3a.3 fix: pedigree relationship lines never carry canvas
-          // text. Non-consanguinity relationship backgrounds (same
-          // village/origin, no consanguinity reported, unknown) are purely
-          // a normal single line here — any metadata about them belongs in
-          // the side panel (IndividualEditor.jsx), never
-          // drawn on the connector itself. See relationshipBackground.js.
+          // A non-consanguinity relationship background is a normal single
+          // line. The one text a line carries is "Aynı köy" (or the
+          // clinician's words), drawn apart as a 'lineNote' mark (clinician
+          // decision 2026-11-05). See relationshipBackground.js.
           drawStroke(g, edge);
           break;
 
@@ -519,6 +517,14 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       }
     });
 
+    // "Aynı köy" on a couple's line, or the clinician's own words (clinician request 2026-11-05):
+    // just above the line, between the partners; a click corrects it where it stands
+    edges.filter(e => e.type === 'lineNote').forEach(e => {
+      const text = lineNoteText(e.note, lang);
+      editable(g.append('text').attr('class', 'line-note').attr('x', e.x).attr('y', e.y - (e.raised ? 12 : 6)).attr('text-anchor', 'middle')
+        .attr('font-size', `${LINE_NOTE_SIZE}px`).attr('fill', '#475569').text(text), 'lineNote', e.unionId, text);
+    });
+
     // Relationship lines are clickable (selects the couple). Wide transparent
     // hit lines, screen only: export removes '.ui-only'.
     if (onUnionSelect) {
@@ -554,10 +560,14 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       const top = Math.min(e.y1, e.y2) - 2, bot = Math.max(e.y1, e.y2) + 2;
       if (!(hi > x0 && lo < x0 + w && bot > y0 && top < y0 + h)) return false;
       if (e.x1 === e.x2 || e.y1 === e.y2) return true;
-      // a diagonal (twins' lines): test points along it, not its bounding box
-      for (let t = 0; t <= 1; t += 0.05) {
+      // a diagonal (twins' lines, a donor's or carrier's line): test points along it, not its
+      // bounding box, every 3 px — a long line sampled 20 times stepped over a number (2026-11-05)
+      const steps = Math.max(20, Math.ceil(Math.hypot(e.x2 - e.x1, e.y2 - e.y1) / 3));
+      for (let k = 0; k <= steps; k++) {
+        const t = k / steps;
         const px = e.x1 + (e.x2 - e.x1) * t, py = e.y1 + (e.y2 - e.y1) * t;
-        if (px > x0 - 2 && px < x0 + w + 2 && py > y0 - 2 && py < y0 + h + 2) return true;
+        // a little more room than for a straight line: the number's letters reach above its estimated box
+        if (px > x0 - 4 && px < x0 + w + 4 && py > y0 - 4 && py < y0 + h + 4) return true;
       }
       return false;
     });
@@ -572,6 +582,12 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         const b = (isSmallSymbol(n) ? LOSS_SIZE : HALF) + BRACKET_OUT;
         return [{ x: n.x - b - 1, y: n.y - b, w: 8, h: 2 * b }, { x: n.x + b - 7, y: n.y - b, w: 8, h: 2 * b }];
       });
+      // the words on a "same village" line count as taken too
+      for (const e of edges.filter(x => x.type === 'lineNote')) {
+        const w = lineNoteText(e.note, lang).length * LINE_NOTE_SIZE * TEXT.EM;
+        const base = e.y - (e.raised ? 12 : 6);
+        placed.push({ x: e.x - w / 2, y: base - LINE_NOTE_SIZE - 4, w, h: LINE_NOTE_SIZE + 7 });
+      }
       const hitsPlaced = (b) => placed.some(q => b.x < q.x + q.w + 3 && q.x < b.x + b.w + 3 && b.y < q.y + q.h && q.y < b.y + b.h);
       for (const n of nodes.slice().sort((a, b) => (a.y - b.y) || (a.x - b.x))) {
         const pid = pedigreeIds.get(n.id);
@@ -586,6 +602,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           { dx: nsz + gap, dy: -(nsz + 6), anchor: 'start', box: { x: n.x + nsz + gap, y: top, w, h: LABEL_H } },
           { dx: -(nsz + gap), dy: -(nsz + 6) - lift, anchor: 'end', box: { x: n.x - (nsz + gap) - w, y: top - lift, w, h: LABEL_H } },
           { dx: nsz + gap, dy: -(nsz + 6) - lift, anchor: 'start', box: { x: n.x + nsz + gap, y: top - lift, w, h: LABEL_H } },
+          // higher still, when two lines (a donor's and a carrier's) cross both corners
+          { dx: -(nsz + gap), dy: -(nsz + 6) - 2 * lift, anchor: 'end', box: { x: n.x - (nsz + gap) - w, y: top - 2 * lift, w, h: LABEL_H } },
+          { dx: nsz + gap, dy: -(nsz + 6) - 2 * lift, anchor: 'start', box: { x: n.x + nsz + gap, y: top - 2 * lift, w, h: LABEL_H } },
         ];
         const pick = options.find(o => boxFree(o.box.x, o.box.y, o.box.w, o.box.h) && !hitsPlaced(o.box))
           || options.find(o => !hitsPlaced(o.box)) || options[0];

@@ -27,6 +27,7 @@ import { layoutParentage } from './art';
 import { checkAllInvariants } from '../../audit/layoutInvariants';
 import { checkConnectorReadability, readabilityMetrics } from '../../audit/connectorReadability';
 import { pregnancyKind } from '../../graph/model';
+import { lineNoteWidth } from '../../utils/symbolText';
 
 const WIDE_SHARE = 0.5; // an edit touching more than half the people: start wide
 
@@ -44,9 +45,11 @@ export function affectedPeople(prevGraph, graph) {
   }
   const prevUnions = new Map((prevGraph.unions || []).map((u) => [u.id, u]));
   const curUnions = new Map((graph.unions || []).map((u) => [u.id, u]));
+  // the words on a "same village" line set how far apart the partners stand
+  const noteRoom = (u) => (u.relationshipBackground === 'same_village_or_same_origin' ? Math.round(lineNoteWidth(u.lineNote)) : 0);
   for (const [id, u] of curUnions) {
     const before = prevUnions.get(id);
-    if (!before || before.partners.join('|') !== u.partners.join('|')) {
+    if (!before || before.partners.join('|') !== u.partners.join('|') || noteRoom(before) !== noteRoom(u)) {
       u.partners.forEach(add);
       if (before) before.partners.forEach(add);
     }

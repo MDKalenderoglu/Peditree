@@ -42,7 +42,7 @@ function App() {
     reorderChild, setUnionRelationshipBackground, setUnionStatus,
     setMultipleBirth, addMultipleSibling, setMultipleZygosity, leaveMultipleBirth, setGroupCount, splitGroup, mergeIntoGroup,
     addFinding, setFindingStatus, setFindingStyle, renameFinding, wizardData, updateWizardData,
-    addParentsTo, addSiblingTo, moveSideways, dropOnto, setFindingOnset, setChildlessness, setPregnancyKind, setGestationWeeks,
+    addParentsTo, addSiblingTo, moveSideways, dropOnto, setFindingOnset, setChildlessness, setLineNote, setPregnancyKind, setGestationWeeks,
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
     actionNotice, dismissActionNotice, autosaveFailed,
@@ -846,6 +846,7 @@ function App() {
             }
             else if (kind === 'onset') { const [pid, label] = String(target).split('\u0001'); setFindingOnset(pid, label, v.trim()); }
             else if (kind === 'childlessReason') setChildlessness(target, undefined, v);
+            else if (kind === 'lineNote') setLineNote(target, v);
             else if (kind === 'gestationWeeks') setGestationWeeks(target, v.replace(/[^\d.,]/g, ''));
             else if (kind === 'age') updateIndividual(target, { age: v.trim() }); // read (or refused) in ops.updatePerson
             else if (kind === 'ageAtDeath') updateIndividual(target, { ageAtDeath: v.trim() });
@@ -885,6 +886,7 @@ function App() {
           onClearSelection={clearSelection}
           onReorderChild={reorderChild}
           onSetUnionRelationshipBackground={setUnionRelationshipBackground}
+          onSetLineNote={setLineNote}
           onSetUnionStatus={setUnionStatus}
           onSetChildlessness={setChildlessness}
           onSetPregnancyKind={setPregnancyKind}

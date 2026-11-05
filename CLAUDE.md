@@ -48,7 +48,10 @@ Individual   { id, sex, age, generation, relation, label, displayLabel,
                          // compared in days; birthDate 'YYYY-MM-DD' (the proband's, top bar) sets the age as of today
 
 Union        { id, partners: [id, id], status, consanguineous, consanguinityDegree,
-               consanguinityStatus, relationshipBackground, leftPartner?, childless?, childlessReason? }
+               consanguinityStatus, relationshipBackground, leftPartner?, childless?, childlessReason?, lineNote? }
+                         // lineNote: the clinician's words on the relationship line while relationshipBackground is
+                         // 'same_village_or_same_origin' (default "Aynı köy"; ops.setLineNote; dropped with any other choice;
+                         // clinician 2026-11-05) — words only, the line stays single
                          // childless: 'by_choice' (one bar) | 'infertile' (two bars), drawn while there are no children
                          // leftPartner: the partner the clinician moved to the left (placement only;
                          // structure.js / ordering.js keep it) — src/utils/sidewaysMove.js
