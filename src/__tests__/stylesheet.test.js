@@ -27,6 +27,12 @@ describe('stylesheet rules', () => {
     expect(block('ui.css', '.radial-panel.ring-list-panel')).toMatch(/width: max-content/);
   });
 
+  it('every pop-up opens the same soft way, only fading and growing (never moving what is placed inline), and not at all with reduced motion', () => {
+    expect(css('ui.css')).toMatch(/@keyframes soft-in \{ from \{ opacity: 0; scale: 0\.97; \}/);
+    expect(css('ui.css')).toMatch(/\.keys-popover, \.radial-flyout, \.radial-panel, \.ring-aside, \.relation-dialog \{ animation: soft-in/);
+    expect(css('ui.css')).toMatch(/prefers-reduced-motion: reduce\) \{ \.keys-popover, \.radial-flyout, \.radial-panel, \.ring-aside, \.relation-dialog, \.relation-backdrop \{ animation: none; \}/);
+  });
+
   it('the pulse after an edit is an animation of the screen', () => {
     expect(css('ui.css')).toMatch(/@keyframes pedigree-pulse/);
   });

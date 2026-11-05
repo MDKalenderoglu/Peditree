@@ -1,7 +1,8 @@
 /*
- * ui.css — PediTree interface (2026-10-27 redesign, "Giemsa").
+ * ui.css — PediTree interface (2026-10-27 redesign, "Giemsa"; colours of the
+ * clinician's palette 2026-11-05: Deep Navy, Soft Canvas, Muted Indigo, Cool Border).
  * The drawing is the paper: white, untouched. The tools around it sit on a
- * quiet grey frame. One accent, the violet of the Giemsa stain that bands
+ * quiet cool frame. One accent, a muted indigo near the Giemsa stain that bands
  * chromosomes, marks what is selected or chosen. Atkinson Hyperlegible Next
  * keeps I, l and 1 apart (pedigree numbers like III-1). Selection colours live
  * only here, never in an exported drawing. Violet and navy are taken from
@@ -26,23 +27,23 @@
   /* the drawing keeps the font it is exported with */
   --font-drawing: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
-  --ink: #151c33;
-  --ink-2: #3a4552;
-  --muted: #5d6774;
-  --faint: #8a939e;
-  --line: #d9dde2;
-  --line-2: #e9ecef;
+  --ink: #19283d;        /* Deep Navy: text, identity */
+  --ink-2: #3a4a5f;
+  --muted: #5b687a;
+  --faint: #8a95a5;
+  --line: #dfe5ed;       /* Cool Border: field edges, dividers */
+  --line-2: #e9eef4;
   --surface: #ffffff;
-  --sunken: #f3f4f6;
-  --frame: #f6f7f8;
+  --sunken: #eef2f7;
+  --frame: #f6f8fb;      /* Soft Canvas: panels, the frame round the drawing */
   --paper: #ffffff;
 
-  --accent: #533783;
-  --accent-ink: #412a68;
-  --accent-soft: #f2edf9;
-  --accent-line: rgba(83, 55, 131, 0.32);
-  --focus: 0 0 0 3px rgba(83, 55, 131, 0.22);
-  --select: #6d45b8;
+  --accent: #4f46a5;     /* Muted Indigo: selection, focus, the main action */
+  --accent-ink: #3d3690;
+  --accent-soft: #efeefa;
+  --accent-line: rgba(79, 70, 165, 0.30);
+  --focus: 0 0 0 3px rgba(79, 70, 165, 0.20);
+  --select: #5a4fcf;
   --select-2: #0e7a72;
   --added: #1e8e3e;
 
@@ -454,7 +455,7 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .keys-wrap { position: relative; }
 .keys-popover {
   position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; padding: 12px 14px; width: 330px; box-sizing: border-box;
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-pop);
+  background: var(--surface); border: 1px solid rgba(25, 40, 61, 0.08); border-radius: 12px; box-shadow: var(--shadow-pop);
   font-size: 13.5px; color: var(--ink-2);
 }
 .key-help td { padding: 4px 6px; vertical-align: top; line-height: 1.45; font-size: 13.5px; color: var(--ink-2); }
@@ -470,21 +471,24 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .share-note { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
 .share-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .more-title { font-size: 13.5px; font-weight: 700; color: var(--ink); margin-top: 4px; }
-.new-popover { left: 0; right: auto; width: 340px; max-width: calc(100vw - 32px); gap: 2px; }
+.new-popover { left: 0; right: auto; width: max-content; min-width: 240px; max-width: calc(100vw - 32px); gap: 0; padding: 6px; transform-origin: top left; }
 .new-icon { flex: none; width: 34px; height: 28px; margin-top: 1px; fill: none; stroke: var(--accent); stroke-width: 1.8; }
 /* İndir: one row per file type, what it is for under its name */
-.download-popover { width: 340px; max-width: calc(100vw - 24px); max-height: calc(100vh - 110px); overflow-y: auto; gap: 4px; }
+.download-popover { width: 260px; max-width: calc(100vw - 24px); max-height: calc(100vh - 110px); overflow-y: auto; gap: 0; padding: 6px; }
 .download-item, .download-item-head { display: flex; align-items: flex-start; gap: 10px; text-align: left; color: var(--ink-2); }
-.download-item { font: inherit; width: 100%; padding: 8px 10px; background: none; border: none; border-radius: var(--radius-sm); cursor: pointer; }
+.download-item { font: inherit; width: 100%; padding: 8px 10px; background: none; border: none; border-radius: 8px; cursor: pointer; }
+/* İndir: one line each, the format and a word or two */
+.download-popover .download-item { align-items: center; }
+.download-popover .download-item svg { margin-top: 0; }
+.download-popover .download-item small { display: inline; margin: 0 0 0 6px; }
 .download-item:hover { background: var(--sunken); }
 .download-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .download-item svg, .download-item-head svg { flex: none; margin-top: 2px; color: var(--accent); }
 .download-item b, .download-item-head b { color: var(--ink); }
 .download-item small, .download-item-head small { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
-.download-ped { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding: 10px 10px 4px; border-top: 1px solid var(--line-2); }
-.download-popover > .share-note { margin: 6px 10px 2px; }
+.download-ped { display: flex; flex-direction: column; gap: 8px; margin: 2px 8px 8px; }
 .about-popover { left: 0; right: auto; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 110px); overflow-y: auto; }
-.open-popover { left: 0; right: auto; width: 340px; max-width: calc(100vw - 24px); }
+.open-popover { left: 0; right: auto; width: 320px; max-width: calc(100vw - 24px); transform-origin: top left; }
 .open-popover .download-item-head { padding: 2px 0; }
 /* a file dragged over the drawing */
 .canvas-container.file-drop { outline: 3px dashed var(--accent); outline-offset: -8px; }
@@ -500,39 +504,40 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .about-block .more-title { margin-top: 8px; }
 .about-block > .ui-btn { align-self: flex-start; }
 /* "Yeni" → a family whose parents are related: a window of its own (RelationChooser.jsx) */
-.relation-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(21, 28, 51, 0.32); }
-.relation-dialog { width: 760px; max-width: 100%; max-height: calc(100vh - 32px); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-pop); overflow: hidden; }
-.relation-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px 20px; }
+.relation-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(25, 40, 61, 0.28); }
+.relation-dialog { width: 740px; max-width: 100%; max-height: calc(100vh - 32px); display: flex; flex-direction: column; background: var(--surface); border: 1px solid rgba(25, 40, 61, 0.08); border-radius: 16px; box-shadow: var(--shadow-pop); overflow: hidden; }
+.relation-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 8px 22px; }
 .relation-head h2 { margin: 0; font-size: 17px; font-weight: 700; color: var(--ink); }
-.relation-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 20px; padding: 4px 20px 16px; overflow-y: auto; }
-.relation-label { font-size: 13px; color: var(--muted); margin: 0 0 6px; }
-.relation-left .relation-label + * + .relation-label { margin-top: 16px; }
-.relation-list { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; }
-.relation-row-item { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 9px 12px; font: inherit; font-size: 14px; text-align: left; color: var(--ink); background: var(--surface); border: none; border-top: 1px solid var(--line); cursor: pointer; }
-.relation-row-item:first-child { border-top: none; }
-.relation-row-item small { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.relation-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 22px; padding: 4px 22px 18px; overflow-y: auto; }
+.relation-label { font-size: 12.5px; font-weight: 600; color: var(--muted); margin: 0 0 6px; }
+.relation-left .relation-label + * + .relation-label { margin-top: 18px; }
+/* the relationships: a quiet list, the chosen one tinted; F as a small figure at the right */
+.relation-list { display: flex; flex-direction: column; gap: 2px; }
+.relation-row-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 36px; padding: 0 10px; font: inherit; font-size: 13.5px; text-align: left; color: var(--ink); background: none; border: none; border-radius: 8px; cursor: pointer; }
+.relation-row-item small { font-size: 11.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .relation-row-item:hover { background: var(--sunken); }
 .relation-row-item.on { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
 .relation-row-item.on small { color: var(--accent-ink); }
 .relation-row-item:focus-visible, .relation-pills button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.relation-more { color: var(--muted); font-size: 13px; }
-.relation-pills { display: flex; flex-wrap: wrap; gap: 6px; }
-.relation-pills button { font: inherit; font-size: 13px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); cursor: pointer; }
-.relation-pills button:hover { border-color: var(--accent-line); }
-.relation-pills button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.relation-more { color: var(--muted); font-size: 12.5px; }
+/* the side: equal choices in a segmented field, two a row */
+.relation-pills { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 2px; background: var(--sunken); border-radius: 10px; }
+.relation-pills button { font: inherit; font-size: 12.5px; line-height: 1.3; min-height: 36px; padding: 6px 8px; border: none; border-radius: 8px; background: none; color: var(--ink-2); cursor: pointer; }
+.relation-pills button:hover:not(.on) { color: var(--ink); }
+.relation-pills button.on { background: var(--surface); color: var(--accent-ink); font-weight: 600; box-shadow: 0 1px 3px rgba(25, 40, 61, 0.12), inset 0 0 0 1px var(--accent-line); }
 .relation-sides { display: flex; flex-direction: column; gap: 8px; }
 .relation-hint { margin: 0; font-size: 12.5px; color: var(--muted); }
 .relation-side { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: center; gap: 8px; font-size: 13px; color: var(--ink); }
-.relation-side select { font: inherit; font-size: 13px; height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); min-width: 0; }
+.relation-side select { font: inherit; font-size: 13px; height: 34px; padding: 0 8px; border: 1px solid transparent; border-radius: 8px; background: var(--sunken); color: var(--ink); min-width: 0; }
 .relation-right { display: flex; flex-direction: column; gap: 8px; }
-.relation-preview { width: 100%; height: 280px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.relation-preview { width: 100%; height: 280px; background: var(--frame); border: none; border-radius: 12px; }
 .relation-preview line, .relation-arrow { stroke: var(--ink); stroke-width: 3; fill: none; }
 .relation-preview rect, .relation-preview circle { fill: var(--paper); stroke: var(--ink); stroke-width: 3; }
 .relation-preview .marked { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 6; }
-.relation-legend { margin: 0; font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
-.relation-swatch { width: 11px; height: 11px; background: var(--accent-soft); border: 2px solid var(--accent); }
+.relation-legend { margin: 0; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.relation-swatch { width: 10px; height: 10px; background: var(--accent-soft); border: 2px solid var(--accent); }
 .relation-summary { margin: 0; font-size: 13.5px; color: var(--ink); line-height: 1.5; }
-.relation-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--line); }
+.relation-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 22px 16px; }
 @media (max-width: 700px) { .relation-body { grid-template-columns: minmax(0, 1fr); } .relation-preview { height: 220px; } }
 @media (pointer: coarse) { .relation-row-item { padding: 12px; font-size: 15px; } .relation-pills button { padding: 10px 12px; font-size: 14px; } }
 
@@ -656,6 +661,14 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .field-warn { color: var(--warn); }
 @keyframes settings-in { from { opacity: 0; transform: translateY(6px) scale(0.985); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .settings-dialog { animation: none; } }
+/* every pop-up opens the same soft way (clinician 2026-11-05): a short fade and a slight
+   growth, never a jump. `scale` and `opacity` only: their place (transform, translate) is set inline */
+@keyframes soft-in { from { opacity: 0; scale: 0.97; } to { opacity: 1; scale: 1; } }
+@keyframes soft-fade { from { opacity: 0; } to { opacity: 1; } }
+.keys-popover, .radial-flyout, .radial-panel, .ring-aside, .relation-dialog { animation: soft-in 0.16s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.keys-popover { transform-origin: top right; }
+.relation-backdrop { animation: soft-fade 0.16s ease-out; }
+@media (prefers-reduced-motion: reduce) { .keys-popover, .radial-flyout, .radial-panel, .ring-aside, .relation-dialog, .relation-backdrop { animation: none; } }
 
 /* Ayarlar → Çizim → Sayfa zemini: a small piece of each paper (paper.js) */
 .paper-swatch { display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px; border: 1px solid var(--line); border-radius: 3px; background-color: var(--paper); }

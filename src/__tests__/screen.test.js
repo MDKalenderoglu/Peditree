@@ -459,6 +459,10 @@ describe('saving, opening and downloading', () => {
       await run(() => S().setPatientName('Ayşe Yılmaz'));
       await click(buttons().find(b => b.textContent.includes('İndir')));
       expect($('[data-popup="download"]').textContent).toMatch(/PDF/);
+      // one line per format; PED's question shows once PED is chosen (clinician 2026-11-05: the menu said too much)
+      expect($('[data-popup="download"]').textContent).not.toMatch(/Dosyada kim/);
+      await click(buttons($('[data-popup="download"]')).find(b => b.textContent.startsWith('PED')));
+      expect($('[data-popup="download"]').textContent).toMatch(/Dosyada kim “hasta” olarak yazılsın/);
       await click(buttons().find(b => b.textContent.includes('PED indir')));
       const ped = dl.files.at(-1);
       expect(ped.name).not.toMatch(/Ay[sş]e|Y[ıi]lmaz/i);

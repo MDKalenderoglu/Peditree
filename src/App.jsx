@@ -314,6 +314,8 @@ function App() {
   // "İndir": files for other programs — PNG, SVG, PED (the PediTree file itself is "Kaydet")
   const [downloadOpen, setDownloadOpen] = React.useState(false);
   const [pedPhenotype, setPedPhenotype] = React.useState('affected');
+  // PED's one question shows when PED is chosen (clinician 2026-11-05: the menu said too much)
+  const [pedOpen, setPedOpen] = React.useState(false);
   const handleExportPed = () => {
     flushDrafts();
     const st = usePedigreeStore.getState();
@@ -591,11 +593,11 @@ function App() {
                 {/* two ways to start, each with a small pedigree of what opens (clinician request 2026-11-01) */}
                 <button className="download-item" onClick={() => handleNewPedigree(null)}>
                   <svg className="new-icon" viewBox="0 0 40 32" aria-hidden="true"><rect x="3" y="3" width="10" height="10" /><circle cx="32" cy="8" r="5" /><path d="M13 8h14M20 8v13" /><rect x="15" y="21" width="10" height="10" /></svg>
-                  <span><b>{t('Yeni aile')}</b><small>{t('Proband, anne ve babayla başlar; akrabaları çizim üzerinden eklersiniz.')}</small></span>
+                  <span><b>{t('Yeni aile')}</b><small>{t('Proband, anne ve baba')}</small></span>
                 </button>
                 <button className="download-item" onClick={() => { setNewMenu(false); setRelationOpen(true); }}>
-                  <svg className="new-icon" viewBox="0 0 40 32" aria-hidden="true"><rect x="3" y="3" width="10" height="10" /><circle cx="32" cy="8" r="5" /><path d="M13 5.5h14M13 10.5h14M20 10.5v10.5" /><rect x="15" y="21" width="10" height="10" /></svg>
-                  <span><b>{t('Akraba evliliği')}</b><small>{t('Anne-babası akraba olan hazır bir aile: kuzen evliliği, berdel…')}</small></span>
+                  <svg className="new-icon" viewBox="0 0 40 32" aria-hidden="true"><rect x="3" y="3" width="10" height="10" /><circle cx="32" cy="8" r="5" /><path d="M13 4.5h14M13 11.5h14M20 11.5v9.5" /><rect x="15" y="21" width="10" height="10" /></svg>
+                  <span><b>{t('Akraba evliliği')}</b><small>{t('Kuzen evliliği, berdel…')}</small></span>
                 </button>
               </div>
             )}
@@ -612,13 +614,13 @@ function App() {
             {openHelp && (
               <div className="keys-popover share-popover open-popover" role="dialog" aria-label={t('Dosya aç')}>
                 <div className="keys-title">{t('Dosya aç')}</div>
-                <div className="download-item-head"><Save size={18} /><span><b>{t('PediTree dosyası')}</b> (.peditree.json)<small>{t('“Kaydet” ile indirdiğiniz dosya. Pedigri bütün bilgileriyle, kaldığınız yerden açılır.')}</small></span></div>
-                <div className="download-item-head"><Table2 size={18} /><span><b>{t('PED dosyası')}</b> (.ped, .fam, .txt)<small>{t('Laboratuvarların ve genetik analiz programlarının dosyası. Yalnızca anne-baba, cinsiyet ve hasta olup olmadığı gelir; isim, yaş ve bulgular gelmez.')}</small></span></div>
-                <p className="share-note mouse-only">{t('Dosyayı çizimin üzerine sürükleyip bırakarak da açabilirsiniz.')}</p>
+                <div className="download-item-head"><Save size={18} /><span><b>{t('PediTree dosyası')}</b> (.peditree.json)<small>{t('Kaldığınız yerden, bütün bilgileriyle')}</small></span></div>
+                <div className="download-item-head"><Table2 size={18} /><span><b>{t('PED dosyası')}</b> (.ped, .fam, .txt)<small>{t('Aile bağları ve hastalık; isim, yaş ve bulgular gelmez')}</small></span></div>
                 <button className="ui-btn ui-btn-primary" onClick={chooseFile}><FolderOpen size={15} /> {t('Dosya seç')}</button>
-                <label className="check">
+                <p className="share-note mouse-only">{t('Dosyayı çizimin üzerine bırakarak da açabilirsiniz.')}</p>
+                <label className="check" title={t('Ayarlar’dan geri açabilirsiniz')}>
                   <input type="checkbox" checked={!view.openHelp} onChange={e => setView({ openHelp: !e.target.checked })} />
-                  {t('Bunu bir daha gösterme (Ayarlar’dan geri açabilirsiniz)')}
+                  {t('Bir daha gösterme')}
                 </label>
               </div>
             )}
@@ -649,27 +651,32 @@ function App() {
             </button>
             {downloadOpen && (
               <div className="keys-popover share-popover download-popover" role="dialog" aria-label={t('İndir')}>
-                <button className="download-item" onClick={() => { setDownloadOpen(false); handleExportPNG(); }}>
-                  <ImageIcon size={18} /><span><b>PNG</b> {t('resim')}<small>{t('Sunum, mesaj ve belgeler için')}</small></span>
+                {/* one line each: the format and a word or two; the rest in the tooltip (clinician 2026-11-05) */}
+                <button className="download-item" title={t('Sunum, mesaj ve belgeler için')} onClick={() => { setDownloadOpen(false); handleExportPNG(); }}>
+                  <ImageIcon size={18} /><span><b>PNG</b><small>{t('resim')}</small></span>
                 </button>
-                <button className="download-item" onClick={() => { setDownloadOpen(false); handleExportSVG(); }}>
-                  <FileCode2 size={18} /><span><b>SVG</b> {t('çizim')}<small>{t('Büyütülünce bozulmaz; yayın, Word ve PowerPoint için')}</small></span>
+                <button className="download-item" title={t('Büyütülünce bozulmaz; yayın, Word ve PowerPoint için')} onClick={() => { setDownloadOpen(false); handleExportSVG(); }}>
+                  <FileCode2 size={18} /><span><b>SVG</b><small>{t('büyütülebilir çizim')}</small></span>
                 </button>
-                <button className="download-item" onClick={() => { setDownloadOpen(false); handleExportPDF(); }}>
-                  <FileText size={18} /><span><b>PDF</b> {t('belge')}<small>{t('Tek A4 sayfa; yazdırmaya ve hasta dosyasına eklemeye hazır')}</small></span>
+                <button className="download-item" title={t('Tek A4 sayfa; yazdırmaya ve hasta dosyasına eklemeye hazır')} onClick={() => { setDownloadOpen(false); handleExportPDF(); }}>
+                  <FileText size={18} /><span><b>PDF</b><small>{t('A4 sayfa')}</small></span>
                 </button>
-                <div className="download-ped">
-                  <div className="download-item-head"><Table2 size={18} /><span><b>PED</b> {t('dosyası')}<small>{t('Genetik analiz programları ve laboratuvarlar için. Yalnızca anne, baba, cinsiyet ve hasta olup olmadığı yazılır; kişiler pedigri numarasıyla (ör. II-3) geçer, hasta adı yazılmaz.')}</small></span></div>
-                  <label className="field-col">
-                    <span className="field-label">{t('Dosyada kim “hasta” olarak yazılsın?')}</span>
-                    <select className="select" value={pedPhenotype} onChange={e => setPedPhenotype(e.target.value)}>
-                      <option value="affected">{t('Durum’da “Etkilenmiş” işaretlenen kişiler')}</option>
-                      {(pedigreeData.conditionKey || []).map(e => <option key={e.id} value={e.label}>{t('“{label}” bulgusu olanlar', { label: e.label })}</option>)}
-                    </select>
-                  </label>
-                  <button className="ui-btn" onClick={handleExportPed}><Download size={15} /> {t('PED indir')}</button>
-                </div>
-                <p className="share-note">{t('Pedigriyi sonra PediTree’de açıp düzenlemek için “Kaydet”i kullanın.')}</p>
+                <button className="download-item" aria-expanded={pedOpen} onClick={() => setPedOpen(v => !v)}
+                  title={t('Genetik analiz programları ve laboratuvarlar için. Yalnızca anne, baba, cinsiyet ve hasta olup olmadığı yazılır; kişiler pedigri numarasıyla (ör. II-3) geçer, hasta adı yazılmaz.')}>
+                  <Table2 size={18} /><span><b>PED</b><small>{t('analiz programları için')}</small></span>
+                </button>
+                {pedOpen && (
+                  <div className="download-ped">
+                    <label className="field-col">
+                      <span className="field-label">{t('Dosyada kim “hasta” olarak yazılsın?')}</span>
+                      <select className="select" value={pedPhenotype} onChange={e => setPedPhenotype(e.target.value)}>
+                        <option value="affected">{t('Durum’da “Etkilenmiş” işaretlenen kişiler')}</option>
+                        {(pedigreeData.conditionKey || []).map(e => <option key={e.id} value={e.label}>{t('“{label}” bulgusu olanlar', { label: e.label })}</option>)}
+                      </select>
+                    </label>
+                    <button className="ui-btn ui-btn-primary" onClick={handleExportPed}><Download size={15} /> {t('PED indir')}</button>
+                  </div>
+                )}
               </div>
             )}
           </div>
