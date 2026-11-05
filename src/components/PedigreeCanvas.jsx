@@ -33,8 +33,9 @@ import { paintPaper } from '../utils/paper';
 import { STANDARD_FAMILY } from '../utils/drawingStyle';
 import { annotationAge, pregnancyLine, lmpLine } from '../utils/annotations';
 import { BRACKET_OUT } from '../layout/pcl/routing';
-import { isSmallSymbol, isPregnancy, pregnancyKind, PREGNANCY_LABEL, GENETIC_TESTED, TESTED_TEXT, geneticLines, isGroup, groupText, subjectOf } from '../graph/model';
+import { isSmallSymbol, pregnancyKind, PREGNANCY_LABEL, TESTED_TEXT, isGroup, groupText, subjectOf } from '../graph/model';
 import { packLines } from '../utils/textWrap';
+import { filled, onsetsOf, unsureOf, bornWeek, hasNoteNumber, geneticRows as geneticRowsOf } from '../utils/symbolText';
 import { keyGrid } from '../utils/keyGrid';
 import { nameCase } from '../utils/nameCase';
 import { chainOf, offsetPolyline } from '../utils/doubleLine';
@@ -274,12 +275,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       ...(nodes.some(n => n.presymptomatic && !isSmallSymbol(n)) ? [{ label: null, presymptomatic: true, text: td('Belirtisiz taşıyıcı (şu an belirtisi yok)') }] : []),
       ...(nodes.some(n => n.recordsReviewed) ? [{ label: null, recordsReviewed: true, text: td('Kayıtlarla doğrulandı (tıbbi kayıt ya da rapor görüldü)') }] : []),
     ];
-    const onsetsOf = (n) => (n.conditions || []).filter(c => c && c.label && c.onsetAge && (c.status === 'affected' || c.status === 'carrier'));
-    const unsureOf = (n) => (n.conditions || []).filter(c => c && c.label && c.status === 'unknown');
-    const bornWeek = (n) => (!isPregnancy(n) && n.gestationWeeks ? n.gestationWeeks : null);
-    // a text of spaces only is nothing to read (an older file may hold one): no [n] for it
-    const filled = (s) => typeof s === 'string' && s.trim() !== '';
-    const notedNodes = nodes.filter(n => filled(n.notes) || filled(n.condition) || (n.deceased && filled(n.causeOfDeath)) || onsetsOf(n).length || unsureOf(n).length || bornWeek(n));
+    // a text of spaces only is nothing to read (symbolText.js): no [n] for it
+    const notedNodes = nodes.filter(hasNoteNumber);
     // legends grow with a wide pedigree, so they read at the same size once
     // the drawing is fitted to the screen (clinician feedback 2026-10-24)
     const LK = Math.max(1.2, (d3.max(nodes, d => d.x) - d3.min(nodes, d => d.x) + 200) / 900)
@@ -361,15 +358,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // frame and the notes start under the lowest one (second audit 2026-10-25:
     // a long note could leave the picture)
     // the genetic test lines under a symbol, each wrapped, never cut
-    const geneticRows = (d) => {
-      if (d.geneticTest !== GENETIC_TESTED) return [];
-      const lines = geneticLines(d);
-      if (!lines.length) return [{ text: td(TESTED_TEXT), k: 0, value: '', placeholder: true }];
-      // ~20 characters fit between two siblings (100 apart), so a variant with
-      // its zygosity ("TGFBR2 c.1609C>T het") stays on one line
-      return lines.flatMap((line, k) => packLines([{ text: line }], d.proband || d.consultand ? 17 : 20)
-        .map(part => ({ text: part.map(x => x.text).join(''), k, value: line })));
-    };
+    const geneticRows = (d) => geneticRowsOf(d, td(TESTED_TEXT));
     const annotationBottom = (d) => {
       const lines = [d.sexAtBirth, annotationAge(d, lang), pregnancyLine(d, lang), lmpLine(d, lang), d.displayLabel, d.condition, notedNodes.includes(d)].filter(Boolean).length;
       return (isSmallSymbol(d) ? LOSS_SIZE : HALF) + 14 + lines * 13 + geneticRows(d).length * GENETIC_ROW;

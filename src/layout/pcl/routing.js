@@ -131,11 +131,17 @@ export function estimateLevelNeeds(S, rows, xPos) {
     if (!buses.has(g)) buses.set(g, []);
     buses.get(g).push([Math.min(xPos[ghost], xPos[upper]) - NODE_HALF - STUB, Math.max(xPos[ghost], xPos[upper]) + NODE_HALF + STUB]);
   }
+  // how far the text under the row above reaches down (symbolText.js): the
+  // lines of this band stay below it (clinician report 2026-11-05)
+  const gens = [...rows.keys()].sort((a, b) => a - b);
+  const depthOf = (g) => Math.max(0, ...(rows.get(g) || []).map((id) => S.textBox?.get(id)?.depth || 0));
   const out = new Map();
   for (const g of rows.keys()) {
+    const above = gens.filter((x) => x < g).pop();
     out.set(g, {
       lanes: lanes.has(g) ? levelCount(lanes.get(g)) : 0,
       buses: buses.has(g) ? levelCount(buses.get(g)) : 0,
+      annotation: above === undefined ? 0 : depthOf(above),
     });
   }
   return out;
@@ -151,7 +157,7 @@ export function planBands(needs, minGap) {
     const busBase = Math.max(BAND.BUS_DEFAULT, BAND.LANE_FIRST + BAND.LANE_STEP * (Math.max(1, need.lanes) - 1) + BAND.BUS_CLEAR_ABOVE_LANES);
     const busLevels = Array.from({ length: busCount }, (_, i) => -(busBase + BAND.BUS_STEP * i));
     const busTop = busBase + BAND.BUS_STEP * (Math.max(1, need.buses) - 1);
-    const gap = Math.max(minGap, busTop + BAND.PARENT_ANNOTATION + BAND.CLEAR_BELOW_ANNOTATION);
+    const gap = Math.max(minGap, busTop + Math.max(BAND.PARENT_ANNOTATION, need.annotation || 0) + BAND.CLEAR_BELOW_ANNOTATION);
     plans.set(g, { laneLevels, busLevels, gap });
   }
   return plans;
