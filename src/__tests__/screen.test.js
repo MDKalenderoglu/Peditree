@@ -579,6 +579,31 @@ describe('texts are corrected where they stand', () => {
   });
 });
 
+describe('"Aynı köy" on the relationship line (clinician request 2026-11-05)', () => {
+  it('Akrabalık: "Var" or "Aynı köy" (no "Yok"); "Aynı köy" is written on the line, corrected there or in the panel, gone with "Var"', async () => {
+    await select('mother');
+    await key('Escape');
+    const choice = () => $$('.editor-body [role="radiogroup"]').find(r => r.getAttribute('aria-label') === 'Akrabalık');
+    expect(buttons(choice()).map(b => b.textContent)).toEqual(['Var', 'Aynı köy']);
+    expect($('.line-note')).toBeNull();
+    await click(button('Aynı köy', choice()));
+    expect($('.line-note').textContent).toBe('Aynı köy');
+    // a click on the words corrects them where they stand
+    await click($('.line-note'));
+    const box = view.container.querySelector('input.inline-edit') || document.activeElement;
+    await typeInto(box, 'Yakın köy');
+    await key('Enter', {}, box);
+    const u = () => g().unions.find(x => x.id === 'U_PARENTS');
+    expect(u().lineNote).toBe('Yakın köy');
+    expect($('.line-note').textContent).toBe('Yakın köy');
+    expect($('.editor-body input[aria-label="Çizginin üstündeki yazı"]').value).toBe('Yakın köy');
+    // "Var": a double line, no words
+    await click(button('Var', choice()));
+    expect($('.line-note')).toBeNull();
+    expect(u().lineNote).toBeUndefined();
+  });
+});
+
 describe('the page around the drawing', () => {
   it('notices sit above the drawing in the page, never over it', async () => {
     await run(() => S().clearProband()); // a soft note appears

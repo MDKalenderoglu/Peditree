@@ -434,6 +434,7 @@ export const usePedigreeStore = create((zSet, get) => {
     setGestationWeeks: (id, weeks) => apply(ops.setGestationWeeks(get().doc, id, weeks)),
     setFindingOnset: (personId, label, onset) => apply(findings.setFindingOnset(get().doc, personId, label, onset)),
     setChildlessness: (unionId, kind, reason) => apply(ops.setChildlessness(get().doc, unionId, kind, reason)),
+    setLineNote: (unionId, text) => apply(ops.setLineNote(get().doc, unionId, text)),
 
     // ── twins / multiple births ──
     setMultipleBirth: (childIds, zygosity) => apply(multiples.setMultipleBirth(get().doc, childIds, zygosity)),

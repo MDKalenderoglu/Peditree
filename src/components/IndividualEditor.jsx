@@ -98,13 +98,15 @@ const DEGREE_OPTIONS = [
 ];
 
 /**
- * Consanguinity of a couple, three answers (clinician request 2026-10-25):
- * Var / Yok / Aynı köy (nothing chosen = not asked). When the drawing itself
+ * Consanguinity of a couple (clinician requests 2026-10-25, 2026-11-05):
+ * Var / Aynı köy; nothing chosen = none reported ("Yok" said nothing more —
+ * an older file's "no" shows as nothing chosen). "Aynı köy" is written on the
+ * relationship line, in the clinician's own words if they change it. When the drawing itself
  * shows shared ancestors, it decides (read-only). For the proband's parents,
  * "Var" offers degree and path, and the shared ancestors are drawn from the
  * choice (wizard template, wizardAdapter.js).
  */
-function RelationshipChoice({ u, onSetBackground, parentsCons, graph }) {
+function RelationshipChoice({ u, onSetBackground, onSetLineNote, parentsCons, graph }) {
   const isParents = parentsCons && parentsCons.parents.unionId === u.id;
   const parents = isParents ? parentsCons.parents : null;
   const kin = parents ? parents.kinship : null;
@@ -128,9 +130,8 @@ function RelationshipChoice({ u, onSetBackground, parentsCons, graph }) {
       </div>
     );
   }
-  const value = u.consanguineous ? 'yes' : u.relationshipBackground === 'no_consanguinity_reported' ? 'no'
-    : u.relationshipBackground === 'same_village_or_same_origin' ? 'village' : null;
-  const BACKGROUND = { yes: 'consanguinity_reported', no: 'no_consanguinity_reported', village: 'same_village_or_same_origin' };
+  const value = u.consanguineous ? 'yes' : u.relationshipBackground === 'same_village_or_same_origin' ? 'village' : null;
+  const BACKGROUND = { yes: 'consanguinity_reported', village: 'same_village_or_same_origin' };
   const choose = (v) => {
     const next = v === value ? null : v;
     if (isParents) {
@@ -143,11 +144,21 @@ function RelationshipChoice({ u, onSetBackground, parentsCons, graph }) {
     <div className="field-col">
       <span className="field-label">{t('Akrabalık')}</span>
       <div className="segmented" role="radiogroup" aria-label={t('Akrabalık')}>
-        {[['yes', t('Var')], ['no', t('Yok')], ['village', t('Aynı köy')]].map(([v, label]) => (
+        {[['yes', t('Var')], ['village', t('Aynı köy')]].map(([v, label]) => (
           <button key={v} className={value === v ? 'on' : undefined} role="radio" aria-checked={value === v} onClick={() => choose(v)}>{label}</button>
         ))}
       </div>
-      {value === 'village' && <span className="field-hint">{t('Aynı köyden ya da bölgeden olmak akrabalık sayılmaz; eşleri bağlayan çizgi tek kalır.')}</span>}
+      {value === 'village' && (
+        <>
+          {onSetLineNote && (
+            <DraftField key={`${u.id}-linenote`} type="text" className="input input-wide" value={u.lineNote || ''} maxLength={40}
+              placeholder={t('Aynı köy')} aria-label={t('Çizginin üstündeki yazı')}
+              title={t('Eşleri bağlayan çizginin üstünde yazar; ör. yakın köy, uzak akraba. Boş bırakılırsa “Aynı köy”.')}
+              onCommit={v => onSetLineNote(u.id, v)} />
+          )}
+          <span className="field-hint">{t('Akrabalık sayılmaz; çizgi tek kalır, üstünde bu yazı çıkar.')}</span>
+        </>
+      )}
       {isParents && value === 'yes' && (
         <>
           <select className="select input-wide" value={parents.consanguinityDegree} aria-label={t('Akrabalık derecesi')}
@@ -174,7 +185,7 @@ function RelationshipChoice({ u, onSetBackground, parentsCons, graph }) {
 }
 
 /** One partnership: status (divorce/separation), consanguinity, children (couple card). */
-function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground, parentsCons, withChildren = true, graph, onSetChildlessness }) {
+function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground, onSetLineNote, parentsCons, withChildren = true, graph, onSetChildlessness }) {
   const children = pcrs.find(r => r.unionId === u.id)?.children || [];
   return (
     <>
@@ -194,7 +205,7 @@ function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelati
         );
       })()}
       {onSetUnionRelationshipBackground && (
-        <RelationshipChoice u={u} onSetBackground={onSetUnionRelationshipBackground} parentsCons={parentsCons} graph={graph} />
+        <RelationshipChoice u={u} onSetBackground={onSetUnionRelationshipBackground} onSetLineNote={onSetLineNote} parentsCons={parentsCons} graph={graph} />
       )}
       {/* NSGC: no children by choice / reason unknown (one bar) or infertile (two bars), shown while they have none */}
       {/* nothing chosen = not marked; a second tap on the chosen one takes it back, like Akrabalık */}
@@ -469,7 +480,7 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
 export default function IndividualEditor({
   node, node2, pedigreeData, onUpdate, onAddChild,
   onDeleteIndividual, onCreateUnion, onMakeSiblings,
-  onClearSelection, onReorderChild, onSetUnionRelationshipBackground, onSetUnionStatus, onSetChildlessness,
+  onClearSelection, onReorderChild, onSetUnionRelationshipBackground, onSetLineNote, onSetUnionStatus, onSetChildlessness,
   onSetPregnancyKind, onSetGestationWeeks,
   onSetMultipleBirth, onAddMultiple, onSetZygosity, onLeaveMultiple,
   onSetGroupCount, onSplitGroup, mergeCheck, onMergeGroup, adoptionInfo, onSetAdoption, reproInfo, onAddRepro, onRemoveRepro,
@@ -515,7 +526,7 @@ export default function IndividualEditor({
     return (
       <TwoPersonActions node={node} node2={node2} pedigreeData={pedigreeData}
         onCreateUnion={onCreateUnion} onMakeSiblings={onMakeSiblings} onClearSelection={onClearSelection}
-        unionProps={{ onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground, parentsCons, onSetChildlessness }} onSetMultipleBirth={onSetMultipleBirth}
+        unionProps={{ onAddChild, onSetUnionStatus, onSetUnionRelationshipBackground, onSetLineNote, parentsCons, onSetChildlessness }} onSetMultipleBirth={onSetMultipleBirth}
         bulk={bulk} merge={merge} />
     );
   }
@@ -716,7 +727,7 @@ export default function IndividualEditor({
           <div className="card" key={u.id}>
             <div className="card-title partner-title"><PersonGlyph p={partner} size={20} />{t('Eş')}{partnerName ? <> <span className="partner-name">{partnerName}</span></> : null}</div>
             <UnionControls u={u} pcrs={pcrs} onSetUnionStatus={onSetUnionStatus} withChildren={false} graph={pedigreeData}
-              onSetUnionRelationshipBackground={onSetUnionRelationshipBackground} parentsCons={parentsCons} onSetChildlessness={onSetChildlessness} />
+              onSetUnionRelationshipBackground={onSetUnionRelationshipBackground} onSetLineNote={onSetLineNote} parentsCons={parentsCons} onSetChildlessness={onSetChildlessness} />
           </div>
           );
         })}

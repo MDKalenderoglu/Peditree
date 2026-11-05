@@ -240,3 +240,27 @@ describe('graph operations', () => {
     expect(doc.graph.socialParentLinks).toEqual([]);
   });
 });
+
+describe('"Aynı köy" on the relationship line (clinician request 2026-11-05)', () => {
+  it('the clinician’s words are kept while "Aynı köy" is chosen; empty brings the default back; any other choice takes them away', () => {
+    let doc = starterDoc();
+    expect(ops.setLineNote(doc, 'U_PARENTS', 'yakın köy').ok).toBe(false); // only with "Aynı köy"
+    doc = ok(ops.setRelationshipBackground(doc, 'U_PARENTS', 'same_village_or_same_origin')).doc;
+    doc = ok(ops.setLineNote(doc, 'U_PARENTS', '  uzak   akraba ')).doc;
+    expect(union(doc, 'U_PARENTS').lineNote).toBe('uzak akraba');
+    expect(union(doc, 'U_PARENTS').consanguineous).toBe(false); // words only: no double line
+    doc = ok(ops.setLineNote(doc, 'U_PARENTS', '   ')).doc;
+    expect('lineNote' in union(doc, 'U_PARENTS')).toBe(false);
+    doc = ok(ops.setLineNote(doc, 'U_PARENTS', 'yakın köy')).doc;
+    doc = ok(ops.setRelationshipBackground(doc, 'U_PARENTS', 'consanguinity_reported')).doc;
+    expect('lineNote' in union(doc, 'U_PARENTS')).toBe(false);
+  });
+
+  it('a file with words on a line that is not "Aynı köy" opens without them', () => {
+    const doc = starterDoc();
+    union(doc, 'U_PARENTS').lineNote = 'eski yazı';
+    const after = ok(ops.updatePerson(doc, 'proband', { age: '5' })).doc;
+    expect('lineNote' in union(after, 'U_PARENTS')).toBe(false);
+  });
+});
+
