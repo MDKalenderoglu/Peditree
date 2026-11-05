@@ -470,8 +470,6 @@ const EN = {
   'Diğer…': 'More…',
   'Gizlediğiniz seçenekleri yeniden gizle': 'Hide the choices you hid again',
   'Halka menüden gizlediğiniz seçenekler (Ayarlar → Halka menü)': 'Choices you hid from the ring menu (Settings → Ring menu)',
-  'Tek\nyumurta': 'Mono-\nzygotic',
-  'Çift\nyumurta': 'Di-\nzygotic',
   '{name} yap': 'Make {name}',
   'İkizini ekle': 'Add a twin',
   'Düşük, ölü doğum ya da süren gebelik kaydına buradan ikiz eklenemez.': 'A twin cannot be added here to a miscarriage, stillbirth or ongoing pregnancy.',
@@ -913,7 +911,6 @@ const EN = {
   'Sembol kişinin cinsiyet kimliğini gösterir. Doğumda atanan cinsiyet farklıysa seçin; sembolün altına yazılır (AMAB: doğumda erkek, AFAB: doğumda kadın, UAAB: doğumda atanmamış; NSGC 2022).':
     'The symbol shows the person’s gender. If the sex assigned at birth differs, choose it; it is written under the symbol (AMAB: assigned male at birth, AFAB: assigned female at birth, UAAB: unassigned at birth; NSGC 2022).',
   'Diğer bilgiler ({n})': 'More details ({n})',
-  'Belirtisiz\ntaşıyıcı': 'Presympto-\nmatic',
   'Şu an belirtisi yok ama ileride belirti gösterebilir (çoğunlukla dominant hastalıklarda): sembolün ortasından dikey çizgi geçer, açıklamada yazılır':
     'No symptoms now, but could show them later (typically dominant conditions): a vertical line through the symbol, explained in the key',
   'Yan panel': 'Side panel',

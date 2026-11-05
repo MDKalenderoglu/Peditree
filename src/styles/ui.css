@@ -286,38 +286,36 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .check { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.4; cursor: pointer; color: var(--ink-2); }
 .check input { accent-color: var(--accent); width: 16px; height: 16px; margin: 1px 0 0; flex: none; }
 
-/* add menu: a ring around the selected symbol (RadialAddMenu.jsx) */
+/* add menu: a ring around the selected symbol (RadialAddMenu.jsx). Light and
+   quiet (clinician 2026-11-05: "premium, not raw"): a soft shadow, hairline
+   edges, the corner buttons say their name, their choices open as a list. */
 .radial-menu { position: absolute; width: 0; height: 0; z-index: 12; pointer-events: none; }
-.radial-ring { position: absolute; overflow: visible; filter: drop-shadow(0 6px 16px rgba(24, 33, 44, 0.16)); }
+.radial-ring { position: absolute; overflow: visible; filter: drop-shadow(0 4px 14px rgba(24, 33, 44, 0.12)); }
 .radial-sector { pointer-events: auto; cursor: pointer; }
-.radial-sector path { fill: rgba(255, 255, 255, 0.97); stroke: var(--line); stroke-width: 1; transition: fill 0.12s, stroke 0.12s; }
+.radial-sector path { fill: rgba(255, 255, 255, 0.94); stroke: rgba(24, 33, 44, 0.08); stroke-width: 1; transition: fill 0.15s, stroke 0.15s; }
 /* --fit: set by RadialAddMenu when a word would not fit its part (another language) */
-.radial-sector text { font: 700 calc(11.5px * var(--fit, 1))/1 var(--font-ui); fill: var(--ink); pointer-events: none; user-select: none; transition: fill 0.12s; }
+.radial-sector text { font: 600 calc(12px * var(--fit, 1))/1 var(--font-ui); fill: var(--ink); pointer-events: none; user-select: none; transition: fill 0.15s; }
 .radial-sector:hover path, .radial-sector.on path { fill: var(--accent-soft); stroke: var(--accent-line); }
 .radial-sector:hover text, .radial-sector.on text { fill: var(--accent-ink); }
-.radial-sector.off path { fill: rgba(246, 247, 248, 0.96); }
+.radial-sector.off path { fill: rgba(246, 247, 248, 0.94); }
 .radial-sector.off text { fill: #a8afb8; }
 .radial-sector.off:hover path, .radial-sector.off.on path { fill: var(--sunken); stroke: var(--line); }
 .radial-sector.off:hover text, .radial-sector.off.on text { fill: var(--muted); }
-.radial-arcs { pointer-events: none; }
-.radial-arc { pointer-events: auto; cursor: pointer; }
-.radial-arc path { fill: rgba(255, 255, 255, 0.97); stroke: var(--line); stroke-width: 1; transition: fill 0.12s, stroke 0.12s; }
-.radial-arc text { font: 700 calc(11.5px * var(--fit, 1))/1 var(--font-ui); fill: var(--ink-2); pointer-events: none; user-select: none; }
-.radial-arc:hover path { fill: var(--accent-soft); stroke: var(--accent-line); }
-.radial-arc:hover text { fill: var(--accent-ink); }
-.radial-arc.on path { fill: var(--accent); stroke: var(--accent); }
-.radial-arc.on text { fill: #fff; }
+/* a corner button: the icon on the diagonal (16px from its inner end), the name outwards */
 .radial-sat {
-  position: absolute; pointer-events: auto; transform: translate(-50%, -50%);
-  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; padding: 0;
-  background: var(--surface); color: var(--ink-2); border: 1px solid var(--line);
-  box-shadow: 0 3px 10px rgba(24, 33, 44, 0.14); cursor: pointer; transition: background 0.12s, color 0.12s;
+  position: absolute; pointer-events: auto; transform: translate(-16px, -50%);
+  height: 32px; padding: 0 12px 0 9px; border-radius: 16px; display: flex; align-items: center; gap: 6px; white-space: nowrap;
+  font: inherit; font-size: 12.5px; font-weight: 600;
+  background: var(--surface); color: var(--ink-2); border: 1px solid rgba(24, 33, 44, 0.08);
+  box-shadow: 0 2px 8px rgba(24, 33, 44, 0.10); cursor: pointer; transition: background 0.15s, color 0.15s;
 }
+.radial-sat.sat-left { flex-direction: row-reverse; padding: 0 9px 0 12px; transform: translate(calc(-100% + 16px), -50%); }
+.radial-sat svg { flex: none; }
 .radial-sat:hover { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent-line); }
 .radial-sat.on { background: var(--accent); color: #fff; border-color: var(--accent); }
 .radial-flyout, .radial-panel {
   position: absolute; pointer-events: auto; background: var(--surface);
-  border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-pop);
+  border: 1px solid rgba(24, 33, 44, 0.08); border-radius: 14px; box-shadow: var(--shadow-pop);
 }
 /* as wide as its rows, and no wider than the drawing area (its rows wrap then; RadialAddMenu sets max-width) */
 .radial-flyout { display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 4px; white-space: nowrap; width: max-content; box-sizing: border-box; }
@@ -327,10 +325,28 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .flyout-count { width: 34px; height: 28px; box-sizing: border-box; text-align: center; font: inherit; font-size: 13px; font-weight: 600; border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); }
 .flyout-count:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
 .radial-panel { padding: 12px 14px; width: 340px; max-width: calc(100vw - 24px); box-sizing: border-box; display: flex; flex-direction: column; gap: 9px; }
-.radial-panel-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+.radial-panel-title { font-size: 13px; font-weight: 600; color: var(--muted); }
+/* Durum, Bilgiler, İkiz: a list of choices (RadialAddMenu ChoiceList) */
+.radial-panel.ring-list-panel { width: 280px; padding: 10px 6px 8px; gap: 6px; }
+.ring-list-panel > .radial-panel-title, .ring-list-panel > .radial-hint { padding: 0 8px; }
+.ring-list-panel > .ring-sex { display: flex; margin: 0 6px 2px; border-color: transparent; border-radius: 9px; }
+.ring-list-panel > .ring-sex > button { flex: 1 1 auto; padding: 5px 6px; font-size: 12.5px; }
+.ring-list-panel .segmented button.on { font-weight: 600; box-shadow: 0 1px 3px rgba(24, 33, 44, 0.12), inset 0 0 0 1px var(--accent-line); }
+.ring-list { display: flex; flex-direction: column; }
+.ring-choice {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 34px; padding: 0 10px 0 8px; box-sizing: border-box;
+  font: inherit; font-size: 13.5px; text-align: left; color: var(--ink); background: none; border: none; border-radius: 8px; cursor: pointer;
+}
+.ring-choice:hover { background: var(--sunken); }
+.ring-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ring-check { flex: none; width: 16px; display: grid; place-items: center; color: var(--accent); }
+.ring-choice.on { font-weight: 600; color: var(--accent-ink); }
+.ring-choice-label { flex: 1; }
+.ring-choice-value { max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--muted); font-weight: 400; }
+.ring-more { color: var(--muted); font-size: 12.5px; }
+.ring-list-panel .radial-info-box { width: auto; margin: 4px 6px 0; padding-top: 8px; border-top: 1px solid var(--line-2); display: flex; flex-direction: column; gap: 8px; }
 .radial-panel-col { display: flex; flex-direction: column; gap: 8px; }
-/* one Bilgiler part under its band: the title says what and where; the field's label is for screen readers */
-.radial-info-box { width: 300px; }
+/* one Bilgiler part under the list: the title says what and where; the field's label is for screen readers */
 .radial-info-box .field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .radial-info-box .field { margin: 0; }
 .radial-info-box .input-age { width: 100%; text-align: left; }
@@ -397,7 +413,9 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
   .ui-btn { height: 44px; padding: 0 14px; }
   .ui-btn-sm { height: 40px; }
   .ui-btn-icon { width: 44px; }
-  .radial-sat { width: 44px; height: 44px; }
+  .radial-sat { height: 44px; border-radius: 22px; transform: translate(-22px, -50%); padding: 0 14px 0 13px; font-size: 13.5px; }
+  .radial-sat.sat-left { transform: translate(calc(-100% + 22px), -50%); padding: 0 13px 0 14px; }
+  .ring-choice { min-height: 44px; font-size: 14.5px; }
   .quick-btn { width: 44px; height: 44px; }
   .quick-text { height: 44px; padding: 0 12px; font-size: 14px; }
   .finding-state button { padding: 8px 12px; font-size: 14px; }
@@ -421,8 +439,8 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 /* ── keyboard focus, visible only when the keyboard moves it ── */
 #pedigree-svg .node-group:focus { outline: none; }
 #pedigree-svg .node-group:focus-visible > .pedigree-shape, #pedigree-svg .node-group:focus-visible > .pedigree-shape-sketch { stroke: var(--select); stroke-width: 3.5; }
-.radial-sector:focus, .radial-arc:focus { outline: none; }
-.radial-sector:focus-visible path, .radial-arc:focus-visible path { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+.radial-sector:focus { outline: none; }
+.radial-sector:focus-visible path { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
 .radial-sat:focus-visible, .quick-btn:focus-visible, .quick-text:focus-visible, .chip:focus-visible, .suggest-chip:focus-visible, .finding-glyph:focus-visible, .style-opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* toolbar pop-up windows (Yeni, Paylaş, Diğer, keyboard help); they open on a tap, so a tablet shows them too */
