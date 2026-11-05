@@ -686,6 +686,9 @@ describe('more of what the clinician sees', () => {
     await key('b');
     const nameButton = () => buttons($('.radial-panel')).find(b => b.getAttribute('aria-label') === 'Miyp: adı düzelt');
     expect(nameButton()).toBeDefined();
+    // a small panel without a title: its named button stands beside it (clinician 2026-11-05)
+    expect($('.radial-panel.findings-panel')).not.toBeNull();
+    expect($('.findings-panel .radial-panel-title')).toBeNull();
     await click(nameButton());
     let box = $('.radial-panel input.finding-name-edit');
     expect(box.value).toBe('Miyp');
