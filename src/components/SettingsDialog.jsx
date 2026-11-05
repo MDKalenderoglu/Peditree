@@ -9,11 +9,12 @@
  * row's tooltip (clinician 2026-11-05: "minimal, premium, clear").
  */
 import { useEffect, useRef, useState } from 'react';
-import { X, Globe, Palette, CircleDot, PanelRight, FolderOpen, Keyboard, Info } from 'lucide-react';
+import { X, Globe, Palette, CircleDot, PanelRight, FolderOpen, Shapes, Keyboard, Info } from 'lucide-react';
 import { ProductInfo, CitationInfo, FeedbackInfo, LicenseInfo, KeyHelp } from './AboutParts';
 import { useT, useLang, tk } from '../i18n';
 import { useViewSettings, DRAWING_FONTS, LEGEND_SIZES } from '../utils/drawingStyle';
 import { RingSection, PanelSection, Switch } from './RingSettings';
+import SymbolGuide from './SymbolGuide';
 import { PAPERS } from '../utils/paper';
 import { CARRIER_MARKS } from '../graph/conditionKey';
 
@@ -23,7 +24,8 @@ const SECTIONS = [
   { id: 'ring', label: tk('Halka menü'), Icon: CircleDot, intro: tk('Sık kullandıklarınızı öne alın. Gizlenenler halkada “Diğer…” altında durur.') },
   { id: 'panel', label: tk('Yan panel'), Icon: PanelRight, intro: tk('Gizlenenler panelde “Diğer bilgiler” altında durur; bir kişide dolu olan her zaman görünür.') },
   { id: 'files', label: tk('Dosyalar'), Icon: FolderOpen, intro: null },
-  // not settings but kept here (clinician request 2026-11-04): what to look up once in a while
+  // not settings but kept here (clinician requests 2026-11-04, 2026-11-05): what to look up once in a while
+  { id: 'symbols', label: tk('Semboller'), Icon: Shapes, intro: tk('Çizimdeki sembollerin ve çizgilerin anlamı (NSGC 2022).'), info: true },
   { id: 'keys', label: tk('Klavye kısayolları'), Icon: Keyboard, intro: tk('Fareyle yaptığınız her şeyi klavyeyle de yapabilirsiniz.'), info: true },
   { id: 'about', label: tk('Hakkında'), Icon: Info, intro: null, info: true },
 ];
@@ -151,7 +153,7 @@ function AboutSection() {
   );
 }
 
-const BODY = { language: LanguageSection, drawing: DrawingSection, ring: RingSection, panel: PanelSection, files: FilesSection, keys: KeyHelp, about: AboutSection };
+const BODY = { language: LanguageSection, drawing: DrawingSection, ring: RingSection, panel: PanelSection, files: FilesSection, symbols: SymbolGuide, keys: KeyHelp, about: AboutSection };
 
 export default function SettingsDialog({ onClose, initial = 'language' }) {
   const t = useT();

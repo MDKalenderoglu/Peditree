@@ -1403,6 +1403,25 @@ describe('the side panel, calm and clear (clinician request 2026-11-05: "premium
 });
 
 describe('the Settings window (clinician request 2026-11-03)', () => {
+  it('Semboller: every symbol and line drawn small with its name and meaning; the carrier as chosen in Çizim (clinician request 2026-11-05)', async () => {
+    const { useViewSettings: views } = await import('../utils/drawingStyle');
+    await click(button('Ayarlar'));
+    const dialog = document.querySelector('.settings-dialog');
+    await click([...dialog.querySelectorAll('[role="tab"]')].find(b => b.textContent.includes('Semboller')));
+    const rows = () => [...dialog.querySelectorAll('.symbol-guide > li')];
+    const names = rows().map(li => li.querySelector('.set-row-title').textContent);
+    expect(names).toEqual(expect.arrayContaining(['Erkek', 'Kadın', 'Proband', 'Danışan', 'Etkilenmiş', 'Taşıyıcı', 'Vefat', 'Evlat edinilmiş',
+      'Düşük', 'Ölü doğum (SB)', 'Akraba evliliği', 'Ayrılmış ya da boşanmış', 'Aynı köy', 'Tek yumurta ikiz']));
+    for (const li of rows()) expect(li.querySelector('svg.symbol-guide-mark').children.length).toBeGreaterThan(0);
+    const carrier = () => rows().find(li => li.querySelector('.set-row-title').textContent === 'Taşıyıcı').querySelector('svg');
+    expect(carrier().querySelector('pattern')).not.toBeNull(); // split (NSGC 2022) by default
+    await run(() => views.getState().setView({ carrierMark: 'dot' }));
+    expect(carrier().querySelector('pattern')).toBeNull();
+    expect(carrier().querySelector('circle')).not.toBeNull();
+    await run(() => views.getState().setView({ carrierMark: 'split' }));
+    await key('Escape');
+  });
+
   it('few words: each setting says a few words at most, the longer explanation is in its tooltip (clinician 2026-11-05)', async () => {
     await click(button('Ayarlar'));
     const dialog = document.querySelector('.settings-dialog');
@@ -1423,7 +1442,7 @@ describe('the Settings window (clinician request 2026-11-03)', () => {
     expect(dialog.getAttribute('aria-modal')).toBe('true');
     expect(document.activeElement.getAttribute('role')).toBe('tab');
     const tabs = [...dialog.querySelectorAll('[role="tab"]')].map(b => b.textContent.trim());
-    expect(tabs).toEqual(['Dil', 'Çizim', 'Halka menü', 'Yan panel', 'Dosyalar', 'Klavye kısayolları', 'Hakkında']);
+    expect(tabs).toEqual(['Dil', 'Çizim', 'Halka menü', 'Yan panel', 'Dosyalar', 'Semboller', 'Klavye kısayolları', 'Hakkında']);
     // Tab from the last control comes back to the first; Shift+Tab from the first goes to the last
     const focusable = [...dialog.querySelectorAll('button:not(:disabled):not([tabindex="-1"]), input:not(:disabled), [tabindex="0"]')];
     focusable.at(-1).focus();
