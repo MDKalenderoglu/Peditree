@@ -124,19 +124,24 @@ const isHover = (e) => e.pointerType !== 'touch';
 const INFO_WHERE = { genetic: tk('sembolün altında'), note: tk('pedigrinin altında, numaralı'), name: tk('sembolün altında') };
 
 /**
- * The choices of Durum, Bilgiler or İkiz: one row each, a check on what is
- * on, the value already written at the right (Bilgiler), "Diğer…" last.
+ * The choices of Durum, Bilgiler or İkiz: one short row each, a check on what
+ * is on, the value already written at the right (Bilgiler), "Diğer…" last.
+ * `aside`: what a row opens, beside the list at that row (a Bilgiler part's box;
+ * clinician 2026-11-05: "beside it, like Bulgu, not below").
  */
 function ChoiceList({ items, label }) {
   return (
-    <div className="ring-list" role="group" aria-label={label}>
+    <div className="ring-choices" role="group" aria-label={label}>
       {items.map((it) => (
-        <button key={it.label} className={`ring-choice${it.on ? ' on' : ''}${it.more ? ' ring-more' : ''}`} aria-label={it.label}
-          aria-pressed={it.more ? undefined : !!it.on} title={it.title || it.label} onClick={it.onClick}>
-          <span className="ring-check" aria-hidden="true">{it.on && <Check size={14} />}</span>
-          <span className="ring-choice-label">{it.label}</span>
-          {it.value && <span className="ring-choice-value">{it.value}</span>}
-        </button>
+        <div key={it.label} className="ring-row">
+          <button className={`ring-choice${it.on ? ' on' : ''}${it.more ? ' ring-more' : ''}`} aria-label={it.label}
+            aria-pressed={it.more ? undefined : !!it.on} title={it.title || it.label} onClick={it.onClick}>
+            <span className="ring-check" aria-hidden="true">{it.on && <Check size={13} />}</span>
+            <span className="ring-choice-label">{it.label}</span>
+            {it.value && <span className="ring-choice-value">{it.value}</span>}
+          </button>
+          {it.aside}
+        </div>
       ))}
     </div>
   );
@@ -187,9 +192,12 @@ export default function RadialAddMenu({
     if (!el) { setNudge({ x: 0, y: 0 }); return; }
     const fit = () => {
       el.style.translate = '0px 0px';
-      const r = el.getBoundingClientRect(), host = el.closest('.canvas-stage') || document.body;
+      // a Bilgiler part's box stands beside the list: both must be on screen
+      const aside = el.querySelector('.ring-aside');
+      const r = aside ? spanOf([el.getBoundingClientRect(), aside.getBoundingClientRect()]) : el.getBoundingClientRect();
+      const host = el.closest('.canvas-stage') || document.body;
       const h = host.getBoundingClientRect();
-      if (!r.width || !h.width) return; // nothing laid out (a test page)
+      if (r.right - r.left <= 0 || !h.width) return; // nothing laid out (a test page)
       // first the drawing slides, so the popup stays beside the ring and the
       // person (clinician request 2026-11-03); only what still cannot fit moves the popup itself
       const ringEl = menuRef.current && menuRef.current.querySelector('.radial-ring');
@@ -448,12 +456,17 @@ export default function RadialAddMenu({
   const satPos = (angle) => [sat * Math.cos((angle * Math.PI) / 180), sat * Math.sin((angle * Math.PI) / 180)];
   // a satellite's panel opens outwards from its button: above the top ones, below the bottom
   // ones, on its own side unless the drawing area has more room on the other (widths: ui.css)
-  const panelStyle = (s) => {
-    const [x, y] = satPos(s.angle);
-    const w = s.key === 'findings' ? 340 : 280;
+  const opensRight = (s) => {
+    const [x] = satPos(s.angle);
+    // findings 340 px, a list 200 (a Bilgiler part's box opens on the same side: the drawing slides for it)
+    const w = s.key === 'findings' ? 340 : 200;
     const roomRight = (anchor.boxW ?? Infinity) - (anchor.x + x);
     const roomLeft = anchor.x + x;
-    const right = x > 0 ? roomRight >= w || roomRight >= roomLeft : roomLeft < w && roomRight > roomLeft;
+    return x > 0 ? roomRight >= w || roomRight >= roomLeft : roomLeft < w && roomRight > roomLeft;
+  };
+  const panelStyle = (s) => {
+    const [x, y] = satPos(s.angle);
+    const right = opensRight(s);
     const below = y > 0;
     return { left: right ? x - 16 : x + 16, top: below ? y + 22 : y - 22, transform: `translate(${right ? '0' : '-100%'}, ${below ? '0' : '-100%'})` };
   };
@@ -470,6 +483,15 @@ export default function RadialAddMenu({
       ...avail.filter((id) => showMore || !hiddenHere.includes(id)).map((id) => ({
         label: t(RING_INFO.find((x) => x.id === id).label), on: infoPart === id, value: value[id],
         onClick: () => setInfoFor(infoPart === id ? null : { node: node.id, part: id }),
+        // the part's box beside its row, on the side the list opened to (away from the ring)
+        aside: infoPart === id && infoBoxes[id] ? (
+          <div className={`radial-info-box ring-aside${opensRight(SATELLITES.find((x) => x.key === 'note')) ? '' : ' ring-aside-left'}`}>
+            {/* the part's name and where it goes; the field's own label is read aloud only */}
+            <div className="radial-panel-title">{t(RING_INFO.find((x) => x.id === id).label)}
+              {INFO_WHERE[id] && <span className="field-where">{t(INFO_WHERE[id])}</span>}</div>
+            {infoBoxes[id]}
+          </div>
+        ) : null,
         title: { age: t('Yaşını yazın'), genetic: t('Genetik test sonucu: varyant ya da sonuç'), note: t('Pedigrinin altındaki numaralı notlara'), name: t('Sembolün altına ad ya da kısaltma') }[id],
       })),
       ...moreItem(hiddenHere),
@@ -505,22 +527,10 @@ export default function RadialAddMenu({
       );
     },
     // Bilgiler (clinician request 2026-11-04): one choice per part; a part opens its own box under the list
-    note: () => (
-      <>
-        <ChoiceList label={t('Bilgiler')} items={infoItems()} />
-        {infoPart && infoBoxes[infoPart] && (
-          <div className="radial-info-box">
-            {/* the part's name and where it goes; the field's own label is read aloud only */}
-            <div className="radial-panel-title">{t(RING_INFO.find((x) => x.id === infoPart).label)}
-              {INFO_WHERE[infoPart] && <span className="field-where">{t(INFO_WHERE[infoPart])}</span>}</div>
-            {infoBoxes[infoPart]}
-          </div>
-        )}
-      </>
-    ),
+    note: () => <ChoiceList label={t('Bilgiler')} items={infoItems()} />,
+    // each row says in its tooltip what it adds ("İkizini ekle: …", "Üçüz yap: …")
     twins: () => (
       <>
-        <span className="radial-hint">{twinGroup ? t('{name} yap: aynı gruba bir kardeş daha ekleyin. Türü:', { name: multipleName(twinGroup.group.children.length + 1) }) : t('Bu kişiye bir ikiz kardeş ekleyin. İkizlik türü:')}</span>
         <ChoiceList label={t('İkiz')} items={[['monozygotic', t('Tek yumurta')], ['dizygotic', t('Çift yumurta')], ['unknown', t('Bilinmiyor')]].map(([z, label]) => ({
           label, title: `${twinGroup ? t('{name} yap', { name: multipleName(twinGroup.group.children.length + 1) }) : t('İkizini ekle')}: ${label}`,
           on: twinGroup?.group.zygosity === z,
@@ -531,6 +541,8 @@ export default function RadialAddMenu({
   };
   const twinsUsable = hasParents && !isLoss && !!onAddTwin;
   const listPanel = panel === 'status' || (panel === 'twins' && twinsUsable) || (panel === 'note' && !group);
+  // İkiz with no parents drawn: only the reason, in a small box
+  const hintOnly = panel === 'twins' && !twinsUsable;
 
   const panels = {
     findings: (
@@ -579,7 +591,7 @@ export default function RadialAddMenu({
         // the icon on the diagonal, the name outwards (never over the ring)
         return (
           <button key={s.key} className={`radial-sat${x < 0 ? ' sat-left' : ''}${panel === s.key ? ' on' : ''}`} style={{ left: x, top: y }}
-            title={satLabel(s)} aria-label={satLabel(s)} aria-expanded={panel === s.key}
+            aria-label={satLabel(s)} aria-expanded={panel === s.key}
             onPointerEnter={(e) => isHover(e) && openPanel(s.key)} onPointerLeave={(e) => isHover(e) && leavePanel()}
             onClick={() => { setActive(null); if (panel === s.key && keptByHover(s.key)) return; setPanel(panel === s.key ? null : s.key); }}>
             <Icon size={15} aria-hidden="true" /><span className="radial-sat-label">{satLabel(s)}</span>
@@ -635,9 +647,10 @@ export default function RadialAddMenu({
         </div>
       )}
       {panel && (
-        <div className={`radial-panel${listPanel ? ' ring-list-panel' : ''}`} ref={popRef} style={{ ...panelStyle(SATELLITES.find(s => s.key === panel)), translate: `${nudge.x}px ${nudge.y}px` }}
+        <div className={`radial-panel${listPanel ? ' ring-list-panel' : hintOnly ? ' ring-hint-panel' : ''}`} ref={popRef} style={{ ...panelStyle(SATELLITES.find(s => s.key === panel)), translate: `${nudge.x}px ${nudge.y}px` }}
           onPointerEnter={(e) => isHover(e) && keepPanel()} onPointerLeave={(e) => isHover(e) && leavePanel()}>
-          <div className="radial-panel-title">{satLabel(SATELLITES.find(s => s.key === panel))}</div>
+          {/* a list needs no title: its button, named, stands right beside it */}
+          {!listPanel && !hintOnly && <div className="radial-panel-title">{satLabel(SATELLITES.find(s => s.key === panel))}</div>}
           {listPanel ? lists[panel]() : panels[panel]}
         </div>
       )}

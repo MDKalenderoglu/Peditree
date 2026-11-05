@@ -474,8 +474,6 @@ const EN = {
   'İkizini ekle': 'Add a twin',
   'Düşük, ölü doğum ya da süren gebelik kaydına buradan ikiz eklenemez.': 'A twin cannot be added here to a miscarriage, stillbirth or ongoing pregnancy.',
   'İkiz eklemek için önce bu kişinin anne ve babasını ekleyin (yukarıdaki Ebeveyn düğmesi).': 'To add a twin, first add this person’s mother and father (the Parents button above).',
-  '{name} yap: aynı gruba bir kardeş daha ekleyin. Türü:': 'Make {name}: add one more sibling to the same group. Zygosity:',
-  'Bu kişiye bir ikiz kardeş ekleyin. İkizlik türü:': 'Add a twin to this person. Zygosity:',
   'Bu kişiyle ilgili notunuz': 'Your note about this person',
   'Pedigrinin altındaki “Notlar” bölümünde, numarasıyla çıkar. Alt satır için Shift+Enter.': 'It shows, numbered, in the “Notes” section under the pedigree. Shift+Enter for a new line.',
   'Anne ve baba ekle': 'Add mother and father',

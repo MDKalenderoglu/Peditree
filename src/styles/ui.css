@@ -326,26 +326,33 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .flyout-count:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
 .radial-panel { padding: 12px 14px; width: 340px; max-width: calc(100vw - 24px); box-sizing: border-box; display: flex; flex-direction: column; gap: 9px; }
 .radial-panel-title { font-size: 13px; font-weight: 600; color: var(--muted); }
-/* Durum, Bilgiler, İkiz: a list of choices (RadialAddMenu ChoiceList) */
-.radial-panel.ring-list-panel { width: 280px; padding: 10px 6px 8px; gap: 6px; }
-.ring-list-panel > .radial-panel-title, .ring-list-panel > .radial-hint { padding: 0 8px; }
-.ring-list-panel > .ring-sex { display: flex; margin: 0 6px 2px; border-color: transparent; border-radius: 9px; }
-.ring-list-panel > .ring-sex > button { flex: 1 1 auto; padding: 5px 6px; font-size: 12.5px; }
+/* Durum, Bilgiler, İkiz: a short list of choices, as narrow as its words
+   (RadialAddMenu ChoiceList; clinician 2026-11-05: "minimal, no empty room") */
+.radial-panel.ring-list-panel { width: max-content; min-width: 132px; max-width: 260px; padding: 4px; gap: 4px; border-radius: 12px; }
+.ring-list-panel > .ring-sex { display: flex; border-color: transparent; border-radius: 8px; }
+.ring-list-panel > .ring-sex > button { flex: 1 1 auto; padding: 3px 8px; font-size: 12px; }
 .ring-list-panel .segmented button.on { font-weight: 600; box-shadow: 0 1px 3px rgba(24, 33, 44, 0.12), inset 0 0 0 1px var(--accent-line); }
-.ring-list { display: flex; flex-direction: column; }
+.radial-panel.ring-hint-panel { width: 240px; padding: 8px 6px; border-radius: 12px; }
+.ring-choices { display: flex; flex-direction: column; }
+.ring-row { position: relative; }
 .ring-choice {
-  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 34px; padding: 0 10px 0 8px; box-sizing: border-box;
-  font: inherit; font-size: 13.5px; text-align: left; color: var(--ink); background: none; border: none; border-radius: 8px; cursor: pointer;
+  display: flex; align-items: center; gap: 6px; width: 100%; min-height: 28px; padding: 0 10px 0 4px; box-sizing: border-box;
+  font: inherit; font-size: 13px; text-align: left; color: var(--ink); background: none; border: none; border-radius: 7px; cursor: pointer; white-space: nowrap;
 }
 .ring-choice:hover { background: var(--sunken); }
 .ring-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.ring-check { flex: none; width: 16px; display: grid; place-items: center; color: var(--accent); }
+.ring-check { flex: none; width: 14px; display: grid; place-items: center; color: var(--accent); }
 .ring-choice.on { font-weight: 600; color: var(--accent-ink); }
 .ring-choice-label { flex: 1; }
-.ring-choice-value { max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--muted); font-weight: 400; }
-.ring-more { color: var(--muted); font-size: 12.5px; }
-.ring-list-panel .radial-info-box { width: auto; margin: 4px 6px 0; padding-top: 8px; border-top: 1px solid var(--line-2); display: flex; flex-direction: column; gap: 8px; }
-.radial-panel-col { display: flex; flex-direction: column; gap: 8px; }
+.ring-choice-value { max-width: 110px; margin-left: 10px; overflow: hidden; text-overflow: ellipsis; font-size: 12px; color: var(--muted); font-weight: 400; }
+.ring-more { color: var(--muted); font-size: 12px; }
+/* a Bilgiler part's box: beside the list, level with its row, on the side away from the ring */
+.ring-aside {
+  position: absolute; top: -8px; left: calc(100% + 12px); width: 280px; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px;
+  background: var(--surface); border: 1px solid rgba(24, 33, 44, 0.08); border-radius: 12px; box-shadow: var(--shadow-pop);
+}
+.ring-aside.ring-aside-left { left: auto; right: calc(100% + 12px); }
 /* one Bilgiler part under the list: the title says what and where; the field's label is for screen readers */
 .radial-info-box .field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .radial-info-box .field { margin: 0; }
@@ -415,7 +422,7 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
   .ui-btn-icon { width: 44px; }
   .radial-sat { height: 44px; border-radius: 22px; transform: translate(-22px, -50%); padding: 0 14px 0 13px; font-size: 13.5px; }
   .radial-sat.sat-left { transform: translate(calc(-100% + 22px), -50%); padding: 0 13px 0 14px; }
-  .ring-choice { min-height: 44px; font-size: 14.5px; }
+  .ring-choice { min-height: 40px; font-size: 14.5px; }
   .quick-btn { width: 44px; height: 44px; }
   .quick-text { height: 44px; padding: 0 12px; font-size: 14px; }
   .finding-state button { padding: 8px 12px; font-size: 14px; }
