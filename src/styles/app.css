@@ -71,19 +71,23 @@ body {
 .notice-dismiss:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
 
 /* Clinical notes strip: one quiet line, details on demand */
+/* (clinician 2026-11-05: quieter) a small pill while closed, as wide as its words */
 .notice-strip {
   margin-top: 10px;
-  padding: 5px 12px;
-  border-left: 4px solid var(--warn-line);
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 3px 12px;
+  border: 1px solid var(--warn-line);
   background: var(--warn-soft);
   color: var(--warn);
-  font-size: 13px;
-  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  border-radius: 10px;
 }
-.notice-strip-error { border-left-color: var(--danger); background: var(--danger-soft); color: var(--danger); }
+.notice-strip-error { border-color: var(--danger-line); background: var(--danger-soft); color: var(--danger); }
 /* the strip's own ×: every note away at once, at the right of its first line */
-.notice-strip { position: relative; padding-right: 40px; }
-.notice-dismiss-all { position: absolute; top: 3px; right: 6px; }
+.notice-strip { position: relative; padding-right: 36px; }
+.notice-dismiss-all { position: absolute; top: 1px; right: 4px; }
 .notice-strip-toggle {
   display: flex; align-items: center; gap: 6px;
   background: none; border: none; padding: 3px 0; cursor: pointer;

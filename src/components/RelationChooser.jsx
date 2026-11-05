@@ -75,7 +75,8 @@ export default function RelationChooser({ onStart, onClose }) {
   return (
     <div className="relation-dialog" role="dialog" aria-modal="true" aria-labelledby="relation-title" data-popup="relation">
       <div className="relation-head">
-        <h2 id="relation-title">{t('Anne-babası akraba olan bir aileyle başla')}</h2>
+        {/* the name it has in the Yeni menu (clinician 2026-11-05: shorter, clearer) */}
+        <h2 id="relation-title">{t('Akraba evliliği')}</h2>
         <button className="ui-btn ui-btn-ghost ui-btn-icon" onClick={onClose} aria-label={t('Kapat')} title={t('Kapat')}><X size={18} /></button>
       </div>
       <div className="relation-body">
