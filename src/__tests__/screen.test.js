@@ -1240,13 +1240,14 @@ describe('NSGC 2022 additions (clinician decisions 2026-11-02) and the trimmed s
 });
 
 describe('the two free texts of a person (clinician question 2026-11-03)', () => {
-  it('"Ad ya da kısaltma" goes under the symbol, "Not" into the numbered notes; both in the panel, each saying where; a long name is warned about', async () => {
+  it('"Ad ya da kısaltma" goes under the symbol, "Not" into the numbered notes; the panel says where, once under both; a long name is warned about', async () => {
     await select('mother');
     const fields = $$('.editor-body label.field-col');
     const nameField = fields.find(l => l.textContent.includes('Ad ya da kısaltma'));
     const noteField = fields.find(l => l.textContent.includes('Not'));
-    expect(nameField.textContent).toMatch(/sembolün altında/);
-    expect(noteField.textContent).toMatch(/pedigrinin altında, numaralı/);
+    // one line under the two boxes (clinician 2026-11-05: the panel was too wordy), right after them
+    const where = noteField.nextElementSibling;
+    expect(where.textContent).toBe('Ad sembolün altında, not pedigrinin altında numarasıyla görünür.');
     await typeInto(nameField.querySelector('input'), 'Ayşe');
     await key('Enter', {}, nameField.querySelector('input'));
     await typeInto(noteField.querySelector('textarea'), 'Kardiyoloji takibinde');
@@ -1260,6 +1261,73 @@ describe('the two free texts of a person (clinician question 2026-11-03)', () =>
     // a long name: the panel says to put the details in the note
     await run(() => S().updateIndividual('mother', { displayLabel: 'Ayşe Yılmaz, 3 yıl önce opere' }));
     expect(panelText()).toMatch(/Uzun yazı çizimi kalabalıklaştırır/);
+  });
+});
+
+describe('the side panel, calm and clear (clinician request 2026-11-05: "premium, not raw")', () => {
+  const panelTitle = () => $('.side-header').textContent.replace(/\s+/g, ' ');
+  const partnerTitles = () => $$('.editor-body .partner-title').map(el => el.textContent.replace(/\s+/g, ' ').trim());
+
+  it('the header: the person’s symbol in miniature, the number, and what the drawing says as small labels', async () => {
+    await run(() => S().updateIndividual('proband', { age: '34' }));
+    await select('proband');
+    expect($('.side-header .person-glyph rect')).not.toBeNull(); // a man: a square
+    expect($('.side-header .person-id').textContent).toBe('III-1');
+    expect($$('.side-header .person-chip').map(c => c.textContent)).toEqual(['Erkek', '34 yaş', 'Proband']);
+    await select('mother');
+    expect($('.side-header .person-glyph circle')).not.toBeNull();
+    expect(panelTitle()).not.toMatch(/Proband/);
+  });
+
+  it('the tip on the ring’s buttons is said once on this device: "Anladım" puts it away for every person', async () => {
+    const { usePanelTip } = await import('../utils/panelPrefs');
+    await run(() => usePanelTip.setState({ seen: false }));
+    await select('mother');
+    expect(panelText()).toMatch(/Düğmeler görünmüyorsa/);
+    await click(button('Anladım', $('.editor-body')));
+    expect(panelText()).not.toMatch(/Düğmeler görünmüyorsa/);
+    expect(window.localStorage.getItem('peditree.panelTip.v1')).toBe('1');
+    await select('father');
+    expect(panelText()).not.toMatch(/Düğmeler görünmüyorsa/);
+    // put back for the other tests
+    window.localStorage.removeItem('peditree.panelTip.v1');
+    await run(() => usePanelTip.setState({ seen: false }));
+  });
+
+  it('a partner is named by the number and the name the clinician wrote, never by the program’s own label', async () => {
+    await run(() => S().addSpouseTo('proband', 'female'));
+    const wife = g().unions.find(u => u.partners.includes('proband')).partners.find(id => id !== 'proband');
+    await select('proband');
+    expect(partnerTitles()).toEqual(['Eş III-2']);
+    expect(panelText()).not.toMatch(/\(K\)/);
+    await run(() => S().updateIndividual(wife, { displayLabel: 'Ayşe' }));
+    expect(partnerTitles()).toEqual(['Eş III-2 Ayşe']);
+  });
+
+  it('"Çocukları yok": two choices, a second tap takes the mark back; what it draws is said only once chosen', async () => {
+    await run(() => S().addSpouseTo('proband', 'female'));
+    const u = g().unions.find(x => x.partners.includes('proband'));
+    await select('proband');
+    const group = () => $$('.editor-body [role="radiogroup"]').find(r => r.getAttribute('aria-label') === 'Çocukları yok');
+    expect(buttons(group()).map(b => b.textContent)).toEqual(['Çocuksuz', 'İnfertil']);
+    expect(panelText()).not.toMatch(/kısa çizgi/);
+    await click(button('İnfertil', group()));
+    expect(g().unions.find(x => x.id === u.id).childless).toBe('infertile');
+    expect(panelText()).toMatch(/Çizimde çift kısa çizgi/);
+    await click(button('İnfertil', group()));
+    expect(g().unions.find(x => x.id === u.id).childless).toBeFalsy();
+    expect(panelText()).not.toMatch(/kısa çizgi/);
+  });
+
+  it('"Kişiyi sil" on the proband says why it cannot, when tapped, and deletes nobody', async () => {
+    await select('proband');
+    expect(panelText()).not.toMatch(/Proband silinemez/);
+    const people = g().individuals.length;
+    await click(button('Kişiyi sil', $('.editor-body')));
+    expect(g().individuals).toHaveLength(people);
+    expect($('#delete-why').textContent).toMatch(/Proband silinemez/);
+    await select('mother');
+    expect(panelText()).not.toMatch(/Proband silinemez/);
   });
 });
 

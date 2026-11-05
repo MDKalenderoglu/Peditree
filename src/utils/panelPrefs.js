@@ -60,3 +60,24 @@ export const usePanelPrefs = create((set) => ({
     set({ panel });
   },
 }));
+
+/**
+ * The panel's one tip (where the ring's buttons are) is said once on this
+ * device; "Anladım" puts it away (clinician 2026-11-05: the panel was too
+ * wordy). A preference, kept like the others.
+ */
+const TIP_KEY = 'peditree.panelTip.v1';
+function readTipSeen() {
+  try {
+    return typeof window !== 'undefined' && !!window.localStorage && window.localStorage.getItem(TIP_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+export const usePanelTip = create((set) => ({
+  seen: readTipSeen(),
+  dismiss: () => {
+    try { window.localStorage.setItem(TIP_KEY, '1'); } catch { /* private window: for this page only */ }
+    set({ seen: true });
+  },
+}));
