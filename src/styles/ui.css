@@ -122,10 +122,10 @@ button, input, select, textarea { font-family: inherit; }
 /* one row (toolbarFit.js measures and folds, the least used first): a word
    gives way to its icon but stays for screen readers; every button keeps its tooltip */
 .toolbar .ui-btn:not(.ui-btn-icon) { padding: 0 10px; }
-.toolbar .btn-label.folded {
+.toolbar .btn-label.folded, .toolbar .btn-label.icon-only {
   position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
 }
-.toolbar .ui-btn:has(> .btn-label.folded) { padding: 0 9px; }
+.toolbar .ui-btn:has(> .btn-label.folded), .toolbar .ui-btn:has(> .btn-label.icon-only) { padding: 0 9px; }
 .toolbar .brand-sub.folded, .toolbar .brand-text.folded, .toolbar .toolbar-sep.folded { display: none; }
 .toolbar .patient-name.folded { width: 150px; }
 

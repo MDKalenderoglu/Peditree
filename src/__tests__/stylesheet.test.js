@@ -37,4 +37,10 @@ describe('stylesheet rules', () => {
     expect(block('app.css', '.canvas-toolbar')).toMatch(/flex-wrap:\s*wrap/);
     expect(block('app.css', '.canvas-toolbar')).not.toMatch(/position:\s*absolute/);
   });
+
+  it('a word that gives way to its icon (folded, or İndir / Yazdır / Paylaş always) is hidden for the eye only, never display:none', () => {
+    const rule = block('ui.css', '.toolbar .btn-label.folded, .toolbar .btn-label.icon-only');
+    expect(rule).toMatch(/clip-path: inset\(50%\)/);
+    expect(rule).not.toMatch(/display:\s*none/);
+  });
 });
