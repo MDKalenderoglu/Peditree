@@ -155,12 +155,20 @@ describe('#7 removing a social parent', () => {
 
 describe('#9 age annotation', () => {
   it('the age at death is shown when no age is filled in', () => {
-    expect(annotationAge({ deceased: true, ageAtDeath: '42' })).toEqual({ text: 'd.42', kind: 'ageAtDeath', value: '42' });
-    expect(annotationAge({ deceased: true, age: '50', ageAtDeath: '42' })).toEqual({ text: 'd.42', kind: 'ageAtDeath', value: '42' });
+    expect(annotationAge({ deceased: true, ageAtDeath: '42' })).toEqual({ text: 'ölüm 42 y', kind: 'ageAtDeath', value: '42' });
+    expect(annotationAge({ deceased: true, age: '50', ageAtDeath: '42' })).toEqual({ text: 'ölüm 42 y', kind: 'ageAtDeath', value: '42' });
     expect(annotationAge({ age: '7' })).toEqual({ text: '7', kind: 'age', value: '7' });
     expect(annotationAge({ age: '7', ageAtDeath: '9' })).toEqual({ text: '7', kind: 'age', value: '7' });
     expect(annotationAge({ pregnancyLoss: true, age: '1' })).toBeNull();
     expect(annotationAge({})).toBeNull();
+  });
+
+  it('the age at death is written plainly, with its unit (clinician decision 2026-11-05: "d.42" was not understood)', () => {
+    const at = (ageAtDeath, lang) => annotationAge({ deceased: true, ageAtDeath }, lang).text;
+    expect(['42', '2,5', '3 ay', '12 gün'].map(a => at(a, 'tr'))).toEqual(['ölüm 42 y', 'ölüm 2,5 y', 'ölüm 3 ay', 'ölüm 12 gün']);
+    expect(['42', '3 ay', '12 gün'].map(a => at(a, 'en'))).toEqual(['d. 42 y', 'd. 3 mo', 'd. 12 d']);
+    // stored as before: the value, not the words
+    expect(annotationAge({ deceased: true, ageAtDeath: '42' }, 'en').value).toBe('42');
   });
 });
 

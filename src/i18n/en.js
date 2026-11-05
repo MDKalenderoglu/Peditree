@@ -880,6 +880,7 @@ const EN = {
   'Yeni bir pedigri başlatmak için üstteki "Yeni" düğmesine basın.': 'To start a new pedigree, press “New” at the top.',
   '{label} taşıyıcısı': '{label} carrier',
   'Ölüm: {cause}': 'Died: {cause}',
+  'ölüm {age}': 'd. {age}', // age at death under the symbol (NSGC "d."; clinician decision 2026-11-05)
   '{finding}: tanı {age}': '{finding}: diagnosed {age}',
   '{finding}: bilinmiyor': '{finding}: unknown',
   'doğum: {week} hf': 'born: {week} wk',

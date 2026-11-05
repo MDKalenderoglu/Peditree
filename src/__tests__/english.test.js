@@ -209,7 +209,7 @@ describe('the screens in English', () => {
     const text = said(svg);
     expect(text).toMatch(/Notes/);
     expect(text).toMatch(/3 mo/);
-    expect(text).toMatch(/d\.12 d/);
+    expect(text).toMatch(/d\. 12 d/);
     expect(text).toMatch(/Carrier/);
     expect(turkishIn(text)).toEqual([]);
     expect([...missing]).toEqual([]);

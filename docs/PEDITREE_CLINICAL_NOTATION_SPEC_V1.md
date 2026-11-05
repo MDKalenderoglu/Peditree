@@ -82,7 +82,8 @@ Her başlıkta: (1) standart kuralı, (2) mevcut davranış, (3) uygunluk, (4) e
    asemptomatik/presemptomatik = ayrı gösterim [1,2]. **2022 revizyonu taşıyıcılık gösterimini değiştirir** [3].
 2. **Mevcut:** `affected` → tam dolgu; `carrier` → **sol yarı dolu** desen (`carrier-half`); `conditions[]` →
    yalnız tam dolgu + "Durum / Tanı Kayıtları" lejantı (bölmeli dolgu yok); vefat → 4 px dışa taşan çapraz çizgi; yaş
-   yalnız `ageAtDeath` varsa "d.X".
+   yalnız `ageAtDeath` varsa Türkçe çizimde "ölüm X y" ("ölüm 3 ay", "ölüm 12 gün"), İngilizce çizimde NSGC'nin
+   "d. X y" yazımı (klinisyen kararı 2026-11-05: "d.42" anlaşılmıyordu).
 3. **Uygunluk:** etkilenmiş ve vefat uygun; **taşıyıcı uygun değil** (kodun kendi yorumu da "carrier-dot correction"
    işinin bekletildiğini söylüyor); çoklu fenotip eksik.
 4. **Eksik/hatalı:** yarım dolgu, bazı kaynaklarda presemptomatik taşıyıcıya ayrılmış bir görünümdür; kaynaklar arasında
