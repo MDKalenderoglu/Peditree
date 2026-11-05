@@ -277,7 +277,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const onsetsOf = (n) => (n.conditions || []).filter(c => c && c.label && c.onsetAge && (c.status === 'affected' || c.status === 'carrier'));
     const unsureOf = (n) => (n.conditions || []).filter(c => c && c.label && c.status === 'unknown');
     const bornWeek = (n) => (!isPregnancy(n) && n.gestationWeeks ? n.gestationWeeks : null);
-    const notedNodes = nodes.filter(n => n.notes || n.condition || (n.deceased && n.causeOfDeath) || onsetsOf(n).length || unsureOf(n).length || bornWeek(n));
+    // a text of spaces only is nothing to read (an older file may hold one): no [n] for it
+    const filled = (s) => typeof s === 'string' && s.trim() !== '';
+    const notedNodes = nodes.filter(n => filled(n.notes) || filled(n.condition) || (n.deceased && filled(n.causeOfDeath)) || onsetsOf(n).length || unsureOf(n).length || bornWeek(n));
     // legends grow with a wide pedigree, so they read at the same size once
     // the drawing is fitted to the screen (clinician feedback 2026-10-24)
     const LK = Math.max(1.2, (d3.max(nodes, d => d.x) - d3.min(nodes, d => d.x) + 200) / 900)
@@ -305,14 +307,14 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       const who = n.displayLabel ? `${pid} (${n.displayLabel})` : pid;
       const segs = [{ text: `[${i + 1}] ${who}: `, head: true }];
       const parts = [];
-      if (n.condition) parts.push(['condition', n.condition, n.condition]);
-      if (n.deceased && n.causeOfDeath) parts.push(['causeOfDeath', td('Ölüm: {cause}', { cause: n.causeOfDeath }), n.causeOfDeath]);
+      if (filled(n.condition)) parts.push(['condition', n.condition, n.condition]);
+      if (n.deceased && filled(n.causeOfDeath)) parts.push(['causeOfDeath', td('Ölüm: {cause}', { cause: n.causeOfDeath }), n.causeOfDeath]);
       // the age a finding was diagnosed at (clinician decision 2026-10-25: here, not under the symbol)
       onsetsOf(n).forEach(c => parts.push(['onset', td('{finding}: tanı {age}', { finding: c.label, age: /^\d+(,\d+)?$/.test(c.onsetAge) ? td('{age} yaş', { age: shownAge(c.onsetAge, lang) }) : shownAge(c.onsetAge, lang) }), c.onsetAge, `${n.id}\u0001${c.label}`]));
       // a finding the clinician is unsure about, and the week a child was born in (clinician decisions 2026-10-25)
       unsureOf(n).forEach(c => parts.push(['unsure', td('{finding}: bilinmiyor', { finding: c.label }), null]));
       if (bornWeek(n)) parts.push(['gestationWeeks', td('doğum: {week} hf', { week: bornWeek(n) }), bornWeek(n)]);
-      if (n.notes) parts.push(['note', n.notes, n.notes]);
+      if (filled(n.notes)) parts.push(['note', n.notes, n.notes]);
       parts.forEach(([kind, shown, value, target], k) => {
         if (k) segs.push({ text: ' | ' });
         segs.push({ text: shown, kind: kind === 'unsure' ? undefined : kind, target: target || n.id, value });
