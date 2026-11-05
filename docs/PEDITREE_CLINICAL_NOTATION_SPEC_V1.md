@@ -155,6 +155,12 @@ Her başlıkta: (1) standart kuralı, (2) mevcut davranış, (3) uygunluk, (4) e
    olduğu (mevcut); çift çizginin hiçbir sembolün içinden geçmediği (mevcut değişmez); görsel — benchmark
    CB-02/03/06/08.
 7. **Onay:** gerekli (K1, K2).
+8. **Aynı köy (klinisyen kararı 2026-11-05):** akrabalık sayılmaz — ilişki çizgisi **tek** kalır; çizginin görünen
+   orta kısmının hemen üstüne "Aynı köy" (İngilizce çizimde "Same village") yazılır. Klinisyen yazıya tıklayarak ya da
+   yan panelden kendi sözcükleriyle değiştirebilir ("yakın köy", "uzak akraba" …; çevrilmez, en çok 40 harf); boş
+   bırakılırsa "Aynı köy" geri gelir. Yazı yalnız "Aynı köy" seçiliyken vardır (`union.lineNote`, `ops.setLineNote`);
+   ayrılıkta "//" ile aynı çizgide yazı biraz yukarı alınır. Yerleşim eşleri yazı sığacak kadar ayırır. Akrabalık
+   seçimleri artık "Var" ve "Aynı köy"dür: seçilmemişse bildirilmiş akrabalık yoktur ("Yok" kaldırıldı).
 
 ### 4.7 Boşanma, ayrılık, çoklu partnerlik
 
@@ -329,5 +335,6 @@ Onay sonrası her kural için:
 | 2026-11-03 | kayıtlarla doğrulandı (*) | NSGC 2022 Şekil 2 "documented evaluation, records reviewed": sembolün sağ altında **yıldız**, evlat edinilmiş kişide parantezin dışında; açıklamada "Kayıtlarla doğrulandı"; yan panelde "Diğer bilgiler…" altında başlar (uygulandı) | kullanıcı (klinisyen) |
 | 2026-11-03 | aynı cinsiyetten eşler | şimdilik eklenmeyecek; Hakkında penceresinde ve README'de "şimdilik çizilemeyenler" olarak yazılı; makalede sınırlılık | kullanıcı (klinisyen) |
 | 2026-11-04 | taşıyıcı gösterimi seçilebilir | adı girilmemiş taşıyıcı Ayarlar → Çizim → "Taşıyıcı gösterimi" ile **bölünmüş** (NSGC 2022 §4.5: sol yarı çapraz tarama, varsayılan) ya da **ortada nokta** (NSGC 2008, ders kitapları) çizilir; bakan kişinin cihaz tercihi, dosya değişmez; bulgu anahtarındaki "Taşıyıcı" satırı seçileni gösterir; indirme ve yazdırma "her zaman standart" seçiliyken de seçilen gösterimi korur (anlam, görünüm değil); nokta boş sembolde siyah, dolu sembolde beyaz, bölgelerin ortasında beyaz halkalı; P / D / G harfi varsa harf biraz yukarı, nokta altına; üçgende ağırlık merkezinde; adı girilmiş taşınan bulgu her iki seçenekte kendi deseniyle (nokta hangi bulgu olduğunu söyleyemez). İkiye bölünmüş sembolde boş yarıyı kesen yatay ayırıcı çizilmez (çeyrek bölgeli sembollerde kalır) (uygulandı) | kullanıcı (klinisyen) |
+| 2026-11-05 | §4.6 — aynı köy | ilişki çizgisi tek kalır, üstünde "Aynı köy" ya da klinisyenin kendi sözcükleri (tıklayınca düzeltilir); akrabalık seçimleri "Var" / "Aynı köy" ("Yok" kaldırıldı) (uygulandı) | kullanıcı (klinisyen) |
 | | K2–K4, K6–K9, K13 | bekliyor (K10 danışan: 2026-11-01'de karara bağlandı; K11 gebelik ve K12 ikizler: yukarıda karara bağlandı) | |
 | | §4 "Standart" özetleri (orijinal yayına karşı) | bekliyor | |

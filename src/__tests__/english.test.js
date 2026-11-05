@@ -100,7 +100,7 @@ describe('the screens in English', () => {
     .flatMap((el) => ['title', 'aria-label', 'placeholder', 'alt'].map((a) => el.getAttribute(a)).filter(Boolean))].join('\n');
   // what the clinician typed (names, notes, findings, results) is never translated: left out of the check
   const typed = () => S().doc.graph.individuals.flatMap((p) => [p.displayLabel, p.notes, p.causeOfDeath, ...String(p.geneticNote || '').split('\n'),
-    ...(p.conditions || []).map((c) => c.label)]).concat(S().doc.graph.unions.map((u) => u.childlessReason), S().doc.patientName)
+    ...(p.conditions || []).map((c) => c.label)]).concat(S().doc.graph.unions.flatMap((u) => [u.childlessReason, u.lineNote]), S().doc.patientName)
     .filter((x) => x && String(x).trim()).map(String).sort((a, b) => b.length - a.length);
   const turkishIn = (text) => {
     let rest = text.replace(KEPT, '');

@@ -21,7 +21,7 @@ import { routeConnectors, estimateLevelNeeds, planBands } from './routing';
 import { displayParentage, isSmallSymbol, reproMarkOf } from '../../graph/model';
 import { withArt, artEdges, isArtUnion } from './art';
 import { withGhosts, isGhost } from './crossGeneration';
-import { textBox } from '../../utils/symbolText';
+import { textBox, lineNoteWidth, TEXT } from '../../utils/symbolText';
 
 export const PCL = {
   GEN_Y_SPACING: 160,
@@ -157,10 +157,19 @@ export function computePclLayout(inputGraph, opts = {}) {
     const [a, b] = u.partners || [];
     descends.add(`${a}\u0001${b}`).add(`${b}\u0001${a}`);
   }
+  // "Aynı köy" on a couple's line (clinician request 2026-11-05): the line's visible part is
+  // wide enough for its words, with a little room at each end
+  const noteGap = new Map();
+  for (const u of S.unions) {
+    if (u.relationshipBackground !== 'same_village_or_same_origin') continue;
+    const [a, b] = u.partners || [];
+    const w = 2 * TEXT.HALF + lineNoteWidth(u.lineNote) + 2 * TEXT_LINE_CLEAR;
+    noteGap.set(`${a}\u0001${b}`, w).set(`${b}\u0001${a}`, w);
+  }
   const textGap = (l, r) => {
     const L = S.textBox.get(l), R = S.textBox.get(r);
     if (!L || !R) return 0;
-    const apart = L.right + R.left + TEXT_CLEAR;
+    const apart = Math.max(L.right + R.left + TEXT_CLEAR, noteGap.get(`${l}\u0001${r}`) || 0);
     return descends.has(`${l}\u0001${r}`) ? Math.max(apart, 2 * (Math.max(L.right, R.left) + TEXT_LINE_CLEAR)) : apart;
   };
   const gapBetween = (a, b) => {

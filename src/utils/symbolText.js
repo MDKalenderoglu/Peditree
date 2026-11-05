@@ -46,6 +46,12 @@ export const TEXT = {
 const LANGS = ['tr', 'en'];
 const CONDITION_MAX = 15;
 
+/** The words on a "same village" couple's relationship line: the clinician's, or "Aynı köy". */
+export const lineNoteText = (note, lang) => (filled(note) ? note : t('Aynı köy', null, lang));
+export const LINE_NOTE_SIZE = 10; // px, as drawn (PedigreeCanvas)
+/** How wide those words are at most (both languages, so the layout does not move with the language). */
+export const lineNoteWidth = (note) => Math.max(...LANGS.map((l) => lineNoteText(note, l).length)) * LINE_NOTE_SIZE * TEXT.EM;
+
 /**
  * How far the text under a symbol reaches: `left` / `right` of the symbol's
  * centre and `depth` below it, in px. The longer of the two languages, so

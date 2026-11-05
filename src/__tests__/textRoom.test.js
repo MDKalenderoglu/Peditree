@@ -8,7 +8,8 @@
 import { describe, it, expect } from 'vitest';
 import { starterDocument } from '../state/usePedigreeStore';
 import { computePclLayout } from '../layout/pcl';
-import { textBox, TEXT } from '../utils/symbolText';
+import { affectedPeople } from '../layout/pcl/incremental';
+import { textBox, TEXT, lineNoteWidth } from '../utils/symbolText';
 import * as ops from '../graph/ops';
 
 const ok = (r) => { expect(r.reason).toBeUndefined(); return r.doc; };
@@ -87,4 +88,33 @@ describe('the layout keeps lines clear of the text (clinician report 2026-11-05)
     expect(depth).toBeGreaterThan(62);
     expect(bus(layout).y1 - father.y).toBeGreaterThanOrEqual(depth + 8);
   });
+
+  it('"Aynı köy" on a couple’s line: the partners stand apart enough for its words, also for the clinician’s longer ones', () => {
+    const couple = (note) => {
+      let doc = ok(ops.addPartner(starterDocument(), 'proband', { sex: 'female' }));
+      const u = doc.graph.unions.find((x) => x.partners.includes('proband'));
+      doc = ok(ops.setRelationshipBackground(doc, u.id, 'same_village_or_same_origin'));
+      if (note) doc = ok(ops.setLineNote(doc, u.id, note));
+      const layout = computePclLayout(doc.graph);
+      const [a, b] = u.partners.map((id) => node(layout, id));
+      const mark = layout.edges.find((e) => e.type === 'lineNote' && e.unionId === u.id);
+      return { gap: Math.abs(a.x - b.x), mark, u: doc.graph.unions.find((x) => x.id === u.id) };
+    };
+    const plain = couple();
+    expect(plain.mark).toBeDefined();
+    expect(plain.gap).toBeGreaterThanOrEqual(2 * TEXT.HALF + lineNoteWidth('') + 12);
+    const long = couple('uzak akraba, aynı aşiret');
+    expect(long.gap).toBeGreaterThanOrEqual(2 * TEXT.HALF + lineNoteWidth('uzak akraba, aynı aşiret') + 12);
+    expect(long.gap).toBeGreaterThan(plain.gap);
+  });
+
+  it('while editing, new words on the line free the partners to move apart (the edit-local layout)', () => {
+    let doc = ok(ops.addPartner(starterDocument(), 'proband', { sex: 'female' }));
+    const u = doc.graph.unions.find((x) => x.partners.includes('proband'));
+    const before = ok(ops.setRelationshipBackground(doc, u.id, 'same_village_or_same_origin'));
+    const after = ok(ops.setLineNote(before, u.id, 'uzak akraba, aynı aşiret'));
+    expect([...affectedPeople(before.graph, after.graph)].sort()).toEqual([...u.partners].sort());
+    expect([...affectedPeople(after.graph, after.graph)]).toEqual([]);
+  });
 });
+

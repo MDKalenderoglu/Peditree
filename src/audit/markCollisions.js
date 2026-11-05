@@ -8,6 +8,7 @@
  * next to every other — arrows (proband, consultand), brackets (adopted in,
  * out, by relatives), numbered symbols, pregnancies, twins, deceased,
  * genetic lines, ages, single and double relationship lines on both sides,
+ * the words on a "same village" line,
  * carriers (the dot under a letter inside the symbol, when chosen) —
  * and `findMarkCollisions(svg)` lists every overlap. In development the app
  * exposes both as `window.__peditreeMarkAudit()` (main.jsx, through
@@ -77,6 +78,9 @@ export function buildMarkFamily(store) {
   const donor = g().reproductiveLinks.find((l) => l.role === 'sperm_donor').personId;
   for (const id of [g().individuals.find((i) => i.ongoingPregnancy).id, donor, dec, 'father']) ok(S().updateIndividual(id, { carrier: true }), 'carrier');
   ok(S().setUnionStatus(unionOf(sister), 'divorced'), 'divorce');
+  // the words on a "same village" line, the clinician's own and long, beside the "//" (2026-11-05)
+  ok(S().setUnionRelationshipBackground(unionOf(sister), 'same_village_or_same_origin'), 'same village');
+  ok(S().setLineNote(unionOf(sister), 'uzak akraba, aynı aşiret'), 'line note');
   S().clearSelection();
 }
 
@@ -142,6 +146,8 @@ export function findMarkCollisions(svg) {
       if (t.textContent.trim()) items.push({ kind: 'text', person, own, box: boxOf(t) });
     }
   }
+  // the words on a "same village" relationship line
+  for (const t of viewport.querySelectorAll('.line-note')) items.push({ kind: 'lineNote', person: t.textContent, own: null, box: boxOf(t) });
   // a mark against a line
   for (const a of items) {
     // a line may end at a bracket (a relationship line meets it), never run into it
@@ -165,7 +171,8 @@ const SESSION_KEYS = ['clinical_pedigree_app.session.v2', 'clinical_pedigree_app
  * Draw the mark family, measure it, and restore whatever was open before —
  * the store's whole state (document, undo / redo, selection) and the
  * session's saved copies — even when building or measuring fails.
- * `measure` (default: the rendered drawing) returns the collisions.
+ * `measure` (default: the rendered drawing) returns the collisions; it is given
+ * `{ store, findMarkCollisions }` to look closer at the family while it is drawn.
  */
 export async function runMarkAudit(store, { measure, storage, settle = 400 } = {}) {
   const ss = storage !== undefined ? storage : (typeof window !== 'undefined' ? window.sessionStorage : null);
@@ -174,7 +181,7 @@ export async function runMarkAudit(store, { measure, storage, settle = 400 } = {
   try {
     buildMarkFamily(store);
     if (settle) await new Promise((r) => setTimeout(r, settle));
-    return measure ? measure() : findMarkCollisions(document.querySelector('.pedigree-viewport').ownerSVGElement);
+    return measure ? measure({ store, findMarkCollisions }) : findMarkCollisions(document.querySelector('.pedigree-viewport').ownerSVGElement);
   } finally {
     store.setState(before, true);
     if (ss) for (const [k, v] of saved) { if (v === null) ss.removeItem(k); else ss.setItem(k, v); }

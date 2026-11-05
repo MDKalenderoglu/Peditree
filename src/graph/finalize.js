@@ -113,6 +113,8 @@ export function deriveConsanguinity(graph) {
       u.consanguinityStatus = kin ? 'known_supported' : 'reported_unresolved';
       u.relationshipBackground = kin ? 'consanguinity_structurally_supported' : 'consanguinity_reported';
     }
+    // the words on the relationship line belong to "Aynı köy" (ops.setLineNote): none kept unseen
+    if (u.lineNote !== undefined && (u.relationshipBackground !== 'same_village_or_same_origin' || typeof u.lineNote !== 'string' || !u.lineNote.trim())) delete u.lineNote;
     if (JSON.stringify([u.consanguineous, u.consanguinityDegree, u.consanguinityStatus, u.relationshipBackground]) !== before) changed.push(u.id);
   }
   return changed;

@@ -531,6 +531,24 @@ export function setUnionStatus(doc, unionId, status) {
 }
 
 const CONSANGUINITY_BACKGROUNDS = new Set(['consanguinity_reported', 'consanguinity_structurally_supported']);
+const SAME_VILLAGE = 'same_village_or_same_origin';
+export const LINE_NOTE_MAX = 40;
+
+/**
+ * The words written on a couple's relationship line while "Aynı köy" is
+ * chosen (clinician request 2026-11-05): "Aynı köy" until the clinician writes
+ * their own ("yakın köy", "uzak akraba" …), never translated. Empty brings the
+ * default back. Words only: the line stays single, nothing about consanguinity changes.
+ */
+export function setLineNote(doc, unionId, text) {
+  return commit(doc, (d) => {
+    const u = d.graph.unions.find((x) => x.id === unionId);
+    if (!u) block(t('Birliktelik grafikte bulunamadı.'));
+    if (u.relationshipBackground !== SAME_VILLAGE) block(t('Çizginin üstüne yalnızca “Aynı köy” seçiliyken yazılır.'));
+    const v = String(text || '').replace(/\s+/g, ' ').trim().slice(0, LINE_NOTE_MAX);
+    if (v) u.lineNote = v; else delete u.lineNote;
+  });
+}
 
 /**
  * Relationship background (relationshipBackground.js). Declaring
@@ -542,6 +560,8 @@ export function setRelationshipBackground(doc, unionId, value) {
     const u = d.graph.unions.find((x) => x.id === unionId);
     if (!u) block(t('Birliktelik grafikte bulunamadı.'));
     delete u.consanguinityFromStructure; // the clinician's own statement
+    // the words on the line belong to "Aynı köy" only: no text left behind unseen
+    if (value !== SAME_VILLAGE) delete u.lineNote;
     if (CONSANGUINITY_BACKGROUNDS.has(value)) {
       u.consanguineous = true;
     } else {

@@ -374,6 +374,12 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
     if ((u.childless === 'by_choice' || u.childless === 'infertile') && !hasKids(u.id)) {
       edges.push({ type: 'childless', x: geom.prefX, y: geom.y, kind: u.childless, reason: u.childlessReason || '', unionId: u.id });
     }
+    // "Aynı köy" (or the clinician's own words) over the middle of the line's visible part
+    // (clinician request 2026-11-05); the layout keeps the partners far enough apart for it
+    if (u.relationshipBackground === 'same_village_or_same_origin') {
+      // raised over the "//" of an ended relationship, which stands on the same line
+      edges.push({ type: 'lineNote', x: (geom.lo + geom.hi) / 2, y: geom.y, note: u.lineNote || '', raised: u.status === 'divorced' || u.status === 'separated', unionId: u.id });
+    }
   }
 
   // ── lines of descent, sibship buses, stems ──

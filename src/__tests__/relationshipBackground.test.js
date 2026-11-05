@@ -169,7 +169,8 @@ describe('relationshipBackground — builder integration', () => {
 
     const layout = computePedigreeLayout(graph);
     const edge = layout.edges.find(e => e.unionId === 'U_PARENTS');
-    // Never a double line for same-village/origin, and never any canvas text.
+    // Never a double line for same-village/origin; the line itself carries no text (its words are a
+    // separate 'lineNote' mark of the PCL layout, clinician decision 2026-11-05).
     expect(edge.type).toBe('union');
     expect(edge.noteText).toBeUndefined();
   });
