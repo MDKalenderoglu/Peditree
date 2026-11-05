@@ -5,7 +5,8 @@
  * panel, files; the keyboard help and About — and the chosen section on the right, each setting as one
  * row: what it is and what it does on the left, the control on the right.
  * Every choice is a preference of this device (localStorage); the pedigree
- * file never changes.
+ * file never changes. Short words on the screen, the longer explanation in a
+ * row's tooltip (clinician 2026-11-05: "minimal, premium, clear").
  */
 import { useEffect, useRef, useState } from 'react';
 import { X, Globe, Palette, CircleDot, PanelRight, FolderOpen, Keyboard, Info } from 'lucide-react';
@@ -17,20 +18,20 @@ import { PAPERS } from '../utils/paper';
 import { CARRIER_MARKS } from '../graph/conditionKey';
 
 const SECTIONS = [
-  { id: 'language', label: tk('Dil'), Icon: Globe, intro: tk('Ekranın dili ve çizimin dili ayrı seçilebilir; örneğin Türkçe ekranla İngilizce çizim indirilebilir.') },
-  { id: 'drawing', label: tk('Çizim'), Icon: Palette, intro: tk('Çizimin görünümü, sayfa zemini, taşıyıcı gösterimi, yazı tipi ve yazı boyutu. Sembollerin ve çizgilerin anlamı hiçbir seçenekte değişmez.') },
-  { id: 'ring', label: tk('Halka menü'), Icon: CircleDot, intro: tk('Kişinin çevresindeki halkada sık kullandıklarınızı öne alın, kullanmadıklarınızı gizleyin. Gizlenenler kaybolmaz: halkada “Diğer…” düğmesinin altında durur.') },
-  { id: 'panel', label: tk('Yan panel'), Icon: PanelRight, intro: tk('Seçili kişinin panelinde nadiren kullandıklarınızı gizleyin. Gizlenenler kaybolmaz: panelin altındaki “Diğer bilgiler…” düğmesiyle açılır; bir kişide dolu olan bilgi her zaman görünür.') },
-  { id: 'files', label: tk('Dosyalar'), Icon: FolderOpen, intro: tk('Dosya açarken.') },
+  { id: 'language', label: tk('Dil'), Icon: Globe, intro: tk('Ekran ve çizim ayrı dillerde olabilir.') },
+  { id: 'drawing', label: tk('Çizim'), Icon: Palette, intro: tk('Sembollerin ve çizgilerin anlamı hiçbir seçenekte değişmez.') },
+  { id: 'ring', label: tk('Halka menü'), Icon: CircleDot, intro: tk('Sık kullandıklarınızı öne alın. Gizlenenler halkada “Diğer…” altında durur.') },
+  { id: 'panel', label: tk('Yan panel'), Icon: PanelRight, intro: tk('Gizlenenler panelde “Diğer bilgiler” altında durur; bir kişide dolu olan her zaman görünür.') },
+  { id: 'files', label: tk('Dosyalar'), Icon: FolderOpen, intro: null },
   // not settings but kept here (clinician request 2026-11-04): what to look up once in a while
   { id: 'keys', label: tk('Klavye kısayolları'), Icon: Keyboard, intro: tk('Fareyle yaptığınız her şeyi klavyeyle de yapabilirsiniz.'), info: true },
   { id: 'about', label: tk('Hakkında'), Icon: Info, intro: null, info: true },
 ];
 
-/** One setting: its name and what it does, the control beside it. */
-function Row({ title, hint, children }) {
+/** One setting: its name and a few words on it, the control beside it; `more` in the tooltip. */
+function Row({ title, hint, more, children }) {
   return (
-    <div className="set-row">
+    <div className="set-row" title={more}>
       <div className="set-row-text">
         <div className="set-row-title">{title}</div>
         {hint && <div className="set-row-hint">{hint}</div>}
@@ -64,7 +65,7 @@ function LanguageSection() {
         <Segmented label={t('Çizimin dili')} value={drawing} onChange={(v) => setLang({ drawing: v })}
           options={[['same', t('Ekranla aynı')], ['tr', 'Türkçe', 'tr'], ['en', 'English', 'en']]} />
       </Row>
-      <p className="set-note">{t('Yazdığınız adlar, notlar ve bulgular çevrilmez; yalnızca programın kendi yazıları değişir.')}</p>
+      <p className="set-note">{t('Yazdığınız adlar, notlar ve bulgular çevrilmez.')}</p>
     </div>
   );
 }
@@ -75,21 +76,21 @@ function DrawingSection() {
   return (
     <>
       <div className="set-block">
-        <Row title={t('Çizimin görünümü')} hint={t('El çiziminde çizgiler ve semboller kalemle çizilmiş gibi hafifçe titrer.')}>
+        <Row title={t('Çizimin görünümü')} more={t('El çiziminde çizgiler ve semboller kalemle çizilmiş gibi hafifçe titrer.')}>
           <Segmented label={t('Çizimin görünümü')} value={view.drawStyle} onChange={(v) => setView({ drawStyle: v })}
             options={[['standard', t('Standart')], ['hand', t('El çizimi')]]} />
         </Row>
         {/* clinician request 2026-11-03: squared or dotted paper, like other tools */}
-        <Row title={t('Sayfa zemini')} hint={t('Yalnızca ekranda: çizimle birlikte kayar ve büyür. İndirilen ve yazdırılan çizim düz kalır.')}>
+        <Row title={t('Sayfa zemini')} hint={t('Yalnız ekranda')} more={t('Yalnızca ekranda: çizimle birlikte kayar ve büyür. İndirilen ve yazdırılan çizim düz kalır.')}>
           <Segmented label={t('Sayfa zemini')} value={view.paper} onChange={(v) => setView({ paper: v })}
             options={PAPERS.map((p) => [p.id, <><span className="paper-swatch" data-paper={p.id} aria-hidden="true" />{t(p.label)}</>])} />
         </Row>
         {/* clinician decision 2026-11-04: the NSGC 2022 half or the classic dot, chosen by the viewer */}
-        <Row title={t('Taşıyıcı gösterimi')} hint={t('Adı girilmemiş taşıyıcı için. NSGC 2022 noktayı artık önermiyor. Anahtar seçileni açıklar.')}>
+        <Row title={t('Taşıyıcı gösterimi')} hint={t('Adı girilmemiş taşıyıcı için')} more={t('Adı girilmemiş taşıyıcı için. NSGC 2022 noktayı artık önermiyor. Anahtar seçileni açıklar.')}>
           <Segmented label={t('Taşıyıcı gösterimi')} value={view.carrierMark} onChange={(v) => setView({ carrierMark: v })}
             options={CARRIER_MARKS.map((m) => [m.id, <><span className="carrier-swatch" data-mark={m.id} aria-hidden="true" />{t(m.label)}</>])} />
         </Row>
-        <Row title={t('Açıklama yazılarının boyutu')} hint={t('Hasta adı, bulgular açıklaması ve notlar; indirilen ve yazdırılan çizimde de. Sembollerin altındaki yazılar aynı boyutta kalır.')}>
+        <Row title={t('Açıklama yazılarının boyutu')} hint={t('Hasta adı, açıklama ve notlar')} more={t('Hasta adı, bulgular açıklaması ve notlar; indirilen ve yazdırılan çizimde de. Sembollerin altındaki yazılar aynı boyutta kalır.')}>
           <Segmented label={t('Açıklama yazılarının boyutu')} value={view.legendSize} onChange={(v) => setView({ legendSize: v })}
             options={LEGEND_SIZES.map((z) => [z.id, t(z.label)])} />
         </Row>
@@ -115,7 +116,7 @@ function DrawingSection() {
           ))}
         </div>
         <label className="set-row set-row-switch">
-          <span className="set-row-text"><span className="set-row-title">{t('Pedigri numaraları (I-1, II-3) el yazısında da düz yazılsın')}</span></span>
+          <span className="set-row-text"><span className="set-row-title">{t('El yazısında numaralar düz')}</span><span className="set-row-hint">{t('Pedigri numaraları (I-1, II-3) el yazısında da düz yazılsın')}</span></span>
           <Switch checked={!!view.plainNumbers} label={t('Pedigri numaraları (I-1, II-3) el yazısında da düz yazılsın')} onChange={(v) => setView({ plainNumbers: v })} />
         </label>
       </div>
@@ -130,7 +131,8 @@ function FilesSection() {
     <div className="set-block">
       <label className="set-row set-row-switch">
         <span className="set-row-text">
-          <span className="set-row-title">{t('“Aç”a basınca hangi dosyaların açılabildiğini anlatan pencere görünsün')}</span>
+          <span className="set-row-title">{t('“Aç” penceresi')}</span>
+          <span className="set-row-hint">{t('“Aç”a basınca hangi dosyaların açılabildiğini anlatan pencere görünsün')}</span>
         </span>
         <Switch checked={!!view.openHelp} label={t('“Aç”a basınca hangi dosyaların açılabildiğini anlatan pencere görünsün')} onChange={(v) => setView({ openHelp: v })} />
       </label>
@@ -204,7 +206,7 @@ export default function SettingsDialog({ onClose, initial = 'language' }) {
           <Body />
         </section>
       </div>
-      {!current.info && <p className="settings-foot">{t('Bu ayarlar yalnızca bu cihazda saklanır. Pedigri dosyası değişmez; dosyayı açan başka biri kendi ayarıyla görür.')}</p>}
+      {!current.info && <p className="settings-foot" title={t('Bu ayarlar yalnızca bu cihazda saklanır. Pedigri dosyası değişmez; dosyayı açan başka biri kendi ayarıyla görür.')}>{t('Yalnız bu cihazda saklanır; pedigri dosyası değişmez.')}</p>}
     </div>
   );
 }
