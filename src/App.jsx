@@ -556,7 +556,7 @@ function App() {
           <button className="brand toolbar-brand brand-btn" onClick={() => setAboutOpen(v => !v)} aria-expanded={aboutOpen}
             aria-label={t('PediTree hakkında')} title={t('PediTree hakkında: sürüm, atıf, lisans')}>
             <img className="brand-mark" src={logoMark} alt="" width="40" height="40" />
-            <span className="brand-text" data-fold-order="13">
+            <span className="brand-text" data-fold-order="10">
               <img className="brand-wordmark" src={logoWordmark} alt="PediTree" height="20" />
               <span className="brand-sub" data-fold-order="1">{t('Klinik pedigri')}</span>
             </span>
@@ -570,8 +570,8 @@ function App() {
             </div>
           )}
         </div>
-        <div className="toolbar-sep" data-fold-order="13" />
-        <input className="input patient-name" data-fold-order="12" value={doc.patientName || ''} placeholder={t('Hasta adı soyadı')}
+        <div className="toolbar-sep" data-fold-order="10" />
+        <input className="input patient-name" data-fold-order="9" value={doc.patientName || ''} placeholder={t('Hasta adı soyadı')}
           aria-label={t('Hasta adı soyadı')} onChange={e => setPatientName(e.target.value)}
           onBlur={e => setPatientName(nameCase(e.target.value).trim())} />
         {/* optional: the proband's age follows it, as of today (clinician decision 2026-10-25) */}
@@ -582,10 +582,10 @@ function App() {
             value={formatDate(probandNode && probandNode.birthDate)} placeholder={t('gg.aa.yyyy')} disabled={!probandNode}
             aria-label={t('Probandın ya da danışanın doğum tarihi')} onCommit={v => setProbandBirthDate(v.trim() ? (parseTypedDate(v) || v.trim()) : '')} />
         </label>
-        <div className="toolbar-sep" data-fold-order="13" />
+        <div className="toolbar-sep" data-fold-order="10" />
         <div className="toolbar-group">
           <div className="keys-wrap" data-popup="new">
-            <button className="ui-btn" onClick={() => setNewMenu(v => !v)} aria-expanded={newMenu} title={t('Yeni bir pedigri başlat: boş bir aileyle ya da hazır bir akraba evliliği şablonuyla')}><FilePlus2 size={15} /> <span className="btn-label" data-fold-order="11">{t('Yeni')}</span></button>
+            <button className="ui-btn" onClick={() => setNewMenu(v => !v)} aria-expanded={newMenu} title={t('Yeni bir pedigri başlat: boş bir aileyle ya da hazır bir akraba evliliği şablonuyla')}><FilePlus2 size={15} /> <span className="btn-label" data-fold-order="8">{t('Yeni')}</span></button>
             {newMenu && (
               <div className="keys-popover share-popover new-popover" role="dialog" aria-label={t('Yeni pedigri')}>
                 {/* two ways to start, each with a small pedigree of what opens (clinician request 2026-11-01) */}
@@ -608,7 +608,7 @@ function App() {
             document.body,
           )}
           <div className="keys-wrap" data-popup="open">
-            <button className="ui-btn" onClick={handleOpenClick} aria-expanded={openHelp} title={t('Daha önce kaydettiğiniz bir pedigri dosyasını (.peditree.json) ya da bir PED dosyasını açar')}><FolderOpen size={15} /> <span className="btn-label" data-fold-order="10">{t('Aç')}</span></button>
+            <button className="ui-btn" onClick={handleOpenClick} aria-expanded={openHelp} title={t('Daha önce kaydettiğiniz bir pedigri dosyasını (.peditree.json) ya da bir PED dosyasını açar')}><FolderOpen size={15} /> <span className="btn-label" data-fold-order="7">{t('Aç')}</span></button>
             {openHelp && (
               <div className="keys-popover share-popover open-popover" role="dialog" aria-label={t('Dosya aç')}>
                 <div className="keys-title">{t('Dosya aç')}</div>
@@ -626,25 +626,26 @@ function App() {
           <button className="ui-btn ui-btn-primary" onClick={handleSaveProject} title={t('Pedigriyi bilgisayarınıza dosya olarak kaydeder (.peditree.json). Sonra “Aç” ile açıp kaldığınız yerden devam edebilirsiniz.')}><Save size={15} /> {t('Kaydet')}</button>
           <input ref={fileInputRef} type="file" accept=".json,application/json,.ped,.fam,.txt,text/plain" onChange={handleOpenProject} style={{ display: 'none' }} aria-label={t('Proje ya da PED dosyası seç')} />
         </div>
-        <div className="toolbar-sep" data-fold-order="13" />
+        <div className="toolbar-sep" data-fold-order="10" />
         <div className="toolbar-group">
           <button className="ui-btn ui-btn-icon" onClick={handleUndo} disabled={!_history || _history.length === 0}
             title={_history && _history.length > 0 ? t('Geri al ({n} adım)', { n: _history.length }) : t('Geri alınacak adım yok')} aria-label={t('Geri al')}><Undo2 size={15} /></button>
           <button className="ui-btn ui-btn-icon" onClick={handleRedo} disabled={!_future || _future.length === 0}
             title={_future && _future.length > 0 ? t('Yinele ({n} adım)', { n: _future.length }) : t('Yinelenecek adım yok')} aria-label={t('Yinele')}><Redo2 size={15} /></button>
-          <button className="ui-btn" onClick={relayout} title={t('Konumlandır: kişileri çizimde baştan yerleştirir; kimin kiminle akraba olduğu değişmez. Geri alınabilir.')}><LayoutGrid size={15} /> <span className="btn-label" data-fold-order="6">{t('Konumlandır')}</span></button>
+          <button className="ui-btn" onClick={relayout} title={t('Konumlandır: kişileri çizimde baştan yerleştirir; kimin kiminle akraba olduğu değişmez. Geri alınabilir.')}><LayoutGrid size={15} /> <span className="btn-label" data-fold-order="4">{t('Konumlandır')}</span></button>
         </div>
         {/* the right end: it stays at the right edge, also when the toolbar takes two rows */}
         <div className="toolbar-end">
         <button className={`ui-btn touch-only${multiSelect ? ' ui-btn-primary' : ''}`} aria-pressed={multiSelect}
           onClick={() => setMultiSelect(v => !v)} title={t('Açıkken dokunduğunuz her kişi seçime eklenir; yeniden dokunursanız çıkarılır. Birden çok kişiyi birlikte değiştirmek için.')}>
-          <CheckSquare size={15} /> <span className="btn-label" data-fold-order="7">{t('Çoklu seçim')}</span>
+          <CheckSquare size={15} /> <span className="btn-label" data-fold-order="5">{t('Çoklu seçim')}</span>
         </button>
+        {/* İndir, Yazdır, Paylaş: icons alone, their words for screen readers and in the tooltip (clinician 2026-11-05) */}
         <div className="toolbar-group">
           <div className="keys-wrap" data-popup="download">
             <button className="ui-btn" onClick={() => setDownloadOpen(v => !v)} aria-expanded={downloadOpen}
               title={t('Çizimi başka programlar için dosya olarak indirir: PNG, SVG, PDF ya da PED')}>
-              <Download size={15} /> <span className="btn-label" data-fold-order="9">{t('İndir')}</span> <ChevronDown size={14} />
+              <Download size={15} /> <span className="btn-label icon-only">{t('İndir')}</span> <ChevronDown size={14} />
             </button>
             {downloadOpen && (
               <div className="keys-popover share-popover download-popover" role="dialog" aria-label={t('İndir')}>
@@ -672,10 +673,10 @@ function App() {
               </div>
             )}
           </div>
-          <button className="ui-btn" onClick={handlePrint} title={t('Çizimi tek bir A4 sayfaya yazdırır (Cmd/Ctrl+P)')}><Printer size={15} /> <span className="btn-label" data-fold-order="5">{t('Yazdır')}</span></button>
+          <button className="ui-btn" onClick={handlePrint} title={t('Çizimi tek bir A4 sayfaya yazdırır (Cmd/Ctrl+P)')}><Printer size={15} /> <span className="btn-label icon-only">{t('Yazdır')}</span></button>
           <div className="keys-wrap" data-popup="share">
             <button className="ui-btn" onClick={openShare} aria-expanded={!!share} title={t('Pedigri resmini WhatsApp, Gmail gibi bir uygulamayla gönderir')}>
-              <Share2 size={15} /> <span className="btn-label" data-fold-order="4">{t('Paylaş')}</span>
+              <Share2 size={15} /> <span className="btn-label icon-only">{t('Paylaş')}</span>
             </button>
             {share && (
               <div className="keys-popover share-popover" role="dialog" aria-label={t('Paylaş')}>
@@ -695,7 +696,7 @@ function App() {
             )}
           </div>
         </div>
-        <div className="toolbar-sep" data-fold-order="13" />
+        <div className="toolbar-sep" data-fold-order="10" />
         {/* what people share and ask about most, one click away (clinician request 2026-11-04) */}
         <div className="toolbar-group">
           <div className="keys-wrap" data-popup="cite">
@@ -717,11 +718,11 @@ function App() {
             )}
           </div>
         </div>
-        <div className="toolbar-sep" data-fold-order="13" />
+        <div className="toolbar-sep" data-fold-order="10" />
           <div className="keys-wrap" data-popup="settings">
             <button className="ui-btn" onClick={() => (settingsOpen ? setSettingsOpen(false) : openSettings())} aria-expanded={settingsOpen}
               title={t('Ayarlar: dil, çizimin görünümü, yazı tipi, halka menü ve indirilen resimler')}>
-              <SlidersHorizontal size={15} /> <span className="btn-label" data-fold-order="8">{t('Ayarlar')}</span>
+              <SlidersHorizontal size={15} /> <span className="btn-label" data-fold-order="6">{t('Ayarlar')}</span>
             </button>
             {/* a window of its own, on the page (clinician request 2026-11-03) */}
             {settingsOpen && createPortal(

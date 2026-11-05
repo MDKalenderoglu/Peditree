@@ -4,10 +4,11 @@
  * and English words differ, so do typefaces), it measures: the bar is laid
  * out with every word, and while it still takes a second row the next part
  * folds, one at a time, the least used first (App.jsx `data-fold-order`:
- * the brand's subtitle; then the words of Geri bildirim, Atıf, Paylaş,
- * Yazdır, Konumlandır, Ayarlar, İndir, Aç, Yeni — their icons stay; then a
+ * the brand's subtitle; then the words of Geri bildirim, Atıf,
+ * Konumlandır, Çoklu seçim, Ayarlar, Aç, Yeni — their icons stay; then a
  * narrower name field; last the logo's wordmark and the dividers). "Kaydet"
- * never folds. A folded word stays in its button for screen readers, and
+ * never folds; İndir, Yazdır and Paylaş are icons
+ * alone at every width (clinician 2026-11-05). A folded word stays in its button for screen readers, and
  * every button says what it does in its tooltip (ui.css `.folded`). Only a
  * window narrower than all of that (a tablet upright) takes two rows.
  */

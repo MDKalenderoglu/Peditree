@@ -874,7 +874,13 @@ describe('the top bar (clinician request 2026-11-04: one row, no wasted room)', 
       .sort((a, b) => a.dataset.foldOrder - b.dataset.foldOrder)
       .filter(p => p.classList.contains('btn-label'))
       .map(p => p.textContent);
-    expect(parts).toEqual(['Geri bildirim', 'Atıf', 'Paylaş', 'Yazdır', 'Konumlandır', 'Çoklu seçim', 'Ayarlar', 'İndir', 'Aç', 'Yeni']);
+    expect(parts).toEqual(['Geri bildirim', 'Atıf', 'Konumlandır', 'Çoklu seçim', 'Ayarlar', 'Aç', 'Yeni']);
+    // İndir, Yazdır, Paylaş: icons alone at every width (clinician 2026-11-05), named for screen readers, with a tooltip
+    for (const name of ['İndir', 'Yazdır', 'Paylaş']) {
+      const b = buttons().find(x => x.textContent.includes(name));
+      expect(b.querySelector('.btn-label.icon-only')?.textContent, name).toBe(name);
+      expect(b.title, name).toBeTruthy();
+    }
     const save = buttons().find(b => b.textContent.includes('Kaydet'));
     expect(save.querySelector('[data-fold-order]')).toBeNull();
     // a folded word is hidden by the stylesheet only: the button still has its name
