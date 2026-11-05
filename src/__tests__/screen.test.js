@@ -720,6 +720,12 @@ describe('more of what the clinician sees', () => {
     expect(choiceLabels()).toContain('Ad');
     const nameBox = await openInfo('Ad');
     expect(nameBox.querySelector('.radial-panel-title').textContent).toMatch(/^Ad/);
+    // a part's box opens beside its own row, not under the list (clinician 2026-11-05: "like Bulgu");
+    // the list has no title of its own: its named button stands beside it
+    const row = choiceRows().find(b => b.getAttribute('aria-label') === 'Ad').parentElement;
+    expect(nameBox.parentElement).toBe(row);
+    expect(nameBox.classList.contains('ring-aside')).toBe(true);
+    expect($('.ring-list-panel > .radial-panel-title')).toBeNull();
   });
 
   it('each part writes in its own box, the same fields as the side panel: age, genetic result as free text, note', async () => {
