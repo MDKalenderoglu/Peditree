@@ -103,6 +103,20 @@ describe('marks around a person', () => {
     expect($$('.relationship-ended')).toHaveLength(0);
   });
 
+  it('the side panel\'s İlişki: the three choices side by side, one tap each (clinician request 2026-11-05)', async () => {
+    await select('mother');
+    const group = $$('.editor-body [role="radiogroup"]').find(r => r.getAttribute('aria-label') === 'İlişki');
+    const choices = () => [...group.querySelectorAll('[role="radio"]')];
+    expect(choices().map(b => [b.textContent, b.getAttribute('aria-checked')])).toEqual([['Birlikte', 'true'], ['Boşanmış/Ayrılmış', 'false'], ['Bilinmiyor', 'false']]);
+    await click(choices()[1]);
+    expect(g().unions.find(u => u.id === 'U_PARENTS').status).toBe('divorced');
+    expect($$('.relationship-ended')).toHaveLength(2);
+    expect(choices()[1].getAttribute('aria-checked')).toBe('true');
+    await click(choices()[0]);
+    expect(g().unions.find(u => u.id === 'U_PARENTS').status).toBe('together');
+    expect($$('.relationship-ended')).toHaveLength(0);
+  });
+
   it('pedigree numbers stand beside the symbol, never centred over the line of descent, and never on top of each other', async () => {
     await run(() => { for (let k = 0; k < 4; k++) S().addSiblingTo('proband', k % 2 ? 'male' : 'female'); });
     const numbers = $$('.pedigree-number');

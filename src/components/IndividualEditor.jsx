@@ -153,15 +153,21 @@ function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelati
   const children = pcrs.find(r => r.unionId === u.id)?.children || [];
   return (
     <>
-      {onSetUnionStatus && (
-        <label className="field">
-          <span className="field-label">{t('İlişki')}</span>
-          <select className="select" value={u.status === 'separated' ? 'divorced' : (u.status || 'together')}
-            onChange={e => onSetUnionStatus(u.id, e.target.value)}>
-            {STATUS_OPTIONS.map(([v, label]) => <option key={v} value={v}>{t(label)}</option>)}
-          </select>
-        </label>
-      )}
+      {/* the choices side by side, like Akrabalık (clinician request 2026-11-05: a list hid them) */}
+      {onSetUnionStatus && (() => {
+        const status = u.status === 'separated' ? 'divorced' : (u.status || 'together');
+        return (
+          <div className="field-col">
+            <span className="field-label">{t('İlişki')}</span>
+            <div className="segmented" role="radiogroup" aria-label={t('İlişki')}>
+              {STATUS_OPTIONS.map(([v, label]) => (
+                <button key={v} role="radio" aria-checked={status === v} className={status === v ? 'on' : undefined}
+                  onClick={() => { if (status !== v) onSetUnionStatus(u.id, v); }}>{t(label)}</button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
       {onSetUnionRelationshipBackground && (
         <RelationshipChoice u={u} onSetBackground={onSetUnionRelationshipBackground} parentsCons={parentsCons} graph={graph} />
       )}
