@@ -220,6 +220,8 @@ const PROTECTED_FIELDS = new Set(['id', 'generation', 'proband', 'consultand', '
 // ── operations ──
 
 /** Edit a person's fields (clinical data, label, age, sex …). */
+const BLANKABLE_TEXT = new Set(['notes', 'causeOfDeath', 'condition', 'displayLabel']);
+
 export function updatePerson(doc, id, fields) {
   return commit(doc, (d) => {
     const p = d.graph.individuals.find((i) => i.id === id);
@@ -271,6 +273,9 @@ export function updatePerson(doc, id, fields) {
         p[k] = age;
         continue;
       }
+      // a text with nothing but spaces or empty lines is no text: it made a
+      // note number [1] with nothing to read (clinician report 2026-11-05)
+      if (BLANKABLE_TEXT.has(k) && typeof v === 'string' && !v.trim()) { p[k] = ''; continue; }
       p[k] = v;
     }
     // "affected" set by hand is the clinician's own; findings no longer clear it

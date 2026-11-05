@@ -745,6 +745,17 @@ describe('more of what the clinician sees', () => {
     await key('Enter', {}, note);
     expect(m().notes).toBe('Meme ca 45 yaşında');
     expect(side().querySelector('textarea').value).toBe('Meme ca 45 yaşında');
+    // a note emptied down to spaces or a blank line is gone: no [1] under the symbol, no "Notlar" (clinician report 2026-11-05)
+    await typeInto(note, '  \n ');
+    await key('Enter', {}, note);
+    expect(m().notes).toBe('');
+    expect(drawn('mother').querySelector('.annotations')?.textContent || '').not.toMatch(/\[1\]/);
+    expect($$('.notes-legend text')).toHaveLength(0);
+    await openInfo('Not');
+    await openInfo('Not');
+    const again = $('textarea.radial-note');
+    await typeInto(again, 'Meme ca 45 yaşında');
+    await key('Enter', {}, again);
     // the part shown is marked; a second click closes its box
     expect($$('.radial-arcs .radial-arc.on').map(a => a.getAttribute('aria-label'))).toEqual(['Not']);
     await openInfo('Not');
@@ -832,6 +843,18 @@ describe('lines carry their meaning in every case', () => {
       return n.length === 4 && n[1] === n[3] && Math.abs(n[1] - a.y) <= 2 && Math.min(n[0], n[2]) >= lo && Math.max(n[0], n[2]) <= hi;
     });
   };
+
+  it('an older file whose note, cause of death or old text is only spaces gets no note number and no "Notlar" (clinician report 2026-11-05)', async () => {
+    const { starterDocument } = await import('../state/usePedigreeStore');
+    const doc = starterDocument();
+    const mother = doc.graph.individuals.find(i => i.id === 'mother');
+    Object.assign(mother, { notes: ' \n ', deceased: true, causeOfDeath: '  ', condition: ' ' });
+    await run(() => S().openProjectFile(JSON.stringify(doc)));
+    expect(g().individuals.find(i => i.id === 'mother').notes).toBe(' \n ');
+    expect(drawn('mother').querySelector('.annotations')?.textContent || '').not.toMatch(/\[\d+\]/);
+    expect($$('.notes-legend text')).toHaveLength(0);
+    await run(() => S().resetPedigree());
+  });
 
   it('consanguinity drawn from shared ancestors looks exactly like a declared one: two solid strokes, no dashes, no text', async () => {
     const { buildTemplate, relationSpec } = await import('../graph/templates');

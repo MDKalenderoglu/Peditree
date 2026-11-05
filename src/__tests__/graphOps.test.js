@@ -190,6 +190,15 @@ describe('graph operations', () => {
     expect(person(r2.doc, 'hack')).toBeUndefined();
   });
 
+  it('updatePerson: a note, cause of death, old text or label of spaces and empty lines is stored empty (clinician report 2026-11-05)', () => {
+    let doc = ok(ops.updatePerson(starterDoc(), 'mother', { notes: 'öykü', causeOfDeath: 'MI', condition: 'x', displayLabel: 'Ayşe' })).doc;
+    doc = ok(ops.updatePerson(doc, 'mother', { notes: '  \n ', causeOfDeath: ' ', condition: '\t', displayLabel: '  ' })).doc;
+    expect(['notes', 'causeOfDeath', 'condition', 'displayLabel'].map(k => person(doc, 'mother')[k])).toEqual(['', '', '', '']);
+    // a note with text keeps its own lines and spaces
+    doc = ok(ops.updatePerson(doc, 'mother', { notes: ' satır 1\nsatır 2 ' })).doc;
+    expect(person(doc, 'mother').notes).toBe(' satır 1\nsatır 2 ');
+  });
+
   it('setProband keeps exactly one proband', () => {
     const doc = ok(ops.setProband(starterDoc(), 'mother')).doc;
     expect(doc.graph.individuals.filter(i => i.proband).map(i => i.id)).toEqual(['mother']);
