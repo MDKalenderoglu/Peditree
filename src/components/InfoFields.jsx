@@ -41,12 +41,15 @@ function AddLineField({ onAdd, ...rest }) {
   );
 }
 
-/** "Ad ya da kısaltma": under the symbol; a long one is warned about. */
-export function NameField({ node, set, autoFocus = false }) {
+/**
+ * "Ad ya da kısaltma": under the symbol; a long one is warned about. `where`
+ * says so beside the label; the side panel says it once under both texts.
+ */
+export function NameField({ node, set, autoFocus = false, where = true }) {
   return (
     <label className="field-col">
-      <span className="field-label">{t('Ad ya da kısaltma')} <span className="field-where">{t('sembolün altında')}</span></span>
-      <DraftField key={`${node.id}-label`} type="text" className="input input-wide" value={node.displayLabel || ''} placeholder={t('ör. Ayşe, A.Y. ya da “amca” (boş bırakılabilir)')}
+      <span className="field-label">{t('Ad ya da kısaltma')}{where && <> <span className="field-where">{t('sembolün altında')}</span></>}</span>
+      <DraftField key={`${node.id}-label`} type="text" className="input input-wide" value={node.displayLabel || ''} placeholder={t('Ayşe, A.Y., amca…')}
         onCommit={v => set({ displayLabel: v })} autoFocus={autoFocus} />
       {(node.displayLabel || '').length > 24 && (
         <span className="field-hint field-warn">{t('Uzun yazı çizimi kalabalıklaştırır; ayrıntıyı aşağıdaki nota yazın.')}</span>
@@ -68,13 +71,13 @@ export function AgeField({ node, set, autoFocus = false }) {
   );
 }
 
-/** "Not": in the numbered notes under the pedigree. */
-export function NoteField({ node, set, compact = false, autoFocus = false }) {
+/** "Not": in the numbered notes under the pedigree (`where` as in NameField). */
+export function NoteField({ node, set, compact = false, autoFocus = false, where = true }) {
   return (
     <label className="field-col">
-      <span className="field-label">{t('Not')} <span className="field-where">{t('pedigrinin altında, numaralı')}</span></span>
+      <span className="field-label">{t('Not')}{where && <> <span className="field-where">{t('pedigrinin altında, numaralı')}</span></>}</span>
       <DraftField key={`${node.id}-note`} as="textarea" rows={2} className={`input input-wide${compact ? ' radial-note' : ''}`} value={node.notes || ''}
-        placeholder={compact ? t('Bu kişiyle ilgili notunuz') : t('Öykü, muayene, tetkik… (sembolün yanında [1] çıkar)')}
+        placeholder={compact ? t('Bu kişiyle ilgili notunuz') : t('Öykü, muayene, tetkik…')}
         aria-describedby={compact ? 'radial-note-help' : undefined}
         onCommit={v => set({ notes: v })} autoFocus={autoFocus} />
       {/* what the box is for is said under it: a long placeholder is cut off (clinician 2026-11-03) */}
@@ -96,21 +99,24 @@ export function GeneticField({ node, set, individuals = [] }) {
     .filter(line => !gLines.includes(line)).slice(0, 6);
   return (
     <div className="field-col">
-      <span className="field-label">{t('Genetik test')}</span>
-      <div className="segmented" role="radiogroup" aria-label={t('Genetik test')}>
-        {[['', '−', t('Genetik test yapılmadı')], [GENETIC_TESTED, '+', t('Genetik test yapıldı')]].map(([v, sign, title]) => (
-          <button key={v} role="radio" aria-checked={(node.geneticTest || '') === v} className={`seg-sign${(node.geneticTest || '') === v ? ' on' : ''}`}
-            title={title} aria-label={title}
-            onClick={() => {
-              if ((node.geneticTest || '') === v) return;
-              if (!v && gLines.length && !window.confirm(t('Genetik test "−" yapılırsa yazılan {n} satır da silinir. Devam edilsin mi?\n\n"Geri Al" (Cmd/Ctrl+Z) ile geri alınabilir.', { n: gLines.length }))) return;
-              set({ geneticTest: v });
-            }}>{sign}</button>
-        ))}
+      <div className="field">
+        <span className="field-label">{t('Genetik test')}</span>
+        <div className="segmented" role="radiogroup" aria-label={t('Genetik test')}>
+          {[['', '−', t('Genetik test yapılmadı')], [GENETIC_TESTED, '+', t('Genetik test yapıldı')]].map(([v, sign, title]) => (
+            <button key={v} role="radio" aria-checked={(node.geneticTest || '') === v} className={`seg-sign${(node.geneticTest || '') === v ? ' on' : ''}`}
+              title={title} aria-label={title}
+              onClick={() => {
+                if ((node.geneticTest || '') === v) return;
+                if (!v && gLines.length && !window.confirm(t('Genetik test "−" yapılırsa yazılan {n} satır da silinir. Devam edilsin mi?\n\n"Geri Al" (Cmd/Ctrl+Z) ile geri alınabilir.', { n: gLines.length }))) return;
+                set({ geneticTest: v });
+              }}>{sign}</button>
+          ))}
+        </div>
       </div>
-      <span className="field-hint">
-          <b>−</b>{t(': genetik test yapılmadı.')} <b>+</b>{t(': genetik test yapıldı. "+" seçtiyseniz bulunan varyantı ya da sonucu (ör. "sonuç bekleniyor") aşağıya yazıp Enter\'a basabilirsiniz; yazmak zorunlu değil. Her satır pedigride sembolün altında ayrı bir satırda görünür. Hiçbir şey yazmazsanız sembolün altında "test yapıldı" yazar.')}
-      </span>
+      {/* − and + say what they mean on their own (title); the lines' rule once there are lines to write */}
+      {tested && (
+        <span className="field-hint">{t('Her satır sembolün altında ayrı satırda çıkar. Hiçbir şey yazmazsanız sembolün altında "test yapıldı" yazar.')}</span>
+      )}
       {tested && (
         <div className="genetic-lines">
           {gLines.map((line, k) => (

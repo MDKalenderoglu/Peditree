@@ -6,7 +6,7 @@
  * independently of what this panel offers.
  */
 import { useState } from 'react';
-import { X, Trash2, ArrowLeft, ArrowRight } from 'lucide-react';
+import { X, Trash2, ArrowLeft, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { computeSiblingCreationPlan, computeUnionCreationPlan } from '../state/usePedigreeStore';
 import { AGE_EXAMPLE, shownAge } from '../utils/age';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
@@ -17,7 +17,7 @@ import { isPregnancy, pregnancyKind, PREGNANCY_LABEL, geneticLines, isGroup } fr
 import { parseGroupCount } from '../graph/ops';
 import DraftField from './DraftField';
 import { NameField, AgeField, NoteField, GeneticField } from './InfoFields';
-import { usePanelPrefs, PANEL_PARTS } from '../utils/panelPrefs';
+import { usePanelPrefs, usePanelTip, PANEL_PARTS } from '../utils/panelPrefs';
 import { formatDate } from '../utils/age';
 import { t, tk, currentLang, shownLabel } from '../i18n';
 
@@ -27,12 +27,37 @@ const GROUP_WORD = { male: tk('erkek'), female: tk('kadın'), unknown: tk('kişi
 // same options and wording as the wizard; an older 'separated' shows as the combined one
 const STATUS_OPTIONS = [['together', tk('Birlikte')], ['divorced', tk('Boşanmış/Ayrılmış')], ['unknown', tk('Bilinmiyor')]];
 
-function Header({ title, sub, onClose }) {
+/**
+ * The person's symbol in miniature, as drawn (sex, affected, deceased, a
+ * pregnancy, a group's number): the panel says whom it is about at a glance.
+ */
+function PersonGlyph({ p, size = 30 }) {
+  if (!p) return null;
+  const ink = 'var(--ink)';
+  const fill = p.affected ? ink : 'var(--surface)';
+  const s = size, m = s / 2, r = s * 0.36;
+  const shape = isPregnancy(p) ? <path d={`M${m} ${m - r} L${m + r} ${m + r * 0.8} L${m - r} ${m + r * 0.8} Z`} />
+    : p.sex === 'male' ? <rect x={m - r} y={m - r} width={2 * r} height={2 * r} />
+      : p.sex === 'female' ? <circle cx={m} cy={m} r={r} />
+        : <path d={`M${m} ${m - r * 1.25} L${m + r * 1.25} ${m} L${m} ${m + r * 1.25} L${m - r * 1.25} ${m} Z`} />;
+  return (
+    <svg className="person-glyph" width={s} height={s} viewBox={`0 0 ${s} ${s}`} aria-hidden="true">
+      <g fill={fill} stroke={ink} strokeWidth="1.6">{shape}</g>
+      {isGroup(p) && !p.affected && <text x={m} y={m + 4} textAnchor="middle" fontSize="11" fontWeight="700" fill={ink}>{p.count}</text>}
+      {p.deceased && <line x1={2} y1={s - 2} x2={s - 2} y2={2} stroke={ink} strokeWidth="1.6" />}
+    </svg>
+  );
+}
+
+function Header({ title, sub, chips, glyph, onClose }) {
   return (
     <div className="side-header">
-      <div>
+      {glyph}
+      <div className="side-header-text">
         <div className="person-id">{title}</div>
-        {sub && <div className="person-sub">{sub}</div>}
+        {chips && chips.length > 0
+          ? <div className="person-chips">{chips.map(c => <span key={c} className="person-chip">{c}</span>)}</div>
+          : sub && <div className="person-sub">{sub}</div>}
       </div>
       {onClose && (
         <button className="ui-btn ui-btn-ghost ui-btn-icon" onClick={onClose} aria-label={t('Seçimi kapat')} title={t('Seçimi kapat')}>
@@ -172,20 +197,23 @@ function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelati
         <RelationshipChoice u={u} onSetBackground={onSetUnionRelationshipBackground} parentsCons={parentsCons} graph={graph} />
       )}
       {/* NSGC: no children by choice / reason unknown (one bar) or infertile (two bars), shown while they have none */}
+      {/* nothing chosen = not marked; a second tap on the chosen one takes it back, like Akrabalık */}
       {onSetChildlessness && children.length === 0 && (
         <div className="field-col">
           <span className="field-label">{t('Çocukları yok')}</span>
           <div className="segmented" role="radiogroup" aria-label={t('Çocukları yok')}>
-            {[['', '—'], ['by_choice', t('Çocuksuz')], ['infertile', t('İnfertil')]].map(([v, label]) => (
-              <button key={v} role="radio" aria-checked={(u.childless || '') === v} className={(u.childless || '') === v ? 'on' : undefined}
-                onClick={() => onSetChildlessness(u.id, v || null)}>{label}</button>
+            {[['by_choice', t('Çocuksuz'), t('Tek kısa çizgi: kendi isteğiyle çocuksuz ya da nedeni bilinmiyor')], ['infertile', t('İnfertil'), t('Çift kısa çizgi: kısırlık (infertilite)')]].map(([v, label, title]) => (
+              <button key={v} role="radio" aria-checked={u.childless === v} className={u.childless === v ? 'on' : undefined} title={title}
+                onClick={() => onSetChildlessness(u.id, u.childless === v ? null : v)}>{label}</button>
             ))}
           </div>
           {u.childless && (
-            <DraftField key={`${u.id}-childless`} type="text" className="input input-wide" value={u.childlessReason || ''}
-              placeholder={t('Nedeni (isteğe bağlı), ör. azospermi')} onCommit={v => onSetChildlessness(u.id, undefined, v)} />
+            <>
+              <DraftField key={`${u.id}-childless`} type="text" className="input input-wide" value={u.childlessReason || ''}
+                placeholder={t('Nedeni (isteğe bağlı), ör. azospermi')} onCommit={v => onSetChildlessness(u.id, undefined, v)} />
+              <span className="field-hint">{u.childless === 'infertile' ? t('Çizimde çift kısa çizgi: kısırlık (infertilite).') : t('Çizimde tek kısa çizgi: kendi isteğiyle çocuksuz ya da nedeni bilinmiyor.')}</span>
+            </>
           )}
-          <span className="field-hint">{u.childless === 'infertile' ? t('Çizimde çift kısa çizgi: kısırlık (infertilite).') : u.childless ? t('Çizimde tek kısa çizgi: kendi isteğiyle çocuksuz ya da nedeni bilinmiyor.') : t('Çiftin çocuğu yoksa nedenini seçin: “Çocuksuz” tek kısa çizgiyle, “İnfertil” çift kısa çizgiyle çizilir.')}</span>
         </div>
       )}
       {withChildren && (
@@ -216,7 +244,7 @@ function AdoptionCard({ info, onSet }) {
           disabled={kind === 'in'} title={kind === 'in' ? t('Bu kişinin biyolojik ebeveynleri çizili değil; önce onları ekleyin') : undefined}
           onClick={() => onSet(null)}>{t('Yok')}</button>
         <button role="radio" aria-checked={kind === 'out'} className={kind === 'out' ? 'on' : undefined}
-          disabled={!hasParents} title={!hasParents ? t('Önce biyolojik ebeveynleri ekleyin') : undefined}
+          disabled={!hasParents} title={!hasParents ? t('Önce biyolojik ebeveynleri ekleyin') : t('Evlat verildiyse ve evlat edinen aile çizimde yoksa “Evlat verildi”; aile çizimdeyse (ör. teyze ve eşi) listeden seçin.')}
           onClick={() => onSet('out')}>{t('Evlat verildi')}</button>
       </div>
       <label className="field">
@@ -227,12 +255,14 @@ function AdoptionCard({ info, onSet }) {
           {couples.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </label>
-      <span className="field-hint">
-        {kind === 'out' ? t('Evlat verildi: sembol köşeli parantez içinde, biyolojik ailesinden düz çizgi. Evlat edinen aile çizimde yok.')
-          : kind === 'relative' ? t('Evlat edinildi; biyolojik ve evlat edinen ailesi çizimde: biyolojik ailesinden düz, evlat edinen aileden kesikli çizgi.')
-          : kind === 'in' ? t('Evlat edinildi: evlat edinen ailesinin altında, kesikli çizgiyle.')
-          : t('Evlat verildiyse ve evlat edinen aile çizimde yoksa “Evlat verildi”; aile çizimdeyse (ör. teyze ve eşi) listeden seçin.')}
-      </span>
+      {/* what the drawing shows, once something is chosen; the choices explain themselves (title) */}
+      {kind !== 'none' && (
+        <span className="field-hint">
+          {kind === 'out' ? t('Evlat verildi: sembol köşeli parantez içinde, biyolojik ailesinden düz çizgi. Evlat edinen aile çizimde yok.')
+            : kind === 'relative' ? t('Evlat edinildi; biyolojik ve evlat edinen ailesi çizimde: biyolojik ailesinden düz, evlat edinen aileden kesikli çizgi.')
+            : t('Evlat edinildi: evlat edinen ailesinin altında, kesikli çizgiyle.')}
+        </span>
+      )}
     </div>
   );
 }
@@ -447,10 +477,12 @@ export default function IndividualEditor({
   selectedNodes = [], onUpdateMany, onSetFindingStatusMany, onAddFindingMany,
 }) {
   const { panel } = usePanelPrefs();
+  const tip = usePanelTip();
   const [moreFor, setMoreFor] = useState(null); // the person whose "Diğer bilgiler…" is open
+  const [whyNotFor, setWhyNotFor] = useState(null); // the proband whose "Kişiyi sil" was tapped
   // closed again whenever the selection changes (also deselecting and selecting the same person)
   const [shownFor, setShownFor] = useState(node ? node.id : null);
-  if (shownFor !== (node ? node.id : null)) { setShownFor(node ? node.id : null); setMoreFor(null); }
+  if (shownFor !== (node ? node.id : null)) { setShownFor(node ? node.id : null); setMoreFor(null); setWhyNotFor(null); }
   const ids = computePedigreeIds(pedigreeData?.nodes || []);
   const nameOfId = (id) => {
     const p = pedigreeData?.individuals?.find(i => i.id === id);
@@ -509,7 +541,10 @@ export default function IndividualEditor({
 
   const kind = group ? `${node.count === 'n' ? t('Sayısı bilinmeyen') : node.count} ${t(GROUP_WORD[node.sex || 'unknown'])}`
     : pregnancyKind(node) ? t(PREGNANCY_LABEL[pregnancyKind(node)]) : t(SEX_WORD[node.sex || 'unknown']);
-  const sub = [kind, node.age ? t('{age} yaş', { age: shownAge(node.age) }) : null, node.proband ? 'proband' : null, node.consultand ? t('danışan') : null].filter(Boolean).join(' · ');
+  // what the drawing says about the person, as small labels under the number
+  const chips = node.placeholder ? [t('Belirtilmemiş ebeveyn')]
+    : [kind, node.age ? t('{age} yaş', { age: shownAge(node.age) }) : null, node.proband ? t('Proband') : null,
+      node.consultand ? t('Danışan') : null, node.deceased && !isLoss ? t('Vefat') : null].filter(Boolean);
   const set = (patch) => onUpdate(node.id, patch);
   const gLines = geneticLines(node);
   // the clinician's own panel (Ayarlar → Yan panel; clinician request 2026-11-02): a hidden
@@ -531,14 +566,18 @@ export default function IndividualEditor({
 
   return (
     <>
-      <Header title={pedigreeId || '—'} sub={node.placeholder ? t('Belirtilmemiş ebeveyn') : sub} onClose={onClearSelection} />
+      <Header title={pedigreeId || '—'} chips={chips} glyph={<PersonGlyph p={node} />} onClose={onClearSelection} />
       <div className="editor-body">
         {node.placeholder && (
           <div className="field-hint">{t('Bu boş sembol, silinen ya da bilinmeyen bir ebeveynin yerini tutar; çocuklar ebeveynsiz kalmasın diye çizilir.')}</div>
         )}
 
-        {!node.placeholder && (
-          <div className="field-hint editor-tip">{t('Akraba eklemek, bulgu, durum, ikiz ya da not girmek için çizimde bu kişinin çevresindeki düğmeleri kullanın. Düğmeler görünmüyorsa kişinin sembolüne yeniden tıklayın.')}</div>
+        {/* said once on this device, then out of the way (clinician 2026-11-05: the panel was too wordy) */}
+        {!node.placeholder && !tip.seen && (
+          <div className="editor-tip">
+            <span className="field-hint">{t('Akraba eklemek, bulgu, durum, ikiz ya da not girmek için çizimde bu kişinin çevresindeki düğmeleri kullanın. Düğmeler görünmüyorsa kişinin sembolüne yeniden tıklayın.')}</span>
+            <button className="ui-btn ui-btn-sm ui-btn-ghost" onClick={tip.dismiss}>{t('Anladım')}</button>
+          </div>
         )}
 
         {/* several people in one symbol: the number, the sex, "Tek tek ayır" (clinician decisions 2026-11-01) */}
@@ -598,8 +637,9 @@ export default function IndividualEditor({
             <div className="card-title">{t('Bilgiler')}</div>
             {/* two free texts, each saying where it goes (clinician question 2026-11-03): a short name
                 under the symbol, and a note in the numbered Notes under the pedigree */}
-            <NameField node={node} set={set} />
-            <NoteField node={node} set={set} />
+            <NameField node={node} set={set} where={false} />
+            <NoteField node={node} set={set} where={false} />
+            <span className="field-hint card-foot">{t('Ad sembolün altında, not pedigrinin altında numarasıyla görünür.')}</span>
             {!isLoss && <AgeField node={node} set={set} />}
             {shows('recordsReviewed') && (
               <label className="check">
@@ -667,13 +707,19 @@ export default function IndividualEditor({
             onAddMultiple={onAddMultiple} onSetZygosity={onSetZygosity} onLeaveMultiple={onLeaveMultiple} />
         )}
 
-        {!isLoss && !node.placeholder && existingUnions.map(u => (
+        {!isLoss && !node.placeholder && existingUnions.map(u => {
+          const partnerId = u.partners.find(p => p !== node.id);
+          const partner = pedigreeData?.individuals?.find(i => i.id === partnerId);
+          // the number and the name the clinician wrote; never the program's own label ("Es (K)")
+          const partnerName = [pedigreeIds.get(partnerId)?.displayId, partner?.displayLabel].filter(Boolean).join(' ');
+          return (
           <div className="card" key={u.id}>
-            <div className="card-title">{t('Eş: {name}', { name: displayNameFor(u.partners.find(p => p !== node.id)) })}</div>
+            <div className="card-title partner-title"><PersonGlyph p={partner} size={20} />{t('Eş')}{partnerName ? <> <span className="partner-name">{partnerName}</span></> : null}</div>
             <UnionControls u={u} pcrs={pcrs} onSetUnionStatus={onSetUnionStatus} withChildren={false} graph={pedigreeData}
               onSetUnionRelationshipBackground={onSetUnionRelationshipBackground} parentsCons={parentsCons} onSetChildlessness={onSetChildlessness} />
           </div>
-        ))}
+          );
+        })}
 
         {/* moves this child within its own sibship only, never to another union */}
         {shows('birthOrder') && (
@@ -691,25 +737,27 @@ export default function IndividualEditor({
 
         {/* the parts hidden in Ayarlar → Yan panel, one tap away */}
         {(tucked.length > 0 || moreOpen) && (
-          <button className="ui-btn ui-btn-ghost more-parts" aria-expanded={moreOpen} onClick={() => setMoreFor(moreOpen ? null : node.id)}
+          <button className="list-row more-parts" aria-expanded={moreOpen} onClick={() => setMoreFor(moreOpen ? null : node.id)}
             title={moreOpen ? undefined : tucked.map(x => t(x.label)).join(', ')}>
-            {moreOpen ? t('Daha az') : t('Diğer bilgiler ({n})', { n: tucked.length })}
+            <span>{moreOpen ? t('Daha az') : t('Diğer bilgiler ({n})', { n: tucked.length })}</span>
+            {moreOpen ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
           </button>
         )}
 
-        {/* anyone but the proband can be deleted; children stay with the other parent */}
+        {/* anyone but the proband can be deleted; children stay with the other parent. The
+            proband's reason is said when it is asked for, not all the time */}
         {onDeleteIndividual && !node.placeholder && (
-          node.proband ? (
-            <div className="field-hint">{t('Proband silinemez. Silmek için önce başka bir kişiyi proband yapın (Durum → Proband).')}</div>
-          ) : (
-            <button className="ui-btn ui-btn-danger" onClick={() => {
+          <button className="list-row list-row-danger" aria-describedby={whyNotFor === node.id ? 'delete-why' : undefined} onClick={() => {
+              if (node.proband) { setWhyNotFor(node.id); return; }
               if (window.confirm(t('"{name}" silinsin mi?\n\nÇocukları silinmez; diğer ebeveynlerine bağlı kalırlar ve silinen kişinin yerinde boş bir "belirtilmemiş ebeveyn" sembolü görünür. Bu kişinin çocuğu olmayan eş ilişkileri de kaldırılır.\n\nYanlışlıkla sildiyseniz "Geri Al" ile geri getirebilirsiniz.', { name: displayNameFor(node.id) }))) {
                 onDeleteIndividual(node.id);
               }
             }}>
-              <Trash2 size={14} /> {t('Kişiyi sil')}
-            </button>
-          )
+              <Trash2 size={15} aria-hidden="true" /> <span>{t('Kişiyi sil')}</span>
+          </button>
+        )}
+        {whyNotFor === node.id && node.proband && (
+          <div id="delete-why" className="field-hint" role="status">{t('Proband silinemez. Silmek için önce başka bir kişiyi proband yapın (Durum → Proband).')}</div>
         )}
       </div>
     </>
