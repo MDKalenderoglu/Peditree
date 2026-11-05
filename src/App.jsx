@@ -78,6 +78,13 @@ function App() {
   // (clinician request 2026-10-28; drawingStyle.js)
   const { view, setView } = useViewSettings();
   const drawing = React.useMemo(() => drawingSpec(view), [view]);
+  // another text size: the layout gives the text its room again (symbolText.setTextScale; clinician 2026-11-05)
+  const textSize = React.useRef(drawing.legendScale);
+  React.useEffect(() => {
+    if (textSize.current === drawing.legendScale) return;
+    textSize.current = drawing.legendScale;
+    usePedigreeStore.getState().refreshLayout();
+  }, [drawing.legendScale]);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [settingsAt, setSettingsAt] = React.useState('language'); // the section Ayarlar opens at
   const openSettings = (at = 'language') => { setSettingsAt(at); setSettingsOpen(true); };

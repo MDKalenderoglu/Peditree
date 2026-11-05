@@ -35,7 +35,7 @@ import { annotationAge, pregnancyLine, lmpLine } from '../utils/annotations';
 import { BRACKET_OUT } from '../layout/pcl/routing';
 import { isSmallSymbol, pregnancyKind, PREGNANCY_LABEL, TESTED_TEXT, isGroup, groupText, subjectOf } from '../graph/model';
 import { packLines } from '../utils/textWrap';
-import { filled, onsetsOf, unsureOf, bornWeek, hasNoteNumber, geneticRows as geneticRowsOf, lineNoteText, LINE_NOTE_SIZE, TEXT } from '../utils/symbolText';
+import { filled, onsetsOf, unsureOf, bornWeek, hasNoteNumber, geneticRows as geneticRowsOf, lineNoteText, LINE_NOTE_SIZE, TEXT, textScale } from '../utils/symbolText';
 import { keyGrid } from '../utils/keyGrid';
 import { nameCase } from '../utils/nameCase';
 import { chainOf, offsetPolyline } from '../utils/doubleLine';
@@ -359,9 +359,12 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // a long note could leave the picture)
     // the genetic test lines under a symbol, each wrapped, never cut
     const geneticRows = (d) => geneticRowsOf(d, td(TESTED_TEXT));
+    // every text of the drawing at the size chosen in Ayarlar; the layout kept room for it (symbolText.js)
+    const TS = textScale();
+    const px = (n) => `${n * TS}px`;
     const annotationBottom = (d) => {
       const lines = [d.sexAtBirth, annotationAge(d, lang), pregnancyLine(d, lang), lmpLine(d, lang), d.displayLabel, d.condition, notedNodes.includes(d)].filter(Boolean).length;
-      return (isSmallSymbol(d) ? LOSS_SIZE : HALF) + 14 + lines * 13 + geneticRows(d).length * GENETIC_ROW;
+      return (isSmallSymbol(d) ? LOSS_SIZE : HALF) + (14 + lines * 13 + geneticRows(d).length * GENETIC_ROW) * TS;
     };
     const lowest = d3.max(nodes, d => d.y + annotationBottom(d));
     const legendTop = Math.max(d3.max(nodes, d => d.y) + 70, lowest + 18); // clear of the age / label lines
@@ -513,7 +516,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       if (e.kind === 'infertile') bar(end + CL.gap);
       if (e.reason) {
         editable(m.append('text').attr('x', e.x).attr('y', end + (e.kind === 'infertile' ? CL.gap : 0) + 14).attr('text-anchor', 'middle')
-          .attr('font-size', '10px').attr('fill', '#475569').text(e.reason), 'childlessReason', e.unionId, e.reason);
+          .attr('font-size', px(10)).attr('fill', '#475569').text(e.reason), 'childlessReason', e.unionId, e.reason);
       }
     });
 
@@ -521,8 +524,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // just above the line, between the partners; a click corrects it where it stands
     edges.filter(e => e.type === 'lineNote').forEach(e => {
       const text = lineNoteText(e.note, lang);
-      editable(g.append('text').attr('class', 'line-note').attr('x', e.x).attr('y', e.y - (e.raised ? 12 : 6)).attr('text-anchor', 'middle')
-        .attr('font-size', `${LINE_NOTE_SIZE}px`).attr('fill', '#475569').text(text), 'lineNote', e.unionId, text);
+      editable(g.append('text').attr('class', 'line-note').attr('x', e.x).attr('y', e.y - (e.raised ? 12 : 6) * Math.max(1, TS)).attr('text-anchor', 'middle')
+        .attr('font-size', px(LINE_NOTE_SIZE)).attr('fill', '#475569').text(text), 'lineNote', e.unionId, text);
     });
 
     // Relationship lines are clickable (selects the couple). Wide transparent
@@ -553,7 +556,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     ]);
     // Pedigree-number corner: upper-left unless a connector crosses there
     // (e.g. a relationship line rising beside the symbol), then upper-right.
-    const LABEL_CHAR_W = 6, LABEL_H = 11;
+    const LABEL_CHAR_W = 6 * TS, LABEL_H = 11 * TS;
     const segments = edges.filter(e => [e.x1, e.y1, e.x2, e.y2].every(Number.isFinite));
     const boxFree = (x0, y0, w, h) => !segments.some(e => {
       const lo = Math.min(e.x1, e.x2) - 2, hi = Math.max(e.x1, e.x2) + 2;
@@ -584,9 +587,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       });
       // the words on a "same village" line count as taken too
       for (const e of edges.filter(x => x.type === 'lineNote')) {
-        const w = lineNoteText(e.note, lang).length * LINE_NOTE_SIZE * TEXT.EM;
-        const base = e.y - (e.raised ? 12 : 6);
-        placed.push({ x: e.x - w / 2, y: base - LINE_NOTE_SIZE - 4, w, h: LINE_NOTE_SIZE + 7 });
+        const w = lineNoteText(e.note, lang).length * LINE_NOTE_SIZE * TS * TEXT.EM;
+        const base = e.y - (e.raised ? 12 : 6) * Math.max(1, TS);
+        placed.push({ x: e.x - w / 2, y: base - LINE_NOTE_SIZE * TS - 4, w, h: LINE_NOTE_SIZE * TS + 7 });
       }
       const hitsPlaced = (b) => placed.some(q => b.x < q.x + q.w + 3 && q.x < b.x + b.w + 3 && b.y < q.y + q.h && q.y < b.y + b.h);
       for (const n of nodes.slice().sort((a, b) => (a.y - b.y) || (a.x - b.x))) {
@@ -708,7 +711,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         const at = labelAt.get(d.id);
         el.append('text').attr('class', 'pedigree-number')
           .attr('x', at.dx).attr('y', at.dy).attr('text-anchor', at.anchor)
-          .attr('font-size', '10px').attr('fill', '#64748b')
+          .attr('font-size', px(10)).attr('fill', '#64748b')
           .text(pedigreeId.displayId);
       }
       if (adopted) {
@@ -834,8 +837,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
 
       // --- Annotations below node ---
       // below an adopted person's brackets
-      let lineY = adopted ? sz + BRACKET_OUT + 16 : sz + 14;
-      const LINE_H = 13;
+      let lineY = (adopted ? sz + BRACKET_OUT + 2 : sz) + 14 * TS;
+      const LINE_H = 13 * TS;
       // the proband's lines stand a little to the right, clear of the arrow at the lower left
       const ann = el.append('g').attr('class', 'annotations').attr('transform', d.proband || d.consultand ? 'translate(14,0)' : null);
 
@@ -843,7 +846,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       if (d.sexAtBirth) {
         ann.append('text').attr('class', 'sex-at-birth')
           .attr('y', lineY).attr('text-anchor', 'middle')
-          .attr('font-size', '11px').attr('fill', '#475569')
+          .attr('font-size', px(11)).attr('fill', '#475569')
           .text(d.sexAtBirth);
         lineY += LINE_H;
       }
@@ -853,7 +856,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       if (ageLine) {
         editable(ann.append('text')
           .attr('y', lineY).attr('text-anchor', 'middle')
-          .attr('font-size', '11px').attr('fill', '#475569')
+          .attr('font-size', px(11)).attr('fill', '#475569')
           .text(ageLine.text), ageLine.kind, d.id, ageLine.value);
         lineY += LINE_H;
       }
@@ -863,7 +866,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       if (pLine) {
         editable(ann.append('text')
           .attr('y', lineY).attr('text-anchor', 'middle')
-          .attr('font-size', '11px').attr('fill', '#475569')
+          .attr('font-size', px(11)).attr('fill', '#475569')
           .text(pLine), 'gestationWeeks', d.id, d.gestationWeeks || '');
         lineY += LINE_H;
       }
@@ -872,7 +875,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       if (lLine) {
         editable(ann.append('text').attr('class', 'lmp-line')
           .attr('y', lineY).attr('text-anchor', 'middle')
-          .attr('font-size', '11px').attr('fill', '#475569')
+          .attr('font-size', px(11)).attr('fill', '#475569')
           .text(lLine), 'lmp', d.id, formatDate(d.lmp));
         lineY += LINE_H;
       }
@@ -882,17 +885,17 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       geneticRows(d).forEach(row => {
         editable(ann.append('text')
           .attr('y', lineY - 1).attr('text-anchor', 'middle')
-          .attr('font-size', '9px').attr('fill', row.placeholder ? '#64748b' : '#334155')
+          .attr('font-size', px(9)).attr('fill', row.placeholder ? '#64748b' : '#334155')
           .attr('font-style', row.placeholder ? 'italic' : null)
           .text(row.text), 'geneticLine', `${d.id}\u0001${row.k}`, row.value);
-        lineY += GENETIC_ROW;
+        lineY += GENETIC_ROW * TS;
       });
 
       // Display label
       if (d.displayLabel) {
         editable(ann.append('text')
           .attr('y', lineY).attr('text-anchor', 'middle')
-          .attr('font-size', '11px').attr('fill', '#475569')
+          .attr('font-size', px(11)).attr('fill', '#475569')
           .text(d.displayLabel), 'displayLabel', d.id, d.displayLabel);
         lineY += LINE_H;
       }
@@ -901,7 +904,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       if (d.condition) {
         editable(ann.append('text')
           .attr('y', lineY).attr('text-anchor', 'middle')
-          .attr('font-size', '10px').attr('fill', '#4f46e5')
+          .attr('font-size', px(10)).attr('fill', '#4f46e5')
           .attr('font-style', 'italic')
           .text(d.condition.length > 15 ? d.condition.substring(0, 14) + '...' : d.condition), 'condition', d.id, d.condition);
         lineY += LINE_H;
@@ -913,7 +916,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         if (noteIdx >= 0) {
           ann.append('text')
             .attr('y', lineY).attr('text-anchor', 'middle')
-            .attr('font-size', '9px').attr('fill', '#b91c1c') // 6.5:1 on white (WCAG AA; audit 2026-11-02)
+            .attr('font-size', px(9)).attr('fill', '#b91c1c') // 6.5:1 on white (WCAG AA; audit 2026-11-02)
             .attr('font-weight', '600')
             .text(`[${noteIdx + 1}]`);
         }

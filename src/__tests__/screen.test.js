@@ -541,19 +541,30 @@ describe('the look of the drawing (Ayarlar), a preference of this device', () =>
     expect($$('.hand-stroke')).toHaveLength(0);
   });
 
-  it('the text size setting changes the name, key and notes only — never the text under the symbols', async () => {
+  it('the text size setting changes every text of the drawing, and the layout gives it room (clinician request 2026-11-05)', async () => {
     const { useViewSettings } = await import('../utils/drawingStyle');
-    await run(() => { S().setPatientName('Ayşe'); S().updateIndividual('mother', { age: '52', notes: 'not' }); });
-    const sizes = () => ({ head: $('.patient-header').getAttribute('font-size'), under: drawn('mother').querySelector('.annotations text').getAttribute('font-size') });
-    const normal = sizes();
+    await run(() => { S().setPatientName('Ayşe'); S().updateIndividual('mother', { age: '52', notes: 'not', geneticTest: 'tested', geneticNote: 'MYH7:c.1208G>A het' }); });
+    const sizes = () => ({
+      head: parseFloat($('.patient-header').getAttribute('font-size')),
+      under: parseFloat(drawn('mother').querySelector('.annotations text').getAttribute('font-size')),
+      number: parseFloat(drawn('mother').querySelector('.pedigree-number').getAttribute('font-size')),
+    });
+    const apart = () => Math.abs(S().pedigreeData.nodes.find(n => n.id === 'mother').x - S().pedigreeData.nodes.find(n => n.id === 'father').x);
+    await run(() => S().refreshLayout()); // a fresh layout to compare with
+    const normal = sizes(), normalApart = apart(), undoSteps = S()._history.length;
     try {
       await run(() => useViewSettings.getState().setView({ legendSize: 'xlarge' }));
       const big = sizes();
-      expect(parseFloat(big.head)).toBeGreaterThan(parseFloat(normal.head));
-      expect(big.under).toBe(normal.under);
+      expect(big.head).toBeGreaterThan(normal.head);
+      expect(big.under).toBeGreaterThan(normal.under);
+      expect(big.number).toBeGreaterThan(normal.number);
+      expect(apart()).toBeGreaterThan(normalApart); // the genetic line's room grew with it
+      expect(S()._history.length).toBe(undoSteps); // a view change, not an edit: nothing to undo
     } finally {
       await run(() => useViewSettings.getState().setView({ legendSize: 'normal' }));
     }
+    expect(sizes()).toEqual(normal);
+    expect(apart()).toBe(normalApart);
   });
 
   it('a zoom stays through an edit', async () => {

@@ -184,7 +184,6 @@ const EN = {
   'Yalnızca ekranda: çizimle birlikte kayar ve büyür. İndirilen ve yazdırılan çizim düz kalır.': 'On the screen only: it moves and zooms with the drawing. Downloads and prints stay plain.',
   'Düz': 'Plain',
   'Kareli': 'Grid',
-  'Açıklama yazılarının boyutu': 'Size of the explanatory text',
   'İndirme, paylaşma ve yazdırma': 'Downloading, sharing and printing',
   'İndirilen resmin görünümü': 'Look of the downloaded image',
   'Ekrandaki gibi': 'As on the screen',
@@ -414,6 +413,9 @@ const EN = {
   'Tek kısa çizgi: kendi isteğiyle çocuksuz ya da nedeni bilinmiyor': 'One short bar: childless by choice or for an unknown reason',
   'Çift kısa çizgi: kısırlık (infertilite)': 'Two short bars: infertility',
   'Anladım': 'Got it',
+  'Yazı boyutu': 'Text size',
+  'Çizimdeki bütün yazılar': 'Every text of the drawing',
+  'Sembollerin altındaki yazılar, pedigri numaraları, hasta adı, açıklama ve notlar; indirilen ve yazdırılan çizimde de. Yazı büyüyünce kişiler birbirinden biraz açılır; semboller aynı boyutta kalır.': 'The text under the symbols, pedigree numbers, patient name, key and notes; in downloads and prints too. With larger text people stand a little further apart; the symbols keep their size.',
   'Semboller': 'Symbols',
   'Çizimdeki sembollerin ve çizgilerin anlamı (NSGC 2022).': 'What the symbols and lines of the drawing mean (NSGC 2022).',
   'Kişiler': 'People',
@@ -459,7 +461,6 @@ const EN = {
   'Yazdığınız adlar, notlar ve bulgular çevrilmez.': 'Names, notes and findings you typed are not translated.',
   'Yalnız ekranda': 'On screen only',
   'Adı girilmemiş taşıyıcı için': 'For a carrier without a named condition',
-  'Hasta adı, açıklama ve notlar': 'Patient name, key and notes',
   'El yazısında numaralar düz': 'Plain numbers in handwriting',
   '“Aç” penceresi': '“Open” window',
   'Yalnız bu cihazda saklanır; pedigri dosyası değişmez.': 'Kept on this device only; the pedigree file does not change.',
@@ -971,7 +972,6 @@ const EN = {
   'Çizim': 'Drawing',
   'Dosyalar': 'Files',
   'El çiziminde çizgiler ve semboller kalemle çizilmiş gibi hafifçe titrer.': 'Hand-drawn lines and symbols waver a little, as if drawn with a pen.',
-  'Hasta adı, bulgular açıklaması ve notlar; indirilen ve yazdırılan çizimde de. Sembollerin altındaki yazılar aynı boyutta kalır.': 'The patient’s name, the key and the notes; in downloaded and printed drawings too. The text under the symbols keeps its size.',
 };
 
 export default EN;
