@@ -2,23 +2,26 @@
  * RadialAddMenu.jsx — a ring around the selected symbol (clinician requests
  * 2026-10-24). The ring adds relatives: top = parents, left = sibling,
  * right = spouse, bottom = child (pointing at a sector opens its choices, a
- * click adds). Four buttons on the diagonals work on the person while the
- * history is taken: findings (with their legend marks), status (affected,
- * carrier, deceased, proband), twins, note. The hole in the middle leaves the
- * symbol visible and clickable. The same store operations as the right
+ * click adds). Four buttons on the diagonals, each with its name, work on the
+ * person while the history is taken: findings (with their legend marks),
+ * status (affected, carrier, deceased, proband), twins, Bilgiler. Their
+ * choices open as a plain list beside the button, every word upright
+ * (clinician request 2026-11-05: the rainbow bands looked raw and covered the
+ * family). The hole in the middle leaves the symbol visible and clickable. The same store operations as the right
  * panel; the store refuses (with a reason) anything the graph rules forbid.
  */
 import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
-import { Stethoscope, HeartPulse, Users, StickyNote } from 'lucide-react';
+import { Stethoscope, HeartPulse, Users, StickyNote, Check } from 'lucide-react';
 import FindingsPalette from './FindingsPalette';
 import { NameField, AgeField, NoteField, GeneticTextField } from './InfoFields';
 import { groupOf, multipleName } from '../graph/multiples';
-import { isPregnancy, isGroup, adoptionOf, ART_DONOR_RELATION } from '../graph/model';
+import { isPregnancy, isGroup, adoptionOf, ART_DONOR_RELATION, geneticLines } from '../graph/model';
+import { shownAge } from '../utils/age';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { parseGroupCount } from '../graph/ops';
 import { useRingPrefs, RING_ROWS, RING_PREGNANCY, RING_INFO } from '../utils/ringPrefs';
 import { t, tk } from '../i18n';
-import { RING_T, BAND_T, BAND_GAP, BUTTON_L, layoutBands, splitRows } from '../utils/ringGeometry';
+import { RING_T } from '../utils/ringGeometry';
 
 const S = 9; // glyph half-size
 
@@ -120,26 +123,22 @@ const isHover = (e) => e.pointerType !== 'touch';
 // where each Bilgiler part goes, beside its box's title
 const INFO_WHERE = { genetic: tk('sembolün altında'), note: tk('pedigrinin altında, numaralı'), name: tk('sembolün altında') };
 
-/** One button of a rainbow band: an annular segment with a (two-line) label. */
-function ArcButton({ a0, a1, r, R, label, on, disabled, onClick, title, flip = 0 }) {
-  const mid = ((a0 + a1) / 2) * Math.PI / 180;
-  const tr = (r + R) / 2;
-  const lines = String(label).split('\n');
-  // text runs along the band (like a rainbow), upright: `flip` is the same
-  // for the whole band (layoutBands), so no word turns round on its own
-  const rot = (a0 + a1) / 2 + 90 + flip;
-  const cx = tr * Math.cos(mid), cy = tr * Math.sin(mid);
+/**
+ * The choices of Durum, Bilgiler or İkiz: one row each, a check on what is
+ * on, the value already written at the right (Bilgiler), "Diğer…" last.
+ */
+function ChoiceList({ items, label }) {
   return (
-    <g className={`radial-arc${on ? ' on' : ''}${disabled ? ' off' : ''}`} role="button" aria-label={label.replace(/\n/g, ' ')}
-      aria-pressed={!!on} tabIndex={disabled ? -1 : 0} onClick={disabled ? undefined : onClick}
-      onKeyDown={disabled ? undefined : (e) => pressKey(e, onClick)}>
-      <title>{title || label.replace(/\n/g, ' ')}</title>
-      <path d={sectorPath(a0, a1, r, R, 1.5)} />
-      <text x={cx} y={cy - (lines.length - 1) * 5.5} textAnchor="middle" dominantBaseline="central" transform={`rotate(${rot} ${cx} ${cy})`}
-        data-room={Math.round(BUTTON_L - 14)}>
-        {lines.map((line, k) => <tspan key={k} x={cx} dy={k ? 11 : 0}>{line}</tspan>)}
-      </text>
-    </g>
+    <div className="ring-list" role="group" aria-label={label}>
+      {items.map((it) => (
+        <button key={it.label} className={`ring-choice${it.on ? ' on' : ''}${it.more ? ' ring-more' : ''}`} aria-label={it.label}
+          aria-pressed={it.more ? undefined : !!it.on} title={it.title || it.label} onClick={it.onClick}>
+          <span className="ring-check" aria-hidden="true">{it.on && <Check size={14} />}</span>
+          <span className="ring-choice-label">{it.label}</span>
+          {it.value && <span className="ring-choice-value">{it.value}</span>}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -161,6 +160,10 @@ export default function RadialAddMenu({
   const [infoFor, setInfoFor] = useState(null); // { node, part }
   const closeTimer = useRef(null);
   const panelTimer = useRef(null);
+  // the list the pointer opened on its way in: the click that follows (still on the
+  // button) keeps it open instead of closing it; leaving the button forgets it
+  const hoverOpened = useRef(null);
+  const keptByHover = (key) => { const kept = hoverOpened.current === key; hoverOpened.current = null; return kept; };
   const popRef = useRef(null);
   // a popup must stay inside the drawing area (never under the side panels):
   // shift it back by however much it sticks out
@@ -207,7 +210,6 @@ export default function RadialAddMenu({
   }, [active, panel, infoFor, anchor.x, anchor.y, onNeedRoom]);
   // keyboard (App): a letter opens a sector's choices or a satellite's panel
   const kbOpen = useRef(false);
-  const arcRef = useRef(null);
   useImperativeHandle(ref, () => ({
     open: (key) => {
       clearTimeout(closeTimer.current);
@@ -264,7 +266,7 @@ export default function RadialAddMenu({
   // opened from the keyboard: its first control takes the focus (Tab moves on, Enter picks)
   useEffect(() => {
     if (!kbOpen.current) return;
-    const root = popRef.current || arcRef.current;
+    const root = popRef.current;
     const first = root && root.querySelector('button:not(:disabled), [tabindex="0"], input, textarea');
     if (first) { first.focus(); kbOpen.current = false; }
   }, [active, panel]);
@@ -410,12 +412,21 @@ export default function RadialAddMenu({
   // satellite distance from the centre (bigger buttons on a touch screen)
   const coarse = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
   const sat = R + (coarse ? 27 : 20);
-  const open = (k) => { clearTimeout(closeTimer.current); clearTimeout(panelTimer.current); setActive(direct[k] && !disabled[k] ? null : k); if (!direct[k]) setPanel(null); };
+  const open = (k, hover = false) => {
+    clearTimeout(closeTimer.current); clearTimeout(panelTimer.current);
+    if (hover && active !== k) hoverOpened.current = k;
+    setActive(direct[k] && !disabled[k] ? null : k); if (!direct[k]) setPanel(null);
+  };
   // satellites open on hover (clinician request 2026-10-25); a panel stays
   // while the pointer is on it or a field inside it has the focus
-  const openPanel = (key) => { clearTimeout(panelTimer.current); clearTimeout(closeTimer.current); setActive(null); setPanel(key); };
+  const openPanel = (key) => {
+    clearTimeout(panelTimer.current); clearTimeout(closeTimer.current);
+    if (panel !== key) hoverOpened.current = key;
+    setActive(null); setPanel(key);
+  };
   const keepPanel = () => clearTimeout(panelTimer.current);
   const leavePanel = () => {
+    hoverOpened.current = null;
     clearTimeout(panelTimer.current);
     panelTimer.current = setTimeout(() => {
       const el = popRef.current;
@@ -423,10 +434,10 @@ export default function RadialAddMenu({
       setPanel(null);
     }, 300);
   };
-  const leave = () => { clearTimeout(closeTimer.current); closeTimer.current = setTimeout(() => setActive(null), 200); };
+  const leave = () => { hoverOpened.current = null; clearTimeout(closeTimer.current); closeTimer.current = setTimeout(() => setActive(null), 200); };
   const pressSector = (k) => {
     if (direct[k]) { if (!disabled[k]) direct[k](); else open(k); return; }
-    if (active === k) setActive(null); else open(k);
+    if (active === k) { if (!keptByHover(k)) setActive(null); } else open(k);
   };
   const flyoutStyle = (k) => ({
     top: { left: 0, top: -R - 10, transform: 'translate(-50%, -100%)' },
@@ -435,86 +446,99 @@ export default function RadialAddMenu({
     right: { left: R + 10, top: 0, transform: 'translate(0, -50%)' },
   }[k]);
   const satPos = (angle) => [sat * Math.cos((angle * Math.PI) / 180), sat * Math.sin((angle * Math.PI) / 180)];
-  const PANEL_W = 340; // .radial-panel width in ui.css
+  // a satellite's panel opens outwards from its button: above the top ones, below the bottom
+  // ones, on its own side unless the drawing area has more room on the other (widths: ui.css)
   const panelStyle = (s) => {
     const [x, y] = satPos(s.angle);
-    // open towards the side with room in the drawing area
-    const roomRight = (anchor.boxW ?? Infinity) - (anchor.x + x + 22);
-    const roomLeft = anchor.x + x - 22;
-    const right = x > 0 ? roomRight >= PANEL_W || roomRight >= roomLeft : roomLeft < PANEL_W && roomRight > roomLeft;
-    return right
-      ? { left: x + 22, top: y, transform: 'translate(0, -50%)' }
-      : { left: x - 22, top: y, transform: 'translate(-100%, -50%)' };
+    const w = s.key === 'findings' ? 340 : 280;
+    const roomRight = (anchor.boxW ?? Infinity) - (anchor.x + x);
+    const roomLeft = anchor.x + x;
+    const right = x > 0 ? roomRight >= w || roomRight >= roomLeft : roomLeft < w && roomRight > roomLeft;
+    const below = y > 0;
+    return { left: right ? x - 16 : x + 16, top: below ? y + 22 : y - 22, transform: `translate(${right ? '0' : '-100%'}, ${below ? '0' : '-100%'})` };
   };
 
-  // rainbow bands around the ring for short choices (clinician request 2026-10-25)
-  const bands = (centre, rows) => layoutBands(centre, rows, R)
-    .map(({ it, ...geo }) => <ArcButton key={it.label} {...geo} {...it} />);
+  // "Diğer…" / "Daha az": the choices hidden in Ayarlar → Halka menü, never lost
+  const moreItem = (hiddenHere) => (hiddenHere.length ? [{ label: showMore ? t('Daha az') : t('Diğer…'), more: true, onClick: () => setShowMore(), title: showMore ? t('Gizlediğiniz seçenekleri yeniden gizle') : t('Halka menüden gizlediğiniz seçenekler (Ayarlar → Halka menü)') }] : []);
+  const firstLine = (s) => String(s || '').split('\n').find((l) => l.trim()) || '';
   const infoItems = () => {
     const avail = ring.info.filter((id) => !(id === 'age' && isLoss));
     const hiddenHere = avail.filter((id) => ring.hidden.includes(id));
+    // what is already written shows at the right of its row
+    const value = { age: node.age ? shownAge(node.age) : '', genetic: geneticLines(node)[0] || '', note: firstLine(node.notes), name: node.displayLabel || '' };
     return [
       ...avail.filter((id) => showMore || !hiddenHere.includes(id)).map((id) => ({
-        label: t(RING_INFO.find((x) => x.id === id).label), on: infoPart === id,
+        label: t(RING_INFO.find((x) => x.id === id).label), on: infoPart === id, value: value[id],
         onClick: () => setInfoFor(infoPart === id ? null : { node: node.id, part: id }),
         title: { age: t('Yaşını yazın'), genetic: t('Genetik test sonucu: varyant ya da sonuç'), note: t('Pedigrinin altındaki numaralı notlara'), name: t('Sembolün altına ad ya da kısaltma') }[id],
       })),
-      ...(hiddenHere.length ? [{ label: showMore ? t('Daha az') : t('Diğer…'), on: false, onClick: () => setShowMore(), title: showMore ? t('Gizlediğiniz seçenekleri yeniden gizle') : t('Halka menüden gizlediğiniz seçenekler (Ayarlar → Halka menü)') }] : []),
+      ...moreItem(hiddenHere),
     ];
   };
-  const infoRows = panel === 'note' && !group ? splitRows(infoItems(), 0, R) : [];
-  const arcs = {
+  const lists = {
     status: () => {
-      const inner = isLoss ? [] : [['male', t('Erkek')], ['female', t('Kadın')], ['unknown', t('Bilinmiyor')]].map(([v, label]) => ({
-        label, on: (node.sex || 'unknown') === v, onClick: () => onUpdate(node.id, { sex: v }),
-      }));
+      const sexes = isLoss ? [] : [['male', t('Erkek')], ['female', t('Kadın')], ['unknown', t('Bilinmiyor')]];
       const byId = {
         affected: { label: t('Etkilenmiş'), on: !!node.affected, onClick: () => onUpdate(node.id, { affected: !node.affected }), title: t('Kişi hasta (etkilenmiş): sembolün içi tamamen dolar. Hastalığın adını yazmak için Bulgu düğmesini kullanın.') },
         carrier: { label: t('Taşıyıcı'), on: !!node.carrier, onClick: () => onUpdate(node.id, { carrier: !node.carrier }), title: t('Kişi hasta değil ama hastalığa yol açan geni taşıyor') },
         deceased: isLoss ? null : { label: t('Vefat'), on: !!node.deceased, onClick: () => onUpdate(node.id, { deceased: !node.deceased }), title: t('Kişi hayatta değil: sembolün üzerine çapraz çizgi çekilir') },
         proband: { label: t('Proband'), on: !!node.proband, onClick: () => (node.proband ? onClearProband() : onSetProband(node.id)), title: t('Ailede incelemeye yol açan ilk etkilenmiş kişi: yanında ok ve P harfi çizilir') },
+        presymptomatic: isLoss ? null : { label: t('Belirtisiz taşıyıcı'), on: !!node.presymptomatic, onClick: () => onUpdate(node.id, { presymptomatic: !node.presymptomatic }), title: t('Şu an belirtisi yok ama ileride belirti gösterebilir (çoğunlukla dominant hastalıklarda): sembolün ortasından dikey çizgi geçer, açıklamada yazılır') },
         // the consultand (clinician decisions 2026-11-01): an arrow without "P"
-        presymptomatic: isLoss ? null : { label: t('Belirtisiz\ntaşıyıcı'), on: !!node.presymptomatic, onClick: () => onUpdate(node.id, { presymptomatic: !node.presymptomatic }), title: t('Şu an belirtisi yok ama ileride belirti gösterebilir (çoğunlukla dominant hastalıklarda): sembolün ortasından dikey çizgi geçer, açıklamada yazılır') },
         consultand: isLoss || !onSetConsultand ? null : { label: t('Danışan'), on: !!node.consultand, onClick: () => (node.consultand ? onClearConsultand() : onSetConsultand(node.id)), title: t('Danışmanlık için başvuran kişi: yanında yalnız ok çizilir (P yok). Ailede bir danışan olur; proband ile aynı kişi olabilir.') },
       };
       // the clinician's order; hidden choices under "Diğer…" (Ayarlar → Halka menü)
       const available = ring.status.filter((id) => byId[id]);
       const hiddenHere = available.filter((id) => ring.hidden.includes(id));
-      const outer = [
-        ...available.filter((id) => showMore || !hiddenHere.includes(id)).map((id) => byId[id]),
-        ...(hiddenHere.length ? [{ label: showMore ? t('Daha az') : t('Diğer…'), on: false, onClick: () => setShowMore(), title: showMore ? t('Gizlediğiniz seçenekleri yeniden gizle') : t('Halka menüden gizlediğiniz seçenekler (Ayarlar → Halka menü)') }] : []),
-      ];
-      // a rainbow over the person: sex on the inner band, the rest on as few bands as fit, evenly
-      return bands(-90, [...(inner.length ? [inner] : []), ...splitRows(outer, inner.length ? 1 : 0, R)]);
+      return (
+        <>
+          {sexes.length > 0 && (
+            <div className="segmented ring-sex" role="radiogroup" aria-label={t('Cinsiyet')}>
+              {sexes.map(([v, label]) => (
+                <button key={v} role="radio" aria-checked={(node.sex || 'unknown') === v} aria-label={label} className={(node.sex || 'unknown') === v ? 'on' : undefined}
+                  onClick={() => onUpdate(node.id, { sex: v })}>{label}</button>
+              ))}
+            </div>
+          )}
+          <ChoiceList label={t('Durum')} items={[...available.filter((id) => showMore || !hiddenHere.includes(id)).map((id) => byId[id]), ...moreItem(hiddenHere)]} />
+        </>
+      );
     },
-    // Bilgiler (clinician request 2026-11-04): one choice per part, like Durum; a part opens its own box below
-    note: () => bands(90, infoRows),
-    twins: () => bands(90, [[['monozygotic', t('Tek\nyumurta')], ['dizygotic', t('Çift\nyumurta')], ['unknown', t('Bilinmiyor')]].map(([z, label]) => ({
-      label, title: `${twinGroup ? t('{name} yap', { name: multipleName(twinGroup.group.children.length + 1) }) : t('İkizini ekle')}: ${label.replace(/\n/g, ' ')}`,
-      on: twinGroup?.group.zygosity === z,
-      onClick: () => { onAddTwin(node.id, { sex: node.sex, zygosity: z }); setPanel(null); },
-    }))]),
+    // Bilgiler (clinician request 2026-11-04): one choice per part; a part opens its own box under the list
+    note: () => (
+      <>
+        <ChoiceList label={t('Bilgiler')} items={infoItems()} />
+        {infoPart && infoBoxes[infoPart] && (
+          <div className="radial-info-box">
+            {/* the part's name and where it goes; the field's own label is read aloud only */}
+            <div className="radial-panel-title">{t(RING_INFO.find((x) => x.id === infoPart).label)}
+              {INFO_WHERE[infoPart] && <span className="field-where">{t(INFO_WHERE[infoPart])}</span>}</div>
+            {infoBoxes[infoPart]}
+          </div>
+        )}
+      </>
+    ),
+    twins: () => (
+      <>
+        <span className="radial-hint">{twinGroup ? t('{name} yap: aynı gruba bir kardeş daha ekleyin. Türü:', { name: multipleName(twinGroup.group.children.length + 1) }) : t('Bu kişiye bir ikiz kardeş ekleyin. İkizlik türü:')}</span>
+        <ChoiceList label={t('İkiz')} items={[['monozygotic', t('Tek yumurta')], ['dizygotic', t('Çift yumurta')], ['unknown', t('Bilinmiyor')]].map(([z, label]) => ({
+          label, title: `${twinGroup ? t('{name} yap', { name: multipleName(twinGroup.group.children.length + 1) }) : t('İkizini ekle')}: ${label}`,
+          on: twinGroup?.group.zygosity === z,
+          onClick: () => { onAddTwin(node.id, { sex: node.sex, zygosity: z }); setPanel(null); },
+        }))} />
+      </>
+    ),
   };
   const twinsUsable = hasParents && !isLoss && !!onAddTwin;
-  const arcPanel = panel === 'status' || (panel === 'twins' && twinsUsable) || (panel === 'note' && !group);
-  const outerBox = R + 40 + 3 * (BAND_T + BAND_GAP) + 4;
+  const listPanel = panel === 'status' || (panel === 'twins' && twinsUsable) || (panel === 'note' && !group);
 
   const panels = {
     findings: (
       <FindingsPalette node={node} conditionKey={pedigreeData.conditionKey || []} compact
         onSetStatus={onSetFindingStatus} onAdd={onAddFinding} onSetStyle={onSetFindingStyle} onSetOnset={onSetFindingOnset} onRename={onRenameFinding} />
     ),
-    twins: !hasParents || isLoss || !onAddTwin ? (
+    twins: (
       <span className="radial-hint">{isLoss ? t('Düşük, ölü doğum ya da süren gebelik kaydına buradan ikiz eklenemez.') : t('İkiz eklemek için önce bu kişinin anne ve babasını ekleyin (yukarıdaki Ebeveyn düğmesi).')}</span>
-    ) : (
-      <div className="radial-panel-col">
-        <span className="radial-hint">{twinGroup ? t('{name} yap: aynı gruba bir kardeş daha ekleyin. Türü:', { name: multipleName(twinGroup.group.children.length + 1) }) : t('Bu kişiye bir ikiz kardeş ekleyin. İkizlik türü:')}</span>
-        <div className="btn-row">
-          {[['monozygotic', t('Tek yumurta')], ['dizygotic', t('Çift yumurta')], ['unknown', t('Bilinmiyor')]].map(([z, label]) => (
-            <button key={z} className="ui-btn ui-btn-sm" onClick={() => onAddTwin(node.id, { sex: node.sex, zygosity: z })}>{label}</button>
-          ))}
-        </div>
-      </div>
     ),
     // a symbol for several people: its note only (the others open from the Bilgiler band)
     note: <NoteField node={node} set={setInfo} compact />,
@@ -536,7 +560,7 @@ export default function RadialAddMenu({
           const tr = (r + R) / 2;
           return (
             <g key={k} className={`radial-sector${active === k ? ' on' : ''}${disabled[k] ? ' off' : ''}`}
-              onPointerEnter={(e) => isHover(e) && open(k)} onPointerLeave={(e) => isHover(e) && leave()}
+              onPointerEnter={(e) => isHover(e) && open(k, true)} onPointerLeave={(e) => isHover(e) && leave()}
               onClick={() => pressSector(k)} onKeyDown={(e) => pressKey(e, () => pressSector(k))} tabIndex={0}
               role="button" aria-label={t(label)} aria-disabled={!!disabled[k]}>
               <title>{disabled[k] || (k === 'top' ? t('Anne ve baba ekle') : k === 'right' ? (unions.length ? t('Başka bir eş ekle') : t('Eş ekle')) : t(label))}</title>
@@ -552,12 +576,13 @@ export default function RadialAddMenu({
       {SATELLITES.filter((s) => !group || s.key === 'note').map((s) => {
         const [x, y] = satPos(s.angle);
         const { Icon } = s;
+        // the icon on the diagonal, the name outwards (never over the ring)
         return (
-          <button key={s.key} className={`radial-sat${panel === s.key ? ' on' : ''}`} style={{ left: x, top: y }}
+          <button key={s.key} className={`radial-sat${x < 0 ? ' sat-left' : ''}${panel === s.key ? ' on' : ''}`} style={{ left: x, top: y }}
             title={satLabel(s)} aria-label={satLabel(s)} aria-expanded={panel === s.key}
             onPointerEnter={(e) => isHover(e) && openPanel(s.key)} onPointerLeave={(e) => isHover(e) && leavePanel()}
-            onClick={() => { setActive(null); setPanel(panel === s.key ? null : s.key); }}>
-            <Icon size={15} />
+            onClick={() => { setActive(null); if (panel === s.key && keptByHover(s.key)) return; setPanel(panel === s.key ? null : s.key); }}>
+            <Icon size={15} aria-hidden="true" /><span className="radial-sat-label">{satLabel(s)}</span>
           </button>
         );
       })}
@@ -609,26 +634,11 @@ export default function RadialAddMenu({
           )}
         </div>
       )}
-      {arcPanel && (
-        <svg ref={arcRef} className="radial-ring radial-arcs" width={2 * outerBox} height={2 * outerBox}
-          viewBox={`${-outerBox} ${-outerBox} ${2 * outerBox} ${2 * outerBox}`} style={{ left: -outerBox, top: -outerBox }}>
-          <g onPointerEnter={(e) => isHover(e) && keepPanel()} onPointerLeave={(e) => isHover(e) && leavePanel()}>{arcs[panel]()}</g>
-        </svg>
-      )}
-      {infoPart && infoBoxes[infoPart] && (
-        <div className="radial-panel radial-info-box" ref={popRef} style={{ left: 0, top: R + 40 + infoRows.length * (BAND_T + BAND_GAP) + 6, transform: 'translate(-50%, 0)', translate: `${nudge.x}px ${nudge.y}px` }}
-          onPointerEnter={(e) => isHover(e) && keepPanel()} onPointerLeave={(e) => isHover(e) && leavePanel()}>
-          {/* the part's name and where it goes; the field's own label is read aloud only */}
-          <div className="radial-panel-title">{t(RING_INFO.find((x) => x.id === infoPart).label)}
-            {INFO_WHERE[infoPart] && <span className="field-where">{t(INFO_WHERE[infoPart])}</span>}</div>
-          {infoBoxes[infoPart]}
-        </div>
-      )}
-      {panel && !arcPanel && (
-        <div className="radial-panel" ref={popRef} style={{ ...panelStyle(SATELLITES.find(s => s.key === panel)), translate: `${nudge.x}px ${nudge.y}px` }}
+      {panel && (
+        <div className={`radial-panel${listPanel ? ' ring-list-panel' : ''}`} ref={popRef} style={{ ...panelStyle(SATELLITES.find(s => s.key === panel)), translate: `${nudge.x}px ${nudge.y}px` }}
           onPointerEnter={(e) => isHover(e) && keepPanel()} onPointerLeave={(e) => isHover(e) && leavePanel()}>
           <div className="radial-panel-title">{satLabel(SATELLITES.find(s => s.key === panel))}</div>
-          {panels[panel]}
+          {listPanel ? lists[panel]() : panels[panel]}
         </div>
       )}
     </div>

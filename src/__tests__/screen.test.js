@@ -208,7 +208,9 @@ const button = (text, root) => buttons(root).find(b => b.textContent.trim() === 
 const select = (id) => click(drawn(id));
 const flyout = () => $('.radial-flyout');
 const flyoutText = () => (flyout() ? flyout().textContent.replace(/\s+/g, ' ') : '');
-const arcLabels = () => $$('.radial-arcs text').map(t => t.textContent);
+// the choices of Durum, Bilgiler or İkiz: a list beside the ring (clinician request 2026-11-05)
+const choiceRows = () => $$('.radial-panel .ring-choice');
+const choiceLabels = () => $$('.radial-panel .ring-sex button, .radial-panel .ring-choice').map(b => b.getAttribute('aria-label'));
 const panelText = () => ($('.editor-body') ? $('.editor-body').textContent.replace(/\s+/g, ' ') : '');
 
 describe('the ring menu', () => {
@@ -221,7 +223,7 @@ describe('the ring menu', () => {
     expect(flyoutText()).toMatch(/Evlat edinilmiş/);
     expect(flyoutText()).toMatch(/Birden çok/);
     await key('d');
-    expect(arcLabels()).toEqual(expect.arrayContaining(['Etkilenmiş', 'Taşıyıcı', 'Vefat', 'Proband', 'Danışan']));
+    expect(choiceLabels()).toEqual(expect.arrayContaining(['Etkilenmiş', 'Taşıyıcı', 'Vefat', 'Proband', 'Danışan']));
   });
 
   it('"Birden çok" in the ring adds one symbol with the number inside', async () => {
@@ -262,7 +264,7 @@ describe('the ring menu', () => {
       expect(flyoutText()).toMatch(/Gebelik/);
       await click(button('Daha az', flyout()));
       await key('d');
-      expect(arcLabels().slice(3)).toEqual(['Proband', 'Etkilenmiş', 'Taşıyıcı', 'Vefat', 'Diğer…']);
+      expect(choiceLabels().slice(3)).toEqual(['Proband', 'Etkilenmiş', 'Taşıyıcı', 'Vefat', 'Diğer…']);
       await click(button('Ayarlar'));
       const dialog = document.querySelector('.settings-dialog');
       await click([...dialog.querySelectorAll('[role="tab"]')].find(b => b.textContent.includes('Halka menü')));
@@ -664,7 +666,7 @@ describe('more of what the clinician sees', () => {
   it('in a note, Shift+Enter is a new line; Enter saves', async () => {
     await select('mother');
     await key('n');
-    await click($$('.radial-arcs .radial-arc').find(a => a.getAttribute('aria-label') === 'Not'));
+    await click(choiceRows().find(a => a.getAttribute('aria-label') === 'Not'));
     const note = $('textarea.radial-note');
     note.focus();
     await typeInto(note, 'birinci satır');
@@ -699,24 +701,23 @@ describe('more of what the clinician sees', () => {
     expect($('.radial-panel')).not.toBeNull(); // Escape ended the correction only
   });
 
-  // the Bilgiler band (clinician request 2026-11-04): one choice per part, each opening its own box
+  // Bilgiler (clinician request 2026-11-04): one choice per part, each opening its own box
   const openInfo = async (part) => {
-    if (!$('.radial-arcs')) await key('n');
-    await click($$('.radial-arcs .radial-arc').find(a => a.getAttribute('aria-label') === part));
+    if (!$('.ring-list-panel')) await key('n');
+    await click(choiceRows().find(a => a.getAttribute('aria-label') === part));
     return $('.radial-info-box');
   };
 
-  it('"Bilgiler" opens a band like Durum: Yaş, Genetik, Not (and "Ad" under "Diğer…"), read from left to right', async () => {
+  it('"Bilgiler" opens a list like Durum: Yaş, Genetik, Not (and "Ad" under "Diğer…"); what is written shows at the right', async () => {
+    await run(() => S().updateIndividual('mother', { age: '52', notes: 'Meme ca\nikinci satır' }));
     await select('mother');
     await key('n');
-    expect($('.radial-panel')).toBeNull(); // no block of fields any more
-    const arcs = $$('.radial-arcs .radial-arc');
-    expect(arcs.map(a => a.getAttribute('aria-label'))).toEqual(['Yaş', 'Genetik', 'Not', 'Diğer…']);
-    // below the person the band still reads from left to right
-    const xs = arcs.map(a => Number(a.querySelector('text').getAttribute('x')));
-    expect(xs).toEqual([...xs].sort((a, b) => a - b));
-    await click(arcs[3]);
-    expect(arcLabels()).toContain('Ad');
+    expect($('.radial-panel input, .radial-panel textarea')).toBeNull(); // no block of fields: a part opens its own box
+    const rows = choiceRows();
+    expect(rows.map(a => a.getAttribute('aria-label'))).toEqual(['Yaş', 'Genetik', 'Not', 'Diğer…']);
+    expect(rows.map(a => a.querySelector('.ring-choice-value')?.textContent || '')).toEqual(['52', '', 'Meme ca', '']);
+    await click(rows[3]);
+    expect(choiceLabels()).toContain('Ad');
     const nameBox = await openInfo('Ad');
     expect(nameBox.querySelector('.radial-panel-title').textContent).toMatch(/^Ad/);
   });
@@ -771,7 +772,7 @@ describe('more of what the clinician sees', () => {
     await typeInto(again, 'Meme ca 45 yaşında');
     await key('Enter', {}, again);
     // the part shown is marked; a second click closes its box
-    expect($$('.radial-arcs .radial-arc.on').map(a => a.getAttribute('aria-label'))).toEqual(['Not']);
+    expect($$('.radial-panel .ring-choice.on').map(a => a.getAttribute('aria-label'))).toEqual(['Not']);
     await openInfo('Not');
     expect($('.radial-info-box')).toBeNull();
   });
@@ -780,7 +781,7 @@ describe('more of what the clinician sees', () => {
     await run(() => S().addSiblingTo('proband', 'unknown', { ongoingPregnancy: true }));
     await select(g().individuals.find(i => i.ongoingPregnancy).id);
     await key('n');
-    expect(arcLabels()).toEqual(['Genetik', 'Not', 'Diğer…']);
+    expect(choiceLabels()).toEqual(['Genetik', 'Not', 'Diğer…']);
     const { useRingPrefs, DEFAULT_RING } = await import('../utils/ringPrefs');
     try {
       await select('mother');
@@ -797,24 +798,56 @@ describe('more of what the clinician sees', () => {
       await key('Escape');
       await select('mother');
       await key('n');
-      expect(arcLabels()).toEqual(['Not', 'Yaş', 'Diğer…']);
+      expect(choiceLabels()).toEqual(['Not', 'Yaş', 'Diğer…']);
     } finally {
       await run(() => useRingPrefs.getState().setRing(DEFAULT_RING));
     }
   });
 
-  it('the status bands: every word upright, each band within half the circle, the choices split evenly', async () => {
+  it('Durum: the sexes side by side, then one row per choice with a check on what is on; "Diğer…" in the same list; no bands around the ring', async () => {
+    await run(() => S().updateIndividual('mother', { affected: true }));
     await select('mother');
+    // every corner button says its name
+    expect($$('.radial-sat .radial-sat-label').map(l => l.textContent)).toEqual(['Bulgu', 'Durum', 'İkiz', 'Bilgiler']);
     await key('d');
-    const angles = $$('.radial-arcs text').map(t => Number(/rotate\((-?[\d.]+)/.exec(t.getAttribute('transform'))[1]));
-    expect(angles.length).toBeGreaterThan(5);
-    for (const a of angles) expect(Math.abs(a)).toBeLessThan(90); // upright: never turned past the vertical
-    // the "Diğer…" choices too: then seven outer choices on two bands, 4 + 3
-    await click([...$$('.radial-arcs .radial-arc')].find(a => a.textContent.includes('Diğer')));
-    const radii = $$('.radial-arcs .radial-arc text').map(t => Math.round(Math.hypot(Number(t.getAttribute('x')), Number(t.getAttribute('y')) + 5.5 * (t.querySelectorAll('tspan').length - 1))));
-    const perBand = [...radii.reduce((m, r) => m.set(r, (m.get(r) || 0) + 1), new Map()).values()];
-    expect(perBand).toEqual([3, 4, 3]);
-    for (const t of $$('.radial-arcs text')) expect(Math.abs(Number(/rotate\((-?[\d.]+)/.exec(t.getAttribute('transform'))[1]))).toBeLessThan(90);
+    expect($('.radial-arcs')).toBeNull();
+    const sexes = $$('.radial-panel .ring-sex button');
+    expect(sexes.map(b => [b.textContent, b.getAttribute('aria-checked')])).toEqual([['Erkek', 'false'], ['Kadın', 'true'], ['Bilinmiyor', 'false']]);
+    const on = () => choiceRows().filter(b => b.getAttribute('aria-pressed') === 'true').map(b => b.getAttribute('aria-label'));
+    expect(on()).toEqual(['Etkilenmiş']);
+    expect(choiceRows().find(b => b.classList.contains('on')).querySelector('.ring-check svg')).not.toBeNull();
+    await click(choiceRows().find(b => b.getAttribute('aria-label') === 'Taşıyıcı'));
+    expect(g().individuals.find(i => i.id === 'mother').carrier).toBe(true);
+    expect(on()).toEqual(['Etkilenmiş', 'Taşıyıcı']);
+    // the hidden choice comes into the same list
+    expect(choiceLabels()).not.toContain('Belirtisiz taşıyıcı');
+    await click(choiceRows().find(b => b.textContent.includes('Diğer')));
+    expect(choiceLabels()).toContain('Belirtisiz taşıyıcı');
+  });
+
+  it('a mouse that comes over a corner button opens its list, and the click that follows keeps it open', async () => {
+    await select('mother');
+    const durum = $$('.radial-sat').find(b => b.getAttribute('aria-label') === 'Durum');
+    // React's pointer enter comes from "pointerover"
+    await run(() => durum.dispatchEvent(new MouseEvent('pointerover', { bubbles: true, relatedTarget: document.body })));
+    expect($('.ring-list-panel')).not.toBeNull();
+    await click(durum);
+    expect($('.ring-list-panel')).not.toBeNull();
+    // a click later on closes it, as before
+    await click(durum);
+    expect($('.ring-list-panel')).toBeNull();
+  });
+
+  it('İkiz: the three kinds as a list; a choice adds the twin and closes the list', async () => {
+    await select('mother');
+    await key('i');
+    expect(choiceRows().map(b => b.getAttribute('aria-label'))).toEqual(['Tek yumurta', 'Çift yumurta', 'Bilinmiyor']);
+    const kids = () => g().parentChildRelationships.find(r => r.children.includes('mother')).children.length;
+    const before = kids();
+    await click(choiceRows()[1]);
+    expect(kids()).toBe(before + 1);
+    expect(g().parentChildRelationships.find(r => r.children.includes('mother')).multiples[0].zygosity).toBe('dizygotic');
+    expect($('.ring-list-panel')).toBeNull();
   });
 
   it('Ayarlar → Çizim → Sayfa zemini: squared or dotted paper is kept on this device; a download stays plain', async () => {
@@ -1159,9 +1192,9 @@ describe('NSGC 2022 additions (clinician decisions 2026-11-02) and the trimmed s
     // presymptomatic: hidden in the ring at first, under "Diğer…" in Durum
     await select('mother');
     await key('d');
-    expect(arcLabels().join(' ')).not.toMatch(/Belirtisiz/);
-    await click([...$$('.radial-arcs .radial-arc')].find(a => a.textContent.includes('Diğer')));
-    const pre = [...$$('.radial-arcs .radial-arc')].find(a => a.textContent.includes('Belirtisiz'));
+    expect(choiceLabels().join(' ')).not.toMatch(/Belirtisiz/);
+    await click(choiceRows().find(a => a.textContent.includes('Diğer')));
+    const pre = choiceRows().find(a => a.textContent.includes('Belirtisiz'));
     await click(pre);
     expect(g().individuals.find(i => i.id === 'mother').presymptomatic).toBe(true);
     expect(drawn('mother').querySelector('.presymptomatic-line')).not.toBeNull();
