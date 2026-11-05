@@ -545,6 +545,12 @@ export const usePedigreeStore = create((zSet, get) => {
      * "Konumlandır": a fresh layout of the whole pedigree, ignoring the
      * previous drawing. Undoable (restores the previous drawing).
      */
+    /**
+     * A fresh layout after a change of how the drawing is shown (the text size,
+     * Ayarlar): no edit, so nothing to undo.
+     */
+    refreshLayout: () => zSet((state) => ({ ...deriveAll(state.doc, state.ui, { reason: t('Yazı boyutu') }) })),
+
     relayout: () => zSet((state) => ({
       _history: [...(state._history || []), state.doc].slice(-MAX_UNDO_HISTORY),
       _viewHistory: [...(state._viewHistory || []), viewOf(state)].slice(-MAX_UNDO_HISTORY),
