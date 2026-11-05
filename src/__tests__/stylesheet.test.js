@@ -22,6 +22,11 @@ describe('stylesheet rules', () => {
     expect(css('ui.css')).toMatch(/focus-visible > \.pedigree-shape-sketch/);
   });
 
+  it('the ring: a Bilgiler part’s box stands beside the list (out of its flow), the list as narrow as its words', () => {
+    expect(block('ui.css', '.ring-aside')).toMatch(/position: absolute;[^}]*left: calc\(100% \+ 12px\)/);
+    expect(block('ui.css', '.radial-panel.ring-list-panel')).toMatch(/width: max-content/);
+  });
+
   it('the pulse after an edit is an animation of the screen', () => {
     expect(css('ui.css')).toMatch(/@keyframes pedigree-pulse/);
   });
