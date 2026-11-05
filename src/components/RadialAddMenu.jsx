@@ -647,10 +647,10 @@ export default function RadialAddMenu({
         </div>
       )}
       {panel && (
-        <div className={`radial-panel${listPanel ? ' ring-list-panel' : hintOnly ? ' ring-hint-panel' : ''}`} ref={popRef} style={{ ...panelStyle(SATELLITES.find(s => s.key === panel)), translate: `${nudge.x}px ${nudge.y}px` }}
+        <div className={`radial-panel${listPanel ? ' ring-list-panel' : hintOnly ? ' ring-hint-panel' : panel === 'findings' ? ' findings-panel' : ''}`} ref={popRef} style={{ ...panelStyle(SATELLITES.find(s => s.key === panel)), translate: `${nudge.x}px ${nudge.y}px` }}
           onPointerEnter={(e) => isHover(e) && keepPanel()} onPointerLeave={(e) => isHover(e) && leavePanel()}>
-          {/* a list needs no title: its button, named, stands right beside it */}
-          {!listPanel && !hintOnly && <div className="radial-panel-title">{satLabel(SATELLITES.find(s => s.key === panel))}</div>}
+          {/* a list or the findings need no title: their button, named, stands right beside them */}
+          {!listPanel && !hintOnly && panel !== 'findings' && <div className="radial-panel-title">{satLabel(SATELLITES.find(s => s.key === panel))}</div>}
           {listPanel ? lists[panel]() : panels[panel]}
         </div>
       )}
