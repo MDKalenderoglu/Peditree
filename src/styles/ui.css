@@ -187,22 +187,62 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .ui-btn-icon { width: 34px; padding: 0; }
 .btn-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 
-/* ── right panel (person editor) ── */
+/* ── right panel (person editor) ──
+   An inspector, as on a Mac or iPad (clinician 2026-11-05: "premium, calm,
+   clear"): a soft grey panel, each part a white rounded group, quiet small
+   headings, one accent for what is chosen. Words that only explain stay out
+   of the way until they are needed. */
+.editor-panel { background: var(--frame); }
 .side-header {
   position: sticky; top: 0; z-index: 2;
-  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
-  padding: 16px 16px 14px 18px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 12px 12px 16px;
+  background: color-mix(in srgb, var(--frame) 88%, transparent);
+  -webkit-backdrop-filter: saturate(1.6) blur(12px); backdrop-filter: saturate(1.6) blur(12px);
+  border-bottom: 1px solid var(--line-2);
 }
-.person-id { font-size: 26px; font-weight: 700; color: var(--ink); letter-spacing: 0.01em; line-height: 1.05; font-variant-numeric: tabular-nums; }
-.person-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
-.editor-body { padding: 4px 18px 28px; display: flex; flex-direction: column; }
-.editor-body > * + * { margin-top: 12px; }
-/* a part of the form: a title and its fields, set apart by a line, not a box */
-.card { display: flex; flex-direction: column; gap: 11px; padding-top: 14px; border-top: 1px solid var(--line-2); }
-.editor-body > .card:first-child, .editor-body > .editor-tip + .card { border-top: none; padding-top: 6px; }
-.card-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+.side-header > .ui-btn { margin-left: auto; align-self: flex-start; }
+.side-header-text { min-width: 0; }
+.person-glyph { flex: none; display: block; }
+.person-id { font-size: 21px; font-weight: 700; color: var(--ink); letter-spacing: 0.01em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.person-sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
+.person-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.person-chip { font-size: 12px; line-height: 1; padding: 4px 8px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line-2); color: var(--ink-2); white-space: nowrap; }
+.editor-body { padding: 12px 12px 28px; display: flex; flex-direction: column; gap: 12px; }
+/* a part of the form: a white rounded group */
+.card {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 12px 14px 14px; background: var(--surface);
+  border: 1px solid var(--line-2); border-radius: 12px;
+}
+.card-title { font-size: 12.5px; font-weight: 600; color: var(--muted); letter-spacing: 0.01em; }
+.card-foot { margin-top: -2px; }
+.partner-title { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink); }
+.partner-name { color: var(--muted); font-weight: 400; }
+.editor-tip { display: flex; align-items: flex-start; gap: 6px; padding: 10px 6px 10px 12px; background: var(--accent-soft); border-radius: 12px; }
+.editor-tip .field-hint { color: var(--accent-ink); }
+.editor-tip .ui-btn { flex: none; color: var(--accent-ink); }
+/* fields inside the panel: filled boxes, no frame until they are in use */
+.editor-panel .input, .editor-panel .select { background: var(--sunken); border-color: transparent; border-radius: 8px; }
+.editor-panel .input:hover:not(:disabled), .editor-panel .select:hover { border-color: var(--line); }
+.editor-panel .input:focus, .editor-panel .select:focus { background: var(--surface); border-color: var(--accent); }
+.editor-panel .field-label { font-weight: 600; color: var(--ink); }
+/* a choice of a few: the whole width, equal parts */
+.editor-panel .card > .segmented, .editor-panel .field-col > .segmented { display: flex; border-color: transparent; border-radius: 9px; }
+.editor-panel .card > .segmented > button, .editor-panel .field-col > .segmented > button { flex: 1 1 auto; padding: 5px 8px; font-size: 12.5px; }
+.editor-panel .segmented button.on { font-weight: 600; box-shadow: 0 1px 3px rgba(24, 33, 44, 0.12), inset 0 0 0 1px var(--accent-line); }
+/* a row you tap: "Diğer bilgiler", "Kişiyi sil" */
+.list-row {
+  display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box;
+  min-height: 42px; padding: 0 14px; font: inherit; font-size: 13.5px; font-weight: 600; text-align: left;
+  background: var(--surface); color: var(--ink-2); border: 1px solid var(--line-2); border-radius: 12px; cursor: pointer;
+}
+.list-row > span { flex: 1; }
+.list-row svg { flex: none; color: var(--faint); }
+.list-row:hover { background: var(--sunken); }
+.list-row:focus-visible { outline: none; box-shadow: var(--focus); border-color: var(--accent); }
+.list-row-danger, .list-row-danger svg { color: var(--danger); }
+.list-row-danger:hover { background: var(--danger-soft); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
   font: inherit; font-size: 13px; padding: 5px 11px; border-radius: 999px;
@@ -214,7 +254,6 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .add-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
 .add-grid .ui-btn { padding: 0 6px; }
 .muted { color: var(--muted); }
-.editor-tip { margin-top: 14px; padding: 2px 0 2px 12px; border-left: 3px solid var(--accent); color: var(--ink-2); }
 .small { font-size: 12.5px; }
 
 /* zoom controls on the canvas */
@@ -376,6 +415,7 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 /* a narrow window or a tablet in portrait: a slimmer side panel */
 @media (max-width: 1000px) {
   .app-shell.has-editor { grid-template-columns: minmax(0, 1fr) 296px; }
+  .editor-panel .card > .segmented > button, .editor-panel .field-col > .segmented > button { padding: 5px 4px; font-size: 12px; }
 }
 
 /* ── keyboard focus, visible only when the keyboard moves it ── */
