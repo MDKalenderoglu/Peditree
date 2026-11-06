@@ -413,6 +413,8 @@ const EN = {
   'Tek kısa çizgi: kendi isteğiyle çocuksuz ya da nedeni bilinmiyor': 'One short bar: childless by choice or for an unknown reason',
   'Çift kısa çizgi: kısırlık (infertilite)': 'Two short bars: infertility',
   'Anladım': 'Got it',
+  'Sonuç yazmadan: test yapıldı': 'Tested, no result written',
+  'Sonucu yazmadan testin yapıldığını işaretler; sembolün altında “test yapıldı” yazar': 'Marks the test as done without a result; “tested” appears under the symbol',
   'Yazı boyutu': 'Text size',
   'Çizimdeki bütün yazılar': 'Every text of the drawing',
   'Sembollerin altındaki yazılar, pedigri numaraları, hasta adı, açıklama ve notlar; indirilen ve yazdırılan çizimde de. Yazı büyüyünce kişiler birbirinden biraz açılır; semboller aynı boyutta kalır.': 'The text under the symbols, pedigree numbers, patient name, key and notes; in downloads and prints too. With larger text people stand a little further apart; the symbols keep their size.',
