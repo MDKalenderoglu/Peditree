@@ -429,7 +429,7 @@ const EN = {
   'Köşeli parantez içinde; evlat edinen aileden kesikli çizgi': 'In brackets; a dashed line from the adoptive parents',
   'Kayıtlarla doğrulandı': 'Records reviewed',
   'Bulgu tıbbi kayıt ya da raporla görüldü': 'The finding was seen in medical records or a report',
-  'Altında sonuç satırları; satır yoksa "test yapıldı"': 'Result lines below; "tested" when there are none',
+  'Sembolün altında sonuç satırları; satır yoksa "test yapıldı"': 'Result lines under the symbol; "tested" when there are none',
   'Donör': 'Donor',
   'Sperm ya da yumurta veren kişi': 'Gives sperm or eggs',
   'Gebeliği taşıyan, yumurtası kullanılmayan kadın': 'Carries the pregnancy; her eggs are not used',

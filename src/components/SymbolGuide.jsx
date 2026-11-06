@@ -41,7 +41,8 @@ const GROUPS = [
     [() => <><Square /><path d="M10,29L34,3" {...line} /></>, tk('Vefat'), tk('Altında ölüm yaşı: "ölüm 42 y"')],
     [() => <><Square /><path d="M16,4h-5v24h5M28,4h5v24h-5" {...line} /></>, tk('Evlat edinilmiş'), tk('Köşeli parantez içinde; evlat edinen aileden kesikli çizgi')],
     [() => <><Square /><Letter x={34} y={28} size={11}>*</Letter></>, tk('Kayıtlarla doğrulandı'), tk('Bulgu tıbbi kayıt ya da raporla görüldü')],
-    [() => <><Square /><Letter>+</Letter></>, tk('Genetik test'), tk('Altında sonuç satırları; satır yoksa "test yapıldı"')],
+    // nothing inside the symbol: the result lines stand under it (drawn here as short lines of text)
+    [() => <><Square y={11} /><path d="M12,26H32M15,31H29" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" /></>, tk('Genetik test'), tk('Sembolün altında sonuç satırları; satır yoksa "test yapıldı"')],
     [() => <><Square /><Letter>D</Letter></>, tk('Donör'), tk('Sperm ya da yumurta veren kişi')],
     [() => <><Circle /><Letter>G</Letter></>, tk('Gestasyonel taşıyıcı'), tk('Gebeliği taşıyan, yumurtası kullanılmayan kadın')],
   ]],
