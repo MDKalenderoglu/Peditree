@@ -1424,6 +1424,10 @@ describe('the Settings window (clinician request 2026-11-03)', () => {
     expect(names).toEqual(expect.arrayContaining(['Erkek', 'Kadın', 'Proband', 'Danışan', 'Etkilenmiş', 'Taşıyıcı', 'Vefat', 'Evlat edinilmiş',
       'Düşük', 'Ölü doğum (SB)', 'Akraba evliliği', 'Ayrılmış ya da boşanmış', 'Aynı köy', 'Tek yumurta ikiz']));
     for (const li of rows()) expect(li.querySelector('svg.symbol-guide-mark').children.length).toBeGreaterThan(0);
+    // as drawn: a genetic test puts nothing inside the symbol, its lines go under it
+    const genetic = rows().find(li => li.querySelector('.set-row-title').textContent === 'Genetik test');
+    expect(genetic.querySelector('svg text')).toBeNull();
+    expect(genetic.textContent).toMatch(/Sembolün altında sonuç satırları/);
     const carrier = () => rows().find(li => li.querySelector('.set-row-title').textContent === 'Taşıyıcı').querySelector('svg');
     expect(carrier().querySelector('pattern')).not.toBeNull(); // split (NSGC 2022) by default
     await run(() => views.getState().setView({ carrierMark: 'dot' }));
