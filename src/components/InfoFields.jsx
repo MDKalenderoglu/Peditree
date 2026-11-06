@@ -148,7 +148,8 @@ export function GeneticField({ node, set, individuals = [] }) {
 /**
  * The genetic result as free text (the ring; clinician request 2026-11-04:
  * no "−" / "+", just write it): each line goes under the symbol; a line
- * written marks the test done (the data's own rule, model.js). Deleting the last line keeps the
+ * written marks the test done (the data's own rule, model.js); a test done
+ * without a result is one button (clinician request 2026-11-06). Deleting the last line keeps the
  * mark ("test yapıldı" under the symbol) and says so, with a button to take
  * it away — a fact the clinician entered is never dropped unasked.
  */
@@ -181,6 +182,11 @@ export function GeneticTextField({ node, set, individuals = [] }) {
           {t('Sembolün altında “test yapıldı” yazıyor.')}{' '}
           <button className="ui-btn ui-btn-ghost ui-btn-sm" onClick={() => set({ geneticTest: '' })}>{t('Kaldır')}</button>
         </span>
+      )}
+      {/* a test done whose result is not written (yet): one tap, as "+" in the side panel (clinician request 2026-11-06) */}
+      {!tested && (
+        <button className="ui-btn ui-btn-sm" onClick={() => set({ geneticTest: GENETIC_TESTED })}
+          title={t('Sonucu yazmadan testin yapıldığını işaretler; sembolün altında “test yapıldı” yazar')}>{t('Sonuç yazmadan: test yapıldı')}</button>
       )}
       {familyNotes.length > 0 && (
         <div className="suggest-row">
