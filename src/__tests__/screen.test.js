@@ -826,6 +826,20 @@ describe('more of what the clinician sees', () => {
     expect($('.radial-info-box')).toBeNull();
   });
 
+  it('Genetik in the ring: a test done without a result is one button; "test yapıldı" under the symbol, "Kaldır" takes it back (clinician request 2026-11-06)', async () => {
+    await select('mother');
+    const m = () => g().individuals.find(i => i.id === 'mother');
+    const box = await openInfo('Genetik');
+    await click(button('Sonuç yazmadan: test yapıldı', box));
+    expect(m().geneticTest).toBe('tested');
+    expect(m().geneticNote || '').toBe('');
+    expect(drawn('mother').querySelector('.annotations').textContent).toMatch(/test yapıldı/);
+    expect(button('Sonuç yazmadan: test yapıldı', $('.radial-info-box'))).toBeUndefined();
+    await click(button('Kaldır', $('.radial-info-box')));
+    expect(m().geneticTest || '').toBe('');
+    expect(button('Sonuç yazmadan: test yapıldı', $('.radial-info-box'))).toBeDefined();
+  });
+
   it('a pregnancy\'s Bilgiler has no age; Ayarlar → Halka menü hides or orders the parts', async () => {
     await run(() => S().addSiblingTo('proband', 'unknown', { ongoingPregnancy: true }));
     await select(g().individuals.find(i => i.ongoingPregnancy).id);
