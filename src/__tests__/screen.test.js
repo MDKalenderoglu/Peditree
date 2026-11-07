@@ -615,6 +615,19 @@ describe('"Aynı köy" on the relationship line (clinician request 2026-11-05)',
   });
 });
 
+describe('a beta (clinician decision 2026-11-07)', () => {
+  it('a small "Beta" badge by the logo, its meaning in the tooltip; About says the version is a beta and where to write', async () => {
+    const badge = $('.toolbar .brand-btn .beta-badge');
+    expect(badge.textContent).toBe('Beta');
+    expect(badge.getAttribute('title')).toMatch(/Deneme sürümü/);
+    await click($('.toolbar .brand-btn'));
+    const about = $('[aria-label="PediTree hakkında"][role="dialog"]');
+    expect(about.textContent).toMatch(/Sürüm \d+\.\d+\.\d+ \(beta\)/);
+    expect(about.textContent).toMatch(/Bu bir deneme \(beta\) sürümüdür/);
+    await key('Escape');
+  });
+});
+
 describe('the page around the drawing', () => {
   it('notices sit above the drawing in the page, never over it', async () => {
     await run(() => S().clearProband()); // a soft note appears

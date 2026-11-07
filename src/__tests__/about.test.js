@@ -15,7 +15,7 @@ describe('PediTree hakkında', () => {
   it('version and build date come from package.json and the build', () => {
     expect(APP_VERSION).toBe(JSON.parse(read('package.json')).version);
     expect(BUILD_DATE).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(versionLine()).toMatch(/^Sürüm \d+\.\d+\.\d+ · \d{2}\.\d{2}\.\d{4}$/);
+    expect(versionLine()).toMatch(/^Sürüm \d+\.\d+\.\d+ \(beta\) · \d{2}\.\d{2}\.\d{4}$/); // a beta (clinician decision 2026-11-07)
   });
 
   it('the citation names the author, version and DOI, as CITATION.cff', () => {

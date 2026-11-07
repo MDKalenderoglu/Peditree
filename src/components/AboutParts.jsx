@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import { useT, useLang, tk } from '../i18n';
 import { KEY_LETTERS } from '../utils/keyboardNav';
-import { versionLine, citationText, REPOSITORY_URL, CONTACT_EMAIL, issueUrl } from '../utils/appInfo';
+import { versionLine, citationText, REPOSITORY_URL, CONTACT_EMAIL, issueUrl, RELEASE_STAGE } from '../utils/appInfo';
 import logoMark from '../assets/logo-mark.png';
 
 /** Name, version, what it is not, where the data stays. */
@@ -23,6 +23,7 @@ export function ProductInfo() {
           <div className="field-hint">{t('Genetik danışmanlık için pedigri çizimi')} · {versionLine()}</div>
         </div>
       </div>
+      {RELEASE_STAGE && <p className="share-note">{t('Bu bir deneme (beta) sürümüdür. Hata ya da eksik görürseniz “Geri bildirim” ile yazın.')}</p>}
       <p className="share-note">{t('PediTree bir çizim aracıdır, tıbbi cihaz değildir. Çizimi kullanmadan önce kontrol edin; tanı ve danışmanlık kararı klinik değerlendirmeye dayanır.')}</p>
       <p className="share-note">{t('Şimdilik çizilemeyenler: aynı cinsiyetten eşler (NSGC 2022 bunu öngörür).')}</p>
       <p className="share-note">{t('Hasta bilgisi hiçbir sunucuya gönderilmez. Çalışma yalnızca bu sekmede tutulur; “Kaydet” ile indirdiğiniz dosyalar sizin cihazınızda kalır.')}</p>
