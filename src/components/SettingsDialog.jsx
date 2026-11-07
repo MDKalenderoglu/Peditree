@@ -9,10 +9,10 @@
  * row's tooltip (clinician 2026-11-05: "minimal, premium, clear").
  */
 import { useEffect, useRef, useState } from 'react';
-import { X, Globe, Palette, CircleDot, PanelRight, FolderOpen, Shapes, Keyboard, Info } from 'lucide-react';
+import { X, Globe, Palette, Paintbrush, CircleDot, PanelRight, FolderOpen, Shapes, Keyboard, Info } from 'lucide-react';
 import { ProductInfo, CitationInfo, FeedbackInfo, LicenseInfo, KeyHelp } from './AboutParts';
 import { useT, useLang, tk } from '../i18n';
-import { useViewSettings, DRAWING_FONTS, LEGEND_SIZES } from '../utils/drawingStyle';
+import { useViewSettings, DRAWING_FONTS, LEGEND_SIZES, THEMES, RING_ALPHAS } from '../utils/drawingStyle';
 import { RingSection, PanelSection, Switch } from './RingSettings';
 import SymbolGuide from './SymbolGuide';
 import { PAPERS } from '../utils/paper';
@@ -20,6 +20,7 @@ import { CARRIER_MARKS } from '../graph/conditionKey';
 
 const SECTIONS = [
   { id: 'language', label: tk('Dil'), Icon: Globe, intro: tk('Ekran ve çizim ayrı dillerde olabilir.') },
+  { id: 'look', label: tk('Görünüm'), Icon: Paintbrush, intro: tk('Ekranın renkleri ve simidin saydamlığı; çizim ve dosyalar değişmez.') },
   { id: 'drawing', label: tk('Çizim'), Icon: Palette, intro: tk('Sembollerin ve çizgilerin anlamı hiçbir seçenekte değişmez.') },
   { id: 'ring', label: tk('Halka menü'), Icon: CircleDot, intro: tk('Sık kullandıklarınızı öne alın. Gizlenenler halkada “Diğer…” altında durur.') },
   { id: 'panel', label: tk('Yan panel'), Icon: PanelRight, intro: tk('Gizlenenler panelde “Diğer bilgiler” altında durur; bir kişide dolu olan her zaman görünür.') },
@@ -68,6 +69,24 @@ function LanguageSection() {
           options={[['same', t('Ekranla aynı')], ['tr', 'Türkçe', 'tr'], ['en', 'English', 'en']]} />
       </Row>
       <p className="set-note">{t('Yazdığınız adlar, notlar ve bulgular çevrilmez.')}</p>
+    </div>
+  );
+}
+
+/** The screens' colour theme and how see-through the ring is (clinician request 2026-11-07). */
+function LookSection() {
+  const t = useT();
+  const { view, setView } = useViewSettings();
+  return (
+    <div className="set-block">
+      <Row title={t('Renk teması')} hint={t('Sıcaktan soğuğa')}>
+        <Segmented label={t('Renk teması')} value={view.theme} onChange={(v) => setView({ theme: v })}
+          options={THEMES.map((x) => [x.id, <><span className="theme-swatch" style={{ background: x.swatch }} aria-hidden="true" />{t(x.label)}</>])} />
+      </Row>
+      <Row title={t('Simidin saydamlığı')} hint={t('Arkadaki çizim ne kadar görünsün')}>
+        <Segmented label={t('Simidin saydamlığı')} value={view.ringAlpha} onChange={(v) => setView({ ringAlpha: v })}
+          options={RING_ALPHAS.map((x) => [x.id, t(x.label)])} />
+      </Row>
     </div>
   );
 }
@@ -154,7 +173,7 @@ function AboutSection() {
   );
 }
 
-const BODY = { language: LanguageSection, drawing: DrawingSection, ring: RingSection, panel: PanelSection, files: FilesSection, symbols: SymbolGuide, keys: KeyHelp, about: AboutSection };
+const BODY = { language: LanguageSection, look: LookSection, drawing: DrawingSection, ring: RingSection, panel: PanelSection, files: FilesSection, symbols: SymbolGuide, keys: KeyHelp, about: AboutSection };
 
 export default function SettingsDialog({ onClose, initial = 'language' }) {
   const t = useT();

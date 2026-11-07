@@ -33,6 +33,15 @@ describe('stylesheet rules', () => {
     expect(css('ui.css')).toMatch(/prefers-reduced-motion: reduce\) \{ \.keys-popover, \.radial-flyout, \.radial-panel, \.ring-aside, \.relation-dialog, \.relation-backdrop \{ animation: none; \}/);
   });
 
+  it('the ring: its lists and findings are separate soft pills on no sheet of their own, every part as see-through as chosen; four colour themes beside Standart', () => {
+    expect(block('ui.css', '.radial-panel.ring-list-panel, .radial-panel.findings-panel')).toMatch(/background: none; border: none; box-shadow: none/);
+    expect(css('ui.css')).toMatch(/\.ring-list-panel \.ring-row > \.ring-choice \{[^}]*border-radius: 999px/);
+    expect(css('ui.css')).toMatch(/\.findings-panel \.finding-row \{[^}]*border-radius: 999px/);
+    expect(css('ui.css')).toMatch(/background: rgba\(255, 255, 255, var\(--ring-alpha\)\)/);
+    expect(css('ui.css')).toMatch(/\.radial-sector path \{ fill: rgba\(255, 255, 255, var\(--ring-alpha\)\)/);
+    for (const theme of ['amber', 'rose', 'teal', 'ice']) expect(css('ui.css')).toMatch(new RegExp(`:root\\[data-theme="${theme}"\\] \\{ --accent: #`));
+  });
+
   it('the pulse after an edit is an animation of the screen', () => {
     expect(css('ui.css')).toMatch(/@keyframes pedigree-pulse/);
   });
