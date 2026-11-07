@@ -74,9 +74,10 @@ export const fontById = (id) => DRAWING_FONTS.find(f => f.id === id) || DRAWING_
 // name, the key and the notes (clinician requests 2026-10-30, 2026-11-05); the layout gives larger text more room
 // paper: the page under the drawing on screen (paper.js; clinician request 2026-11-03)
 // carrierMark: a carrier without a named finding, half (NSGC 2022) or dot (conditionKey.js CARRIER_MARKS; 2026-11-04)
-// theme: the screens' accent colour, warm to cool (THEMES); ringAlpha: how see-through the ring's parts are (RING_ALPHAS)
-// (clinician request 2026-11-07) — the look of the screen only, never the drawing or a file
-export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringAlpha: 'low' };
+// theme: the screens' accent colour, warm to cool (THEMES); ringClear: how see-through the ring's parts are, in %
+// (RING_CLEAR); panelWidth: the side panel's width in px, dragged at its edge, 0 = the usual width (PANEL_WIDTH)
+// (clinician requests 2026-11-07) — the look of the screen only, never the drawing or a file
+export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringClear: 5, panelWidth: 0 };
 
 /** Colour themes, warm to cool; Standart is the indigo palette (ui.css :root[data-theme]). */
 export const THEMES = [
@@ -86,14 +87,24 @@ export const THEMES = [
   { id: 'teal', label: tk('Deniz'), swatch: '#0f6e6a' },
   { id: 'ice', label: tk('Buz'), swatch: '#2f5d8c' },
 ];
-/** How much of the drawing shows through the ring's parts: none … much. */
-export const RING_ALPHAS = [
-  { id: 'solid', label: tk('Hiç'), alpha: 1 },
-  { id: 'low', label: tk('Az'), alpha: 0.88 },
-  { id: 'mid', label: tk('Orta'), alpha: 0.72 },
-  { id: 'high', label: tk('Çok'), alpha: 0.55 },
-];
-export const ringAlphaOf = (view) => (RING_ALPHAS.find((a) => a.id === view.ringAlpha) || RING_ALPHAS[1]).alpha;
+/**
+ * How much of the drawing shows through the ring's parts, in %: 0 (none) to 60, in steps of 5
+ * (clinician request 2026-11-07: no words, more levels, one step at a time, seen while it is set).
+ */
+export const RING_CLEAR = { min: 0, max: 60, step: 5 };
+const OLD_RING_ALPHA = { solid: 0, low: 10, mid: 30, high: 45 }; // the four words of the first version
+const clearOf = (o) => {
+  if (Number.isFinite(o.ringClear)) {
+    const v = Math.round(o.ringClear / RING_CLEAR.step) * RING_CLEAR.step;
+    return Math.min(RING_CLEAR.max, Math.max(RING_CLEAR.min, v));
+  }
+  return o.ringAlpha in OLD_RING_ALPHA ? OLD_RING_ALPHA[o.ringAlpha] : DEFAULT_VIEW.ringClear;
+};
+export const ringAlphaOf = (view) => 1 - clearOf(view) / 100;
+/** The side panel's width: dragged between these; 0 keeps the usual width (ui.css). */
+export const PANEL_WIDTH = { min: 280, max: 560 };
+const panelWidthOf = (o) => (Number.isFinite(o.panelWidth) && o.panelWidth > 0
+  ? Math.min(PANEL_WIDTH.max, Math.max(PANEL_WIDTH.min, Math.round(o.panelWidth))) : 0);
 
 /**
  * Text sizes. The key and notes lie outside the family; the text under the
@@ -130,7 +141,8 @@ export function normalizeView(v) {
     paper: PAPERS.some(p => p.id === o.paper) ? o.paper : 'plain',
     carrierMark: CARRIER_MARKS.some(m => m.id === o.carrierMark) ? o.carrierMark : 'split',
     theme: THEMES.some(x => x.id === o.theme) ? o.theme : 'indigo',
-    ringAlpha: RING_ALPHAS.some(x => x.id === o.ringAlpha) ? o.ringAlpha : 'low',
+    ringClear: clearOf(o),
+    panelWidth: panelWidthOf(o),
   };
 }
 
