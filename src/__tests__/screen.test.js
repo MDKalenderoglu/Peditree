@@ -826,18 +826,18 @@ describe('more of what the clinician sees', () => {
     expect($('.radial-info-box')).toBeNull();
   });
 
-  it('Genetik in the ring: a test done without a result is one button; "test yapıldı" under the symbol, "Kaldır" takes it back (clinician request 2026-11-06)', async () => {
+  it('Genetik in the ring: "Test sonucu bekleniyor" writes that line in one tap; the line is corrected when the result comes (clinician requests 2026-11-06, 2026-11-07)', async () => {
     await select('mother');
     const m = () => g().individuals.find(i => i.id === 'mother');
     const box = await openInfo('Genetik');
-    await click(button('Sonuç yazmadan: test yapıldı', box));
+    await click(button('Test sonucu bekleniyor', box));
     expect(m().geneticTest).toBe('tested');
-    expect(m().geneticNote || '').toBe('');
-    expect(drawn('mother').querySelector('.annotations').textContent).toMatch(/test yapıldı/);
-    expect(button('Sonuç yazmadan: test yapıldı', $('.radial-info-box'))).toBeUndefined();
-    await click(button('Kaldır', $('.radial-info-box')));
-    expect(m().geneticTest || '').toBe('');
-    expect(button('Sonuç yazmadan: test yapıldı', $('.radial-info-box'))).toBeDefined();
+    expect(m().geneticNote).toBe('sonuç bekleniyor');
+    expect(drawn('mother').querySelector('.annotations').textContent).toMatch(/sonuç bekleniyor/);
+    // a line is there: no button; the line itself is corrected
+    expect(button('Test sonucu bekleniyor', $('.radial-info-box'))).toBeUndefined();
+    const line = $('.radial-info-box input[aria-label="Genetik sonuç 1"]');
+    expect(line.value).toBe('sonuç bekleniyor');
   });
 
   it('a pregnancy\'s Bilgiler has no age; Ayarlar → Halka menü hides or orders the parts', async () => {
