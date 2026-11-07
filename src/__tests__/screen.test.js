@@ -1096,6 +1096,8 @@ describe('the About window (the logo), Atıf and Geri bildirim (clinician reques
     const cite = $('[data-popup="cite"] [role="dialog"]');
     expect(cite.querySelector('.about-cite').textContent).toBe(citationText());
     expect(buttons(cite).some(b => b.textContent === 'Atfı kopyala')).toBe(true);
+    // the request reads plainly, no "şöyle" (clinician 2026-11-07); the citation follows it
+    expect(cite.textContent).toMatch(/kullandıysanız atıf yapmanız rica edilir:/);
     await key('Escape');
     expect($('[data-popup="cite"] [role="dialog"]')).toBeNull();
     await click(button('Geri bildirim'));
