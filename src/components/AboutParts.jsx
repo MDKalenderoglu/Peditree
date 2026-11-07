@@ -53,7 +53,7 @@ export function CitationInfo({ title = true }) {
   return (
     <>
       {title && <div className="more-title">{t('Atıf')}</div>}
-      <p className="share-note">{t('PediTree ile çizdiğiniz pedigriler sizindir. Bir yayında, sunumda ya da eğitim materyalinde kullandıysanız şöyle atıf yapmanız rica edilir:')}</p>
+      <p className="share-note">{t('PediTree ile çizdiğiniz pedigriler sizindir. Bir yayında, sunumda ya da eğitim materyalinde kullandıysanız atıf yapmanız rica edilir:')}</p>
       <p className="about-cite">{citationText()}</p>
       <button className="ui-btn" onClick={copy}>{copied ? t('Kopyalandı') : t('Atfı kopyala')}</button>
     </>

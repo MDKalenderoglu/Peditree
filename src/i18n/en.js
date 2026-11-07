@@ -73,7 +73,7 @@ const EN = {
   'Hasta bilgisi hiçbir sunucuya gönderilmez. Çalışma yalnızca bu sekmede tutulur; “Kaydet” ile indirdiğiniz dosyalar sizin cihazınızda kalır.':
     'No patient information is sent to any server. Your work is kept only in this tab; the files you download with “Save” stay on your device.',
   'Atıf': 'Citation',
-  'PediTree ile çizdiğiniz pedigriler sizindir. Bir yayında, sunumda ya da eğitim materyalinde kullandıysanız şöyle atıf yapmanız rica edilir:':
+  'PediTree ile çizdiğiniz pedigriler sizindir. Bir yayında, sunumda ya da eğitim materyalinde kullandıysanız atıf yapmanız rica edilir:':
     'The pedigrees you draw with PediTree are yours. If you use one in a publication, talk or teaching material, please cite:',
   'Kopyalandı': 'Copied',
   'Atfı kopyala': 'Copy the citation',
