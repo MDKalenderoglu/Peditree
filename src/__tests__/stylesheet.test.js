@@ -42,6 +42,12 @@ describe('stylesheet rules', () => {
     for (const theme of ['amber', 'rose', 'teal', 'ice']) expect(css('ui.css')).toMatch(new RegExp(`:root\\[data-theme="${theme}"\\] \\{ --accent: #`));
   });
 
+  it('the side panel takes the width dragged at its edge; panel and edge share one grid cell, placed explicitly (else the edge pushes the panel out of its column)', () => {
+    expect(block('ui.css', '.app-shell.has-editor')).toMatch(/var\(--panel-w, 328px\)/);
+    expect(block('ui.css', '.app-shell > .side-right')).toMatch(/grid-row: 2; grid-column: 2/);
+    expect(block('ui.css', '.panel-resizer')).toMatch(/grid-row: 2; grid-column: 2;[^}]*cursor: col-resize/);
+  });
+
   it('the pulse after an edit is an animation of the screen', () => {
     expect(css('ui.css')).toMatch(/@keyframes pedigree-pulse/);
   });

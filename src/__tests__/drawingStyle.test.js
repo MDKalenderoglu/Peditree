@@ -35,7 +35,7 @@ function samplePath(d, steps = 20) {
 
 describe('drawing style settings', () => {
   it('starts standard, with plain pedigree numbers and exports as on screen; the carrier as NSGC 2022 draws it', () => {
-    expect(DEFAULT_VIEW).toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringAlpha: 'low' });
+    expect(DEFAULT_VIEW).toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringClear: 5, panelWidth: 0 });
     expect(drawingSpec(DEFAULT_VIEW)).toMatchObject({ hand: false, family: STANDARD_FAMILY, k: 1, numberK: 1 });
   });
 
@@ -52,8 +52,16 @@ describe('drawing style settings', () => {
   });
 
   it('keeps only known values from storage', () => {
-    expect(normalizeView({ drawStyle: 'crayon', fontId: 'comic', plainNumbers: 'no', exportAs: 'x', openHelp: 'maybe', legendSize: 'huge', paper: 'tartan', carrierMark: 'star', theme: 'neon', ringAlpha: 'glass' }))
-      .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringAlpha: 'low' });
+    expect(normalizeView({ drawStyle: 'crayon', fontId: 'comic', plainNumbers: 'no', exportAs: 'x', openHelp: 'maybe', legendSize: 'huge', paper: 'tartan', carrierMark: 'star', theme: 'neon', ringAlpha: 'glass', panelWidth: 'wide' }))
+      .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringClear: 5, panelWidth: 0 });
+    // the ring's transparency in steps of 5 % within 0–60; the four words of the first version carried over
+    expect(normalizeView({ ringClear: 7 }).ringClear).toBe(5);
+    expect(normalizeView({ ringClear: 99 }).ringClear).toBe(60);
+    expect(normalizeView({ ringAlpha: 'mid' }).ringClear).toBe(30);
+    expect(normalizeView({ ringAlpha: 'solid' }).ringClear).toBe(0);
+    // the side panel's width within 280–560 px
+    expect(normalizeView({ panelWidth: 900 }).panelWidth).toBe(560);
+    expect(normalizeView({ panelWidth: 300.4 }).panelWidth).toBe(300);
     expect(normalizeView({ paper: 'dots' }).paper).toBe('dots');
     expect(normalizeView({ carrierMark: 'dot' }).carrierMark).toBe('dot');
     // "Bir daha gösterme" (Aç) is kept

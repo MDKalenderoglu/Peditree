@@ -9,10 +9,10 @@
  * row's tooltip (clinician 2026-11-05: "minimal, premium, clear").
  */
 import { useEffect, useRef, useState } from 'react';
-import { X, Globe, Palette, Paintbrush, CircleDot, PanelRight, FolderOpen, Shapes, Keyboard, Info } from 'lucide-react';
+import { X, Globe, Palette, Paintbrush, CircleDot, PanelRight, FolderOpen, Shapes, Keyboard, Info, Minus, Plus } from 'lucide-react';
 import { ProductInfo, CitationInfo, FeedbackInfo, LicenseInfo, KeyHelp } from './AboutParts';
 import { useT, useLang, tk } from '../i18n';
-import { useViewSettings, DRAWING_FONTS, LEGEND_SIZES, THEMES, RING_ALPHAS } from '../utils/drawingStyle';
+import { useViewSettings, DRAWING_FONTS, LEGEND_SIZES, THEMES, RING_CLEAR } from '../utils/drawingStyle';
 import { RingSection, PanelSection, Switch } from './RingSettings';
 import SymbolGuide from './SymbolGuide';
 import { PAPERS } from '../utils/paper';
@@ -84,9 +84,31 @@ function LookSection() {
           options={THEMES.map((x) => [x.id, <><span className="theme-swatch" style={{ background: x.swatch }} aria-hidden="true" />{t(x.label)}</>])} />
       </Row>
       <Row title={t('Simidin saydamlığı')} hint={t('Arkadaki çizim ne kadar görünsün')}>
-        <Segmented label={t('Simidin saydamlığı')} value={view.ringAlpha} onChange={(v) => setView({ ringAlpha: v })}
-          options={RING_ALPHAS.map((x) => [x.id, t(x.label)])} />
+        <RingClear value={view.ringClear} onChange={(v) => setView({ ringClear: v })} />
       </Row>
+      {/* how it looks, at once: a part of the ring over a few lines of a drawing */}
+      <div className="ring-preview" aria-hidden="true">
+        <svg viewBox="0 0 240 64" preserveAspectRatio="none"><path d="M0,22H240M60,0V64M180,8V64M150,44H240" /></svg>
+        <span className="ring-preview-pill">{t('Kardeş')}</span>
+        <span className="ring-preview-pill">{t('Durum')}</span>
+      </div>
+    </div>
+  );
+}
+
+/** − and + one step at a time, or the slider; the value in % (clinician request 2026-11-07). */
+function RingClear({ value, onChange }) {
+  const t = useT();
+  const step = (d) => onChange(Math.min(RING_CLEAR.max, Math.max(RING_CLEAR.min, value + d * RING_CLEAR.step)));
+  return (
+    <div className="ring-clear">
+      <button className="ui-btn ui-btn-icon ui-btn-sm" onClick={() => step(-1)} disabled={value <= RING_CLEAR.min}
+        aria-label={t('Daha az saydam')} title={t('Daha az saydam')}><Minus size={14} /></button>
+      <input type="range" min={RING_CLEAR.min} max={RING_CLEAR.max} step={RING_CLEAR.step} value={value}
+        aria-label={t('Simidin saydamlığı')} aria-valuetext={`%${value}`} onChange={(e) => onChange(Number(e.target.value))} />
+      <button className="ui-btn ui-btn-icon ui-btn-sm" onClick={() => step(1)} disabled={value >= RING_CLEAR.max}
+        aria-label={t('Daha saydam')} title={t('Daha saydam')}><Plus size={14} /></button>
+      <output className="ring-clear-value">%{value}</output>
     </div>
   );
 }

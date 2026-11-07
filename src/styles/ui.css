@@ -75,7 +75,14 @@ button, input, select, textarea { font-family: inherit; }
   height: 100vh;
 }
 .app-shell > .toolbar { grid-column: 1 / -1; }
-.app-shell.has-editor { grid-template-columns: minmax(0, 1fr) 328px; }
+.app-shell.has-editor { grid-template-columns: minmax(0, 1fr) var(--panel-w, 328px); }
+/* the edge between the drawing and the side panel, dragged to resize the panel (App PanelResizer; 2026-11-07) */
+/* the panel and its edge share the second column of the second row (explicit, or the edge would push the panel away) */
+.app-shell > .side-right { grid-row: 2; grid-column: 2; }
+.panel-resizer { grid-row: 2; grid-column: 2; justify-self: start; position: relative; z-index: 6; width: 10px; margin-left: -5px; cursor: col-resize; touch-action: none; }
+.panel-resizer::after { content: ''; position: absolute; top: 0; bottom: 0; left: 4px; width: 2px; background: transparent; transition: background 0.15s; }
+.panel-resizer:hover::after, .panel-resizer:focus-visible::after { background: var(--accent-line); }
+.panel-resizer:focus-visible { outline: none; }
 .side {
   background: var(--surface);
   overflow-y: auto;
@@ -131,6 +138,14 @@ button, input, select, textarea { font-family: inherit; }
 :root[data-theme="rose"] { --accent: #a8324f; --accent-ink: #86243e; --accent-soft: #fbeef2; --accent-line: rgba(168, 50, 79, 0.30); --focus: 0 0 0 3px rgba(168, 50, 79, 0.20); --select: #c23b5e; }
 :root[data-theme="teal"] { --accent: #0f6e6a; --accent-ink: #0a5552; --accent-soft: #e7f4f3; --accent-line: rgba(15, 110, 106, 0.30); --focus: 0 0 0 3px rgba(15, 110, 106, 0.20); --select: #12817c; }
 :root[data-theme="ice"] { --accent: #2f5d8c; --accent-ink: #234870; --accent-soft: #ecf2f9; --accent-line: rgba(47, 93, 140, 0.30); --focus: 0 0 0 3px rgba(47, 93, 140, 0.20); --select: #3a6fa6; }
+/* Ayarlar → Görünüm: the ring's transparency, − / slider / +, and how it looks at once */
+.ring-clear { display: flex; align-items: center; gap: 6px; }
+.ring-clear input[type="range"] { width: 140px; accent-color: var(--accent); }
+.ring-clear-value { min-width: 36px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.ring-preview { position: relative; height: 64px; margin: 0 0 12px; border-radius: 10px; overflow: hidden; background: var(--paper); border: 1px solid var(--line-2); display: flex; align-items: center; justify-content: center; gap: 12px; }
+.ring-preview svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ring-preview path { stroke: var(--ink); stroke-width: 2; fill: none; }
+.ring-preview-pill { position: relative; padding: 7px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
 .theme-swatch { display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; border-radius: 50%; }
 
 .toolbar .btn-label.folded, .toolbar .btn-label.icon-only {
@@ -413,7 +428,7 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .ring-list-panel .ring-choices, .findings-panel .findings-list, .findings-panel .findings { gap: 6px; }
 .ring-list-panel > .ring-sex, .ring-list-panel .ring-row > .ring-choice, .ring-aside, .ring-hint-panel,
 .findings-panel .finding-row, .findings-panel .finding-new, .findings-panel .finding-limit, .findings-panel > .findings > .style-picker,
-.radial-sat, .radial-flyout, .radial-panel:not(.ring-list-panel):not(.findings-panel) {
+.radial-sat, .radial-flyout, .radial-panel:not(.ring-list-panel):not(.findings-panel), .ring-preview-pill {
   background: rgba(255, 255, 255, var(--ring-alpha));
   -webkit-backdrop-filter: blur(calc((1 - var(--ring-alpha)) * 6px)); backdrop-filter: blur(calc((1 - var(--ring-alpha)) * 6px));
   border: 1px solid rgba(25, 40, 61, 0.08); box-shadow: 0 2px 10px rgba(25, 40, 61, 0.10);
@@ -493,7 +508,7 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 }
 /* a narrow window or a tablet in portrait: a slimmer side panel */
 @media (max-width: 1000px) {
-  .app-shell.has-editor { grid-template-columns: minmax(0, 1fr) 296px; }
+  .app-shell.has-editor { grid-template-columns: minmax(0, 1fr) var(--panel-w, 296px); }
   .editor-panel .card > .segmented > button, .editor-panel .field-col > .segmented > button { padding: 5px 4px; font-size: 12px; }
 }
 
