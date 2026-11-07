@@ -6,6 +6,9 @@ import pkg from '../../package.json';
 import { t } from '../i18n';
 
 export const APP_VERSION = pkg.version;
+// the stage the app is offered in (clinician decision 2026-11-07: a beta, tried by real users);
+// '' once it is 1.0 — the badge by the logo and "(beta)" in the version line follow it
+export const RELEASE_STAGE = 'beta';
 // set by vite.config.js (dev server and build); empty where it is not defined
 // eslint-disable-next-line no-undef
 export const BUILD_DATE = typeof __BUILD_DATE__ === 'string' ? __BUILD_DATE__ : '';
@@ -23,8 +26,8 @@ const shortDate = (iso) => {
   return y && m && d ? `${d}.${m}.${y}` : '';
 };
 
-/** "Sürüm 0.9.0 · 30.10.2026" */
-export const versionLine = () => [t('Sürüm {v}', { v: APP_VERSION }), shortDate(BUILD_DATE)].filter(Boolean).join(' · ');
+/** "Sürüm 0.9.0 (beta) · 30.10.2026" */
+export const versionLine = () => [`${t('Sürüm {v}', { v: APP_VERSION })}${RELEASE_STAGE ? ` (${t('beta')})` : ''}`, shortDate(BUILD_DATE)].filter(Boolean).join(' · ');
 
 /** The citation (Vancouver style, as CITATION.cff), in English like the papers it goes into. */
 export const citationText = () =>
