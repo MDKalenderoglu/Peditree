@@ -10,7 +10,7 @@
  * was made carrier); a hand toggle takes over (ops.updatePerson).
  */
 import { commit, block } from './ops';
-import { normalizeAge, AGE_EXAMPLE } from '../utils/age';
+import { normalizeAge } from '../utils/age';
 import { normLabel, keyEntry, styleTaken, keyFull, KEY_FULL_MESSAGE, rightSideFindings, REGIONS, FILLS } from './conditionKey';
 import { t } from '../i18n';
 
@@ -118,8 +118,11 @@ export function setFindingOnset(doc, personId, label, onset) {
     if (!p) block(t('Birey grafikte bulunamadı.'));
     const c = (p.conditions || []).find((x) => x && normLabel(x.label) === normLabel(label));
     if (!c) block(t('Bu kişide bu bulgu yok.'));
+    // read like an age when it is one ("3AY" → "3 ay"); otherwise kept as written, free text such as
+    // "çocuklukta" (clinician request 2026-11-07; it is only shown in the notes)
     const age = normalizeAge(onset);
-    if (age === null) block(t('Tanı yaşı anlaşılamadı: "{onset}" ({AGE_EXAMPLE}).', { onset, AGE_EXAMPLE }));
-    if (age) c.onsetAge = age; else delete c.onsetAge;
+    const text = String(onset || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    const value = age || (age === null ? text : '');
+    if (value) c.onsetAge = value; else delete c.onsetAge;
   });
 }

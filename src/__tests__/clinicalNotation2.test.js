@@ -64,14 +64,13 @@ describe('genetic test status (clinician decision 2026-10-27: "−" none, "+" do
 // moved to screen.test.js: an empty click steps back one level
 
 describe('diagnosis age of a finding', () => {
-  it('set per person and finding, read like an age, refused when unreadable', () => {
+  it('set per person and finding, read like an age when it is one, otherwise kept as written (free text, clinician 2026-11-07)', () => {
     S().resetPedigree();
     S().addFinding('mother', 'Miyop', null);
     S().setFindingOnset('mother', 'Miyop', '3AY');
     expect(P('mother').conditions[0].onsetAge).toBe('3 ay');
-    const before = S().doc;
-    S().setFindingOnset('mother', 'Miyop', '12a');
-    expect(S().doc).toBe(before);
+    S().setFindingOnset('mother', 'Miyop', '  çocuklukta ');
+    expect(P('mother').conditions[0].onsetAge).toBe('çocuklukta');
     S().setFindingOnset('mother', 'Miyop', '');
     expect(P('mother').conditions[0].onsetAge).toBeUndefined();
   });
