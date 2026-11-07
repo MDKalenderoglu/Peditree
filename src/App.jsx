@@ -23,6 +23,7 @@ import { clinicalNamer } from './utils/clinicalNotices';
 import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, ringAlphaOf } from './utils/drawingStyle';
 import { ProductInfo, LicenseInfo, CitationInfo, FeedbackInfo } from './components/AboutParts';
 import { nameCase } from './utils/nameCase';
+import { RELEASE_STAGE } from './utils/appInfo';
 import { fitToolbar } from './utils/toolbarFit';
 import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2 } from 'lucide-react';
 import './styles/app.css';
@@ -575,6 +576,8 @@ function App() {
               <img className="brand-wordmark" src={logoWordmark} alt="PediTree" height="20" />
               <span className="brand-sub" data-fold-order="1">{t('Klinik pedigri')}</span>
             </span>
+            {/* a small badge, never folded (clinician decision 2026-11-07) */}
+            {RELEASE_STAGE && <span className="beta-badge" title={t('Deneme sürümü: geri bildiriminiz değerli')}>{t('Beta')}</span>}
           </button>
           {aboutOpen && (
             <div className="keys-popover share-popover about-popover about-text" role="dialog" aria-label={t('PediTree hakkında')}>
