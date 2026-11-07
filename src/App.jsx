@@ -20,7 +20,7 @@ import SettingsDialog from './components/SettingsDialog';
 import RelationChooser from './components/RelationChooser';
 import { withGeneticLine, subjectOf, adoptionOf, ancestorsOf, REPRO_LABEL, EGG_SOURCE, CARRIER_ROLES, ART_DONOR_RELATION, isPregnancy } from './graph/model';
 import { clinicalNamer } from './utils/clinicalNotices';
-import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, ringAlphaOf } from './utils/drawingStyle';
+import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, ringAlphaOf, PANEL_WIDTH } from './utils/drawingStyle';
 import { ProductInfo, LicenseInfo, CitationInfo, FeedbackInfo } from './components/AboutParts';
 import { nameCase } from './utils/nameCase';
 import { RELEASE_STAGE } from './utils/appInfo';
@@ -31,6 +31,42 @@ import './styles/ui.css';
 // the clinician's logo (docs/brand/peditree-logo.webp): the tree, and the name in its own lettering
 import logoMark from './assets/logo-mark.png';
 import logoWordmark from './assets/logo-wordmark.png';
+
+/**
+ * The edge between the drawing and the side panel: drag it to make the panel wider or narrower
+ * (clinician request 2026-11-07), or use ← / → with the keyboard; a double click brings back the usual
+ * width. The width is a preference of this device (drawingStyle.js panelWidth).
+ */
+function PanelResizer({ shellRef, width, onChange }) {
+  const t = useT();
+  const usual = () => (shellRef.current ? shellRef.current.querySelector('.side-right')?.getBoundingClientRect().width : 0) || 328;
+  const clamp = (w) => Math.min(PANEL_WIDTH.max, Math.max(PANEL_WIDTH.min, Math.round(w)));
+  const drag = (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+    const handle = e.currentTarget;
+    if (handle.setPointerCapture && e.pointerId !== undefined) handle.setPointerCapture(e.pointerId);
+    const move = (ev) => {
+      const right = shellRef.current ? shellRef.current.getBoundingClientRect().right : window.innerWidth;
+      onChange(clamp(right - ev.clientX));
+    };
+    const stop = () => { handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', stop); handle.removeEventListener('pointercancel', stop); };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', stop);
+    handle.addEventListener('pointercancel', stop);
+  };
+  return (
+    <div className="panel-resizer" role="separator" aria-orientation="vertical" tabIndex={0}
+      aria-label={t('Yan panelin genişliği')} title={t('Sürükleyerek genişletin ya da daraltın; çift tıklayınca eski genişliğine döner')}
+      aria-valuemin={PANEL_WIDTH.min} aria-valuemax={PANEL_WIDTH.max} aria-valuenow={width || undefined}
+      onPointerDown={drag} onDoubleClick={() => onChange(0)}
+      onKeyDown={(e) => {
+        // the arrows size the panel here; they do not also move the selection (keyboardNav)
+        if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); onChange(clamp((width || usual()) + 16)); }
+        if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); onChange(clamp((width || usual()) - 16)); }
+      }} />
+  );
+}
 
 function App() {
   const {
@@ -119,6 +155,7 @@ function App() {
   const svgRef = React.useRef(null);
   // the top bar keeps to one row: words fold to icons as the window narrows (toolbarFit.js)
   const toolbarRef = React.useRef(null);
+  const shellRef = React.useRef(null); // the page's grid: the side panel's edge is dragged against it
   React.useLayoutEffect(() => {
     const el = toolbarRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return undefined;
@@ -560,7 +597,8 @@ function App() {
 
   return (
     <>
-    <div className={`app-shell${selectedNode || selectedNode2 ? ' has-editor' : ''}`}>
+    <div className={`app-shell${selectedNode || selectedNode2 ? ' has-editor' : ''}`} ref={shellRef}
+      style={view.panelWidth ? { '--panel-w': `${view.panelWidth}px` } : undefined}>
 
       {/* KI-5/KI-6: toolbar and notices sit in normal flow ABOVE the canvas —
           they can no longer cover pedigree symbols, and the toolbar wraps on
@@ -880,6 +918,9 @@ function App() {
         </div>
       </div>
 
+      {(selectedNode || selectedNode2) && (
+        <PanelResizer shellRef={shellRef} width={view.panelWidth} onChange={(w) => setView({ panelWidth: w })} />
+      )}
       <aside className="side side-right editor-panel">
         <IndividualEditor
           node={selectedNode}

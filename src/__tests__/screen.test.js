@@ -615,6 +615,27 @@ describe('"Aynı köy" on the relationship line (clinician request 2026-11-05)',
   });
 });
 
+describe('the side panel is as wide as the clinician drags it (clinician request 2026-11-07)', () => {
+  it('its edge is a handle: arrows widen and narrow it, a double click brings back the usual width; kept on this device', async () => {
+    const { useViewSettings: views } = await import('../utils/drawingStyle');
+    expect($('.panel-resizer')).toBeNull(); // no panel, no handle
+    await select('mother');
+    const handle = $('.panel-resizer');
+    expect(handle.getAttribute('role')).toBe('separator');
+    try {
+      await key('ArrowLeft', {}, handle);
+      expect($('.app-shell').style.getPropertyValue('--panel-w')).toBe('344px');
+      expect(JSON.parse(window.localStorage.getItem('peditree.view.v1')).panelWidth).toBe(344);
+      await key('ArrowRight', {}, handle);
+      expect($('.app-shell').style.getPropertyValue('--panel-w')).toBe('328px');
+      await run(() => handle.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })));
+      expect($('.app-shell').style.getPropertyValue('--panel-w')).toBe('');
+    } finally {
+      await run(() => views.getState().setView({ panelWidth: 0 }));
+    }
+  });
+});
+
 describe('a beta (clinician decision 2026-11-07)', () => {
   it('a small "Beta" badge by the logo, its meaning in the tooltip; About says the version is a beta and where to write', async () => {
     const badge = $('.toolbar .brand-btn .beta-badge');
@@ -1494,12 +1515,22 @@ describe('the Settings window (clinician request 2026-11-03)', () => {
       await click(button('Deniz', group('Renk teması')));
       expect(document.documentElement.getAttribute('data-theme')).toBe('teal');
       expect(JSON.parse(window.localStorage.getItem('peditree.view.v1')).theme).toBe('teal');
-      await click(button('Çok', group('Simidin saydamlığı')));
-      expect(document.documentElement.style.getPropertyValue('--ring-alpha')).toBe('0.55');
-      await click(button('Hiç', group('Simidin saydamlığı')));
+      // the transparency one step at a time, no words; the value and a preview show it (clinician 2026-11-07)
+      expect(document.documentElement.style.getPropertyValue('--ring-alpha')).toBe('0.95');
+      expect(dialog.querySelector('.ring-clear-value').textContent).toBe('%5');
+      expect(dialog.querySelectorAll('.ring-preview .ring-preview-pill')).toHaveLength(2);
+      await click(button('Daha saydam', dialog));
+      expect(document.documentElement.style.getPropertyValue('--ring-alpha')).toBe('0.9');
+      await click(button('Daha az saydam', dialog));
+      await click(button('Daha az saydam', dialog));
       expect(document.documentElement.style.getPropertyValue('--ring-alpha')).toBe('1');
+      expect(button('Daha az saydam', dialog).disabled).toBe(true);
+      const slider = dialog.querySelector('.ring-clear input[type="range"]');
+      await run(() => { const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; set.call(slider, '60'); slider.dispatchEvent(new Event('input', { bubbles: true })); });
+      expect(document.documentElement.style.getPropertyValue('--ring-alpha')).toBe('0.4');
+      expect(JSON.parse(window.localStorage.getItem('peditree.view.v1')).ringClear).toBe(60);
     } finally {
-      await run(() => views.getState().setView({ theme: 'indigo', ringAlpha: 'low' }));
+      await run(() => views.getState().setView({ theme: 'indigo', ringClear: 5 }));
     }
     expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
     await key('Escape');
