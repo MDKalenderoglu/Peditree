@@ -140,11 +140,11 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
                       onClick={() => onSetStatus(node.id, e.label, v)}>{label}</button>
                   ))}
                 </div>
-                {/* the age it was diagnosed at (shown in the notes; clinician decision 2026-10-25) */}
+                {/* the age it was diagnosed at, free text right beside the finding (shown in the notes;
+                    clinician decisions 2026-10-25, 2026-11-07) */}
                 {onSetOnset && (st === 'affected' || st === 'carrier') && (
-                  <label className="finding-onset">
-                    <span>{t('Tanı yaşı')}</span>
-                    <DraftField key={`${node.id}-${e.id}-onset`} type="text" className="input input-age" placeholder={t('12, 3 ay')} aria-label={t('Tanı yaşı')}
+                  <label className="finding-onset" title={t('Tanı yaşı: 12, 3 ay, "çocuklukta"… (notlarda yazar)')}>
+                    <DraftField key={`${node.id}-${e.id}-onset`} type="text" className="input input-age" placeholder={t('tanı yaşı')} aria-label={t('Tanı yaşı')}
                       value={(conds.find(x => normLabel(x.label) === normLabel(e.label)) || {}).onsetAge || ''}
                       onCommit={v => onSetOnset(node.id, e.label, v.trim())} />
                   </label>

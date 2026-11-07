@@ -716,6 +716,21 @@ describe('more of what the clinician sees', () => {
     expect(g().individuals.find(i => i.id === 'mother').notes).toBe('birinci satır');
   });
 
+  it('Bulgu: the age at diagnosis is written right beside the finding once it is "Var", free text too (clinician request 2026-11-07)', async () => {
+    await run(() => S().addFinding('mother', 'Miyop', null));
+    await select('mother');
+    await key('b');
+    const row = () => $$('.findings-panel .finding-row').find(r => r.textContent.includes('Miyop'));
+    const box = row().querySelector('.finding-onset input');
+    expect(box).not.toBeNull(); // added as "Var": the box is in the finding's own row
+    await typeInto(box, 'çocuklukta');
+    await key('Enter', {}, box);
+    expect(g().individuals.find(i => i.id === 'mother').conditions[0].onsetAge).toBe('çocuklukta');
+    expect($('.notes-legend').textContent).toMatch(/Miyop: tanı çocuklukta/);
+    await click(button('Yok', row().querySelector('.finding-state')));
+    expect($('.findings-panel .finding-onset')).toBeNull(); // "Yok": no age to write
+  });
+
   it('a finding added with a typo is corrected in the ring: a click on its name, Enter saves for everyone; Escape keeps the old name', async () => {
     await run(() => { S().addFinding('mother', 'Miyp', null); S().setFindingStatus('father', 'Miyp', 'affected'); });
     await select('mother');
@@ -1451,6 +1466,30 @@ describe('the Settings window (clinician request 2026-11-03)', () => {
     await key('Escape');
   });
 
+  it('Görünüm: five colour themes from warm to cool, Standart first chosen; the ring as see-through as chosen; kept on this device (clinician request 2026-11-07)', async () => {
+    const { useViewSettings: views } = await import('../utils/drawingStyle');
+    await click(button('Ayarlar'));
+    const dialog = document.querySelector('.settings-dialog');
+    await click([...dialog.querySelectorAll('[role="tab"]')].find(b => b.textContent.includes('Görünüm')));
+    const group = (name) => [...dialog.querySelectorAll('[role="radiogroup"]')].find(r => r.getAttribute('aria-label') === name);
+    expect(buttons(group('Renk teması')).map(b => b.textContent)).toEqual(['Kehribar', 'Gül', 'Standart', 'Deniz', 'Buz']);
+    expect(button('Standart', group('Renk teması')).getAttribute('aria-checked')).toBe('true');
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
+    try {
+      await click(button('Deniz', group('Renk teması')));
+      expect(document.documentElement.getAttribute('data-theme')).toBe('teal');
+      expect(JSON.parse(window.localStorage.getItem('peditree.view.v1')).theme).toBe('teal');
+      await click(button('Çok', group('Simidin saydamlığı')));
+      expect(document.documentElement.style.getPropertyValue('--ring-alpha')).toBe('0.55');
+      await click(button('Hiç', group('Simidin saydamlığı')));
+      expect(document.documentElement.style.getPropertyValue('--ring-alpha')).toBe('1');
+    } finally {
+      await run(() => views.getState().setView({ theme: 'indigo', ringAlpha: 'low' }));
+    }
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
+    await key('Escape');
+  });
+
   it('few words: each setting says a few words at most, the longer explanation is in its tooltip (clinician 2026-11-05)', async () => {
     await click(button('Ayarlar'));
     const dialog = document.querySelector('.settings-dialog');
@@ -1471,7 +1510,7 @@ describe('the Settings window (clinician request 2026-11-03)', () => {
     expect(dialog.getAttribute('aria-modal')).toBe('true');
     expect(document.activeElement.getAttribute('role')).toBe('tab');
     const tabs = [...dialog.querySelectorAll('[role="tab"]')].map(b => b.textContent.trim());
-    expect(tabs).toEqual(['Dil', 'Çizim', 'Halka menü', 'Yan panel', 'Dosyalar', 'Semboller', 'Klavye kısayolları', 'Hakkında']);
+    expect(tabs).toEqual(['Dil', 'Görünüm', 'Çizim', 'Halka menü', 'Yan panel', 'Dosyalar', 'Semboller', 'Klavye kısayolları', 'Hakkında']);
     // Tab from the last control comes back to the first; Shift+Tab from the first goes to the last
     const focusable = [...dialog.querySelectorAll('button:not(:disabled):not([tabindex="-1"]), input:not(:disabled), [tabindex="0"]')];
     focusable.at(-1).focus();
@@ -1482,7 +1521,7 @@ describe('the Settings window (clinician request 2026-11-03)', () => {
     // arrows move between sections
     dialog.querySelector('[role="tab"][aria-selected="true"]').focus();
     await key('ArrowDown', {}, document.activeElement);
-    expect(dialog.querySelector('[role="tab"][aria-selected="true"]').textContent).toMatch(/Çizim/);
+    expect(dialog.querySelector('[role="tab"][aria-selected="true"]').textContent).toMatch(/Görünüm/);
     await key('Escape');
     expect(document.querySelector('.settings-dialog')).toBeNull();
     expect(document.activeElement).toBe(opener);

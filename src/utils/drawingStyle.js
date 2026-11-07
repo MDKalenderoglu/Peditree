@@ -74,7 +74,26 @@ export const fontById = (id) => DRAWING_FONTS.find(f => f.id === id) || DRAWING_
 // name, the key and the notes (clinician requests 2026-10-30, 2026-11-05); the layout gives larger text more room
 // paper: the page under the drawing on screen (paper.js; clinician request 2026-11-03)
 // carrierMark: a carrier without a named finding, half (NSGC 2022) or dot (conditionKey.js CARRIER_MARKS; 2026-11-04)
-export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split' };
+// theme: the screens' accent colour, warm to cool (THEMES); ringAlpha: how see-through the ring's parts are (RING_ALPHAS)
+// (clinician request 2026-11-07) — the look of the screen only, never the drawing or a file
+export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringAlpha: 'low' };
+
+/** Colour themes, warm to cool; Standart is the indigo palette (ui.css :root[data-theme]). */
+export const THEMES = [
+  { id: 'amber', label: tk('Kehribar'), swatch: '#9a5b13' },
+  { id: 'rose', label: tk('Gül'), swatch: '#a8324f' },
+  { id: 'indigo', label: tk('Standart'), swatch: '#4f46a5' },
+  { id: 'teal', label: tk('Deniz'), swatch: '#0f6e6a' },
+  { id: 'ice', label: tk('Buz'), swatch: '#2f5d8c' },
+];
+/** How much of the drawing shows through the ring's parts: none … much. */
+export const RING_ALPHAS = [
+  { id: 'solid', label: tk('Hiç'), alpha: 1 },
+  { id: 'low', label: tk('Az'), alpha: 0.88 },
+  { id: 'mid', label: tk('Orta'), alpha: 0.72 },
+  { id: 'high', label: tk('Çok'), alpha: 0.55 },
+];
+export const ringAlphaOf = (view) => (RING_ALPHAS.find((a) => a.id === view.ringAlpha) || RING_ALPHAS[1]).alpha;
 
 /**
  * Text sizes. The key and notes lie outside the family; the text under the
@@ -110,6 +129,8 @@ export function normalizeView(v) {
     legendSize: LEGEND_SIZES.some(z => z.id === o.legendSize) ? o.legendSize : 'normal',
     paper: PAPERS.some(p => p.id === o.paper) ? o.paper : 'plain',
     carrierMark: CARRIER_MARKS.some(m => m.id === o.carrierMark) ? o.carrierMark : 'split',
+    theme: THEMES.some(x => x.id === o.theme) ? o.theme : 'indigo',
+    ringAlpha: RING_ALPHAS.some(x => x.id === o.ringAlpha) ? o.ringAlpha : 'low',
   };
 }
 

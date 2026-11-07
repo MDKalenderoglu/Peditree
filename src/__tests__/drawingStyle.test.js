@@ -35,7 +35,7 @@ function samplePath(d, steps = 20) {
 
 describe('drawing style settings', () => {
   it('starts standard, with plain pedigree numbers and exports as on screen; the carrier as NSGC 2022 draws it', () => {
-    expect(DEFAULT_VIEW).toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split' });
+    expect(DEFAULT_VIEW).toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringAlpha: 'low' });
     expect(drawingSpec(DEFAULT_VIEW)).toMatchObject({ hand: false, family: STANDARD_FAMILY, k: 1, numberK: 1 });
   });
 
@@ -52,8 +52,8 @@ describe('drawing style settings', () => {
   });
 
   it('keeps only known values from storage', () => {
-    expect(normalizeView({ drawStyle: 'crayon', fontId: 'comic', plainNumbers: 'no', exportAs: 'x', openHelp: 'maybe', legendSize: 'huge', paper: 'tartan', carrierMark: 'star' }))
-      .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split' });
+    expect(normalizeView({ drawStyle: 'crayon', fontId: 'comic', plainNumbers: 'no', exportAs: 'x', openHelp: 'maybe', legendSize: 'huge', paper: 'tartan', carrierMark: 'star', theme: 'neon', ringAlpha: 'glass' }))
+      .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringAlpha: 'low' });
     expect(normalizeView({ paper: 'dots' }).paper).toBe('dots');
     expect(normalizeView({ carrierMark: 'dot' }).carrierMark).toBe('dot');
     // "Bir daha gösterme" (Aç) is kept

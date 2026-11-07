@@ -20,7 +20,7 @@ import SettingsDialog from './components/SettingsDialog';
 import RelationChooser from './components/RelationChooser';
 import { withGeneticLine, subjectOf, adoptionOf, ancestorsOf, REPRO_LABEL, EGG_SOURCE, CARRIER_ROLES, ART_DONOR_RELATION, isPregnancy } from './graph/model';
 import { clinicalNamer } from './utils/clinicalNotices';
-import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss } from './utils/drawingStyle';
+import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, ringAlphaOf } from './utils/drawingStyle';
 import { ProductInfo, LicenseInfo, CitationInfo, FeedbackInfo } from './components/AboutParts';
 import { nameCase } from './utils/nameCase';
 import { fitToolbar } from './utils/toolbarFit';
@@ -78,6 +78,12 @@ function App() {
   // (clinician request 2026-10-28; drawingStyle.js)
   const { view, setView } = useViewSettings();
   const drawing = React.useMemo(() => drawingSpec(view), [view]);
+  // the screens' colour theme and the ring's see-through parts (Ayarlar → Görünüm; clinician 2026-11-07)
+  React.useEffect(() => {
+    const root = document.documentElement;
+    if (view.theme && view.theme !== 'indigo') root.setAttribute('data-theme', view.theme); else root.removeAttribute('data-theme');
+    root.style.setProperty('--ring-alpha', String(ringAlphaOf(view)));
+  }, [view]);
   // another text size: the layout gives the text its room again (symbolText.setTextScale; clinician 2026-11-05)
   const textSize = React.useRef(drawing.legendScale);
   React.useEffect(() => {
