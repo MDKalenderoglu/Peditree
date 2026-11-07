@@ -1,4 +1,24 @@
-# PediTree — yayın (Cloudflare Pages)
+# PediTree — yayın
+
+**Güncel (2026-11-07): Netlify, `https://peditree.netlify.app`** (ücretsiz plan, `main` dalından otomatik).
+Cloudflare Pages'te de kuruldu (`peditree.pages.dev`), ama **`*.pages.dev` adresleri Türkiye'den
+açılmıyor**: Superonline'da alan adı başka bir adrese çözülüyor; Turkcell mobil veride https bağlantısı
+kesiliyor, http ise Erişim Sağlayıcıları Birliği'nin engel sayfasına (`aidiyet.esb.org.tr`) yönleniyor.
+Aynı gün Türkiye'den denenenler: `*.netlify.app`, `*.github.io` ve `*.web.app` açılıyor;
+`*.vercel.app` Turkcell'in filtresine takılıyor.
+
+Netlify ayarları: Branch to deploy `main`, Build command `npm run build`, Publish directory `dist`;
+Node sürümü `.node-version`'dan. `public/_headers` Netlify'da da aynen geçerli. Canlıda denetlendi
+(2026-11-07): CSP, HSTS, `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, COOP,
+`X-Robots-Tag` geliyor; `/assets/*` uzun süre önbellekte, sayfa `no-cache`; http → https; robots kapalı.
+Netlify ücretsiz planda sayfaya kendi araç çubuğu betiğini (`/.netlify/scripts/hud`) ekliyor; bu
+betiğin satır içi kodunu CSP engelliyor (konsolda tek bir uyarı). Uygulamayı etkilemiyor, dışarı veri
+gönderemiyor (`connect-src 'self'`).
+
+Uzun vade: paylaşılan alt alan adları (pages.dev gibi) toplu engellenebiliyor; kendi alan adı bu riski
+kaldırır ve Netlify'a (Domain management) birkaç tıklamayla bağlanır.
+
+## Önceki karar: Cloudflare Pages
 
 Karar 2026-10-29: PediTree sunucusuz, statik bir site olarak Cloudflare Pages'te yayınlanır.
 Hasta verisi hiçbir sunucuya gitmez; site yalnızca uygulamanın kendi dosyalarını sunar.
