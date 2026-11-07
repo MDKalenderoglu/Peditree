@@ -149,7 +149,7 @@ export function GeneticField({ node, set, individuals = [] }) {
  * The genetic result as free text (the ring; clinician request 2026-11-04:
  * no "−" / "+", just write it): each line goes under the symbol; a line
  * written marks the test done (the data's own rule, model.js); a test done
- * without a result is one button (clinician request 2026-11-06). Deleting the last line keeps the
+ * whose result is pending is one button (clinician requests 2026-11-06, 2026-11-07). Deleting the last line keeps the
  * mark ("test yapıldı" under the symbol) and says so, with a button to take
  * it away — a fact the clinician entered is never dropped unasked.
  */
@@ -183,10 +183,11 @@ export function GeneticTextField({ node, set, individuals = [] }) {
           <button className="ui-btn ui-btn-ghost ui-btn-sm" onClick={() => set({ geneticTest: '' })}>{t('Kaldır')}</button>
         </span>
       )}
-      {/* a test done whose result is not written (yet): one tap, as "+" in the side panel (clinician request 2026-11-06) */}
-      {!tested && (
-        <button className="ui-btn ui-btn-sm" onClick={() => set({ geneticTest: GENETIC_TESTED })}
-          title={t('Sonucu yazmadan testin yapıldığını işaretler; sembolün altında “test yapıldı” yazar')}>{t('Sonuç yazmadan: test yapıldı')}</button>
+      {/* a test done whose result has not come yet: one tap writes "sonuç bekleniyor" as its line, in the
+          clinician's language like a line they type (clinician requests 2026-11-06, 2026-11-07) */}
+      {!gLines.length && (
+        <button className="ui-btn ui-btn-sm" onClick={() => setLine(Infinity, t('sonuç bekleniyor'))}
+          title={t('Testin yapıldığını işaretler; sembolün altında “sonuç bekleniyor” yazar. Sonuç gelince satırı düzeltin.')}>{t('Test sonucu bekleniyor')}</button>
       )}
       {familyNotes.length > 0 && (
         <div className="suggest-row">
