@@ -59,7 +59,9 @@ Union        { id, partners: [id, id], status, consanguineous, consanguinityDegr
 ParentChildRelationship  { unionId, children: string[],      // BIOLOGICAL, ≤ 1 per child
                            birthOrderExplicit?, orderPolicy: 'byAge' | 'insertion' }
 
-SocialParentLink         { childId, unionId, kind: 'adoptive' | 'foster' | 'step' | 'guardian' }
+SocialParentLink         { childId, unionId, kind: 'adoptive' | 'foster' | 'step' | 'guardian', slot? }
+                         // slot: an adopted-in child's index among its drawn siblings, set by moving it (ops.moveChild on
+                         // the drawn sibship; displayParentage places it, never between twins; clinician 2026-11-07)
 
 ReproductiveLink         { childId, personId, role: 'sperm_donor' | 'egg_donor' | 'gestational_carrier' | 'surrogate' }
                          // assisted reproduction (NSGC 2022 Fig. 5 as corrected 2025; clinician 2026-11-01): the drawn parents stay
