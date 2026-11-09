@@ -102,15 +102,22 @@ function addFindingPatterns(defs) {
  * Mark a symbol's regions (NSGC: one region per finding, defined in the
  * legend; graph/conditionKey.js): thin quadrant lines divide the symbol
  * (as in the clinic's reference sheet), each finding's sector in its fill,
- * clipped to the outline, with a white gap to its neighbours so two
- * findings never read as one (clinician feedback 2026-10-24); a carrier's
- * part is half of the region.
+ * clipped to the outline; where two findings meet, a white gap keeps them
+ * apart so they never read as one (clinician feedback 2026-10-24); a
+ * carrier's part is half of the region. The dividing lines are drawn whole
+ * over the sectors: a white edge around every sector broke them where they
+ * cross (clinician report 2026-11-07).
  */
 function drawRegions(el, defs, clipId, outline, parts, sz) {
   const clip = defs.append('clipPath').attr('id', clipId);
   clip.node().appendChild(outline.node().cloneNode());
   const regions = el.append('g').attr('class', 'condition-regions').attr('clip-path', `url(#${clipId})`);
   const R = sz * 1.8;
+  for (const p of parts) {
+    regions.append('path').attr('class', p.carrier ? 'condition-carrier' : 'condition-region')
+      .attr('d', sectorPath(p.a0, p.a1, R))
+      .attr('fill', FILL_PAINT[p.fill] || NODE_STROKE).attr('stroke', 'none');
+  }
   regions.append('line').attr('class', 'region-divider').attr('x1', 0).attr('y1', -R).attr('x2', 0).attr('y2', R)
     .attr('stroke', NODE_STROKE).attr('stroke-width', 1);
   // a symbol in halves (a carrier, one finding beside it) has no quarters: a line
@@ -119,10 +126,14 @@ function drawRegions(el, defs, clipId, outline, parts, sz) {
     regions.append('line').attr('class', 'region-divider').attr('x1', -R).attr('y1', 0).attr('x2', R).attr('y2', 0)
       .attr('stroke', NODE_STROKE).attr('stroke-width', 1);
   }
-  for (const p of parts) {
-    regions.append('path').attr('class', p.carrier ? 'condition-carrier' : 'condition-region')
-      .attr('d', sectorPath(p.a0, p.a1, R))
-      .attr('fill', FILL_PAINT[p.fill] || NODE_STROKE).attr('stroke', NODE_FILL).attr('stroke-width', Math.max(1.2, sz * 0.12));
+  // the white gap where two findings meet: from the dividing lines' edge outwards, so the cross stays whole
+  const norm = (a) => ((Math.round(a * 1000) / 1000) % 360 + 360) % 360;
+  const meets = [...new Set(parts.flatMap(p => parts.filter(q => q !== p && norm(q.a0) === norm(p.a1)).map(() => norm(p.a1))))];
+  for (const a of meets) {
+    const [c, s] = [Math.cos((a * Math.PI) / 180), Math.sin((a * Math.PI) / 180)];
+    regions.append('line').attr('class', 'region-gap')
+      .attr('x1', c * 0.5).attr('y1', s * 0.5).attr('x2', c * R).attr('y2', s * R)
+      .attr('stroke', NODE_FILL).attr('stroke-width', Math.max(1.2, sz * 0.12));
   }
   // outline on top, so the regions never thin the symbol's border
   el.node().appendChild(outline.node().cloneNode());

@@ -322,7 +322,8 @@ export function applyDrawingStyle(svg, spec) {
       pen.setAttribute('d', sketchPath(`M${num(l, 'x1')},${num(l, 'y1')}L${num(l, 'x2')},${num(l, 'y2')}`, { maxBow: REGION_BOW, salt, splitsFor: local }));
       pen.setAttribute('fill', 'none');
       for (const a of ['stroke', 'stroke-width']) if (l.hasAttribute(a)) pen.setAttribute(a, l.getAttribute(a));
-      pen.setAttribute('class', 'hand-stroke region-divider-sketch');
+      // the white gap between two findings stays white
+      pen.setAttribute('class', l.classList.contains('region-gap') ? 'hand-stroke region-gap-sketch' : 'hand-stroke region-divider-sketch');
       l.setAttribute('stroke-opacity', '0');
       l.setAttribute('data-hand-hidden', '1');
       l.after(pen);
