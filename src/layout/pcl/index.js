@@ -51,6 +51,14 @@ const W_CENTRE_ONLY = 8;
 // leaves under 1 px. Tidy keeps the variant only when it is clean.
 const W_CENTRE_EXACT = 128;
 const W_SPOUSE = 0.5;
+// an only child (or one twin group) of a couple joined by a lane: under the lane's free gap
+const W_LANE_CHILD = 8;
+const LANE_ROUNDS = 4;
+const LANE_SYMBOL_CLEAR = 16;  // px from a symbol between the partners
+const LANE_END_CLEAR = 24;     // px from a partner, beside the lane's own riser (and brackets)
+// at most this far from the couple's midpoint (connectorReadability counts a couple more than
+// half a slot, 45 px, off its children as off-centre)
+const LANE_MAX_SHIFT = 40;
 const W_FAR_PARTNERS = 0.03;
 const W_XLINK = 0.5; // a cross-generation partner over their stand-in (short stepped line)
 const W_COMPACT_IN = 0.02;
@@ -202,6 +210,7 @@ export function computePclLayout(inputGraph, opts = {}) {
 
   const rowPos = new Map();
   for (const g of gens) rows.get(g).forEach((id, k) => rowPos.set(id, k));
+  const coupleTerm = new Map(); // union → its "couple over its children" term
 
   for (const u of S.unions) {
     const [a, b] = u.partners || [];
@@ -245,7 +254,9 @@ export function computePclLayout(inputGraph, opts = {}) {
     if (first === last && (straight === 'only' || straight === 'strong')) w = W_CENTRE_EXACT;
     else if (first === last && straight === 'founders' && founders) w = W_CENTRE_ONLY;
     else if (straight === 'strong') w = W_CENTRE * 4;
-    terms.push({ w, idx, c, d: 0, couple: true });
+    const term = { w, idx, c, d: 0, couple: true };
+    terms.push(term);
+    coupleTerm.set(u.id, term);
   }
 
   for (const { ghost, upper } of S.crossLinks) {
@@ -405,6 +416,84 @@ export function computePclLayout(inputGraph, opts = {}) {
       settleFootprint();
     }
   }
+  // A couple whose partners do not stand side by side is joined by a lane above their row; its
+  // line of descent leaves the lane through a free gap of that row, never through a symbol
+  // (routing.js). An only child — or one group of twins — stands right under that gap: under the
+  // couple's midpoint, which may be another person, the line hung from a jog, a staircase
+  // (clinician report 2026-11-07). The couple's own centring term keeps the couple and the child
+  // together, only offset by the distance from the midpoint to the gap.
+  const laneFamilies = laneDropFamilies();
+  for (let round = 0; laneFamilies.length && round < LANE_ROUNDS; round++) {
+    const xs = solution.x;
+    let changed = false;
+    for (const f of laneFamilies) {
+      const own = coupleTerm.get(f.u.id);
+      if (!own) continue;
+      const target = laneDropTarget(f, xs);
+      const apex = f.kidIdx.reduce((sum, i) => sum + xs[i], 0) / f.kidIdx.length;
+      if (target === null || Math.abs(apex - target) <= 1) continue;
+      // only a child standing under the lane: one held far away by the rest of the
+      // pedigree (a loop) keeps its place — pulling it would push whole families
+      if (!f.pulled && (apex < xs[index.get(f.l)] || apex > xs[index.get(f.r)])) continue;
+      const mid = (xs[index.get(f.l)] + xs[index.get(f.r)]) / 2;
+      const d = mid - target; // ½·(a + b) − child = midpoint − gap
+      if (f.pulled && Math.abs(own.d - d) <= 1) continue;
+      if (!f.pulled) {
+        f.pulled = true;
+        own.w = Math.max(own.w, W_LANE_CHILD * (place && place.freePersons !== null ? COUPLE_SCALE : 1));
+      }
+      own.d = d;
+      changed = true;
+    }
+    if (!changed) break;
+    solution = solveSeparatedQP(n, layers, terms, solution.x);
+    qpIterations += solution.iterations;
+    qpSolves++;
+    settleFootprint();
+  }
+  function laneDropFamilies() {
+    const out = [];
+    for (const u of S.unions) {
+      if (isArtUnion(u)) continue;
+      const [a, b] = u.partners || [];
+      if (!index.has(a) || !index.has(b)) continue;
+      if (S.indById.get(a).generation !== S.indById.get(b).generation) continue;
+      if (Math.abs(rowPos.get(a) - rowPos.get(b)) <= 1) continue;
+      const kids = (S.childrenOf.get(u.id) || []).filter(c => index.has(c));
+      if (!kids.length) continue;
+      const m = S.multipleOf && S.multipleOf.get(kids[0]);
+      const oneApex = kids.length === 1 || (m && kids.every(k => m.members.includes(k)));
+      if (!oneApex) continue;
+      const ordered = kids.slice().sort((p, q) => rowPos.get(p) - rowPos.get(q));
+      const kidIdx = kids.length === 1 ? [index.get(kids[0])] : [index.get(ordered[0]), index.get(ordered[ordered.length - 1])];
+      const [l, r] = rowPos.get(a) < rowPos.get(b) ? [a, b] : [b, a];
+      const row = rows.get(S.indById.get(a).generation);
+      out.push({ u, l, r, seq: row.slice(rowPos.get(l), rowPos.get(r) + 1), kidIdx, pulled: false });
+    }
+    return out;
+  }
+  // the point of the free gap nearest the couple's midpoint, a little away from the symbols
+  // (routing.js keeps the line 6 px off a symbol and beside the lane's own risers)
+  function laneDropTarget({ l, r, seq }, xs) {
+    const xOf = (p) => xs[index.get(p)];
+    const half = (p) => { const ind = S.indById.get(p); return isGhost(ind) ? 0 : isSmallSymbol(ind) ? 14 : 20; };
+    const mid = (xOf(l) + xOf(r)) / 2;
+    let best = null;
+    for (let k = 0; k + 1 < seq.length; k++) {
+      const p = seq[k], q = seq[k + 1];
+      const pu = S.isPartners(p, q) ? S.unions.find(v => v.partners.includes(p) && v.partners.includes(q)) : null;
+      if (pu && (S.childrenOf.get(pu.id) || []).length) continue; // their own line of descent drops there
+      const lo = xOf(p) + half(p) + (p === l ? LANE_END_CLEAR : LANE_SYMBOL_CLEAR);
+      const hi = xOf(q) - half(q) - (q === r ? LANE_END_CLEAR : LANE_SYMBOL_CLEAR);
+      const raw = xOf(q) - half(q) - (xOf(p) + half(p));
+      if (raw <= 2 * 6) continue;
+      const x = lo <= hi ? Math.min(hi, Math.max(lo, mid)) : (xOf(p) + half(p) + xOf(q) - half(q)) / 2;
+      if (best === null || Math.abs(x - mid) < Math.abs(best - mid)) best = x;
+    }
+    // a gap far from the middle would leave the couple off-centre over its child: keep the jog
+    return best !== null && Math.abs(best - mid) <= LANE_MAX_SHIFT ? best : null;
+  }
+
   const tSolved = now();
   const { x } = solution;
 
