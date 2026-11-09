@@ -8,7 +8,7 @@
  * Issues: { severity: 'error' | 'warning', code, message (Turkish), ids }
  */
 import { auditPedigreeGraph } from '../utils/graphIntegrity';
-import { SOCIAL_LINK_KINDS, SEX_AT_BIRTH, indexGraph, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, isPregnancy, ancestorsOf, PREGNANCY_FIELDS, REPRO_ROLES, EGG_SOURCE, CARRIER_ROLES, ART_DONOR_RELATION } from './model';
+import { SOCIAL_LINK_KINDS, SEX_AT_BIRTH, indexGraph, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, isPregnancy, ancestorsOf, PREGNANCY_FIELDS, REPRO_ROLES, EGG_SOURCE, CARRIER_ROLES, ART_DONOR_RELATION, sameReproductiveSex } from './model';
 
 const FLAG_FIELDS = ['affected', 'carrier', 'presymptomatic', 'recordsReviewed', 'deceased', 'proband', 'consultand', 'adoptedOut', 'placeholder', ...PREGNANCY_FIELDS];
 const FINDING_STATUSES = ['affected', 'carrier', 'unknown'];
@@ -112,6 +112,27 @@ export function validateGraphStructure(graph, { retired = [] } = {}) {
     if (!idx.bioParentUnion.has(ind.id)) err('ADOPTED_OUT_NO_PARENTS', t('Evlat verilen kişinin biyolojik ebeveynleri çizili olmalı.'), [ind.id]);
     if (adoptive.has(ind.id)) err('ADOPTED_OUT_AND_IN', t('Evlat verilen kişinin evlat edinen ailesi çizimde varsa "evlat verildi" yerine o aile seçilir.'), [ind.id]);
     if (isPregnancy(ind) || ind.placeholder) err('ADOPTION_KIND', t('Gebelik ya da belirtilmemiş ebeveyn evlat edinilmiş olarak işaretlenemez.'), [ind.id]);
+  }
+
+  // the biological child of two partners of the same reproductive sex (clinician decision 2026-11-10;
+  // NSGC 2022): the missing gamete comes from a donor — a sperm donor for two women, an egg donor or a
+  // surrogate for two men; otherwise the child is adopted (a social link, not checked here). Partners whose
+  // sex assigned at birth differs (AMAB / AFAB) can be the biological parents themselves. A pregnancy
+  // outcome is not asked for its donor.
+  for (const rel of graph.parentChildRelationships || []) {
+    const u = idx.unionById.get(rel.unionId);
+    if (!u) continue;
+    const both = sameReproductiveSex(idx.byId.get(u.partners[0]), idx.byId.get(u.partners[1]));
+    if (!both) continue;
+    for (const c of rel.children) {
+      const child = idx.byId.get(c);
+      if (!child || isPregnancy(child)) continue;
+      const roles = (graph.reproductiveLinks || []).filter((l) => l.childId === c).map((l) => l.role);
+      const ok = both === 'female' ? roles.includes('sperm_donor') : roles.some((r) => EGG_SOURCE.includes(r));
+      if (!ok) err('SAME_SEX_CHILD_DONOR', both === 'female'
+        ? t('İki kadın eşin biyolojik çocuğu için sperm donörü gerekir; ya da çocuğu evlat edinilmiş olarak ekleyin.')
+        : t('İki erkek eşin biyolojik çocuğu için yumurta donörü ya da taşıyıcı anne gerekir; ya da çocuğu evlat edinilmiş olarak ekleyin.'), [c, u.id]);
+    }
   }
 
   // assisted reproduction (model.js REPRO_ROLES; NSGC 2022/2025 Figure 5)

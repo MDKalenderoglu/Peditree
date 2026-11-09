@@ -15,7 +15,7 @@ import { Stethoscope, HeartPulse, Users, StickyNote, Check } from 'lucide-react'
 import FindingsPalette from './FindingsPalette';
 import { NameField, AgeField, NoteField, GeneticTextField } from './InfoFields';
 import { groupOf, multipleName } from '../graph/multiples';
-import { isPregnancy, isGroup, adoptionOf, ART_DONOR_RELATION, geneticLines } from '../graph/model';
+import { isPregnancy, isGroup, adoptionOf, ART_DONOR_RELATION, geneticLines, sameReproductiveSex } from '../graph/model';
 import { shownAge } from '../utils/age';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { parseGroupCount } from '../graph/ops';
@@ -159,7 +159,7 @@ function sectorPath(a0, a1, r, R, gapDeg = 3) {
 export default function RadialAddMenu({
   anchor, node, pedigreeData, onAddSibling, onAddChild, onAddSpouse, onAddParents, onAddTwin,
   onUpdate, onSetProband, onClearProband, onSetConsultand, onClearConsultand, onAddFinding, onSetFindingStatus, onSetFindingStyle, onSetFindingOnset, onRenameFinding,
-  onNeedRoom, ref,
+  onNeedRoom, sameSex = false, ref,
 }) {
   const [active, setActive] = useState(null);   // sector under the pointer
   const [panel, setPanel] = useState(null);     // satellite panel (stays open)
@@ -313,6 +313,16 @@ export default function RadialAddMenu({
   };
   const ready = (sector) => (sector === 'bottom' ? childReady : sector === 'left' ? siblingReady : true);
   const twinGroup = groupOf(pedigreeData, node.id);
+  // the couple a new child or sibling comes from, when both partners have the same reproductive sex
+  // (clinician decision 2026-11-10): its biological child needs a donor (graph/validate.js
+  // SAME_SEX_CHILD_DONOR) — 'female' or 'male', else null
+  const personById = (id) => (pedigreeData.individuals || []).find((i) => i.id === id);
+  const parentRel = pcrs.find((r) => r.children.includes(node.id));
+  const coupleOf = (sector) => (sector === 'bottom' ? childUnion
+    : sector === 'left' && !adoptedIn && parentRel ? (pedigreeData.unions || []).find((u) => u.id === parentRel.unionId) : null);
+  const needsDonor = (sector) => { const u = coupleOf(sector); return u ? sameReproductiveSex(personById(u.partners[0]), personById(u.partners[1])) : null; };
+  // the donor that gives what the couple lacks: a sperm donor for two women, an egg donor or a surrogate for two men
+  const ART_FOR = { female: ['sperm_donor'], male: ['egg_donor', 'surrogate'] };
 
   // a donor or carrier added for assisted reproduction has no family of their own (clinician decision 2026-11-01)
   const DONOR_HINT = node.relation === ART_DONOR_RELATION ? t('Donör ya da taşıyıcının ailesi çizilmez; aile öyküsünü Not ve Bulgu ile girin.') : null;
@@ -324,12 +334,14 @@ export default function RadialAddMenu({
     left: null,
   };
   // one click: parents = a mother and a father; spouse = the opposite sex
-  // (clinician decision 2026-10-24) — no choices to open
+  // (clinician decision 2026-10-24) — no choices to open; with same-sex partners allowed in Ayarlar
+  // (clinician decision 2026-11-10) Eş asks for the partner's sex
   const direct = {
     top: () => onAddParents(node.id, {}),
-    right: () => onAddSpouse(node.id, node.sex === 'female' ? 'male' : 'female'),
+    ...(sameSex ? {} : { right: () => onAddSpouse(node.id, node.sex === 'female' ? 'male' : 'female') }),
   };
   const choices = {
+    ...(sameSex ? { right: [['male', tk('Erkek')], ['female', tk('Kadın')]].map(([sex, label]) => [`${t('Eş')}: ${t(label)}`, sex, () => onAddSpouse(node.id, sex), 1]) } : {}),
     left: KINDS.map(([g, label, sex, extra, row]) => [`${t('Kardeş')}: ${t(label)}`, g, () => addSiblingHere(sex, extra), row]),
     bottom: KINDS.map(([g, label, sex, extra, row]) => [`${t('Çocuk')}: ${t(label)}`, g, () => addChildHere(sex, extra), row]),
   };
@@ -352,7 +364,9 @@ export default function RadialAddMenu({
   const pregnancyChoices = (sector) => (choices[sector] || []).filter((c) => (c[3] || 1) === 2 && shown(c[1]));
   const rowAvailable = (sector, id) => (id === 'pregnancy' ? (choices[sector] || []).some((c) => (c[3] || 1) === 2)
     : id === 'art' ? !!addGroup[sector] && !!onAddChild : !!addGroup[sector]);
-  const flyoutRows = (sector) => ring.rows.filter((id) => rowAvailable(sector, id) && shown(id) && (id !== 'pregnancy' || pregnancyChoices(sector).length));
+  // a couple that needs a donor: no plain biological child, nor several in one symbol (always the art and adopted rows)
+  const flyoutRows = (sector) => ring.rows.filter((id) => rowAvailable(sector, id) && (shown(id) || (needsDonor(sector) && (id === 'art' || id === 'adopted')))
+    && (id !== 'pregnancy' || pregnancyChoices(sector).length) && !(needsDonor(sector) && id === 'group'));
   const flyoutHasHidden = (sector) => ring.hidden.some((id) => (RING_ROWS.some((x) => x.id === id) ? rowAvailable(sector, id)
     : RING_PREGNANCY.some((x) => x.id === id) && rowAvailable(sector, 'pregnancy')));
   const rowView = !active || !choices[active] ? {} : {
@@ -382,7 +396,7 @@ export default function RadialAddMenu({
       <div className="flyout-row flyout-art">
         <span className="flyout-row-label">{t('Yardımcı üreme ile')}</span>
         <span className="flyout-choose" role="radiogroup" aria-label={t('Yardımcı üreme türü')}>
-          {[['sperm_donor', t('Sperm donörü')], ['egg_donor', t('Yumurta donörü')], ['gestational_carrier', t('G taşıyıcı')], ['surrogate', t('Taşıyıcı anne')]].map(([role, text]) => (
+          {[['sperm_donor', t('Sperm donörü')], ['egg_donor', t('Yumurta donörü')], ['gestational_carrier', t('G taşıyıcı')], ['surrogate', t('Taşıyıcı anne')]].filter(([role]) => !needsDonor(active) || ART_FOR[needsDonor(active)].includes(role)).map(([role, text]) => (
             <button key={role} role="radio" aria-checked={artRole === role} className={`quick-text${artRole === role ? ' on' : ''}`}
               onClick={() => setArtRole(role)}>{text}</button>
           ))}
@@ -391,9 +405,10 @@ export default function RadialAddMenu({
           const name = `${active === 'left' ? t('Kardeş') : t('Çocuk')}: ${word}, ${artRole ? t('{role} ile', { role: t(ART_WORD[artRole]) }) : t('yardımcı üreme ile')}`;
           const title = artRole ? name : t('Önce yardımcı üreme türünü seçin');
           const extra = { reproRole: artRole, ...(kind === 'ongoing' ? { ongoingPregnancy: true } : {}) };
+          const roleOk = !!artRole && (!needsDonor(active) || ART_FOR[needsDonor(active)].includes(artRole));
           const sex = kind === 'ongoing' ? 'unknown' : kind;
           return (
-            <button key={kind} className="quick-btn" title={title} aria-label={name} disabled={!artRole}
+            <button key={kind} className="quick-btn" title={title} aria-label={name} disabled={!roleOk}
               onClick={() => { (active === 'left' ? addSiblingHere : addChildHere)(sex, extra); setActive(null); }}><Glyph kind={kind} /></button>
           );
         })}
@@ -632,11 +647,17 @@ export default function RadialAddMenu({
                 <span className="radial-hint">{active === 'bottom' ? t('Önce çocuğun hangi eşten olduğunu seçin.') : t('Önce yeni kardeşin ne olduğunu seçin.')}</span>
               ) : (<>
               {/* the sexes, then the rows in the clinician's order (Ayarlar → Halka menü; ringPrefs.js) */}
+              {needsDonor(active) ? (
+                <span className="radial-hint">{needsDonor(active) === 'female'
+                  ? t('İki kadın eşin çocuğu: aşağıdan sperm donörüyle ya da evlat edinilmiş olarak ekleyin.')
+                  : t('İki erkek eşin çocuğu: aşağıdan yumurta donörü ya da taşıyıcı anneyle, ya da evlat edinilmiş olarak ekleyin.')}</span>
+              ) : (
               <div className="flyout-row">
                 {choices[active].filter((c) => (c[3] || 1) === 1).map(([title, glyph, run]) => (
                   <button key={title} className="quick-btn" title={title} aria-label={title} onClick={() => { run(); setActive(null); }}><Glyph kind={glyph} /></button>
                 ))}
               </div>
+              )}
               {flyoutRows(active).map((rowId) => rowView[rowId] && <Fragment key={rowId}>{rowView[rowId]}</Fragment>)}
               {flyoutHasHidden(active) && (
                 <button className="flyout-more" onClick={() => setShowMore()} aria-expanded={showMore}>

@@ -20,6 +20,7 @@ import { NameField, AgeField, NoteField, GeneticField } from './InfoFields';
 import { usePanelPrefs, usePanelTip, PANEL_PARTS } from '../utils/panelPrefs';
 import { formatDate } from '../utils/age';
 import { t, tk, currentLang, shownLabel } from '../i18n';
+import { useViewSettings } from '../utils/drawingStyle';
 
 const SEX_WORD = { male: tk('Erkek'), female: tk('Kadın'), unknown: tk('Cinsiyet bilinmiyor') };
 // several people in one symbol (clinician decisions 2026-11-01)
@@ -419,7 +420,8 @@ function MergeCard({ check, onMerge, ids }) {
 function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSiblings, onClearSelection, unionProps, onSetMultipleBirth, bulk, merge }) {
   // Authoritative safety checks (self/duplicate, pregnancy loss, siblings,
   // cross-generation; two different parent unions cannot be merged).
-  const unionPlan = computeUnionCreationPlan(pedigreeData, node.id, node2.id);
+  const allowSameSex = useViewSettings((st) => !!st.view.sameSexPartners);
+  const unionPlan = computeUnionCreationPlan(pedigreeData, node.id, node2.id, { allowSameSex });
   const siblingPlan = computeSiblingCreationPlan(pedigreeData, node.id, node2.id);
   const siblingBlocked = !siblingPlan.ok || siblingPlan.action === 'noop';
   const couple = (pedigreeData.unions || []).find(u => u.partners.includes(node.id) && u.partners.includes(node2.id));

@@ -1510,16 +1510,17 @@ describe('NSGC 2022 additions (clinician decisions 2026-11-02) and the trimmed s
     // affected: the line goes (symptoms now)
     await run(() => S().updateIndividual('mother', { affected: true }));
     expect(drawn('mother').querySelector('.presymptomatic-line')).toBeNull();
-    // sex at birth: hidden in the panel at first; shown once brought forward or filled
+    // sex at birth: hidden in the panel at first; shown once brought forward or filled (on someone without
+    // children: a father recorded AFAB would leave his children without a known sperm source — validate.js)
     await key('Escape');
-    await select('father');
+    await select('proband');
     expect(panelText()).not.toMatch(/Doğumda atanan cinsiyet/);
     await click(buttons().find(b => b.textContent.startsWith('Diğer bilgiler')));
     await click(button('AFAB'));
-    expect(g().individuals.find(i => i.id === 'father').sexAtBirth).toBe('AFAB');
-    expect(drawn('father').querySelector('.sex-at-birth').textContent).toBe('AFAB');
+    expect(g().individuals.find(i => i.id === 'proband').sexAtBirth).toBe('AFAB');
+    expect(drawn('proband').querySelector('.sex-at-birth').textContent).toBe('AFAB');
     await key('Escape'); await key('Escape');
-    await select('father');
+    await select('proband');
     expect(panelText()).toMatch(/Doğumda atanan cinsiyet/); // filled: shown without "Diğer bilgiler"
     // LMP of an ongoing pregnancy, under the P
     await run(() => S().addChildToUnion('U_PARENTS', 'unknown', { ongoingPregnancy: true }));
@@ -1557,7 +1558,8 @@ describe('NSGC 2022 additions (clinician decisions 2026-11-02) and the trimmed s
     expect(g().individuals.find(i => i.id === 'mother').recordsReviewed).toBeUndefined();
     await key('Escape'); await key('Escape');
     await click(button('PediTree hakkında'));
-    expect($('[data-popup="about"]').textContent).toMatch(/aynı cinsiyetten eşler/);
+    // same-sex partners are no longer "not supported" (Ayarlar → Çizim, clinician decision 2026-11-10)
+    expect($('[data-popup="about"]').textContent).not.toMatch(/aynı cinsiyetten eşler/);
     await key('Escape');
   });
 

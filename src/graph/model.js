@@ -66,6 +66,21 @@ export const GENETIC_TESTED = 'tested';
  */
 export const SEX_AT_BIRTH = ['AMAB', 'AFAB', 'UAAB'];
 /**
+ * The sex a person's gametes follow (NSGC 2022: the symbol shows gender identity; AMAB / AFAB under it
+ * when sex assigned at birth differs): sex assigned at birth when written, otherwise the symbol's sex.
+ */
+export const reproductiveSex = (p) => (!p ? 'unknown' : p.sexAtBirth === 'AMAB' ? 'male' : p.sexAtBirth === 'AFAB' ? 'female' : p.sex);
+/**
+ * Two partners who cannot have a child together without a donor (clinician decision 2026-11-10, same-sex
+ * partners): both male or both female by reproductive sex. 'female' / 'male' — which gamete the couple has —
+ * or null.
+ */
+export function sameReproductiveSex(a, b) {
+  if (!a || !b || a.placeholder || b.placeholder) return null;
+  const x = reproductiveSex(a);
+  return (x === 'male' || x === 'female') && x === reproductiveSex(b) ? x : null;
+}
+/**
  * A presymptomatic / asymptomatic carrier (NSGC 2022 Fig 2: "no clinical
  * symptoms now, but could later exhibit symptoms", typically dominant): a
  * vertical line through the symbol. Never with "affected" — marking a person
@@ -240,7 +255,8 @@ export function indexGraph(graph) {
   };
   // the genetic parents (assisted reproduction, reproductiveLinks): the
   // drawn couple, a sperm donor in the father's place, an egg donor or a
-  // surrogate in the mother's; null for a person without drawn parents
+  // surrogate in the mother's (father and mother by reproductive sex); null
+  // for a person without drawn parents; a parent unknown is null in the pair
   const reproByChild = new Map();
   for (const l of graph.reproductiveLinks || []) {
     if (!reproByChild.has(l.childId)) reproByChild.set(l.childId, []);
@@ -252,12 +268,15 @@ export function indexGraph(graph) {
     if (!uid) return null;
     const partners = unionById.get(uid)?.partners || [];
     const [a, b] = partners.map((p) => byId.get(p));
-    let father = [a, b].find((p) => p && p.sex === 'male')?.id;
-    let mother = [a, b].find((p) => p && p.sex === 'female')?.id;
-    if (!father) father = partners.find((p) => p !== mother);
-    if (!mother) mother = partners.find((p) => p !== father);
     const sperm = links.find((l) => l.role === 'sperm_donor');
     const egg = links.find((l) => EGG_SOURCE.includes(l.role));
+    // two partners of the same reproductive sex: the donor gives the other gamete; which partner gave
+    // their own is not recorded, so that parent is unknown (null) — kinship and F do not go through them
+    if (sameReproductiveSex(a, b)) return [sperm ? sperm.personId : null, egg ? egg.personId : null];
+    let father = [a, b].find((p) => p && reproductiveSex(p) === 'male')?.id;
+    let mother = [a, b].find((p) => p && reproductiveSex(p) === 'female')?.id;
+    if (!father) father = partners.find((p) => p !== mother);
+    if (!mother) mother = partners.find((p) => p !== father);
     return [sperm ? sperm.personId : father, egg ? egg.personId : mother];
   };
   return { byId, unionById, pcrByUnion, bioParentUnion, unionsOf, childrenOf, partnerOf, geneticParents, reproByChild };

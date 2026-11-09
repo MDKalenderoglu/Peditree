@@ -137,7 +137,7 @@ describe('DM-7 — union partner sex conflicts are visible to the integrity audi
   });
 });
 
-describe('DM-7 — auditPedigreeGraph flags same-sex unions (defense in depth)', () => {
+describe('DM-7 — same-sex unions are valid data since 2026-11-10 (the operations allow one only when Ayarlar does)', () => {
   const g = (sexA, sexB, extraB = {}) => ({
     individuals: [
       { id: 'a', sex: sexA, generation: 1, proband: true },
@@ -148,9 +148,9 @@ describe('DM-7 — auditPedigreeGraph flags same-sex unions (defense in depth)',
   });
   const codes = (graph) => auditPedigreeGraph(graph).map(i => i.code);
 
-  it('flags male + male and female + female', () => {
-    expect(codes(g('male', 'male'))).toContain('UNION_PARTNER_SEX_CONFLICT');
-    expect(codes(g('female', 'female'))).toContain('UNION_PARTNER_SEX_CONFLICT');
+  it('no longer flags male + male or female + female: a file with a same-sex couple opens on every device', () => {
+    expect(codes(g('male', 'male'))).not.toContain('UNION_PARTNER_SEX_CONFLICT');
+    expect(codes(g('female', 'female'))).not.toContain('UNION_PARTNER_SEX_CONFLICT');
   });
 
   it('does not flag woman + man, unknown-sex partners, or an unspecified placeholder', () => {
