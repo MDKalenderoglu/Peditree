@@ -31,7 +31,8 @@ describe('stylesheet rules', () => {
 
   it('every pop-up opens the same soft way, only fading and growing (never moving what is placed inline), and not at all with reduced motion', () => {
     expect(css('ui.css')).toMatch(/@keyframes soft-in \{ from \{ opacity: 0; scale: 0\.97; \}/);
-    expect(css('ui.css')).toMatch(/\.keys-popover, \.radial-flyout, \.radial-panel, \.ring-aside, \.relation-dialog \{ animation: soft-in/);
+    expect(css('ui.css')).toMatch(/\.keys-popover, \.radial-flyout, \.radial-panel, \.ring-aside \{ animation: soft-in var\(--t-pop\) var\(--ease\)/);
+    expect(css('ui.css')).toMatch(/\.relation-dialog \{ animation: soft-in var\(--t-move\) var\(--ease\)/);
     expect(css('ui.css')).toMatch(/prefers-reduced-motion: reduce\) \{ \.keys-popover, \.radial-flyout, \.radial-panel, \.ring-aside, \.relation-dialog, \.relation-backdrop \{ animation: none; \}/);
   });
 
@@ -121,10 +122,22 @@ describe('stylesheet rules', () => {
     expect(rule).toMatch(/clip-path: inset\(50%\)/);
     expect(rule).not.toMatch(/display:\s*none/);
   });
+  it('one motion for the whole interface (clinician 2026-11-10: the effects did not match one another): one curve, two durations, used by the panel, the windows, the pop-ups and the tour', () => {
+    expect(css('ui.css')).toMatch(/--ease: cubic-bezier\(0\.2, 0\.8, 0\.2, 1\);\s*--t-pop: 0\.2s;\s*--t-move: 0\.3s;/);
+    expect(css('ui.css')).toMatch(/\.side-right \{ animation: panel-in var\(--t-move\) var\(--ease\); \}/);
+    expect(block('ui.css', '.settings-dialog')).toMatch(/animation: settings-in var\(--t-move\) var\(--ease\)/);
+    expect(block('ui.css', '.settings-backdrop')).toMatch(/animation: soft-fade var\(--t-move\) var\(--ease\)/);
+    // the settings window grows in place, like every other pop-up, and no longer slides up
+    expect(css('ui.css')).toMatch(/@keyframes settings-in \{ from \{ opacity: 0; transform: scale\(0\.96\); \}/);
+    expect(block('ui.css', '.tour-body')).toMatch(/animation: tour-in var\(--t-move\) var\(--ease\)/);
+    // a window the tour opens does not dim the page a second time
+    expect(css('ui.css')).toMatch(/body\.touring \.settings-backdrop, body\.touring \.relation-backdrop \{ background: transparent; \}/);
+  });
+
   it('the guided tour has a look of its own (clinician 2026-11-10: "çok kaba ve düz"): a navy dim, a lit part with a white and indigo ring, a card that glides, a picture that draws itself; still with reduced motion', () => {
     expect(block('ui.css', '.tour-scrim')).toMatch(/background: rgba\(19, 30, 47, 0\.6\)/);
     expect(block('ui.css', '.tour-spot')).toMatch(/0 0 0 2px #ffffff, 0 0 0 4px var\(--accent\)/);
-    expect(block('ui.css', '.tour-card')).toMatch(/transition: left 0\.32s/);
+    expect(block('ui.css', '.tour-card')).toMatch(/transition: left var\(--t-move\) var\(--ease\)/);
     expect(block('ui.css', '.tour-card')).not.toMatch(/border-top: 3px/);
     expect(block('ui.css', '.tour-hero')).toMatch(/var\(--ink\)/);
     expect(css('ui.css')).toMatch(/\.tour-family \.tf-line \{[^}]*stroke-dashoffset: 1;[^}]*animation: tf-draw/);

@@ -63,6 +63,11 @@
   --radius-sm: 6px;
   --shadow: 0 1px 2px rgba(24, 33, 44, 0.08);
   --shadow-pop: 0 1px 2px rgba(24, 33, 44, 0.06), 0 10px 28px rgba(24, 33, 44, 0.14);
+  /* one motion for the whole interface (clinician 2026-11-10: the effects did not match one another):
+     one curve; a pop-up opens in --t-pop, a panel, a window or the tour moves in --t-move */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --t-pop: 0.2s;
+  --t-move: 0.3s;
 }
 
 body { font-family: var(--font-ui); font-size: 14px; line-height: 1.45; color: var(--ink-2); background: var(--frame); }
@@ -91,7 +96,7 @@ button, input, select, textarea { font-family: inherit; }
 /* the side panel is seen when it opens (clinician report 2026-11-09: an assistant never noticed it, too pale):
    it slides in a little from the right; only the panel moves, the drawing keeps its place */
 @keyframes panel-in { from { opacity: 0.35; transform: translateX(28px); } to { opacity: 1; transform: none; } }
-.app-shell.has-editor > .side-right { animation: panel-in 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.app-shell.has-editor > .side-right { animation: panel-in var(--t-move) var(--ease); }
 @media (prefers-reduced-motion: reduce) { .app-shell.has-editor > .side-right { animation: none; } }
 /* the panel closing: a still copy of it slides out over the drawing (App SidePanel) */
 .panel-ghost { position: fixed; z-index: 5; margin: 0; box-sizing: border-box; overflow: hidden; pointer-events: none; border-left: 1px solid var(--accent-line); box-shadow: -10px 0 28px -14px rgba(24, 33, 44, 0.38); }
@@ -685,9 +690,9 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .flyout-choose .quick-text.on { background: var(--accent-soft, #ece6f7); border-color: var(--accent, #5b3fa0); color: var(--accent, #5b3fa0); font-weight: 600; }
 
 /* ── Ayarlar: a window of its own (SettingsDialog.jsx; clinician request 2026-11-03) ── */
-.settings-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(25, 40, 61, 0.28); animation: soft-fade 0.16s ease-out; }
+.settings-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(25, 40, 61, 0.28); animation: soft-fade var(--t-move) var(--ease); }
 /* (clinician 2026-11-05: "minimal, premium") a grey list of sections, white groups on the soft canvas */
-.settings-dialog { animation: settings-in 0.16s ease-out; width: 820px; max-width: 100%; height: min(640px, calc(100vh - 32px)); display: flex; flex-direction: column; background: var(--frame); border: 1px solid rgba(25, 40, 61, 0.08); border-radius: 16px; box-shadow: var(--shadow-pop); overflow: hidden; }
+.settings-dialog { animation: settings-in var(--t-move) var(--ease); width: 820px; max-width: 100%; height: min(640px, calc(100vh - 32px)); display: flex; flex-direction: column; background: var(--frame); border: 1px solid rgba(25, 40, 61, 0.08); border-radius: 16px; box-shadow: var(--shadow-pop); overflow: hidden; }
 .settings-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px 22px; }
 .settings-head h2 { margin: 0; font-size: 17px; font-weight: 700; color: var(--ink); }
 .settings-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 196px minmax(0, 1fr); }
@@ -772,15 +777,16 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 /* where a free text appears (label vs note; clinician question 2026-11-03) */
 .field-where { margin-left: 6px; font-weight: 400; font-size: 12px; color: var(--muted); }
 .field-warn { color: var(--warn); }
-@keyframes settings-in { from { opacity: 0; transform: translateY(6px) scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes settings-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .settings-dialog { animation: none; } }
 /* every pop-up opens the same soft way (clinician 2026-11-05): a short fade and a slight
    growth, never a jump. `scale` and `opacity` only: their place (transform, translate) is set inline */
 @keyframes soft-in { from { opacity: 0; scale: 0.97; } to { opacity: 1; scale: 1; } }
 @keyframes soft-fade { from { opacity: 0; } to { opacity: 1; } }
-.keys-popover, .radial-flyout, .radial-panel, .ring-aside, .relation-dialog { animation: soft-in 0.16s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.keys-popover, .radial-flyout, .radial-panel, .ring-aside { animation: soft-in var(--t-pop) var(--ease); }
+.relation-dialog { animation: soft-in var(--t-move) var(--ease); }
 .keys-popover { transform-origin: top right; }
-.relation-backdrop { animation: soft-fade 0.16s ease-out; }
+.relation-backdrop { animation: soft-fade var(--t-move) var(--ease); }
 @media (prefers-reduced-motion: reduce) { .keys-popover, .radial-flyout, .radial-panel, .ring-aside, .relation-dialog, .relation-backdrop { animation: none; } }
 
 /* Ayarlar → Çizim → Sayfa zemini: a small piece of each paper (paper.js) */
@@ -803,6 +809,8 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
    quiet foot with the count, the keys and the buttons. The first card and the first opening's offer
    carry the one picture of the tour: a small family on navy that draws itself, line by line. */
 .tour-block { position: fixed; inset: 0; z-index: 80; }
+/* a window the tour opens (Ayarlar, Akraba evliliği) does not dim the page a second time */
+body.touring .settings-backdrop, body.touring .relation-backdrop { background: transparent; }
 .tour-scrim { position: fixed; inset: 0; z-index: 81; pointer-events: none; background: rgba(19, 30, 47, 0.6); }
 .tour-spot {
   position: fixed; z-index: 81; pointer-events: none; border-radius: 10px;
@@ -810,7 +818,7 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 }
 .tour-spot::after {
   content: ''; position: absolute; inset: -4px; border-radius: 13px; border: 2px solid var(--accent);
-  opacity: 0; animation: tour-pulse 1.1s 0.3s ease-out;
+  opacity: 0; animation: tour-pulse 1.1s var(--t-move) var(--ease);
 }
 @keyframes tour-pulse { 0% { opacity: 0.85; transform: scale(1); } 100% { opacity: 0; transform: scale(1.12); } }
 
@@ -818,7 +826,7 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
   position: fixed; z-index: 82; box-sizing: border-box; width: 360px; max-width: calc(100vw - 24px);
   background: var(--surface); color: var(--ink-2); border-radius: 14px;
   box-shadow: 0 2px 6px rgba(19, 30, 47, 0.12), 0 24px 60px -12px rgba(19, 30, 47, 0.55);
-  transition: left 0.32s cubic-bezier(.2, .8, .2, 1), top 0.32s cubic-bezier(.2, .8, .2, 1);
+  transition: left var(--t-move) var(--ease), top var(--t-move) var(--ease);
 }
 .tour-card::before { content: ''; position: absolute; width: 16px; height: 16px; background: var(--surface); transform: rotate(45deg); border-radius: 3px; }
 .tour-card[data-side="none"]::before { display: none; }
@@ -828,7 +836,7 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .tour-card[data-side="right"]::before { left: -7px; top: calc(var(--arrow) - 8px); }
 
 .tour-track { display: flex; gap: 3px; padding: 16px 52px 0 20px; }
-.tour-track span { flex: 1; height: 3px; border-radius: 2px; background: var(--line); transition: background 0.3s; }
+.tour-track span { flex: 1; height: 3px; border-radius: 2px; background: var(--line); transition: background var(--t-move) var(--ease); }
 .tour-track span.done { background: color-mix(in srgb, var(--accent) 45%, var(--line)); }
 .tour-track span.now { background: var(--accent); }
 .tour-close {
@@ -838,7 +846,7 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .tour-close:hover { background: var(--sunken); color: var(--ink); }
 .tour-close:focus-visible { outline: none; box-shadow: var(--focus); }
 
-.tour-body { position: relative; padding: 16px 20px 0; animation: tour-in 0.28s ease-out; }
+.tour-body { position: relative; padding: 16px 20px 0; animation: tour-in var(--t-move) var(--ease); }
 @keyframes tour-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .tour-icon {
   display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; margin-bottom: 10px;
@@ -899,7 +907,7 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
   position: fixed; left: 16px; bottom: 16px; z-index: 40; box-sizing: border-box; width: 340px; max-width: calc(100vw - 32px);
   padding: 0 18px 16px; overflow: hidden; background: var(--surface); border-radius: 14px;
   box-shadow: 0 2px 6px rgba(19, 30, 47, 0.10), 0 20px 50px -14px rgba(19, 30, 47, 0.45);
-  animation: tour-rise 0.36s cubic-bezier(.2, .8, .2, 1);
+  animation: tour-rise var(--t-move) var(--ease);
 }
 .tour-offer .tour-hero { height: 112px; margin: 0 -18px 14px; padding-top: 0; border-radius: 0; }
 .tour-offer b { display: block; font-size: 17px; color: var(--ink); }

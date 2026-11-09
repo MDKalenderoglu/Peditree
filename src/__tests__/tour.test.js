@@ -30,9 +30,11 @@ const index = (id) => TOUR_STEPS.findIndex((x) => x.id === id);
 const goTo = async (id) => {
   for (let i = 0; i < TOUR_STEPS.length && step() !== id; i++) await key(index(id) > index(step()) ? 'ArrowRight' : 'ArrowLeft');
   expect(step()).toBe(id);
-  await wait(80);
+  await wait(200);
 };
 
+// where every element stands: still at 100 unless a test moves it
+const box = { left: () => 100 };
 let rect;
 beforeAll(async () => {
   vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -40,7 +42,8 @@ beforeAll(async () => {
   // a box for everything on the page (jsdom lays nothing out)
   rect = Element.prototype.getBoundingClientRect;
   Element.prototype.getBoundingClientRect = function () {
-    return { left: 100, top: 100, right: 160, bottom: 140, width: 60, height: 40, x: 100, y: 100 };
+    const left = box.left();
+    return { left, top: 100, right: left + 60, bottom: 140, width: 60, height: 40, x: left, y: 100 };
   };
   useViewSettings.getState().setView({ tourOffer: true });
   view = mount(createElement(App));
@@ -92,7 +95,7 @@ describe('the tour works on a sample family and gives the patient’s drawing ba
     expect(sample.find((i) => i.id === 'proband').age).toBe('8');
     expect(sample.some((i) => i.id !== 'proband' && i.age === '12' && i.sex === 'female')).toBe(true);
     // the steps change the sample (selection, panel); nothing of it reaches the session
-    await goTo('partner');
+    await goTo('kinship');
     await wait(400); // longer than the autosave's wait
     await run(() => flushAutosave());
     expect(window.sessionStorage.getItem(SESSION)).toBe(saved);
@@ -153,14 +156,20 @@ describe('each step sets the screen up as it talks about it', () => {
     await goTo('order');
     expect($('.editor-panel').textContent).toContain('Doğum sırası');
     expect(lit()).toBe(true);
-    await goTo('partner');
-    expect(S().selectedIds).toEqual(['father']);
+    await goTo('couple');
+    expect([...S().selectedIds].sort()).toEqual(['father', 'mother']); // the line between them: the couple
+    expect($('.editor-panel').textContent).toContain('Bu çift');
+    await goTo('kinship');
     expect([...document.querySelectorAll('.editor-panel .field-label')].some((l) => l.textContent.trim() === 'Akrabalık')).toBe(true);
     expect(lit()).toBe(true);
     await goTo('patient');
     expect(S().selectedIds || []).toEqual([]);
     await goTo('settings');
     expect($('.settings-dialog')).not.toBeNull();
+    expect(lit()).toBe(true);
+    await key('ArrowRight');
+    expect(step()).toBe('about'); // Hakkında, before the end: what PediTree is and where to report a problem
+    expect($('.settings-dialog .about-links')).not.toBeNull();
     expect(lit()).toBe(true);
     await key('ArrowRight');
     expect($('.settings-dialog')).toBeNull(); // the next step closes it again
@@ -192,7 +201,7 @@ describe('each step sets the screen up as it talks about it', () => {
     bar.classList.add('has-overflow');
     try {
       await click(buttonNamed('Tanıtım turu'));
-      await goTo('file');
+      await goTo('open');
       expect($('.tour-note')).not.toBeNull();
       await goTo('save'); // Kaydet never goes there
       expect($('.tour-note')).toBeNull();
@@ -201,6 +210,68 @@ describe('each step sets the screen up as it talks about it', () => {
       bar.classList.remove('has-overflow');
       if ($('.tour')) await key('Escape');
     }
+  });
+});
+
+describe('the ring, the menus and the windows the steps talk about (clinician 2026-11-10: the ring and the panel in detail)', () => {
+  it('each ring step opens its own part and closes the one before: Kardeş’s list, Durum, Bulgu; the overview none', async () => {
+    await click(buttonNamed('Tanıtım turu'));
+    const openSector = () => [...document.querySelectorAll('.radial-sector.on')].map((x) => x.getAttribute('aria-label'));
+    const openSat = () => [...document.querySelectorAll('.radial-sat.on')].map((x) => x.getAttribute('aria-label'));
+    await goTo('ring-add');
+    expect(openSector()).toEqual(['Kardeş']);
+    expect($('.radial-menu .radial-flyout').textContent).toMatch(/Gebelik.*Evlat edinilmiş/);
+    await goTo('ring-status');
+    expect(openSector()).toEqual([]);
+    expect(openSat()).toEqual(['Durum']);
+    expect($('.radial-menu .radial-panel').textContent).toMatch(/Etkilenmiş/);
+    await goTo('ring-findings');
+    expect(openSat()).toEqual(['Bulgu']);
+    await goTo('ring');
+    expect(openSector()).toEqual([]);
+    expect(openSat()).toEqual([]);
+    await key('Escape');
+  });
+
+  it('Yeni’s menu, the related-family window and Kaydet’s menu open at their steps and close at the next', async () => {
+    await click(buttonNamed('Tanıtım turu'));
+    await goTo('new');
+    expect($('.toolbar [data-popup="new"] .keys-popover').textContent).toMatch(/Akraba evliliği/);
+    await goTo('relation');
+    expect($('.toolbar [data-popup="new"] .keys-popover')).toBeNull();
+    expect($('.relation-dialog')).not.toBeNull();
+    expect(document.body.classList.contains('touring')).toBe(true); // its window does not dim the page twice
+    await goTo('open');
+    expect($('.relation-dialog')).toBeNull();
+    await goTo('save');
+    expect([...document.querySelectorAll('.download-popover .download-group')].map((g) => g.textContent)).toEqual(['Resim olarak', 'Sonra düzenlemek için', 'Analiz programları için']);
+    await goTo('arrange');
+    expect($('.download-popover')).toBeNull();
+    await key('Escape');
+    expect(document.body.classList.contains('touring')).toBe(false);
+  });
+
+  it('the lit area waits until what it points at has come to rest, then glides there once (clinician report 2026-11-10: from step 7 to 8 it sped up)', async () => {
+    await click(buttonNamed('Tanıtım turu'));
+    await goTo('drawing');
+    const spotLeft = () => parseFloat($('.tour-spot').style.left);
+    expect(spotLeft()).toBe(94); // 100, less the lit area's margin
+    // the next step's part still moving (a panel sliding in): every look finds it somewhere else
+    let n = 0;
+    box.left = () => 300 + (n++) * 7;
+    try {
+      await key('ArrowRight');
+      await wait(400);
+      expect(spotLeft()).toBe(94); // it did not chase the moving part
+      // the part comes to rest at 300
+      box.left = () => 300;
+      await wait(200); // (the simulated page shows what changed when each wait ends)
+      await wait(600);
+      expect(spotLeft()).toBe(294);
+    } finally {
+      box.left = () => 100;
+    }
+    await key('Escape');
   });
 });
 
@@ -256,6 +327,10 @@ describe('the card stands beside what it points at', () => {
     const mid = placeCard(null, card, win);
     expect(mid.side).toBe(null);
     expect(mid.left).toBe((1280 - 340) / 2);
+    // a window nearly as large as the screen (Akraba evliliği): the corner that covers least of it
+    const big = placeCard({ left: 274, top: 122, right: 1106, bottom: 678, width: 832, height: 556 }, card, win);
+    expect(big.side).toBe(null);
+    expect([big.left, big.top]).toEqual([12, 800 - 200 - 12]); // bottom left: only a strip of its edge
     const edge = placeCard({ left: 1250, top: 6, right: 1280, bottom: 40, width: 30, height: 34 }, card, win);
     expect(edge.left + card.w).toBeLessThanOrEqual(1280 - 12);
   });
