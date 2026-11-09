@@ -278,7 +278,7 @@ describe('the ring menu', () => {
       expect(dialog.querySelector('[role="tabpanel"]').textContent).toMatch(/Durum düğmesindeki seçenekler/);
       // the order set above is the order shown, hidden choices switched off
       const names = [...dialog.querySelectorAll('.set-list')][1].querySelectorAll('.set-list-name');
-      expect([...names].map(n => n.textContent)).toEqual(['Proband', 'Etkilenmiş', 'Taşıyıcı', 'Vefat', 'Danışan', 'Belirtisiz taşıyıcı']);
+      expect([...names].map(n => n.textContent)).toEqual(['Proband', 'Etkilenmiş', 'Taşıyıcı', 'Vefat', 'Danışan', 'Presemptomatik']);
       const consultand = [...dialog.querySelectorAll('.set-list-label')].find(l => l.textContent === 'Danışan').querySelector('input');
       expect(consultand.checked).toBe(false);
       await key('Escape');
@@ -1110,9 +1110,9 @@ describe('more of what the clinician sees', () => {
     expect(g().individuals.find(i => i.id === 'mother').carrier).toBe(true);
     expect(on()).toEqual(['Etkilenmiş', 'Taşıyıcı']);
     // the hidden choice comes into the same list
-    expect(choiceLabels()).not.toContain('Belirtisiz taşıyıcı');
+    expect(choiceLabels()).not.toContain('Presemptomatik');
     await click(choiceRows().find(b => b.textContent.includes('Diğer')));
-    expect(choiceLabels()).toContain('Belirtisiz taşıyıcı');
+    expect(choiceLabels()).toContain('Presemptomatik');
   });
 
   it('a mouse that comes over a corner button opens its list, and the click that follows keeps it open', async () => {
@@ -1500,13 +1500,13 @@ describe('NSGC 2022 additions (clinician decisions 2026-11-02) and the trimmed s
     // presymptomatic: hidden in the ring at first, under "Diğer…" in Durum
     await select('mother');
     await key('d');
-    expect(choiceLabels().join(' ')).not.toMatch(/Belirtisiz/);
+    expect(choiceLabels().join(' ')).not.toMatch(/Presemptomatik/);
     await click(choiceRows().find(a => a.textContent.includes('Diğer')));
-    const pre = choiceRows().find(a => a.textContent.includes('Belirtisiz'));
+    const pre = choiceRows().find(a => a.textContent.includes('Presemptomatik'));
     await click(pre);
     expect(g().individuals.find(i => i.id === 'mother').presymptomatic).toBe(true);
     expect(drawn('mother').querySelector('.presymptomatic-line')).not.toBeNull();
-    expect($('.condition-legend').textContent).toMatch(/Belirtisiz taşıyıcı/);
+    expect($('.condition-legend').textContent).toMatch(/Presemptomatik/);
     // affected: the line goes (symptoms now)
     await run(() => S().updateIndividual('mother', { affected: true }));
     expect(drawn('mother').querySelector('.presymptomatic-line')).toBeNull();

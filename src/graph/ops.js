@@ -249,7 +249,7 @@ export function updatePerson(doc, id, fields) {
         continue;
       }
       if (k === 'presymptomatic') {
-        if (v && (fields.affected ?? p.affected)) block(t('Etkilenmiş kişi belirtisiz taşıyıcı olarak işaretlenemez; önce "Etkilenmiş" işaretini kaldırın.'));
+        if (v && (fields.affected ?? p.affected)) block(t('Etkilenmiş kişi presemptomatik olarak işaretlenemez; önce "Etkilenmiş" işaretini kaldırın.'));
         if (v) p.presymptomatic = true; else delete p.presymptomatic;
         continue;
       }
