@@ -50,6 +50,16 @@ describe('stylesheet rules', () => {
     expect(block('ui.css', '.panel-resizer')).toMatch(/grid-row: 2; grid-column: 2;[^}]*cursor: col-resize/);
   });
 
+  it('a tablet: the page never scrolls, bounces or reloads on a pull from the top; a double tap never zooms it; the page is as tall as the screen the browser leaves (clinician report 2026-11-09)', () => {
+    const page = block('ui.css', 'html, body');
+    expect(page).toMatch(/overflow: hidden/);
+    expect(page).toMatch(/overscroll-behavior: none/);
+    expect(page).toMatch(/text-size-adjust: 100%/);
+    expect(block('ui.css', '.app-shell, .side, .settings-backdrop, .relation-backdrop, .keys-popover')).toMatch(/touch-action: manipulation/);
+    expect(block('ui.css', '.side, .keys-popover, .canvas-notices')).toMatch(/overscroll-behavior: contain/);
+    expect(block('ui.css', '.app-shell')).toMatch(/height: 100dvh/);
+  });
+
   it('the transparency preview is a small family drawn like the drawing: thin grey lines, the usual symbols (clinician 2026-11-07)', () => {
     expect(block('ui.css', '.ring-preview .rp-line')).toMatch(/stroke: #64748b; stroke-width: 1\.2;/);
     expect(block('ui.css', '.ring-preview .rp-sym')).toMatch(/stroke-width: 1\.4; fill: var\(--paper\)/);
