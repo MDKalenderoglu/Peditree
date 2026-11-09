@@ -35,6 +35,7 @@ import { subjectOf, displayParentage } from '../graph/model';
 import * as ops from '../graph/ops';
 import { fromPed } from '../graph/ped';
 import { buildTemplate } from '../graph/templates';
+import { buildTourSample } from '../graph/tourSample';
 import { sidewaysMove, dropMove, againstAges } from '../utils/sidewaysMove';
 import { wizardOps, deriveWizardView } from '../graph/wizardAdapter';
 import * as multiples from '../graph/multiples';
@@ -520,6 +521,29 @@ export const usePedigreeStore = create((zSet, get) => {
       };
     }),
 
+    // the guided tour (Tour.jsx; clinician request 2026-11-09) works on a sample family and gives back
+    // what was open untouched: a pending autosave is written first, the whole state is kept aside
+    // (document, undo / redo, selection), nothing is autosaved while the tour runs, and the session's
+    // saved copy is never touched — a reload in the middle brings back the patient's drawing
+    startTour: () => {
+      if (get().tourBackup) return get().tourSample;
+      flushAutosave();
+      const before = get();
+      const { doc, ids } = buildTourSample(starterDocument());
+      const ui = { gen4Pending: [] };
+      zSet({
+        tourBackup: before, tourSample: ids,
+        doc, ui, _history: [], _future: [], _viewHistory: [], _viewFuture: [],
+        ...sel([]), actionNotice: null,
+        ...deriveAll(doc, ui, { straightStart: true }),
+      });
+      return ids;
+    },
+    endTour: () => {
+      const before = get().tourBackup;
+      if (before) zSet(before, true);
+    },
+
     // a new pedigree from a ready-made template (graph/templates.js): like
     // "Yeni", nothing to undo; drawn with the fewest bends
     newFromTemplate: (spec) => {
@@ -654,6 +678,8 @@ function saveNow() {
 usePedigreeStore.subscribe((state, prevState) => {
   // the document or only the drawing ("Yeniden Düzenle") changed: save both
   if (state.doc === prevState.doc && state.pedigreeData === prevState.pedigreeData) return;
+  // the tour's sample family is never saved over the patient's drawing (startTour)
+  if (state.tourBackup) return;
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(saveNow, 300);
 });

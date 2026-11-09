@@ -121,6 +121,20 @@ describe('the screens in English', () => {
     useLang.getState().setLang({ ui: 'tr', drawing: 'same' });
   });
 
+  it('the guided tour and its offer: every step’s card in English (clinician request 2026-11-09)', async () => {
+    const offer = document.querySelector('.tour-offer');
+    const seen = offer ? [said(offer)] : [];
+    await click(buttons().find((b) => b.getAttribute('aria-label') === 'Guided tour'));
+    for (let i = 0; i < 40 && document.querySelector('.tour'); i++) {
+      seen.push(said(document.querySelector('.tour-card')));
+      const next = [...document.querySelectorAll('.tour-card button')].find((b) => ['Next', 'Finish'].includes(b.textContent.trim()));
+      await click(next);
+    }
+    expect(document.querySelector('.tour')).toBeNull();
+    expect(seen.length).toBeGreaterThan(10);
+    expect(turkishIn(seen.join('\n'))).toEqual([]);
+  });
+
   it('the toolbar and each of its windows: About, Citation, Feedback, New, Open, Download, Share, Settings (with the keyboard help)', async () => {
     const toolbar = $('.canvas-toolbar');
     const seen = [said(toolbar)];
