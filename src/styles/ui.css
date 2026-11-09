@@ -37,6 +37,8 @@
   --sunken: #eef2f7;
   --frame: #f6f8fb;      /* Soft Canvas: panels, the frame round the drawing */
   --paper: #ffffff;
+  /* the side panel: grey with a touch of the theme colour, so it stands apart from the white drawing (2026-11-09) */
+  --panel: color-mix(in srgb, var(--accent) 7%, var(--sunken));
 
   --accent: #4f46a5;     /* Muted Indigo: selection, focus, the main action */
   --accent-ink: #3d3690;
@@ -85,7 +87,12 @@ button, input, select, textarea { font-family: inherit; }
 .app-shell.has-editor { grid-template-columns: minmax(0, 1fr) var(--panel-w, 328px); }
 /* the edge between the drawing and the side panel, dragged to resize the panel (App PanelResizer; 2026-11-07) */
 /* the panel and its edge share the second column of the second row (explicit, or the edge would push the panel away) */
-.app-shell > .side-right { grid-row: 2; grid-column: 2; }
+.app-shell > .side-right { grid-row: 2; grid-column: 2; position: relative; z-index: 5; border-left: 1px solid var(--accent-line); box-shadow: -10px 0 28px -14px rgba(24, 33, 44, 0.38); }
+/* the side panel is seen when it opens (clinician report 2026-11-09: an assistant never noticed it, too pale):
+   it slides in a little from the right; only the panel moves, the drawing keeps its place */
+@keyframes panel-in { from { opacity: 0.35; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+.app-shell.has-editor > .side-right { animation: panel-in 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@media (prefers-reduced-motion: reduce) { .app-shell.has-editor > .side-right { animation: none; } }
 .panel-resizer { grid-row: 2; grid-column: 2; justify-self: start; position: relative; z-index: 6; width: 10px; margin-left: -5px; cursor: col-resize; touch-action: none; }
 .panel-resizer::after { content: ''; position: absolute; top: 0; bottom: 0; left: 4px; width: 2px; background: transparent; transition: background 0.15s; }
 .panel-resizer:hover::after, .panel-resizer:focus-visible::after { background: var(--accent-line); }
@@ -234,14 +241,15 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
    clear"): a soft grey panel, each part a white rounded group, quiet small
    headings, one accent for what is chosen. Words that only explain stay out
    of the way until they are needed. */
-.editor-panel { background: var(--frame); }
+.editor-panel { background: var(--panel); }
 .side-header {
   position: sticky; top: 0; z-index: 2;
   display: flex; align-items: center; gap: 12px;
   padding: 14px 12px 12px 16px;
-  background: color-mix(in srgb, var(--frame) 88%, transparent);
+  background: color-mix(in srgb, var(--accent-soft) 90%, transparent);
   -webkit-backdrop-filter: saturate(1.6) blur(12px); backdrop-filter: saturate(1.6) blur(12px);
-  border-bottom: 1px solid var(--line-2);
+  border-top: 3px solid var(--accent);
+  border-bottom: 1px solid var(--accent-line);
 }
 .side-header > .ui-btn { margin-left: auto; align-self: flex-start; }
 .side-header-text { min-width: 0; }
