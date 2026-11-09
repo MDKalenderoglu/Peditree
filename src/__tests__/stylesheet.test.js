@@ -13,7 +13,9 @@ const block = (f, sel) => { const s = css(f); const i = s.indexOf(`${sel} {`); r
 
 describe('stylesheet rules', () => {
   it('two findings never read as one: the white gap between regions cannot be painted over; the hand-drawn divider stays dark', () => {
-    expect(css('app.css')).toMatch(/\.node-group \.condition-regions path \{\s*stroke: #ffffff;/);
+    // sectors without an outline of their own (a white edge broke the dividing lines where they cross, 2026-11-07)
+    expect(css('app.css')).toMatch(/\.node-group \.condition-regions path \{\s*stroke: none;/);
+    expect(css('app.css')).toMatch(/\.node-group \.condition-regions \.region-gap,\s*\.node-group \.condition-regions path\.region-gap-sketch \{\s*stroke: #ffffff;/);
     expect(css('app.css')).toMatch(/\.condition-regions path\.region-divider-sketch \{\s*stroke: #1e293b;/);
   });
 

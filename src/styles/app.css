@@ -110,11 +110,15 @@ body {
   stroke-width: 2px;
 }
 
-/* finding regions keep their white separating gap (set on the elements, so
-   the export has it too) — the generic rule above would paint it dark */
+/* finding regions: the sectors have no outline (the generic rule above would paint
+   one dark); the white gap between two findings is a line of its own (PedigreeCanvas
+   drawRegions, set on the elements, so the export has it too) */
 .node-group .condition-regions path {
+  stroke: none;
+}
+.node-group .condition-regions .region-gap,
+.node-group .condition-regions path.region-gap-sketch {
   stroke: #ffffff;
-  stroke-width: 2.4px;
 }
 /* the carrier's dot and its white ring (also when hand-drawn as a path) have no outline */
 .node-group .carrier-dot,
