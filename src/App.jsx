@@ -24,7 +24,7 @@ import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, ringAlphaOf,
 import { ProductInfo, LicenseInfo, CitationInfo, FeedbackInfo } from './components/AboutParts';
 import { nameCase } from './utils/nameCase';
 import { RELEASE_STAGE } from './utils/appInfo';
-import { fitToolbar, overflowed } from './utils/toolbarFit';
+import { watchToolbar, overflowed } from './utils/toolbarFit';
 import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
@@ -230,15 +230,7 @@ function App() {
   const toolbarRef = React.useRef(null);
   const shellRef = React.useRef(null); // the page's grid: the side panel's edge is dragged against it
   React.useLayoutEffect(() => {
-    const el = toolbarRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return undefined;
-    let width = -1;
-    const fit = () => { if (el.clientWidth !== width) { width = el.clientWidth; fitToolbar(el); } };
-    fitToolbar(el);
-    width = el.clientWidth;
-    const watch = new ResizeObserver(fit);
-    watch.observe(el);
-    return () => watch.disconnect();
+    return watchToolbar(toolbarRef.current);
   }, [uiLang]);
 
   const selectedNode = pedigreeData.individuals.find(i => i.id === selectedId);
