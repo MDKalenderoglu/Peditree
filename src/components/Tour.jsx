@@ -66,7 +66,7 @@ export const TOUR_STEPS = [
     text: tk('Halkanın bir bölümüne tıklandığında eklenecek kişinin cinsiyeti sorulur. Kardeş ve Çocuk bölümlerinden ayrıca gebelik sonuçları (düşük, ölü doğum, sonlandırma, süren gebelik), evlat edinilmiş ya da yardımcı üreme ile doğmuş bir çocuk ve tek sembolde gösterilen birden çok kişi eklenebilir.'),
     target: () => [sector('Kardeş'), one('.radial-menu .radial-flyout')], prepare: (c) => c.select(c.ids.proband), act: ringAs({ sector: 'Kardeş' }) },
   { id: 'ring-status', icon: HeartPulse, title: tk('Durum'),
-    text: tk('Bireyin cinsiyeti ve klinik durumu buradan işaretlenir: etkilenmiş, taşıyıcı, belirtisiz taşıyıcı ya da vefat etmiş. Proband ve danışmaya gelen birey (danışan) da bu listeden belirlenir.'),
+    text: tk('Bireyin cinsiyeti ve klinik durumu buradan işaretlenir: etkilenmiş, taşıyıcı, presemptomatik (henüz belirti göstermeyen) ya da vefat etmiş. Proband ve danışmaya gelen birey (danışan) da bu listeden belirlenir.'),
     target: () => [sat('Durum'), one('.radial-menu .radial-panel')], prepare: (c) => c.select(c.ids.proband), act: ringAs({ sat: 'Durum' }) },
   { id: 'ring-findings', icon: Stethoscope, title: tk('Bulgu'),
     text: tk('Ailede birden fazla hastalık ya da bulgu söz konusuysa her biri adıyla eklenir. Sembol bulgu sayısı kadar bölüme ayrılır; her bölümün anlamı çizimin altındaki açıklamada yer alır. Tanı yaşı da buraya yazılabilir.'),

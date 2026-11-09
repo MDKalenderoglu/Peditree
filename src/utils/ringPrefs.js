@@ -37,7 +37,7 @@ export const RING_STATUS = [
   { id: 'proband', label: tk('Proband') },
   { id: 'consultand', label: tk('Danışan') },
   // rare (NSGC 2022 Fig 2; clinician 2026-11-02): under "Diğer…" until brought forward
-  { id: 'presymptomatic', label: tk('Belirtisiz taşıyıcı') },
+  { id: 'presymptomatic', label: tk('Presemptomatik') },
 ];
 
 // the Bilgiler arc: each part opens its own small box (clinician request 2026-11-04)

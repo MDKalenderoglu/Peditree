@@ -58,7 +58,7 @@ export function validateGraphStructure(graph, { retired = [] } = {}) {
     if (PREGNANCY_FIELDS.filter((f) => ind[f] === true).length > 1) err('PREGNANCY_KIND_MULTIPLE', t('Bir gebelik sonucu aynı anda iki türde işaretli (ör. hem düşük hem ölü doğum).'), [ind.id]);
     if (ind.sexAtBirth !== undefined && !SEX_AT_BIRTH.includes(ind.sexAtBirth)) err('FIELD_SEX_AT_BIRTH', t('Bir kişinin doğumda atanan cinsiyeti anlaşılamadı ("{v0}").', { v0: String(ind.sexAtBirth) }), [ind.id]);
     if (ind.lmp !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(String(ind.lmp))) err('FIELD_LMP', t('Bir gebeliğin son adet tarihi anlaşılamadı ("{v0}").', { v0: String(ind.lmp) }), [ind.id]);
-    if (ind.presymptomatic && ind.affected) out.push({ severity: 'warning', code: 'PRESYMPTOMATIC_AFFECTED', message: t('Bir kişi hem etkilenmiş hem belirtisiz taşıyıcı olarak işaretli; birini kaldırın.'), ids: [ind.id] });
+    if (ind.presymptomatic && ind.affected) out.push({ severity: 'warning', code: 'PRESYMPTOMATIC_AFFECTED', message: t('Bir kişi hem etkilenmiş hem presemptomatik olarak işaretli; birini kaldırın.'), ids: [ind.id] });
     if (ind.conditions !== undefined && !Array.isArray(ind.conditions)) err('FIELD_CONDITIONS', t('Bir kişinin bulguları bir liste değil.'), [ind.id]);
     for (const c of Array.isArray(ind.conditions) ? ind.conditions : []) {
       // a finding without a status comes from an older record and is kept as it is
