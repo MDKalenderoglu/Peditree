@@ -26,6 +26,9 @@ const SEX_WORD = { male: tk('Erkek'), female: tk('Kadın'), unknown: tk('Cinsiye
 const GROUP_WORD = { male: tk('erkek'), female: tk('kadın'), unknown: tk('kişi (cinsiyetleri karışık ya da bilinmiyor)') };
 // same options and wording as the wizard; an older 'separated' shows as the combined one
 const STATUS_OPTIONS = [['together', tk('Birlikte')], ['divorced', tk('Boşanmış/Ayrılmış')], ['unknown', tk('Bilinmiyor')]];
+// a narrow side panel (clinician report 2026-11-07: "Bilinmiyor" ran out of it): "Boşanmış/Ayrılmış"
+// may go on two lines after its "/"
+const breakAfterSlash = (text) => text.split('/').flatMap((part, i) => (i ? ['/', <wbr key={i} />, part] : [part]));
 
 /**
  * The person's symbol in miniature, as drawn (sex, affected, deceased, a
@@ -198,7 +201,7 @@ function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelati
             <div className="segmented" role="radiogroup" aria-label={t('İlişki')}>
               {STATUS_OPTIONS.map(([v, label]) => (
                 <button key={v} role="radio" aria-checked={status === v} className={status === v ? 'on' : undefined}
-                  onClick={() => { if (status !== v) onSetUnionStatus(u.id, v); }}>{t(label)}</button>
+                  onClick={() => { if (status !== v) onSetUnionStatus(u.id, v); }}>{breakAfterSlash(t(label))}</button>
               ))}
             </div>
           </div>
