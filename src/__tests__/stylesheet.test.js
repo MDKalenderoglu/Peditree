@@ -50,6 +50,19 @@ describe('stylesheet rules', () => {
     expect(block('ui.css', '.panel-resizer')).toMatch(/grid-row: 2; grid-column: 2;[^}]*cursor: col-resize/);
   });
 
+  it('the side panel is seen when it opens (clinician report 2026-11-09: an assistant never noticed it, too pale): a tinted panel with a shadow over the drawing, a header in the accent colour, a short slide in (none with reduced motion)', () => {
+    const edge = block('ui.css', '.app-shell > .side-right');
+    expect(edge).toMatch(/position: relative; z-index: 5/);
+    expect(edge).toMatch(/border-left: 1px solid var\(--accent-line\)/);
+    expect(edge).toMatch(/box-shadow: -\d+px 0 \d+px/);
+    expect(block('ui.css', '.editor-panel')).toMatch(/background: var\(--panel\)/);
+    expect(css('ui.css')).toMatch(/--panel: color-mix\(in srgb, var\(--accent\) \d+%, var\(--sunken\)\)/);
+    expect(block('ui.css', '.side-header')).toMatch(/border-top: 3px solid var\(--accent\)/);
+    expect(block('ui.css', '.side-header')).toMatch(/var\(--accent-soft\)/);
+    expect(css('ui.css')).toMatch(/\.app-shell\.has-editor > \.side-right \{ animation: panel-in /);
+    expect(css('ui.css')).toMatch(/prefers-reduced-motion: reduce\) \{ \.app-shell\.has-editor > \.side-right \{ animation: none; \}/);
+  });
+
   it('a tablet: the page never scrolls, bounces or reloads on a pull from the top; a double tap never zooms it; the page is as tall as the screen the browser leaves (clinician report 2026-11-09)', () => {
     const page = block('ui.css', 'html, body');
     expect(page).toMatch(/overflow: hidden/);
