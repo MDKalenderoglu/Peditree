@@ -221,8 +221,17 @@ function App() {
     coarse: coarsePointer(),
     select: (id) => { usePedigreeStore.getState().selectIndividual(id); setRingHidden(false); },
     clear: () => usePedigreeStore.getState().clearSelection(),
+    // the couple line: selecting it selects the couple (the pair panel: relationship, consanguinity, children)
+    selectCouple: (a, b) => {
+      const u = usePedigreeStore.getState().doc.graph.unions.find((x) => x.partners.includes(a) && x.partners.includes(b));
+      if (u) usePedigreeStore.getState().selectUnion(u.id);
+    },
     openSettings: (at) => openSettings(at),
-    closeSettings: () => setSettingsOpen(false),
+    openNew: () => setNewMenu(true),
+    openRelation: () => setRelationOpen(true),
+    openSave: () => setDownloadOpen(true),
+    // every window and menu a step opened, closed before the next step sets its screen up
+    closeAll: () => { setSettingsOpen(false); setNewMenu(false); setRelationOpen(false); setDownloadOpen(false); setPedOpen(false); },
   };
   const [openHelp, setOpenHelp] = React.useState(false); // "Aç"'s window: which files it opens
   // the logo: what PediTree is, its version and licence (the rest: Ayarlar → Hakkında)
