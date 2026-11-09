@@ -41,6 +41,50 @@ const MORE = {
 /** A finger or a pen (the multi-select switch is for touch screens). */
 const coarsePointer = () => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
 
+/**
+ * The side panel (clinician report 2026-11-09: it opened with a soft slide but vanished at once).
+ * When it closes, a still copy of what it showed slides out to the right over the drawing, which
+ * already has its full width; the copy is only a picture (aria-hidden, inert, no ids, no clicks)
+ * and is gone when the motion ends. The copy is taken just before React empties the panel
+ * (getSnapshotBeforeUpdate). No motion with reduced motion or without the Web Animations API.
+ */
+const PANEL_OUT_MS = 220;
+class SidePanel extends React.Component {
+  constructor(props) { super(props); this.ref = React.createRef(); }
+  getSnapshotBeforeUpdate(prev) {
+    const el = this.ref.current;
+    if (!prev.open || this.props.open || !el || typeof el.animate !== 'function') return null;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return null;
+    const rect = el.getBoundingClientRect();
+    const ghost = el.cloneNode(true);
+    // typed values live in the fields, not in their attributes: carry them over
+    const from = el.querySelectorAll('input, textarea, select');
+    ghost.querySelectorAll('input, textarea, select').forEach((f, i) => {
+      if (f.type === 'checkbox' || f.type === 'radio') f.checked = from[i].checked; else f.value = from[i].value;
+    });
+    ghost.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
+    ghost.removeAttribute('id');
+    ghost.classList.add('panel-ghost');
+    ghost.setAttribute('aria-hidden', 'true');
+    ghost.setAttribute('inert', '');
+    Object.assign(ghost.style, { left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px` });
+    return { ghost, scrollTop: el.scrollTop };
+  }
+  componentDidUpdate(prevProps, prevState, snap) {
+    if (!snap) return;
+    const { ghost, scrollTop } = snap;
+    document.body.appendChild(ghost);
+    ghost.scrollTop = scrollTop;
+    const motion = ghost.animate(
+      [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(28px)' }],
+      { duration: PANEL_OUT_MS, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' },
+    );
+    const done = () => ghost.remove();
+    if (motion && motion.finished) motion.finished.then(done, done); else setTimeout(done, PANEL_OUT_MS);
+  }
+  render() { return <aside ref={this.ref} className="side side-right editor-panel">{this.props.children}</aside>; }
+}
+
 /** "Diğer" (⋯): the buttons the bar had no room for, in their order; a choice does what the button does. */
 function MoreMenu({ items, multiSelect, onPick }) {
   const t = useT();
@@ -979,7 +1023,7 @@ function App() {
       {(selectedNode || selectedNode2) && (
         <PanelResizer shellRef={shellRef} width={view.panelWidth} onChange={(w) => setView({ panelWidth: w })} />
       )}
-      <aside className="side side-right editor-panel">
+      <SidePanel open={!!(selectedNode || selectedNode2)}>
         <IndividualEditor
           node={selectedNode}
           node2={selectedNode2}
@@ -1031,7 +1075,7 @@ function App() {
           onAddParents={addParentsTo}
           onAddSibling={addSiblingTo}
         />
-      </aside>
+      </SidePanel>
     </div>
     {/* what printing shows (A4): the drawing as exported, and the date */}
     <div id="print-root" ref={printRef} aria-hidden="true" />

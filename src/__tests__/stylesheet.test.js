@@ -63,6 +63,22 @@ describe('stylesheet rules', () => {
     expect(css('ui.css')).toMatch(/prefers-reduced-motion: reduce\) \{ \.app-shell\.has-editor > \.side-right \{ animation: none; \}/);
   });
 
+  it('the top bar stands apart from the drawing (clinician report 2026-11-09: too pale): theme colour along its top, a tinted ground, its menus over the side panel and the ring', () => {
+    const bar = css('ui.css').match(/\n\.toolbar \{[^}]*/)[0]; // the bar's own rule, not '.app-shell > .toolbar'
+    expect(bar).toMatch(/border-top: 3px solid var\(--accent\)/);
+    expect(bar).toMatch(/background: color-mix\(in srgb, var\(--accent\) \d+%, #ffffff\)/);
+    expect(bar).toMatch(/border-bottom: 1px solid var\(--accent-line\)/);
+    expect(bar).toMatch(/position: relative; z-index: 13;/);
+    expect(block('ui.css', '.radial-menu')).toMatch(/z-index: 12;/);
+  });
+
+  it('the copy of the closing side panel lies over the drawing like the panel, and never takes a click', () => {
+    const ghost = block('ui.css', '.panel-ghost');
+    expect(ghost).toMatch(/position: fixed; z-index: 5;/);
+    expect(ghost).toMatch(/pointer-events: none/);
+    expect(ghost).toMatch(/box-shadow: -\d+px 0 \d+px/);
+  });
+
   it('a tablet: the page never scrolls, bounces or reloads on a pull from the top; a double tap never zooms it; the page is as tall as the screen the browser leaves (clinician report 2026-11-09)', () => {
     const page = block('ui.css', 'html, body');
     expect(page).toMatch(/overflow: hidden/);

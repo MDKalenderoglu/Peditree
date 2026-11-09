@@ -93,6 +93,8 @@ button, input, select, textarea { font-family: inherit; }
 @keyframes panel-in { from { opacity: 0.35; transform: translateX(28px); } to { opacity: 1; transform: none; } }
 .app-shell.has-editor > .side-right { animation: panel-in 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }
 @media (prefers-reduced-motion: reduce) { .app-shell.has-editor > .side-right { animation: none; } }
+/* the panel closing: a still copy of it slides out over the drawing (App SidePanel) */
+.panel-ghost { position: fixed; z-index: 5; margin: 0; box-sizing: border-box; overflow: hidden; pointer-events: none; border-left: 1px solid var(--accent-line); box-shadow: -10px 0 28px -14px rgba(24, 33, 44, 0.38); }
 .panel-resizer { grid-row: 2; grid-column: 2; justify-self: start; position: relative; z-index: 6; width: 10px; margin-left: -5px; cursor: col-resize; touch-action: none; }
 .panel-resizer::after { content: ''; position: absolute; top: 0; bottom: 0; left: 4px; width: 2px; background: transparent; transition: background 0.15s; }
 .panel-resizer:hover::after, .panel-resizer:focus-visible::after { background: var(--accent-line); }
@@ -122,7 +124,13 @@ button, input, select, textarea { font-family: inherit; }
 .toolbar {
   display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
   padding: 6px 12px; min-height: 52px; box-sizing: border-box;
-  background: var(--frame); border-bottom: 1px solid var(--line);
+  /* the top bar stands apart from the drawing (clinician report 2026-11-09: too pale): the theme
+     colour as a bar along its top, a tinted ground, a firmer edge and a soft shadow below */
+  position: relative; z-index: 13; /* its menus open over the side panel (5), its edge (6) and the ring (12) */
+  background: color-mix(in srgb, var(--accent) 14%, #ffffff);
+  border-top: 3px solid var(--accent);
+  border-bottom: 1px solid var(--accent-line);
+  box-shadow: 0 2px 10px -4px rgba(24, 33, 44, 0.22);
 }
 .toolbar-brand { margin-right: 6px; }
 .toolbar-group { display: flex; align-items: center; gap: 2px; }
