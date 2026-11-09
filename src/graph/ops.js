@@ -15,7 +15,7 @@
  * so behaviour does not change for the clinician; what changes is that the
  * result is stored as graph, not replayed from instructions.
  */
-import { cloneGraph, indexGraph, makePerson, SOCIAL_LINK_KINDS, PREGNANCY_FIELDS, PREGNANCY_KINDS, PREGNANCY_LABEL, isPregnancy, pregnancyKind, GENETIC_TESTED, SEX_AT_BIRTH, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, REPRO_ROLES, EGG_SOURCE, CARRIER_ROLES, REPRO_LABEL, ART_DONOR_RELATION, hasClinicalData } from './model';
+import { cloneGraph, indexGraph, displayParentage, makePerson, SOCIAL_LINK_KINDS, PREGNANCY_FIELDS, PREGNANCY_KINDS, PREGNANCY_LABEL, isPregnancy, pregnancyKind, GENETIC_TESTED, SEX_AT_BIRTH, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, REPRO_ROLES, EGG_SOURCE, CARRIER_ROLES, REPRO_LABEL, ART_DONOR_RELATION, hasClinicalData } from './model';
 import { allocateEditNumber, retire } from './ids';
 import { finalizeGraph, ageOrder } from './finalize';
 import { validateDocument, errorsOf } from './validate';
@@ -681,15 +681,24 @@ export function clearChildOrder(doc, unionId) {
  */
 export function moveChild(doc, unionId, childId, direction) {
   const rel = doc.graph.parentChildRelationships.find((r) => r.unionId === unionId);
-  if (!rel) return { ok: false, doc, reason: t('Bu birlikteliğin çocuğu yok.') };
+  // the sibship as drawn: an adopted-in child stands among the biological ones (displayParentage)
+  const drawn = displayParentage(doc.graph).graph.parentChildRelationships.find((r) => r.unionId === unionId);
+  if (!drawn || !drawn.children.includes(childId)) return { ok: false, doc, reason: t('Bu birlikteliğin çocuğu yok.') };
+  const bio = rel ? rel.children : [];
+  if (drawn.children.length !== bio.length) return moveDrawnChild(doc, unionId, drawn.children, childId, direction);
   const groups = rel.multiples || [];
   if (!groups.length) return setChildOrder(doc, unionId, moveChildInOrder([...rel.children], childId, direction));
-  // units: a group (members in order) or a single child
+  const next = movedOrder(rel.children, groups, childId, direction);
+  return next ? setChildOrder(doc, unionId, next) : { ok: true, doc, created: {} };
+}
+
+// One step of a child in an order, twins counted as one unit (members in order); null: no move.
+function movedOrder(order, groups, childId, direction) {
   const units = [];
-  for (const c of rel.children) {
+  for (const c of order) {
     const g = groups.find((m) => m.children.includes(c));
     if (g && units.some((u) => u.group === g)) continue;
-    units.push(g ? { group: g, ids: rel.children.filter((x) => g.children.includes(x)) } : { ids: [c] });
+    units.push(g ? { group: g, ids: order.filter((x) => g.children.includes(x)) } : { ids: [c] });
   }
   const step = direction === 'left' ? -1 : 1;
   const ui = units.findIndex((u) => u.ids.includes(childId));
@@ -699,10 +708,35 @@ export function moveChild(doc, unionId, childId, direction) {
     [unit.ids[within], unit.ids[within + step]] = [unit.ids[within + step], unit.ids[within]];
   } else {
     const to = ui + step;
-    if (to < 0 || to >= units.length) return { ok: true, doc, created: {} };
+    if (to < 0 || to >= units.length) return null;
     [units[ui], units[to]] = [units[to], units[ui]];
   }
-  return setChildOrder(doc, unionId, units.flatMap((u) => u.ids));
+  return units.flatMap((u) => u.ids);
+}
+
+/**
+ * A sibship with adopted-in children (clinician request 2026-11-07: an adopted child could not be
+ * moved among its siblings): the move works on the drawn order. The biological children keep
+ * their order unless one of them passes another (then the birth order is explicit, as with
+ * moveChild); each adopted-in child keeps its place in the drawing (socialParentLinks[].slot).
+ */
+function moveDrawnChild(doc, unionId, order, childId, direction) {
+  const rel = doc.graph.parentChildRelationships.find((r) => r.unionId === unionId);
+  const next = movedOrder(order, (rel && rel.multiples) || [], childId, direction);
+  if (!next) return { ok: true, doc, created: {} };
+  return commit(doc, (d) => {
+    const r = d.graph.parentChildRelationships.find((x) => x.unionId === unionId);
+    if (r) {
+      const bioOrder = next.filter((c) => r.children.includes(c));
+      if (bioOrder.join('|') !== r.children.join('|')) {
+        r.children = reconcileOrder(bioOrder, r.children);
+        r.birthOrderExplicit = true;
+      }
+    }
+    const bio = new Set(r ? r.children : []);
+    d.graph.socialParentLinks = (d.graph.socialParentLinks || []).map((l) => (
+      l.unionId === unionId && !bio.has(l.childId) && next.includes(l.childId) ? { ...l, slot: next.indexOf(l.childId) } : l));
+  });
 }
 
 /** Social (non-biological) parenthood: adoptive, foster, step, guardian. */

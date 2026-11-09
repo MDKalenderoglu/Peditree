@@ -4,7 +4,8 @@
  * request 2026-10-25). Only moves that keep the drawing's guarantees:
  *   - the neighbour in that direction is the person's partner: the two swap
  *     sides (union.leftPartner, placement only);
- *   - the person has a sibling that way: the birth order changes (twins move
+ *   - the person has a sibling that way (in the drawing, an adopted-in child
+ *     among its adoptive siblings too): the birth order changes (twins move
  *     as one unit, ops.moveChild);
  *   - otherwise nothing moves, with the reason.
  * Free placement is not offered: symbols could overlap and children would no
@@ -12,11 +13,12 @@
  */
 import { nextPerson } from './keyboardNav';
 import { ageInDays } from './age';
-import { isPregnancy } from '../graph/model';
+import { isPregnancy, displayParentage } from '../graph/model';
 import { t } from '../i18n';
 
 const unionOf = (data, a, b) => (data.unions || []).find((u) => u.partners.includes(a) && u.partners.includes(b));
-const sibshipOf = (data, id) => (data.parentChildRelationships || []).find((r) => r.children.includes(id));
+// the sibship as drawn: an adopted-in child moves among its adoptive siblings (clinician 2026-11-07)
+const sibshipOf = (data, id) => (displayParentage(data).graph.parentChildRelationships || []).find((r) => r.children.includes(id));
 
 /**
  * @returns {{ kind: 'partner', unionId, leftPartner } | { kind: 'sibling', unionId, dir } | { kind: 'none', reason }}

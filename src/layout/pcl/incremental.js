@@ -26,7 +26,7 @@ import { computePclLayout } from './index';
 import { layoutParentage } from './art';
 import { checkAllInvariants } from '../../audit/layoutInvariants';
 import { checkConnectorReadability, readabilityMetrics } from '../../audit/connectorReadability';
-import { pregnancyKind } from '../../graph/model';
+import { pregnancyKind, displayParentage } from '../../graph/model';
 import { lineNoteWidth } from '../../utils/symbolText';
 
 const WIDE_SHARE = 0.5; // an edit touching more than half the people: start wide
@@ -56,7 +56,8 @@ export function affectedPeople(prevGraph, graph) {
   }
   for (const [id, u] of prevUnions) if (!curUnions.has(id)) u.partners.forEach(add);
 
-  const kids = (g) => new Map((g.parentChildRelationships || []).map((r) => [r.unionId, r.children]));
+  // the sibships as drawn: an adopted-in child moved among its siblings reorders the sibship
+  const kids = (g) => new Map((displayParentage(g).graph.parentChildRelationships || []).map((r) => [r.unionId, r.children]));
   const prevKids = kids(prevGraph), curKids = kids(graph);
   for (const uid of new Set([...prevKids.keys(), ...curKids.keys()])) {
     const a = prevKids.get(uid) || [], b = curKids.get(uid) || [];

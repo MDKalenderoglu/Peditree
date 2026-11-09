@@ -54,6 +54,8 @@ export function finalizeGraph(graph, { anchorId = 'proband' } = {}) {
   deriveConsanguinity(graph);
   deriveConditionKey(graph);
   clearChildlessWithChildren(graph);
+  // an adopted-in child's place among its siblings is a whole index, or none
+  for (const l of graph.socialParentLinks || []) if ('slot' in l && !(Number.isInteger(l.slot) && l.slot >= 0)) delete l.slot;
   return graph;
 }
 
