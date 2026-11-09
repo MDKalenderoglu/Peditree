@@ -267,21 +267,8 @@ export function auditPedigreeGraph(graph) {
   //      exempt; unknown-sex partners are not flagged here (open product
   //      decision, see docs/PEDITREE_AUDIT_REPORT.md §4).
   // ──────────────────────────────────────
-  {
-    const sexById = new Map(individuals.map(i => [i.id, i]));
-    for (const u of unions) {
-      const [a, b] = (u.partners || []).map(pid => sexById.get(pid));
-      if (!a || !b || a.placeholder || b.placeholder) continue;
-      if ((a.sex === 'male' || a.sex === 'female') && a.sex === b.sex) {
-        issues.push({
-          severity: 'error',
-          code: 'UNION_PARTNER_SEX_CONFLICT',
-          message: t('Birliktelikteki iki birey aynı cinsiyette görünüyor ({v0} ve {v1}); cinsiyet kayıtlarını kontrol edin.', { v0: a.displayLabel || a.label || a.id, v1: b.displayLabel || b.label || b.id }),
-          ids: [u.id, a.id, b.id],
-        });
-      }
-    }
-  }
+  // (since 2026-11-10 a same-sex couple is valid data — NSGC 2022 records same-sex relationships; the
+  //  operations allow one only when Ayarlar turns it on, so a file with one opens on every device)
 
   // ──────────────────────────────────────
   // 12. Consanguinity reported but not structurally resolved.

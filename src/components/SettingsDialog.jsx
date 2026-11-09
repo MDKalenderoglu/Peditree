@@ -152,6 +152,13 @@ function DrawingSection() {
             options={[['screen', t('Ekrandaki gibi')], ['standard', t('Her zaman standart')]]} />
         </Row>
       </div>
+      {/* clinician decision 2026-11-10 (NSGC 2022 records same-sex relationships): off unless chosen */}
+      <div className="set-block">
+        <Row title={t('Aynı cinsiyetten eşler')} hint={t('İki kadın ya da iki erkek eş olabilir')}
+          more={t('İki kadın ya da iki erkek eş olarak eklenebilir. Biyolojik çocukları donörle (sperm donörü; yumurta donörü ya da taşıyıcı anne) ya da evlat edinilmiş olarak eklenir. Doğumda atanan cinsiyetleri farklıysa (AMAB / AFAB) çocuk doğrudan eklenir.')}>
+          <Switch checked={!!view.sameSexPartners} label={t('Aynı cinsiyetten eşler')} onChange={(v) => setView({ sameSexPartners: v })} />
+        </Row>
+      </div>
       <div className="set-block">
         <div className="set-block-title">{t('Çizimdeki yazıların yazı tipi')}</div>
         <div className="font-grid">

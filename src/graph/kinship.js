@@ -7,7 +7,7 @@
  * "make siblings", the person editor). finalize.js uses this after every
  * operation, so every panel reads the same answer.
  */
-import { indexGraph } from './model';
+import { indexGraph, sameReproductiveSex } from './model';
 import { t, tk } from '../i18n';
 
 /** ancestor id → fewest generations up from `id` (parents = 1). */
@@ -19,7 +19,7 @@ function ancestorDepths(idx, id) {
     for (const cur of frontier) {
       // genetic parents: a donor in the place of the partner they replace (model.js)
       for (const p of idx.geneticParents(cur) || []) {
-        if (depth.has(p) || p === id) continue;
+        if (!p || depth.has(p) || p === id) continue; // an unknown parent (model.js) leads nowhere
         depth.set(p, d);
         next.push(p);
       }
@@ -110,12 +110,14 @@ export function kinshipCoefficient(graph, a, b, idx = indexGraph(graph)) {
     if (seen.has(id)) return 0; // loop guard (never in a valid graph)
     seen.add(id);
     const ps = parents(id);
-    const l = ps ? 1 + Math.max(...ps.map((p) => level(p, seen))) : 0;
+    const known = (ps || []).filter(Boolean);
+    const l = known.length ? 1 + Math.max(...known.map((p) => level(p, seen))) : 0;
     levels.set(id, l);
     return l;
   };
   const memo = new Map();
   const phi = (x, y) => {
+    if (!x || !y) return 0; // an unknown parent shares nothing known
     if (x === y) {
       const ps = parents(x);
       return (1 + (ps ? phi(ps[0], ps[1]) : 0)) / 2;
@@ -142,7 +144,10 @@ export function personInbreeding(graph, id, idx = indexGraph(graph)) {
 /** Inbreeding coefficient F of the children of a union (φ of the partners). */
 export function childInbreeding(graph, unionId, idx = indexGraph(graph)) {
   const u = idx.unionById.get(unionId);
-  return u ? kinshipCoefficient(graph, u.partners[0], u.partners[1], idx) : 0;
+  if (!u) return 0;
+  // the children of two partners of the same reproductive sex come with a donor: F is per child (personInbreeding)
+  if (sameReproductiveSex(idx.byId.get(u.partners[0]), idx.byId.get(u.partners[1]))) return 0;
+  return kinshipCoefficient(graph, u.partners[0], u.partners[1], idx);
 }
 
 /** "1/16 (%6,25)" — the fraction the clinician knows, and a percentage. */

@@ -25,7 +25,6 @@ export function ProductInfo() {
       </div>
       {RELEASE_STAGE && <p className="share-note">{t('Bu bir deneme (beta) sürümüdür. Hata ya da eksik görürseniz “Geri bildirim” ile yazın.')}</p>}
       <p className="share-note">{t('PediTree bir çizim aracıdır, tıbbi cihaz değildir. Çizimi kullanmadan önce kontrol edin; tanı ve danışmanlık kararı klinik değerlendirmeye dayanır.')}</p>
-      <p className="share-note">{t('Şimdilik çizilemeyenler: aynı cinsiyetten eşler (NSGC 2022 bunu öngörür).')}</p>
       <p className="share-note">{t('Hasta bilgisi hiçbir sunucuya gönderilmez. Çalışma yalnızca bu sekmede tutulur; “Kaydet” ile indirdiğiniz dosyalar sizin cihazınızda kalır.')}</p>
     </>
   );
