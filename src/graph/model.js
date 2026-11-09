@@ -69,6 +69,11 @@ export const SEX_AT_BIRTH = ['AMAB', 'AFAB', 'UAAB'];
  * The sex a person's gametes follow (NSGC 2022: the symbol shows gender identity; AMAB / AFAB under it
  * when sex assigned at birth differs): sex assigned at birth when written, otherwise the symbol's sex.
  */
+/** The partner of a same-sex couple whose own gamete made this child (PCR.ownGamete), or null. */
+export function ownGameteOf(graph, childId) {
+  const rel = (graph.parentChildRelationships || []).find((r) => r.children.includes(childId));
+  return (rel?.ownGamete || []).find((e) => e.childId === childId)?.partnerId || null;
+}
 export const reproductiveSex = (p) => (!p ? 'unknown' : p.sexAtBirth === 'AMAB' ? 'male' : p.sexAtBirth === 'AFAB' ? 'female' : p.sex);
 /**
  * Two partners who cannot have a child together without a donor (clinician decision 2026-11-10, same-sex
@@ -180,7 +185,10 @@ export const isConsultand = (p) => !!p && !!p.consultand;
  *   'gestational_carrier'  — G; carries the pregnancy, no egg of her own
  *   'surrogate'            — D; gives the egg and carries the pregnancy
  * A carried child stands under the person carrying it. Kinship and F follow
- * the genetic parents (indexGraph.geneticParents). A donor or carrier the
+ * the genetic parents (indexGraph.geneticParents). For two partners of the same reproductive sex the
+ * ParentChildRelationship's `ownGamete: [{ childId, partnerId }]` names the partner whose own egg (two
+ * women) or sperm (two men) made the child (clinician 2026-11-10); none named: that parent is unknown.
+ * A donor or carrier the
  * clinician adds here (relation 'art_donor') has no parents or partner of
  * their own: family history goes in notes and findings.
  */
@@ -270,9 +278,16 @@ export function indexGraph(graph) {
     const [a, b] = partners.map((p) => byId.get(p));
     const sperm = links.find((l) => l.role === 'sperm_donor');
     const egg = links.find((l) => EGG_SOURCE.includes(l.role));
-    // two partners of the same reproductive sex: the donor gives the other gamete; which partner gave
-    // their own is not recorded, so that parent is unknown (null) — kinship and F do not go through them
-    if (sameReproductiveSex(a, b)) return [sperm ? sperm.personId : null, egg ? egg.personId : null];
+    // two partners of the same reproductive sex: the donor gives the other gamete, and the partner whose
+    // own gamete made the child is the PCR's ownGamete (clinician 2026-11-10); not chosen: unknown (null),
+    // and kinship and F do not go through either partner
+    const both = sameReproductiveSex(a, b);
+    if (both) {
+      const own = (pcrByUnion.get(uid)?.ownGamete || []).find((e) => e.childId === id)?.partnerId || null;
+      return both === 'female'
+        ? [sperm ? sperm.personId : null, egg ? egg.personId : own]
+        : [sperm ? sperm.personId : own, egg ? egg.personId : null];
+    }
     let father = [a, b].find((p) => p && reproductiveSex(p) === 'male')?.id;
     let mother = [a, b].find((p) => p && reproductiveSex(p) === 'female')?.id;
     if (!father) father = partners.find((p) => p !== mother);

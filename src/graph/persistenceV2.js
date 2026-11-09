@@ -166,6 +166,7 @@ export function shapeProblem(doc) {
   }
   for (const r of g.parentChildRelationships) {
     if (!isObj(r) || !isId(r.unionId) || !Array.isArray(r.children) || !r.children.every(isId)) return t('bir ebeveyn–çocuk kaydı bozuk');
+    if (r.ownGamete !== undefined && (!Array.isArray(r.ownGamete) || r.ownGamete.some((e) => !isObj(e) || !isId(e.childId) || !isId(e.partnerId)))) return t('bir ebeveyn–çocuk kaydı bozuk');
   }
   if (g.socialParentLinks !== undefined && (!Array.isArray(g.socialParentLinks) || g.socialParentLinks.some((l) => !isObj(l) || !isId(l.childId) || !isId(l.unionId) || typeof l.kind !== 'string'))) {
     return t('bir sosyal ebeveynlik kaydı bozuk');

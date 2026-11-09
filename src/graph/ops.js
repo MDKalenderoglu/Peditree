@@ -15,7 +15,7 @@
  * so behaviour does not change for the clinician; what changes is that the
  * result is stored as graph, not replayed from instructions.
  */
-import { cloneGraph, indexGraph, displayParentage, makePerson, SOCIAL_LINK_KINDS, PREGNANCY_FIELDS, PREGNANCY_KINDS, PREGNANCY_LABEL, isPregnancy, pregnancyKind, GENETIC_TESTED, SEX_AT_BIRTH, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, REPRO_ROLES, EGG_SOURCE, CARRIER_ROLES, REPRO_LABEL, ART_DONOR_RELATION, hasClinicalData } from './model';
+import { cloneGraph, indexGraph, displayParentage, makePerson, SOCIAL_LINK_KINDS, PREGNANCY_FIELDS, PREGNANCY_KINDS, PREGNANCY_LABEL, isPregnancy, pregnancyKind, GENETIC_TESTED, SEX_AT_BIRTH, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, REPRO_ROLES, EGG_SOURCE, CARRIER_ROLES, REPRO_LABEL, ART_DONOR_RELATION, hasClinicalData, sameReproductiveSex } from './model';
 import { allocateEditNumber, retire } from './ids';
 import { finalizeGraph, ageOrder } from './finalize';
 import { validateDocument, errorsOf } from './validate';
@@ -827,6 +827,29 @@ function draftAddReproductiveLink(d, childId, role, existingId) {
   const children = shares ? group.children : [childId];
   g.reproductiveLinks = [...links, ...children.map((c) => ({ childId: c, personId, role }))];
   return personId;
+}
+
+/**
+ * For a child of two partners of the same reproductive sex: which partner's own egg (two women) or sperm
+ * (two men) made the child (clinician decision 2026-11-10); null: not known. Kinship and F follow it
+ * (model.js geneticParents). Identical twins share it (finalize.js keepOwnGamete).
+ */
+export function setOwnGamete(doc, childId, partnerId) {
+  return commit(doc, (d) => {
+    const g = d.graph;
+    const rel = g.parentChildRelationships.find((r) => r.children.includes(childId));
+    if (!rel) block(t('Bu kişinin anne-babası çizili değil.'));
+    const u = g.unions.find((x) => x.id === rel.unionId);
+    const byId = (id) => g.individuals.find((i) => i.id === id);
+    if (!u || !sameReproductiveSex(byId(u.partners[0]), byId(u.partners[1]))) block(t('Bu seçim yalnızca aynı cinsiyetten iki eşin çocuğu için.'));
+    if (partnerId && !u.partners.includes(partnerId)) block(t('Seçilen kişi bu çocuğun çizili ebeveynlerinden biri değil.'));
+    const rest = (rel.ownGamete || []).filter((e) => e.childId !== childId);
+    rel.ownGamete = partnerId ? [...rest, { childId, partnerId }] : rest;
+    // an identical co-twin's own entry goes too: finalize gives them this one
+    const group = (rel.multiples || []).find((m) => m.zygosity === 'monozygotic' && m.children.includes(childId));
+    if (group) rel.ownGamete = rel.ownGamete.filter((e) => e.childId === childId || !group.children.includes(e.childId));
+    if (!rel.ownGamete.length) delete rel.ownGamete;
+  });
 }
 
 /** Take a donor or carrier away from a child; a person added only for it goes too, unless something was written about them. */
