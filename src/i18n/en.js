@@ -112,8 +112,15 @@ const EN = {
   'PediTree dosyası': 'PediTree file',
   'PED dosyası': 'PED file',
   'Dosya seç': 'Choose a file',
-  'Pedigriyi bilgisayarınıza dosya olarak kaydeder (.peditree.json). Sonra “Aç” ile açıp kaldığınız yerden devam edebilirsiniz.':
-    'Saves the pedigree as a file on your computer (.peditree.json). “Open” later takes you back to where you left off.',
+  // the Kaydet menu (clinician 2026-11-10)
+  'Çizimi resim (PNG, PDF, SVG) ya da sonra açıp düzenlemek için PediTree dosyası olarak kaydeder': 'Saves the drawing as a picture (PNG, PDF, SVG) or as a PediTree file to open and edit later',
+  'Resim olarak': 'As a picture',
+  'rapora, sunuma, mesaja eklemek için': 'for reports, slides and messages',
+  'Sonra düzenlemek için': 'To edit later',
+  'Pedigriyi bütün bilgileriyle bilgisayarınıza kaydeder (.peditree.json). Sonra “Aç” ile açıp kaldığınız yerden devam edebilirsiniz.': 'Saves the pedigree with all its details on your computer (.peditree.json). Open it later with “Open” to carry on where you left off.',
+  '“Aç” ile açıp kaldığınız yerden sürdürmek için': 'to open with “Open” and carry on where you left off',
+  'Analiz programları için': 'For analysis software',
+  'kişiler numarayla geçer, ad yazılmaz': 'people by number, no names',
   'Kaydet': 'Save',
   'Proje ya da PED dosyası seç': 'Choose a project or PED file',
   'Geri al ({n} adım)': 'Undo ({n})',
@@ -128,10 +135,7 @@ const EN = {
   'Açıkken dokunduğunuz her kişi seçime eklenir; yeniden dokunursanız çıkarılır. Birden çok kişiyi birlikte değiştirmek için.':
     'While on, each person you tap is added to the selection; tap again to take them out. For changing several people together.',
   'Çoklu seçim': 'Select several',
-  'Çizimi başka programlar için dosya olarak indirir: PNG, SVG, PDF ya da PED': 'Downloads the drawing as a file for other programs: PNG, SVG, PDF or PED',
-  'İndir': 'Download',
-  'resim': 'image',
-  'Sunum, mesaj ve belgeler için': 'For talks, messages and documents',
+    'Sunum, mesaj ve belgeler için': 'For talks, messages and documents',
   'Büyütülünce bozulmaz; yayın, Word ve PowerPoint için': 'Stays sharp when enlarged; for publications, Word and PowerPoint',
   'Tek A4 sayfa; yazdırmaya ve hasta dosyasına eklemeye hazır': 'One A4 page; ready to print or add to the patient record',
   'Genetik analiz programları ve laboratuvarlar için. Yalnızca anne, baba, cinsiyet ve hasta olup olmadığı yazılır; kişiler pedigri numarasıyla (ör. II-3) geçer, hasta adı yazılmaz.':
@@ -497,7 +501,6 @@ const EN = {
   'Bir daha gösterme': 'Don’t show again',
   'büyütülebilir çizim': 'scalable drawing',
   'A4 sayfa': 'A4 page',
-  'analiz programları için': 'for analysis software',
   'Ad sembolün altında, not pedigrinin altında numarasıyla görünür.': 'The name appears under the symbol, the note in the numbered notes under the pedigree.',
   'Ayşe, A.Y., amca…': 'Mary, M.S., uncle…',
   'Öykü, muayene, tetkik…': 'History, examination, tests…',
