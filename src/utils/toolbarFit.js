@@ -59,3 +59,21 @@ export function overflowed(el) {
     .sort((a, b) => Number(a.dataset.overflowOrder) - Number(b.dataset.overflowOrder))
     .map((p) => p.dataset.overflow);
 }
+
+/**
+ * Fit the bar now and again whenever it changes: a new width, or a second row with the same width —
+ * the typeface arrives after the first fit and its wider words push the last buttons down (seen
+ * 2026-11-09 once "?" joined the bar). Returns a function that stops watching.
+ */
+export function watchToolbar(el, Observer = typeof ResizeObserver !== 'undefined' ? ResizeObserver : null) {
+  if (!el || !Observer) return () => {};
+  fitToolbar(el);
+  let width = el.clientWidth;
+  const watch = new Observer(() => {
+    if (el.clientWidth === width && !wraps(el)) return;
+    width = el.clientWidth;
+    fitToolbar(el);
+  });
+  watch.observe(el);
+  return () => watch.disconnect();
+}
