@@ -210,6 +210,7 @@ const key = (k, opts = {}, target = document.body) => run(() => target.dispatchE
 const click = (el) => run(() => el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })));
 const pointerDown = (el) => run(() => el.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true })));
 const buttons = (root = view.container) => [...root.querySelectorAll('button')];
+const saveButton = () => $('.canvas-toolbar [data-popup="download"] > button');
 const button = (text, root) => buttons(root).find(b => b.textContent.trim() === text || b.getAttribute('aria-label') === text);
 const select = (id) => click(drawn(id));
 const flyout = () => $('.radial-flyout');
@@ -436,6 +437,22 @@ const typeInto = (input, text) => run(() => {
 });
 
 describe('saving, opening and downloading', () => {
+  it('Kaydet holds every way of keeping the drawing, the picture first; the PediTree file says what it is for; Cmd/Ctrl+S still writes that file (clinician 2026-11-10)', async () => {
+    const dl = captureDownloads();
+    try {
+      expect(buttons().some(b => b.querySelector('.btn-label')?.textContent === 'İndir')).toBe(false); // no İndir of its own any more
+      await click(saveButton());
+      const menu = $('[data-popup="download"] .download-popover');
+      const items = [...menu.querySelectorAll('.download-item b')].map(b => b.textContent);
+      expect(items).toEqual(['PNG', 'PDF', 'SVG', 'PediTree dosyası', 'PED']);
+      expect([...menu.querySelectorAll('.download-group')].map(g => g.textContent)).toEqual(['Resim olarak', 'Sonra düzenlemek için', 'Analiz programları için']);
+      expect(dl.files.length).toBe(0); // opening the menu downloads nothing
+      await key('Escape');
+      await key('s', { metaKey: true });
+      expect(dl.files.at(-1).name).toMatch(/\.peditree\.json$/);
+    } finally { dl.restore(); }
+  });
+
   it('Kaydet writes what is still being typed: an age not yet confirmed reaches the file', async () => {
     const dl = captureDownloads();
     try {
@@ -443,7 +460,8 @@ describe('saving, opening and downloading', () => {
       const age = $('.input-age');
       await typeInto(age, '52');
       expect(g().individuals.find(i => i.id === 'mother').age).toBe(''); // not confirmed yet
-      await click(button('Kaydet') || buttons().find(b => b.textContent.trim() === 'Kaydet'));
+      await click(saveButton());
+      await click(buttons($('[data-popup="download"]')).find(b => b.textContent.includes('PediTree dosyası')));
       const saved = JSON.parse(await blobText(dl.files.at(-1).blob));
       expect(saved.graph.individuals.find(i => i.id === 'mother').age).toBe('52');
     } finally { dl.restore(); }
@@ -463,7 +481,7 @@ describe('saving, opening and downloading', () => {
     const dl = captureDownloads();
     try {
       await run(() => S().setPatientName('Ayşe Yılmaz'));
-      await click(buttons().find(b => b.textContent.includes('İndir')));
+      await click(saveButton());
       expect($('[data-popup="download"]').textContent).toMatch(/PDF/);
       // one line per format; PED's question shows once PED is chosen (clinician 2026-11-05: the menu said too much)
       expect($('[data-popup="download"]').textContent).not.toMatch(/Dosyada kim/);
@@ -867,7 +885,7 @@ describe('more of what the clinician sees', () => {
     globalThis.fetch = async () => ({ ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(0) });
     try {
       await run(() => useViewSettings.getState().setView({ fontId: 'kalam', exportAs: 'screen' }));
-      await click(buttons().find(b => b.textContent.includes('İndir')));
+      await click(saveButton());
       await click(buttons().find(b => /SVG/.test(b.textContent)));
       await settle();
       expect(view.container.textContent).toMatch(/Seçtiğiniz yazı tipi dosyaya eklenemedi/);
@@ -1250,8 +1268,8 @@ describe('the top bar (clinician request 2026-11-04: one row, no wasted room)', 
       .filter(p => p.classList.contains('btn-label'))
       .map(p => p.textContent);
     expect(parts).toEqual(['Geri bildirim', 'Atıf', 'Konumlandır', 'Çoklu seçim', 'Ayarlar', 'Aç', 'Yeni']);
-    // İndir, Yazdır, Paylaş: icons alone at every width (clinician 2026-11-05), named for screen readers, with a tooltip
-    for (const name of ['İndir', 'Yazdır', 'Paylaş']) {
+    // Yazdır, Paylaş: icons alone at every width (clinician 2026-11-05), named for screen readers, with a tooltip
+    for (const name of ['Yazdır', 'Paylaş']) {
       const b = buttons().find(x => x.textContent.includes(name));
       expect(b.querySelector('.btn-label.icon-only')?.textContent, name).toBe(name);
       expect(b.title, name).toBeTruthy();

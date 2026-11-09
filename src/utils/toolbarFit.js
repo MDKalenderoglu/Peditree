@@ -7,14 +7,14 @@
  * the brand's subtitle; then the words of Geri bildirim, Atıf,
  * Konumlandır, Çoklu seçim, Ayarlar, Aç, Yeni — their icons stay; then a
  * narrower name field; last the logo's wordmark and the dividers). "Kaydet"
- * never folds; İndir, Yazdır and Paylaş are icons
+ * never folds (it holds every download since 2026-11-10); Yazdır and Paylaş are icons
  * alone at every width (clinician 2026-11-05). A folded word stays in its button for screen readers, and
  * every button says what it does in its tooltip (ui.css `.folded`).
  * When even the icons do not fit (a tablet, whose buttons are larger for a finger;
  * clinician report 2026-11-09: two rows on a tablet), the least used buttons
  * go, one at a time, into "Diğer" (⋯), which then shows (`data-overflow-order`:
  * Atıf, Geri bildirim, Yazdır, Paylaş, Yeni, Aç, Çoklu seçim, Konumlandır).
- * Kaydet, Geri al, Yinele, İndir and Ayarlar always stay on the bar; last of all
+ * Kaydet, Geri al, Yinele and Ayarlar always stay on the bar; last of all
  * the word "Doğum" before the birth date box gives way (an upright small tablet).
  */
 

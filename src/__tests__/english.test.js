@@ -135,10 +135,10 @@ describe('the screens in English', () => {
     expect(turkishIn(seen.join('\n'))).toEqual([]);
   });
 
-  it('the toolbar and each of its windows: About, Citation, Feedback, New, Open, Download, Share, Settings (with the keyboard help)', async () => {
+  it('the toolbar and each of its windows: About, Citation, Feedback, New, Open, Save, Share, Settings (with the keyboard help)', async () => {
     const toolbar = $('.canvas-toolbar');
     const seen = [said(toolbar)];
-    for (const open of ['About PediTree', 'Citation', 'Feedback', 'New', 'Download']) {
+    for (const open of ['About PediTree', 'Citation', 'Feedback', 'New', 'Save']) {
       const b = byText(open) || buttons().find((x) => x.textContent.includes(open));
       expect(b, open).toBeTruthy();
       await click(b);

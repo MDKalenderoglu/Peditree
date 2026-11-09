@@ -340,7 +340,7 @@ describe('accessibility basics (WCAG 2.2: 4.1.2 name, 1.3.1 labels)', () => {
     const click = (el) => settle(() => el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })));
     const key = (k) => settle(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true })));
     sweep();
-    for (const label of ['Yeni', 'İndir', 'Ayarlar']) {
+    for (const label of ['Yeni', 'Kaydet', 'Ayarlar']) {
       const b = [...view.container.querySelectorAll('button')].find((x) => x.textContent.includes(label));
       await click(b); sweep(); await key('Escape');
     }

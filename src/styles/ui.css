@@ -577,13 +577,16 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .new-popover { left: 0; right: auto; width: max-content; min-width: 240px; max-width: calc(100vw - 32px); gap: 0; padding: 6px; transform-origin: top left; }
 .new-icon { flex: none; width: 34px; height: 28px; margin-top: 1px; fill: none; stroke: var(--accent); stroke-width: 1.8; }
 /* İndir: one row per file type, what it is for under its name */
-.download-popover { width: 260px; max-width: calc(100vw - 24px); max-height: calc(100vh - 110px); overflow-y: auto; gap: 0; padding: 6px; }
+.download-popover { width: 300px; max-width: calc(100vw - 24px); max-height: calc(100vh - 110px); overflow-y: auto; gap: 0; padding: 6px; }
 .download-item, .download-item-head { display: flex; align-items: flex-start; gap: 10px; text-align: left; color: var(--ink-2); }
 .download-item { font: inherit; width: 100%; padding: 8px 10px; background: none; border: none; border-radius: 8px; cursor: pointer; }
 /* İndir: one line each, the format and a word or two */
 .download-popover .download-item { align-items: center; }
 .download-popover .download-item svg { margin-top: 0; }
-.download-popover .download-item small { display: inline; margin: 0 0 0 6px; }
+.download-popover .download-item small { display: block; margin: 1px 0 0; }
+/* the Kaydet menu's three groups: the picture, the PediTree file, PED (clinician 2026-11-10) */
+.download-group { padding: 8px 10px 3px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.download-group:not(:first-child) { margin-top: 4px; border-top: 1px solid var(--line-2); padding-top: 10px; }
 .download-item:hover { background: var(--sunken); }
 .download-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .download-item svg, .download-item-head svg { flex: none; margin-top: 2px; color: var(--accent); }
