@@ -19,7 +19,7 @@ import { mergeIntoGroup as checkMerge } from './graph/ops';
 import SettingsDialog from './components/SettingsDialog';
 import RelationChooser from './components/RelationChooser';
 import Tour, { TourFamily } from './components/Tour';
-import { withGeneticLine, subjectOf, adoptionOf, ancestorsOf, REPRO_LABEL, EGG_SOURCE, CARRIER_ROLES, ART_DONOR_RELATION, isPregnancy } from './graph/model';
+import { withGeneticLine, subjectOf, adoptionOf, ancestorsOf, REPRO_LABEL, EGG_SOURCE, CARRIER_ROLES, ART_DONOR_RELATION, isPregnancy, sameReproductiveSex, ownGameteOf } from './graph/model';
 import { clinicalNamer } from './utils/clinicalNotices';
 import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, ringAlphaOf, PANEL_WIDTH } from './utils/drawingStyle';
 import { ProductInfo, LicenseInfo, CitationInfo, FeedbackInfo } from './components/AboutParts';
@@ -144,7 +144,7 @@ function App() {
   const {
     pedigreeData, warnings, integrityIssues,
     updateIndividual, addSpouseTo, addChildTo, addChildToUnion,
-    setProband, clearProband, setConsultand, clearConsultand, setAdoption, addReproductiveLink, removeReproductiveLink, resetPedigree,
+    setProband, clearProband, setConsultand, clearConsultand, setAdoption, addReproductiveLink, removeReproductiveLink, setOwnGamete, resetPedigree,
     selectedId, selectedId2, selectedIds, selectIndividual, clearSelection, selectUnion,
     updateMany, setFindingStatusMany, addFindingMany,
     deleteIndividual, createUnionBetween, addCustomConsanguinity,
@@ -288,7 +288,10 @@ function App() {
     const parents = parentsRel ? (g.unions.find(u => u.id === parentsRel.unionId)?.partners || []) : [];
     const taken = (roles) => links.some(l => roles.includes(l.role));
     const me = g.individuals.find(i => i.id === selectedId);
+    // two partners of the same reproductive sex: whose own egg (two women) or sperm (two men) — clinician 2026-11-10
+    const both = parents.length === 2 && sameReproductiveSex(...parents.map(id => g.individuals.find(i => i.id === id)));
     return {
+      own: both && !isPregnancy(me) ? { gamete: both === 'female' ? 'egg' : 'sperm', partners: parents.map(id => ({ id, name: nameOf(id) })), current: ownGameteOf(g, selectedId) } : null,
       links: links.map(l => ({ ...l, label: REPRO_LABEL[l.role], name: nameOf(l.personId) })),
       canHave: !!parentsRel && me?.relation !== ART_DONOR_RELATION,
       roleOf: (g.reproductiveLinks || []).filter(l => l.personId === selectedId).map(l => ({ label: REPRO_LABEL[l.role], childName: nameOf(l.childId) })),
@@ -1095,6 +1098,7 @@ function App() {
           reproInfo={reproInfo}
           onAddRepro={addReproductiveLink}
           onRemoveRepro={removeReproductiveLink}
+          onSetOwnGamete={setOwnGamete}
           onMergeGroup={mergeIntoGroup}
           onAddFinding={addFinding}
           onSetFindingStatus={setFindingStatus}
