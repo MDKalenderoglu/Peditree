@@ -129,7 +129,11 @@ describe('stylesheet rules', () => {
     expect(block('ui.css', '.settings-backdrop')).toMatch(/animation: soft-fade var\(--t-move\) var\(--ease\)/);
     // the settings window grows in place, like every other pop-up, and no longer slides up
     expect(css('ui.css')).toMatch(/@keyframes settings-in \{ from \{ opacity: 0; transform: scale\(0\.96\); \}/);
-    expect(block('ui.css', '.tour-body')).toMatch(/animation: tour-in var\(--t-move\) var\(--ease\)/);
+    expect(block('ui.css', '.tour-body')).toMatch(/animation: tour-in var\(--t-tour\) var\(--ease\)/);
+    // the tour: card, words and light in one motion; the × above the words; a window it opens is there at once
+    expect(css('ui.css')).toMatch(/--t-tour: 0\.42s;/);
+    expect(block('ui.css', '.tour-close')).toMatch(/z-index: 2/);
+    expect(css('ui.css')).toMatch(/body\.touring \.keys-popover, body\.touring \.radial-flyout, body\.touring \.radial-panel, body\.touring \.ring-aside \{ animation: none; \}/);
     // a window the tour opens does not dim the page a second time
     expect(css('ui.css')).toMatch(/body\.touring \.settings-backdrop, body\.touring \.relation-backdrop \{ background: transparent; \}/);
   });
@@ -137,7 +141,7 @@ describe('stylesheet rules', () => {
   it('the guided tour has a look of its own (clinician 2026-11-10: "çok kaba ve düz"): a navy dim, a lit part with a white and indigo ring, a card that glides, a picture that draws itself; still with reduced motion', () => {
     expect(block('ui.css', '.tour-scrim')).toMatch(/background: rgba\(19, 30, 47, 0\.6\)/);
     expect(block('ui.css', '.tour-spot')).toMatch(/0 0 0 2px #ffffff, 0 0 0 4px var\(--accent\)/);
-    expect(block('ui.css', '.tour-card')).toMatch(/transition: left var\(--t-move\) var\(--ease\)/);
+    expect(block('ui.css', '.tour-card')).toMatch(/transition: left var\(--t-tour\) var\(--ease\)/);
     expect(block('ui.css', '.tour-card')).not.toMatch(/border-top: 3px/);
     expect(block('ui.css', '.tour-hero')).toMatch(/var\(--ink\)/);
     expect(css('ui.css')).toMatch(/\.tour-family \.tf-line \{[^}]*stroke-dashoffset: 1;[^}]*animation: tf-draw/);

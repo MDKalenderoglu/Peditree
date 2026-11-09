@@ -68,6 +68,8 @@
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --t-pop: 0.2s;
   --t-move: 0.3s;
+  /* the tour: the card, its words and the light move from one step to the next together (Tour.jsx GLIDE) */
+  --t-tour: 0.42s;
 }
 
 body { font-family: var(--font-ui); font-size: 14px; line-height: 1.45; color: var(--ink-2); background: var(--frame); }
@@ -811,6 +813,9 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .tour-block { position: fixed; inset: 0; z-index: 80; }
 /* a window the tour opens (Ayarlar, Akraba evliliği) does not dim the page a second time */
 body.touring .settings-backdrop, body.touring .relation-backdrop { background: transparent; }
+/* nor grows on its own: it is there at once, and the tour's card and light move to it in one motion */
+body.touring .settings-backdrop, body.touring .settings-dialog, body.touring .relation-backdrop, body.touring .relation-dialog,
+body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-panel, body.touring .ring-aside { animation: none; }
 .tour-scrim { position: fixed; inset: 0; z-index: 81; pointer-events: none; background: rgba(19, 30, 47, 0.6); }
 .tour-spot {
   position: fixed; z-index: 81; pointer-events: none; border-radius: 10px;
@@ -826,7 +831,7 @@ body.touring .settings-backdrop, body.touring .relation-backdrop { background: t
   position: fixed; z-index: 82; box-sizing: border-box; width: 360px; max-width: calc(100vw - 24px);
   background: var(--surface); color: var(--ink-2); border-radius: 14px;
   box-shadow: 0 2px 6px rgba(19, 30, 47, 0.12), 0 24px 60px -12px rgba(19, 30, 47, 0.55);
-  transition: left var(--t-move) var(--ease), top var(--t-move) var(--ease);
+  transition: left var(--t-tour) var(--ease), top var(--t-tour) var(--ease);
 }
 .tour-card::before { content: ''; position: absolute; width: 16px; height: 16px; background: var(--surface); transform: rotate(45deg); border-radius: 3px; }
 .tour-card[data-side="none"]::before { display: none; }
@@ -840,13 +845,15 @@ body.touring .settings-backdrop, body.touring .relation-backdrop { background: t
 .tour-track span.done { background: color-mix(in srgb, var(--accent) 45%, var(--line)); }
 .tour-track span.now { background: var(--accent); }
 .tour-close {
-  position: absolute; top: 6px; right: 8px; width: 32px; height: 32px; border: 0; border-radius: 50%;
+  position: absolute; z-index: 2; top: 6px; right: 8px; width: 32px; height: 32px; border: 0; border-radius: 50%;
   background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer;
 }
 .tour-close:hover { background: var(--sunken); color: var(--ink); }
 .tour-close:focus-visible { outline: none; box-shadow: var(--focus); }
 
-.tour-body { position: relative; padding: 16px 20px 0; animation: tour-in var(--t-move) var(--ease); }
+.tour-body { position: relative; padding: 16px 20px 0; animation: tour-in var(--t-tour) var(--ease); transition: opacity var(--t-pop) var(--ease); }
+/* the next step's screen still being set up: the words step back a little until card and light move together */
+.tour-card.is-waiting .tour-body { opacity: 0.45; }
 @keyframes tour-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .tour-icon {
   display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; margin-bottom: 10px;

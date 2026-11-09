@@ -27,14 +27,18 @@ const buttonNamed = (text, root = document) => [...root.querySelectorAll('button
 const step = () => ($('.tour') ? $('.tour').dataset.step : null);
 const wait = (ms) => act(async () => { await new Promise((r) => setTimeout(r, ms)); });
 const index = (id) => TOUR_STEPS.findIndex((x) => x.id === id);
+// the card turns to the asked step once its screen has come to rest
+const shownStep = () => ($('.tour') ? $('.tour').dataset.shown : null);
+const shownAs = async (id) => { for (let i = 0; i < 40 && shownStep() !== id; i++) await wait(60); expect(shownStep()).toBe(id); };
 const goTo = async (id) => {
   for (let i = 0; i < TOUR_STEPS.length && step() !== id; i++) await key(index(id) > index(step()) ? 'ArrowRight' : 'ArrowLeft');
   expect(step()).toBe(id);
-  await wait(200);
+  await shownAs(id);
+  await wait(100);
 };
 
 // where every element stands: still at 100 unless a test moves it
-const box = { left: () => 100 };
+const box = { left: () => 100, of: () => null };
 let rect;
 beforeAll(async () => {
   vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -42,6 +46,8 @@ beforeAll(async () => {
   // a box for everything on the page (jsdom lays nothing out)
   rect = Element.prototype.getBoundingClientRect;
   Element.prototype.getBoundingClientRect = function () {
+    const own = box.of(this);
+    if (own) return own;
     const left = box.left();
     return { left, top: 100, right: left + 60, bottom: 140, width: 60, height: 40, x: left, y: 100 };
   };
@@ -167,13 +173,11 @@ describe('each step sets the screen up as it talks about it', () => {
     await goTo('settings');
     expect($('.settings-dialog')).not.toBeNull();
     expect(lit()).toBe(true);
-    await key('ArrowRight');
-    expect(step()).toBe('about'); // Hakkında, before the end: what PediTree is and where to report a problem
+    await goTo('about'); // Hakkında, before the end: what PediTree is and where to report a problem
     expect($('.settings-dialog .about-links')).not.toBeNull();
     expect(lit()).toBe(true);
-    await key('ArrowRight');
+    await goTo('again');
     expect($('.settings-dialog')).toBeNull(); // the next step closes it again
-    expect(step()).toBe('again');
     // the last step: "Bitir" ends the tour
     await click(buttonNamed('Bitir', $('.tour-card')));
     expect($('.tour')).toBeNull();
@@ -189,7 +193,7 @@ describe('each step sets the screen up as it talks about it', () => {
       expect(card.querySelector('.tour-text').textContent.length).toBeGreaterThan(20);
       expect(!!buttonNamed('Geri', card)).toBe(i > 0);
       expect(!!buttonNamed(i === TOUR_STEPS.length - 1 ? 'Bitir' : 'İleri', card)).toBe(true);
-      if (i < TOUR_STEPS.length - 1) await click(buttonNamed('İleri', card));
+      if (i < TOUR_STEPS.length - 1) { await click(buttonNamed('İleri', card)); await shownAs(TOUR_STEPS[i + 1].id); }
     }
     await key('Escape');
   });
@@ -263,15 +267,83 @@ describe('the ring, the menus and the windows the steps talk about (clinician 20
       await key('ArrowRight');
       await wait(400);
       expect(spotLeft()).toBe(94); // it did not chase the moving part
+      // nor did the words go ahead of it: the card still says the last step, a little faded
+      expect($('.tour-title').textContent).toBe('Çizim alanı');
+      expect($('.tour-card').classList.contains('is-waiting')).toBe(true);
+      expect($('.tour-count').textContent).toBe(`2 / ${TOUR_STEPS.length}`);
       // the part comes to rest at 300
       box.left = () => 300;
       await wait(200); // (the simulated page shows what changed when each wait ends)
+      // the part at rest: the words, the count and the light turn to the next step together
+      expect($('.tour-title').textContent).toBe('Simit menüsü');
+      expect($('.tour-count').textContent).toBe(`3 / ${TOUR_STEPS.length}`);
+      expect($('.tour-card').classList.contains('is-waiting')).toBe(false);
       await wait(600);
       expect(spotLeft()).toBe(294);
     } finally {
       box.left = () => 100;
     }
     await key('Escape');
+  });
+});
+
+describe('what the clinician saw on 2026-11-10', () => {
+  it('the line between partners: the couple is lit in the drawing as well as their card in the panel, two lit areas', async () => {
+    await click(buttonNamed('Tanıtım turu'));
+    await goTo('couple');
+    expect(document.querySelectorAll('.tour-spot').length).toBe(2);
+    expect(($('.tour-scrim').style.clipPath.match(/M/g) || []).length).toBe(3); // the window and two holes
+    await goTo('kinship');
+    expect(document.querySelectorAll('.tour-spot').length).toBe(2);
+    await goTo('patient');
+    expect(document.querySelectorAll('.tour-spot').length).toBe(1);
+    await key('Escape');
+  });
+
+  it('a lit area never reaches past the box it scrolls in (Hakkında: the light ran out of the settings window)', async () => {
+    await click(buttonNamed('Tanıtım turu'));
+    await goTo('about');
+    // the settings section shows only 100–120 of what it holds
+    box.of = (el) => (el.classList && el.classList.contains('settings-pane') ? { left: 0, top: 100, right: 1000, bottom: 120, width: 1000, height: 20, x: 0, y: 100 } : null);
+    try {
+      await wait(200);
+      await wait(600); // the light glides there
+      const spot = $('.tour-spot');
+      expect(parseFloat(spot.style.top)).toBe(94);
+      expect(parseFloat(spot.style.height)).toBe(32); // 20 seen, and the margin round it
+    } finally { box.of = () => null; }
+    await key('Escape');
+  });
+
+  it('a part further down the side panel is scrolled into view, and lands there even where the browser’s smooth scrolling would not run', async () => {
+    await click(buttonNamed('Tanıtım turu'));
+    await goTo('panel');
+    const side = $('.app-shell > .side-right');
+    side.scrollTop = 0;
+    // the panel shows 50–300; "Diğer bilgiler" stands at 600, out of sight
+    box.of = (el) => (el === side ? { left: 900, top: 50, right: 1200, bottom: 300, width: 300, height: 250, x: 900, y: 50 }
+      : el.classList && el.classList.contains('more-parts') ? { left: 910, top: 600 - side.scrollTop, right: 1190, bottom: 640 - side.scrollTop, width: 280, height: 40, x: 910, y: 600 - side.scrollTop } : null);
+    side.scrollTo = () => {}; // a browser that never runs smooth scrolling
+    try {
+      await goTo('more');
+      await wait(600);
+      expect(side.scrollTop).toBeGreaterThan(300);
+      const spot = $('.tour-spot');
+      expect(parseFloat(spot.style.top)).toBeGreaterThanOrEqual(50 - 6);
+      expect(parseFloat(spot.style.top) + parseFloat(spot.style.height)).toBeLessThanOrEqual(300 + 6);
+    } finally { box.of = () => null; delete side.scrollTo; }
+    await key('Escape');
+  });
+
+  it('the × is drawn over the card’s words, so it always takes its click; it ends the tour at any step', async () => {
+    await click(buttonNamed('Tanıtım turu'));
+    await goTo('ring-status');
+    const card = $('.tour-card');
+    const kids = [...card.children];
+    expect(kids.indexOf(card.querySelector('.tour-close'))).toBeGreaterThan(kids.indexOf(card.querySelector('.tour-body')));
+    await click(card.querySelector('.tour-close'));
+    expect($('.tour')).toBeNull();
+    expect(document.body.classList.contains('touring')).toBe(false);
   });
 });
 
@@ -300,6 +372,7 @@ describe('the look (clinician 2026-11-10: "çok kaba ve düz")', () => {
     expect($('.tour-card.tour-card-welcome .tour-hero .tour-family')).not.toBeNull();
     expect($('.tour-family .tf-proband')).not.toBeNull();
     await key('ArrowRight');
+    await shownAs('drawing');
     expect($('.tour-card-welcome')).toBeNull();
     expect($('.tour-card .tour-icon svg')).not.toBeNull();
     await key('Escape');
