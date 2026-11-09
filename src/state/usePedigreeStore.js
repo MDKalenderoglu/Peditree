@@ -53,6 +53,10 @@ import {
   computeAddParentsPlan, computeAddSiblingPlan,
 } from '../graph/plans';
 import { t } from '../i18n';
+import { useViewSettings } from '../utils/drawingStyle';
+
+// Ayarlar → Çizim → “Aynı cinsiyetten eşler” (a device preference; the data allows them on every device)
+const sameSexAllowed = () => !!useViewSettings.getState().view.sameSexPartners;
 export {
   computeDeletionPlan, computeUnionCreationPlan, computeSiblingCreationPlan,
   computeAddParentsPlan, computeAddSiblingPlan,
@@ -421,7 +425,7 @@ export const usePedigreeStore = create((zSet, get) => {
     },
 
     // ── several people at once (one undo step each) ──
-    updateMany: (ids, patch) => apply(chain(get().doc, ids.map(id => (d) => ops.updatePerson(d, id, patch)))),
+    updateMany: (ids, patch) => apply(chain(get().doc, ids.map(id => (d) => ops.updatePerson(d, id, patch, { allowSameSex: sameSexAllowed() })))),
     setFindingStatusMany: (ids, label, status) => apply(chain(get().doc, ids.map(id => (d) => findings.setFindingStatus(d, id, label, status)))),
     addFindingMany: (ids, label, style) => apply(chain(get().doc, ids.map((id, k) => (d) => (k === 0
       ? findings.addFinding(d, id, label, style)
@@ -459,7 +463,7 @@ export const usePedigreeStore = create((zSet, get) => {
     dropOnto: (id, targetId) => applyMove(dropMove(get().pedigreeData, id, targetId), id),
 
     // ── person editor ──
-    addSpouseTo: (targetId, spouseSex = 'unknown') => apply(ops.addPartner(get().doc, targetId, { sex: spouseSex })),
+    addSpouseTo: (targetId, spouseSex = 'unknown') => apply(ops.addPartner(get().doc, targetId, { sex: spouseSex, allowSameSex: sameSexAllowed() })),
     // extra: { pregnancyLoss | stillbirth | ongoingPregnancy | termination | ectopic: true } for a pregnancy outcome
     addChildToUnion: (unionId, sex = 'unknown', extra = {}) => apply(ops.addChild(get().doc, unionId, { sex, ...extra })),
     addChildTo: (targetId, childSex = 'unknown', extra = {}) => apply(ops.addChildToPerson(get().doc, targetId, { sex: childSex, ...extra })),
@@ -472,7 +476,7 @@ export const usePedigreeStore = create((zSet, get) => {
     },
     addParentsTo: (targetId, opts = {}) => applyGuarded(ops.addParents(get().doc, targetId, opts)),
     addSiblingTo: (targetId, sex = 'unknown', extra = {}) => applyGuarded(ops.addSibling(get().doc, targetId, { sex, ...extra })),
-    createUnionBetween: (id1, id2, opts = {}) => applyGuarded(ops.linkPartners(get().doc, id1, id2, opts)),
+    createUnionBetween: (id1, id2, opts = {}) => applyGuarded(ops.linkPartners(get().doc, id1, id2, { allowSameSex: sameSexAllowed(), ...opts })),
     // social (non-biological) parenthood — model + layout in Faz 2b; editor UI in Faz 4
     addSocialParentLink: (childId, unionId, kind) => applyGuarded(ops.addSocialParentLink(get().doc, childId, unionId, kind)),
     removeSocialParentLink: (childId, unionId) => apply(ops.removeSocialParentLink(get().doc, childId, unionId)),
@@ -481,7 +485,7 @@ export const usePedigreeStore = create((zSet, get) => {
       const rest = { ...updates };
       delete rest.proband;
       const steps = [];
-      if (Object.keys(rest).length) steps.push((doc) => ops.updatePerson(doc, id, rest));
+      if (Object.keys(rest).length) steps.push((doc) => ops.updatePerson(doc, id, rest, { allowSameSex: sameSexAllowed() }));
       if (Object.prototype.hasOwnProperty.call(updates, 'proband')) {
         steps.push((doc) => {
           const current = doc.graph.individuals.find(i => i.proband);

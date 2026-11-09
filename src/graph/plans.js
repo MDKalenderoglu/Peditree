@@ -94,7 +94,7 @@ export function computeDeletionPlanFor(pedigreeData, targetId) {
  *
  * @returns {{ ok: boolean, reason?: string, crossGeneration?: boolean }}
  */
-export function computeUnionCreationPlan(pedigreeData, id1, id2) {
+export function computeUnionCreationPlan(pedigreeData, id1, id2, opts = {}) {
   const individuals = pedigreeData.individuals || [];
   const unions = pedigreeData.unions || [];
   const pcrs = pedigreeData.parentChildRelationships || [];
@@ -129,11 +129,11 @@ export function computeUnionCreationPlan(pedigreeData, id1, id2) {
         t('sokulamaz — önce ilgili bireyin cinsiyeti netleştirilmeli.'),
     };
   }
-  if (ind1.sex === ind2.sex) {
+  // same-sex partners: only when Ayarlar allows them (opts.allowSameSex; clinician decision 2026-11-10)
+  if (ind1.sex === ind2.sex && !opts.allowSameSex) {
     return {
       ok: false,
-      reason: t('Bu iki birey aynı cinsiyette olduğu için eş/union oluşturulamaz — union yalnızca ') +
-        t('kadın+erkek çiftler arasında kurulabilir.'),
+      reason: t('Bu iki kişi aynı cinsiyette. Aynı cinsiyetten eşlere Ayarlar → Çizim → “Aynı cinsiyetten eşler” ile izin verebilirsiniz.'),
     };
   }
 

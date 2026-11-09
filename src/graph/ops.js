@@ -196,14 +196,14 @@ function editNumber(draft) {
   return n;
 }
 
-function partnerSexConflict(graph, personId, newSex) {
+function partnerSexConflict(graph, personId, newSex, allowSameSex = false) {
   const byId = new Map(graph.individuals.map((i) => [i.id, i]));
   for (const u of graph.unions) {
     if (!u.partners.includes(personId)) continue;
     const partner = byId.get(u.partners.find((p) => p !== personId));
     if (!partner || partner.placeholder) continue;
     if (newSex === 'unknown') return t('Bu bireyin bir eşi/birlikteliği var; cinsiyet "bilinmiyor" olarak değiştirilemez.');
-    if (partner.sex === newSex) return t('Bu cinsiyet değişikliği mevcut bir birlikteliği aynı cinsiyetli yapar; değişiklik uygulanmadı.');
+    if (partner.sex === newSex && !allowSameSex) return t('Bu cinsiyet değişikliği mevcut bir birlikteliği aynı cinsiyetli yapar; değişiklik uygulanmadı.');
   }
   return null;
 }
@@ -222,14 +222,15 @@ const PROTECTED_FIELDS = new Set(['id', 'generation', 'proband', 'consultand', '
 /** Edit a person's fields (clinical data, label, age, sex …). */
 const BLANKABLE_TEXT = new Set(['notes', 'causeOfDeath', 'condition', 'displayLabel']);
 
-export function updatePerson(doc, id, fields) {
+/** opts.allowSameSex: Ayarlar allows same-sex partners (a sex change may make a couple same-sex). */
+export function updatePerson(doc, id, fields, opts = {}) {
   return commit(doc, (d) => {
     const p = d.graph.individuals.find((i) => i.id === id);
     if (!p) block(t('Birey grafikte bulunamadı.'));
     if (isGroup(p) && Object.entries(fields).some(([k, v]) => (GROUP_FORBIDDEN.includes(k) || k === 'conditions') && v && !(Array.isArray(v) && !v.length))) block(GROUP_ONE_BY_ONE);
     if (PREGNANCY_FIELDS.some((f) => fields[f] === true) && (indexGraph(d.graph).unionsOf.get(id) || []).length) block(PREGNANCY_NO_PARTNER);
     if (Object.prototype.hasOwnProperty.call(fields, 'sex')) {
-      const conflict = partnerSexConflict(d.graph, id, fields.sex);
+      const conflict = partnerSexConflict(d.graph, id, fields.sex, opts.allowSameSex);
       if (conflict) block(conflict);
     }
     if (Object.prototype.hasOwnProperty.call(fields, 'age') && p.birthDate && fields.age !== p.age) {
@@ -356,7 +357,9 @@ export function addPartner(doc, personId, opts = {}) {
     if (target.relation === ART_DONOR_RELATION) block(DONOR_NO_FAMILY);
     const sex = opts.sex || 'unknown';
     if (target.sex === 'unknown') block(t('Eş eklemek için önce bu kişinin cinsiyetini seçin: kişinin çevresindeki Durum düğmesi → Erkek ya da Kadın.'));
-    if (sex === 'unknown' || sex === target.sex) block(t('Eş/birliktelik yalnızca kadın ve erkek arasında kurulabilir.'));
+    if (sex === 'unknown') block(t('Eşin cinsiyetini seçin.'));
+    // same-sex partners only when Ayarlar allows them (opts.allowSameSex; clinician decision 2026-11-10)
+    if (sex === target.sex && !opts.allowSameSex) block(t('Eş/birliktelik yalnızca kadın ve erkek arasında kurulabilir. Aynı cinsiyetten eşlere Ayarlar → Çizim’den izin verebilirsiniz.'));
     let spouseId = opts.spouseId;
     let unionId = opts.unionId;
     if (!spouseId || !unionId) {
@@ -376,7 +379,7 @@ export function addPartner(doc, personId, opts = {}) {
 
 /** Make two existing people partners (v1 "make partners"). */
 export function linkPartners(doc, a, b, opts = {}) {
-  const plan = computeUnionCreationPlan(graphView(doc), a, b);
+  const plan = computeUnionCreationPlan(graphView(doc), a, b, { allowSameSex: opts.allowSameSex });
   // siblings are never partners, consanguinity flag or not (Codex audit 2026-11-01)
   if (!plan.ok) return { ok: false, doc, reason: plan.reason };
   if ([a, b].some((id) => isPregnancy(doc.graph.individuals.find((i) => i.id === id)))) return { ok: false, doc, reason: PREGNANCY_NO_PARTNER };
