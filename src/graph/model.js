@@ -298,12 +298,23 @@ export function displayParentage(graph) {
   if (!links.length) return { graph, socialChildren };
   const bio = new Set((graph.parentChildRelationships || []).flatMap((r) => r.children));
   const pcrs = (graph.parentChildRelationships || []).map((r) => ({ ...r, children: [...r.children] }));
+  // a child drawn under social parents stands at its own place among the siblings (`slot`, its
+  // index in the drawn sibship, set by moving it: ops.moveChild); without one, after them
+  const drawn = [];
   for (const l of links) {
     if (bio.has(l.childId) || socialChildren.has(l.childId)) continue;
+    socialChildren.set(l.childId, l.kind);
+    drawn.push({ l, slot: Number.isInteger(l.slot) && l.slot >= 0 ? l.slot : Infinity, k: drawn.length });
+  }
+  drawn.sort((p, q) => (p.slot - q.slot) || (p.k - q.k));
+  for (const { l, slot } of drawn) {
     let rel = pcrs.find((r) => r.unionId === l.unionId);
     if (!rel) { rel = { unionId: l.unionId, children: [] }; pcrs.push(rel); }
-    rel.children.push(l.childId);
-    socialChildren.set(l.childId, l.kind);
+    let at = Math.min(slot, rel.children.length);
+    // never between two twins of one birth: they stand side by side
+    const twinOf = (c) => (rel.multiples || []).find((m) => m.children.includes(c));
+    while (at > 0 && at < rel.children.length && twinOf(rel.children[at]) && twinOf(rel.children[at]) === twinOf(rel.children[at - 1])) at++;
+    rel.children.splice(at, 0, l.childId);
   }
   return { graph: { ...graph, parentChildRelationships: pcrs }, socialChildren };
 }
