@@ -38,6 +38,12 @@ const drawn = (id) => $$('.node-group').find(el => el.__data__ && el.__data__.id
 const numbersIn = (d) => (d.match(/-?\d+(\.\d+)?/g) || []).map(Number);
 const lastSibling = (id) => g().parentChildRelationships.find(r => r.children.includes(id)).children.at(-1);
 const run = (fn) => settle(fn);
+/** A pointer event of a given kind ('mouse', 'pen', 'touch'); jsdom has no PointerEvent. */
+const pointer = (type, pointerType, related) => {
+  const ev = new MouseEvent(type, { bubbles: true, relatedTarget: related || null });
+  Object.defineProperty(ev, 'pointerType', { value: pointerType });
+  return ev;
+};
 
 describe('marks around a person', () => {
   it('the proband: an arrow with "P"; the consultand: an arrow without "P"; the same person: one arrow with "P"', async () => {
@@ -636,6 +642,106 @@ describe('the side panel is as wide as the clinician drags it (clinician request
   });
 });
 
+describe('a tablet: the top bar keeps one row (clinician report 2026-11-09)', () => {
+  it('the buttons with no room wait in "Diğer" (⋯), in their order, and do there what they do on the bar', async () => {
+    const bar = $('.canvas-toolbar');
+    const more = $('.toolbar-more > button');
+    expect(more.getAttribute('aria-label')).toBe('Diğer');
+    // what toolbarFit does when the bar is too narrow (jsdom has no layout): three buttons go into Diğer
+    const moved = ['cite', 'feedback', 'relayout'].map(id => bar.querySelector(`[data-overflow="${id}"]`));
+    try {
+      moved.forEach(b => b.classList.add('overflowed'));
+      bar.classList.add('has-overflow');
+      await click(more);
+      const items = () => [...document.querySelectorAll('.more-popover [role="menuitem"]')];
+      expect(items().map(b => b.textContent)).toEqual(['Atıf', 'Geri bildirim', 'Konumlandır']);
+      // Atıf from Diğer opens the citation, Diğer closes
+      await click(items()[0]);
+      expect($('.more-popover')).toBeNull();
+      expect($('[role="dialog"][aria-label="Atıf"]')).not.toBeNull();
+      // Konumlandır from Diğer arranges the drawing afresh (one undoable step)
+      const steps = S()._history.length;
+      await click(more);
+      await click(items().find(b => b.textContent === 'Konumlandır'));
+      expect(S()._history.length).toBe(steps + 1);
+    } finally {
+      moved.forEach(b => b.classList.remove('overflowed'));
+      bar.classList.remove('has-overflow');
+      if ($('.more-popover')) await key('Escape');
+      if ($('[role="dialog"][aria-label="Atıf"]')) await key('Escape');
+    }
+  });
+});
+
+describe('the side panel opens beside the drawing (clinician report 2026-11-09, tablet)', () => {
+  it('the drawing stays where it was on screen, the same size, when the panel narrows its box; "Sığdır" still fits it', async () => {
+    // jsdom has no layout: the drawing's box is 1000 px wide, 700 px while the side panel is open,
+    // and the drawing fits its viewBox into that box (preserveAspectRatio meet), moved by the zoom
+    const svg = $('#pedigree-svg');
+    const proto = window.SVGElement.prototype;
+    const ctm = proto.getScreenCTM;
+    const width = () => ($('.app-shell').classList.contains('has-editor') ? 700 : 1000);
+    const fit = () => {
+      const [vx, vy, vw, vh] = svg.getAttribute('viewBox').split(' ').map(Number);
+      const k = Math.min(width() / vw, 600 / vh);
+      return { k, x: (width() - vw * k) / 2 - vx * k, y: 50 + (600 - vh * k) / 2 - vy * k };
+    };
+    svg.getBoundingClientRect = () => ({ left: 0, top: 50, width: width(), height: 600, right: width(), bottom: 650 });
+    proto.getScreenCTM = function () {
+      const f = fit();
+      if (this === svg) return { a: f.k, d: f.k, e: f.x, f: f.y };
+      // the viewport group, as the zoom actually moved it (its transform on the page)
+      const [x, y, k] = numbersIn(this.getAttribute('transform') || 'translate(0,0) scale(1)');
+      const t = { x, y, k };
+      return { a: f.k * t.k, d: f.k * t.k, e: f.x + f.k * t.x, f: f.y + f.k * t.y };
+    };
+    const place = () => { const m = $('.pedigree-viewport').getScreenCTM(); return [m.a, m.e, m.f].map(v => Math.round(v * 1000) / 1000); };
+    try {
+      await run(() => S().relayout()); // a redraw notes where the drawing is
+      const before = place();
+      await select('mother'); // the panel opens: the box is narrower now
+      expect(width()).toBe(700);
+      expect(place()).toEqual(before);
+      // closing the panel: still where it was
+      await key('Escape');
+      await key('Escape');
+      expect(width()).toBe(1000);
+      expect(place()).toEqual(before);
+      // "Sığdır" fits the whole drawing into the box again
+      await select('mother');
+      await click(button('Sığdır'));
+      expect(place()[0]).toBeCloseTo(fit().k, 3);
+    } finally {
+      proto.getScreenCTM = ctm;
+      delete svg.getBoundingClientRect;
+      await click(button('Sığdır'));
+    }
+  });
+});
+
+describe('a tablet leaves the page without warning (clinician report 2026-11-09)', () => {
+  it('the last edit is kept when the tab goes to the background or the page is hidden, before the autosave would come', async () => {
+    const saved = () => JSON.parse(window.sessionStorage.getItem('clinical_pedigree_app.session.v2') || '{}');
+    const visibility = Object.getOwnPropertyDescriptor(Document.prototype, 'visibilityState') || Object.getOwnPropertyDescriptor(document, 'visibilityState');
+    try {
+      for (const [name, leave] of [
+        ['Background', () => { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' }); document.dispatchEvent(new Event('visibilitychange')); }],
+        ['Pagehide', () => window.dispatchEvent(new Event('pagehide'))],
+      ]) {
+        S().setPatientName(name); // the autosave waits a moment after an edit
+        expect(saved().patientName).not.toBe(name);
+        leave();
+        expect(saved().patientName).toBe(name);
+        delete document.visibilityState;
+      }
+    } finally {
+      delete document.visibilityState;
+      if (visibility && !Object.getOwnPropertyDescriptor(document, 'visibilityState') && !Object.getOwnPropertyDescriptor(Document.prototype, 'visibilityState')) Object.defineProperty(Document.prototype, 'visibilityState', visibility);
+      await run(() => S().setPatientName(''));
+    }
+  });
+});
+
 describe('a beta (clinician decision 2026-11-07)', () => {
   it('a small "Beta" badge by the logo, its meaning in the tooltip; About says the version is a beta and where to write', async () => {
     const badge = $('.toolbar .brand-btn .beta-badge');
@@ -941,13 +1047,29 @@ describe('more of what the clinician sees', () => {
     await select('mother');
     const durum = $$('.radial-sat').find(b => b.getAttribute('aria-label') === 'Durum');
     // React's pointer enter comes from "pointerover"
-    await run(() => durum.dispatchEvent(new MouseEvent('pointerover', { bubbles: true, relatedTarget: document.body })));
+    await run(() => durum.dispatchEvent(pointer('pointerover', 'mouse', document.body)));
     expect($('.ring-list-panel')).not.toBeNull();
     await click(durum);
     expect($('.ring-list-panel')).not.toBeNull();
     // a click later on closes it, as before
     await click(durum);
     expect($('.ring-list-panel')).toBeNull();
+  });
+
+  it('a pen or a finger: a tap opens the choices and they stay open when the pen lifts (clinician report 2026-11-09)', async () => {
+    await select('mother');
+    const sibling = $$('.radial-sector').find(el => el.getAttribute('aria-label') === 'Kardeş');
+    for (const kind of ['pen', 'touch']) {
+      // a tap: "enter", the click, then "leave" as the pen or finger lifts
+      await run(() => sibling.dispatchEvent(pointer('pointerover', kind, document.body)));
+      await click(sibling);
+      await run(() => sibling.dispatchEvent(pointer('pointerout', kind, document.body)));
+      await new Promise((r) => setTimeout(r, 400)); // past the delay after which a mouse leaving closes them
+      await run();
+      expect(flyout()).not.toBeNull();
+      await click(sibling);
+      expect(flyout()).toBeNull();
+    }
   });
 
   it('İkiz: the three kinds as a list; a choice adds the twin and closes the list', async () => {

@@ -116,10 +116,12 @@ const spanOf = (boxes) => ({
   top: Math.min(...boxes.map((b) => b.top)), bottom: Math.max(...boxes.map((b) => b.bottom)),
 });
 /**
- * Hover opens menus for a mouse or a hovering pen only: a finger's tap
- * fires "enter" and then "click", which would open and close at once.
+ * Hover opens menus for a mouse only. A finger's or a pen's tap fires "enter",
+ * then "click", then "leave" when it lifts, which would open and close the list
+ * at once (clinician report 2026-11-09: with a pen on a tablet the lists would
+ * not stay open).
  */
-const isHover = (e) => e.pointerType !== 'touch';
+const isHover = (e) => e.pointerType === 'mouse';
 // where each Bilgiler part goes, beside its box's title
 const INFO_WHERE = { genetic: tk('sembolün altında'), note: tk('pedigrinin altında, numaralı'), name: tk('sembolün altında') };
 

@@ -50,6 +50,11 @@ describe('stylesheet rules', () => {
     expect(block('ui.css', '.panel-resizer')).toMatch(/grid-row: 2; grid-column: 2;[^}]*cursor: col-resize/);
   });
 
+  it('the transparency preview is a small family drawn like the drawing: thin grey lines, the usual symbols (clinician 2026-11-07)', () => {
+    expect(block('ui.css', '.ring-preview .rp-line')).toMatch(/stroke: #64748b; stroke-width: 1\.2;/);
+    expect(block('ui.css', '.ring-preview .rp-sym')).toMatch(/stroke-width: 1\.4; fill: var\(--paper\)/);
+  });
+
   it('the pulse after an edit is an animation of the screen', () => {
     expect(css('ui.css')).toMatch(/@keyframes pedigree-pulse/);
   });

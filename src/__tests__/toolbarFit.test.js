@@ -7,15 +7,19 @@
  */
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { fitToolbar, wraps } from '../utils/toolbarFit';
+import { fitToolbar, wraps, overflowed } from '../utils/toolbarFit';
 
-/** A bar of `width` px holding [name, width, foldOrder?, wordWidth?] items. */
+/**
+ * A bar of `width` px holding [name, width, foldOrder?, wordWidth?, overflowOrder?] items; "more" (⋯)
+ * takes its room only while something went into it, an item in it none.
+ */
 function bar(width, items) {
   const el = document.createElement('div');
-  const kids = items.map(([name, w, order, word = 0]) => {
+  const kids = items.map(([name, w, order, word = 0, extra]) => {
     const c = document.createElement('div');
     c.dataset.name = name;
     c.dataset.w = w;
+    if (extra) { c.dataset.overflowOrder = extra; c.dataset.overflow = name; }
     if (order) {
       const label = document.createElement('span');
       label.dataset.foldOrder = order;
@@ -26,6 +30,8 @@ function bar(width, items) {
     return c;
   });
   const widthOf = (c) => {
+    if (c.classList.contains('overflowed')) return 0;
+    if (c.dataset.name === 'more' && !el.classList.contains('has-overflow')) return 0;
     const label = c.querySelector('[data-fold-order]');
     const folded = label && label.classList.contains('folded');
     return folded ? Number(c.dataset.w) - Number(label.dataset.word) : Number(c.dataset.w);
@@ -83,6 +89,43 @@ describe('the top bar keeps to one row', () => {
     fitToolbar(all);
     expect(folded(all)).toEqual(expect.arrayContaining(['Yeni', 'Aç', 'İndir', 'Ayarlar']));
     expect(folded(all)).not.toContain('Kaydet');
+  });
+
+  it('a tablet: when even the icons do not fit, the least used buttons go into "Diğer" one at a time; Kaydet, Geri al, Yinele, İndir and Ayarlar stay (clinician report 2026-11-09)', () => {
+    // a finger's buttons are larger: 44 px icons
+    const TOUCH = [
+      ['brand', 130, 1, 40], ['name', 150], ['date', 160],
+      ['Yeni', 90, 11, 46, 5], ['Aç', 80, 10, 36, 6], ['Kaydet', 95],
+      ['undo', 44], ['redo', 44], ['Konumlandır', 140, 6, 96, 8],
+      ['Çoklu seçim', 140, 7, 96, 7], ['İndir', 60], ['Yazdır', 44, 0, 0, 3], ['Paylaş', 44, 0, 0, 4],
+      ['Atıf', 90, 3, 46, 1], ['Geri bildirim', 140, 2, 96, 2], ['more', 44], ['Ayarlar', 110, 8, 66],
+    ];
+    const iconsOnly = TOUCH.reduce((sum, [, w, , word = 0]) => sum + w - word, 0) - 44; // "more" not yet shown
+    // the icons alone just fit: nothing goes into Diğer, and Diğer does not show
+    const fits = bar(iconsOnly + 5, TOUCH);
+    fitToolbar(fits);
+    expect(wraps(fits)).toBe(false);
+    expect(overflowed(fits)).toEqual([]);
+    expect(fits.classList.contains('has-overflow')).toBe(false);
+    // a tablet in landscape (a little short): only the least used go
+    const landscape = bar(iconsOnly - 60, TOUCH);
+    fitToolbar(landscape);
+    expect(wraps(landscape)).toBe(false);
+    expect(landscape.classList.contains('has-overflow')).toBe(true);
+    expect(overflowed(landscape)).toEqual(['Atıf', 'Geri bildirim', 'Yazdır']);
+    // upright: more go, in their order; the essentials never
+    const upright = bar(760, TOUCH);
+    fitToolbar(upright);
+    expect(wraps(upright)).toBe(false);
+    expect(overflowed(upright)).toEqual(['Atıf', 'Geri bildirim', 'Yazdır', 'Paylaş', 'Yeni', 'Aç', 'Çoklu seçim', 'Konumlandır'].slice(0, overflowed(upright).length));
+    expect(overflowed(upright).length).toBeGreaterThan(3);
+    for (const kept of ['Kaydet', 'undo', 'redo', 'İndir', 'Ayarlar', 'more']) expect(upright.querySelector(`[data-name="${kept}"]`).offsetWidth).toBeGreaterThan(0);
+    // wide again: everything is back on the bar
+    const wide = bar(5000, TOUCH);
+    for (const c of upright.querySelectorAll('.overflowed')) wide.querySelector(`[data-name="${c.dataset.name}"]`).classList.add('overflowed');
+    fitToolbar(wide);
+    expect(overflowed(wide)).toEqual([]);
+    expect(wide.classList.contains('has-overflow')).toBe(false);
   });
 
   it('wider again: the words come back', () => {

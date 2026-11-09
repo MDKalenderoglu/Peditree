@@ -86,9 +86,18 @@ function LookSection() {
       <Row title={t('Simidin saydamlığı')} hint={t('Arkadaki çizim ne kadar görünsün')}>
         <RingClear value={view.ringClear} onChange={(v) => setView({ ringClear: v })} />
       </Row>
-      {/* how it looks, at once: a part of the ring over a few lines of a drawing */}
+      {/* how it looks, at once: parts of the ring over a small family drawn as in a pedigree
+          (thin lines, the usual symbols; clinician 2026-11-07: the first lines looked crude) */}
       <div className="ring-preview" aria-hidden="true">
-        <svg viewBox="0 0 240 64" preserveAspectRatio="none"><path d="M0,22H240M60,0V64M180,8V64M150,44H240" /></svg>
+        <svg viewBox="0 0 320 88">
+          <path className="rp-line" d="M148,22H172M160,22V44M70,44H250M70,44V58M130,44V58M190,44V58M250,44V58" />
+          <rect className="rp-sym" x="132" y="14" width="16" height="16" />
+          <circle className="rp-sym" cx="180" cy="22" r="8" />
+          <circle className="rp-sym" cx="70" cy="66" r="8" />
+          <rect className="rp-sym rp-on" x="122" y="58" width="16" height="16" />
+          <circle className="rp-sym" cx="190" cy="66" r="8" />
+          <rect className="rp-sym" x="242" y="58" width="16" height="16" />
+        </svg>
         <span className="ring-preview-pill">{t('Kardeş')}</span>
         <span className="ring-preview-pill">{t('Durum')}</span>
       </div>

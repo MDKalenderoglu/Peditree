@@ -9,8 +9,13 @@
  * narrower name field; last the logo's wordmark and the dividers). "Kaydet"
  * never folds; İndir, Yazdır and Paylaş are icons
  * alone at every width (clinician 2026-11-05). A folded word stays in its button for screen readers, and
- * every button says what it does in its tooltip (ui.css `.folded`). Only a
- * window narrower than all of that (a tablet upright) takes two rows.
+ * every button says what it does in its tooltip (ui.css `.folded`).
+ * When even the icons do not fit (a tablet, whose buttons are larger for a finger;
+ * clinician report 2026-11-09: two rows on a tablet), the least used buttons
+ * go, one at a time, into "Diğer" (⋯), which then shows (`data-overflow-order`:
+ * Atıf, Geri bildirim, Yazdır, Paylaş, Yeni, Aç, Çoklu seçim, Konumlandır).
+ * Kaydet, Geri al, Yinele, İndir and Ayarlar always stay on the bar; last of all
+ * the word "Doğum" before the birth date box gives way (an upright small tablet).
  */
 
 /** Does the bar take more than one row? (its items' middles differ by more than half an item) */
@@ -31,8 +36,26 @@ export function fitToolbar(el) {
     for (const p of parts) p.classList.toggle('folded', Number(p.dataset.foldOrder) <= level);
     el.setAttribute('data-fold', String(level));
   };
+  const extras = [...el.querySelectorAll('[data-overflow-order]')];
+  const most = Math.max(0, ...extras.map((p) => Number(p.dataset.overflowOrder)));
+  const overflowTo = (n) => {
+    for (const p of extras) p.classList.toggle('overflowed', Number(p.dataset.overflowOrder) <= n);
+    el.classList.toggle('has-overflow', n > 0);
+    el.setAttribute('data-overflow', String(n));
+  };
   let level = 0;
   foldTo(0);
+  overflowTo(0);
   while (level < last && wraps(el)) foldTo(++level);
-  return level;
+  let n = 0;
+  while (n < most && wraps(el)) overflowTo(++n);
+  return level + n;
+}
+
+/** The buttons now in "Diğer" (⋯), by their `data-overflow` names, least used first. */
+export function overflowed(el) {
+  if (!el) return [];
+  return [...el.querySelectorAll('.overflowed[data-overflow]')]
+    .sort((a, b) => Number(a.dataset.overflowOrder) - Number(b.dataset.overflowOrder))
+    .map((p) => p.dataset.overflow);
 }
