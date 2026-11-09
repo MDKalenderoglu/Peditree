@@ -204,6 +204,37 @@ describe('each step sets the screen up as it talks about it', () => {
   });
 });
 
+describe('the look (clinician 2026-11-10: "çok kaba ve düz")', () => {
+  it('the track along the card’s top shows the steps done and the one now; the page dims round the lit part with a rounded hole', async () => {
+    await click(buttonNamed('Tanıtım turu'));
+    await goTo('ring');
+    const track = [...$('.tour-card .tour-track').children];
+    expect(track.length).toBe(TOUR_STEPS.length);
+    const at = index('ring');
+    track.forEach((s, i) => expect(s.className).toBe(i < at ? 'done' : i === at ? 'now' : ''));
+    const clip = $('.tour-scrim').style.clipPath;
+    expect(clip).toMatch(/^path\(evenodd,/);
+    expect(clip).toContain('Q'); // soft corners
+    // a step with nothing to point at: the whole page dims, no hole
+    await goTo('welcome');
+    expect($('.tour-scrim').style.clipPath).toBe('');
+    expect($('.tour-spot')).toBeNull();
+    await key('Escape');
+  });
+
+  it('the first card and the first opening’s offer carry the small family that draws itself; every other card its step’s icon', async () => {
+    await run(() => useViewSettings.getState().setView({ tourOffer: true }));
+    expect($('.tour-offer .tour-family')).not.toBeNull();
+    await click(buttonNamed('Turu başlat', $('.tour-offer')));
+    expect($('.tour-card.tour-card-welcome .tour-hero .tour-family')).not.toBeNull();
+    expect($('.tour-family .tf-proband')).not.toBeNull();
+    await key('ArrowRight');
+    expect($('.tour-card-welcome')).toBeNull();
+    expect($('.tour-card .tour-icon svg')).not.toBeNull();
+    await key('Escape');
+  });
+});
+
 describe('the card stands beside what it points at', () => {
   const win = { w: 1280, h: 800 };
   const card = { w: 340, h: 200 };
