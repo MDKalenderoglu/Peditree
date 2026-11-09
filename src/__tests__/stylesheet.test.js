@@ -72,6 +72,12 @@ describe('stylesheet rules', () => {
     expect(block('ui.css', '.radial-menu')).toMatch(/z-index: 12;/);
   });
 
+  it('the patient name is a white field of its own on the tinted top bar, its hint readable (clinician report 2026-11-09: could not be seen)', () => {
+    const name = block('ui.css', '.toolbar .patient-name');
+    expect(name).toMatch(/background: var\(--surface\); border: 1px solid var\(--accent-line\)/);
+    expect(block('ui.css', '.toolbar .patient-name::placeholder')).toMatch(/color: var\(--muted\)/);
+  });
+
   it('the copy of the closing side panel lies over the drawing like the panel, and never takes a click', () => {
     const ghost = block('ui.css', '.panel-ghost');
     expect(ghost).toMatch(/position: fixed; z-index: 5;/);

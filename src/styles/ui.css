@@ -141,14 +141,17 @@ button, input, select, textarea { font-family: inherit; }
 .toolbar .ui-btn:not(.ui-btn-primary) { border-color: transparent; background: transparent; }
 .toolbar .ui-btn:not(.ui-btn-primary):hover:not(:disabled) { background: var(--surface); border-color: var(--line); }
 .toolbar .ui-btn[aria-expanded="true"]:not(.ui-btn-primary) { background: var(--surface); border-color: var(--line); color: var(--ink); }
-/* the patient's name reads as the line of a record, not one more box */
+/* the patient's name: a white field of its own on the tinted bar, its hint dark enough to read
+   (clinician report 2026-11-09: an underline alone could not be seen once the bar was tinted) */
 .toolbar .patient-name {
   width: 180px; height: 34px; font-size: 15px; font-weight: 600;
-  background: transparent; border: none; border-bottom: 1.5px solid var(--line); border-radius: 0; padding: 0 2px;
+  background: var(--surface); border: 1px solid var(--accent-line); border-radius: 8px; padding: 0 10px;
 }
-.toolbar .patient-name:hover { border-bottom-color: var(--faint); }
-.toolbar .patient-name:focus { border-bottom-color: var(--accent); box-shadow: none; }
-.toolbar .patient-name::placeholder { font-weight: 400; color: var(--faint); }
+.toolbar .patient-name:hover { border-color: var(--accent); }
+.toolbar .patient-name:focus { border-color: var(--accent); box-shadow: var(--focus); }
+.toolbar .patient-name::placeholder { font-weight: 400; color: var(--muted); }
+.toolbar-field .birth-date { border-color: var(--accent-line); }
+.toolbar-field .birth-date::placeholder { color: var(--muted); }
 .toolbar-field { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); white-space: nowrap; }
 .toolbar-field .birth-date { width: 112px; padding-left: 8px; padding-right: 6px; font-variant-numeric: tabular-nums; }
 /* one row (toolbarFit.js measures and folds, the least used first): a word
