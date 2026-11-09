@@ -447,7 +447,7 @@ function App() {
     setDownloadOpen(false);
   };
 
-  // "İndir": files for other programs — PNG, SVG, PED (the PediTree file itself is "Kaydet")
+  // "Kaydet" menu: the picture (PNG, PDF, SVG), the PediTree file, PED (clinician 2026-11-10: one place)
   const [downloadOpen, setDownloadOpen] = React.useState(false);
   const [pedPhenotype, setPedPhenotype] = React.useState('affected');
   // PED's one question shows when PED is chosen (clinician 2026-11-05: the menu said too much)
@@ -789,45 +789,34 @@ function App() {
               </div>
             )}
           </div>
-          <button className="ui-btn ui-btn-primary" onClick={handleSaveProject} title={t('Pedigriyi bilgisayarınıza dosya olarak kaydeder (.peditree.json). Sonra “Aç” ile açıp kaldığınız yerden devam edebilirsiniz.')}><Save size={15} /> {t('Kaydet')}</button>
-          <input ref={fileInputRef} type="file" accept=".json,application/json,.ped,.fam,.txt,text/plain" onChange={handleOpenProject} style={{ display: 'none' }} aria-label={t('Proje ya da PED dosyası seç')} />
-        </div>
-        <div className="toolbar-sep" data-fold-order="10" />
-        <div className="toolbar-group">
-          <button className="ui-btn ui-btn-icon" onClick={handleUndo} disabled={!_history || _history.length === 0}
-            title={_history && _history.length > 0 ? t('Geri al ({n} adım)', { n: _history.length }) : t('Geri alınacak adım yok')} aria-label={t('Geri al')}><Undo2 size={15} /></button>
-          <button className="ui-btn ui-btn-icon" onClick={handleRedo} disabled={!_future || _future.length === 0}
-            title={_future && _future.length > 0 ? t('Yinele ({n} adım)', { n: _future.length }) : t('Yinelenecek adım yok')} aria-label={t('Yinele')}><Redo2 size={15} /></button>
-          <button className="ui-btn" data-overflow="relayout" data-overflow-order="8" onClick={relayout} title={t('Konumlandır: kişileri çizimde baştan yerleştirir; kimin kiminle akraba olduğu değişmez. Geri alınabilir.')}><LayoutGrid size={15} /> <span className="btn-label" data-fold-order="4">{t('Konumlandır')}</span></button>
-        </div>
-        {/* the right end: it stays at the right edge, also when the toolbar takes two rows */}
-        <div className="toolbar-end">
-        <button className={`ui-btn touch-only${multiSelect ? ' ui-btn-primary' : ''}`} aria-pressed={multiSelect} data-overflow="multi" data-overflow-order="7"
-          onClick={() => setMultiSelect(v => !v)} title={t('Açıkken dokunduğunuz her kişi seçime eklenir; yeniden dokunursanız çıkarılır. Birden çok kişiyi birlikte değiştirmek için.')}>
-          <CheckSquare size={15} /> <span className="btn-label" data-fold-order="5">{t('Çoklu seçim')}</span>
-        </button>
-        {/* İndir, Yazdır, Paylaş: icons alone, their words for screen readers and in the tooltip (clinician 2026-11-05) */}
-        <div className="toolbar-group">
+          {/* Kaydet: every way of keeping the drawing in one place, the picture first (clinician 2026-11-10: a
+              first-time user who pressed Kaydet and got a .json file did not know what it was; the former
+              İndir button beside it went unnoticed). Cmd/Ctrl+S still writes the PediTree file. */}
           <div className="keys-wrap" data-popup="download">
-            <button className="ui-btn" onClick={() => setDownloadOpen(v => !v)} aria-expanded={downloadOpen}
-              title={t('Çizimi başka programlar için dosya olarak indirir: PNG, SVG, PDF ya da PED')}>
-              <Download size={15} /> <span className="btn-label icon-only">{t('İndir')}</span> <ChevronDown size={14} />
+            <button className="ui-btn ui-btn-primary" onClick={() => { setPedOpen(false); setDownloadOpen(v => !v); }} aria-expanded={downloadOpen} aria-haspopup="dialog"
+              title={t('Çizimi resim (PNG, PDF, SVG) ya da sonra açıp düzenlemek için PediTree dosyası olarak kaydeder')}>
+              <Save size={15} /> {t('Kaydet')} <ChevronDown size={14} />
             </button>
             {downloadOpen && (
-              <div className="keys-popover share-popover download-popover" role="dialog" aria-label={t('İndir')}>
-                {/* one line each: the format and a word or two; the rest in the tooltip (clinician 2026-11-05) */}
+              <div className="keys-popover share-popover download-popover" role="dialog" aria-label={t('Kaydet')}>
+                <div className="download-group">{t('Resim olarak')}</div>
                 <button className="download-item" title={t('Sunum, mesaj ve belgeler için')} onClick={() => { setDownloadOpen(false); handleExportPNG(); }}>
-                  <ImageIcon size={18} /><span><b>PNG</b><small>{t('resim')}</small></span>
-                </button>
-                <button className="download-item" title={t('Büyütülünce bozulmaz; yayın, Word ve PowerPoint için')} onClick={() => { setDownloadOpen(false); handleExportSVG(); }}>
-                  <FileCode2 size={18} /><span><b>SVG</b><small>{t('büyütülebilir çizim')}</small></span>
+                  <ImageIcon size={18} /><span><b>PNG</b><small>{t('rapora, sunuma, mesaja eklemek için')}</small></span>
                 </button>
                 <button className="download-item" title={t('Tek A4 sayfa; yazdırmaya ve hasta dosyasına eklemeye hazır')} onClick={() => { setDownloadOpen(false); handleExportPDF(); }}>
                   <FileText size={18} /><span><b>PDF</b><small>{t('A4 sayfa')}</small></span>
                 </button>
+                <button className="download-item" title={t('Büyütülünce bozulmaz; yayın, Word ve PowerPoint için')} onClick={() => { setDownloadOpen(false); handleExportSVG(); }}>
+                  <FileCode2 size={18} /><span><b>SVG</b><small>{t('büyütülebilir çizim')}</small></span>
+                </button>
+                <div className="download-group">{t('Sonra düzenlemek için')}</div>
+                <button className="download-item" title={t('Pedigriyi bütün bilgileriyle bilgisayarınıza kaydeder (.peditree.json). Sonra “Aç” ile açıp kaldığınız yerden devam edebilirsiniz.')} onClick={() => { setDownloadOpen(false); handleSaveProject(); }}>
+                  <Save size={18} /><span><b>{t('PediTree dosyası')}</b><small>{t('“Aç” ile açıp kaldığınız yerden sürdürmek için')}</small></span>
+                </button>
+                <div className="download-group">{t('Analiz programları için')}</div>
                 <button className="download-item" aria-expanded={pedOpen} onClick={() => setPedOpen(v => !v)}
                   title={t('Genetik analiz programları ve laboratuvarlar için. Yalnızca anne, baba, cinsiyet ve hasta olup olmadığı yazılır; kişiler pedigri numarasıyla (ör. II-3) geçer, hasta adı yazılmaz.')}>
-                  <Table2 size={18} /><span><b>PED</b><small>{t('analiz programları için')}</small></span>
+                  <Table2 size={18} /><span><b>PED</b><small>{t('kişiler numarayla geçer, ad yazılmaz')}</small></span>
                 </button>
                 {pedOpen && (
                   <div className="download-ped">
@@ -844,6 +833,24 @@ function App() {
               </div>
             )}
           </div>
+          <input ref={fileInputRef} type="file" accept=".json,application/json,.ped,.fam,.txt,text/plain" onChange={handleOpenProject} style={{ display: 'none' }} aria-label={t('Proje ya da PED dosyası seç')} />
+        </div>
+        <div className="toolbar-sep" data-fold-order="10" />
+        <div className="toolbar-group">
+          <button className="ui-btn ui-btn-icon" onClick={handleUndo} disabled={!_history || _history.length === 0}
+            title={_history && _history.length > 0 ? t('Geri al ({n} adım)', { n: _history.length }) : t('Geri alınacak adım yok')} aria-label={t('Geri al')}><Undo2 size={15} /></button>
+          <button className="ui-btn ui-btn-icon" onClick={handleRedo} disabled={!_future || _future.length === 0}
+            title={_future && _future.length > 0 ? t('Yinele ({n} adım)', { n: _future.length }) : t('Yinelenecek adım yok')} aria-label={t('Yinele')}><Redo2 size={15} /></button>
+          <button className="ui-btn" data-overflow="relayout" data-overflow-order="8" onClick={relayout} title={t('Konumlandır: kişileri çizimde baştan yerleştirir; kimin kiminle akraba olduğu değişmez. Geri alınabilir.')}><LayoutGrid size={15} /> <span className="btn-label" data-fold-order="4">{t('Konumlandır')}</span></button>
+        </div>
+        {/* the right end: it stays at the right edge, also when the toolbar takes two rows */}
+        <div className="toolbar-end">
+        <button className={`ui-btn touch-only${multiSelect ? ' ui-btn-primary' : ''}`} aria-pressed={multiSelect} data-overflow="multi" data-overflow-order="7"
+          onClick={() => setMultiSelect(v => !v)} title={t('Açıkken dokunduğunuz her kişi seçime eklenir; yeniden dokunursanız çıkarılır. Birden çok kişiyi birlikte değiştirmek için.')}>
+          <CheckSquare size={15} /> <span className="btn-label" data-fold-order="5">{t('Çoklu seçim')}</span>
+        </button>
+        {/* Yazdır, Paylaş: icons alone, their words for screen readers and in the tooltip (clinician 2026-11-05) */}
+        <div className="toolbar-group">
           <button className="ui-btn" data-overflow="print" data-overflow-order="3" onClick={handlePrint} title={t('Çizimi tek bir A4 sayfaya yazdırır (Cmd/Ctrl+P)')}><Printer size={15} /> <span className="btn-label icon-only">{t('Yazdır')}</span></button>
           <div className="keys-wrap" data-popup="share">
             <button className="ui-btn" data-overflow="share" data-overflow-order="4" onClick={openShare} aria-expanded={!!share} title={t('Pedigri resmini WhatsApp, Gmail gibi bir uygulamayla gönderir')}>
