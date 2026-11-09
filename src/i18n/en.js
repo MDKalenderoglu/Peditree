@@ -283,6 +283,8 @@ const EN = {
   'Çift 1. derece kuzen': 'Double first cousins',
   'Birden fazla akrabalık yolu': 'More than one line of relationship',
   'Diğer': 'Other',
+  'Üst çubuğa sığmayan düğmeler': 'Buttons with no room on the top bar',
+  'açık': 'on',
   'Bu çiftin çocuklarında akrabalık (inbreeding) katsayısı:': 'Inbreeding coefficient of this couple’s children:',
   'Akrabalık: var': 'Consanguinity: yes',
   'Çizimden anlaşılan akrabalık:': 'Relationship shown by the drawing:',

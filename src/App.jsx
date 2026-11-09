@@ -24,13 +24,40 @@ import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, ringAlphaOf,
 import { ProductInfo, LicenseInfo, CitationInfo, FeedbackInfo } from './components/AboutParts';
 import { nameCase } from './utils/nameCase';
 import { RELEASE_STAGE } from './utils/appInfo';
-import { fitToolbar } from './utils/toolbarFit';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2 } from 'lucide-react';
+import { fitToolbar, overflowed } from './utils/toolbarFit';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
 // the clinician's logo (docs/brand/peditree-logo.webp): the tree, and the name in its own lettering
 import logoMark from './assets/logo-mark.png';
 import logoWordmark from './assets/logo-wordmark.png';
+
+/** The buttons that may wait in "Diğer" (⋯) on a narrow bar: icon and name (App runMore does what they do). */
+const MORE = {
+  cite: [Quote, tk('Atıf')], feedback: [MessageSquareText, tk('Geri bildirim')], print: [Printer, tk('Yazdır')],
+  share: [Share2, tk('Paylaş')], multi: [CheckSquare, tk('Çoklu seçim')], relayout: [LayoutGrid, tk('Konumlandır')],
+  new: [FilePlus2, tk('Yeni')], open: [FolderOpen, tk('Aç')],
+};
+/** A finger or a pen (the multi-select switch is for touch screens). */
+const coarsePointer = () => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+
+/** "Diğer" (⋯): the buttons the bar had no room for, in their order; a choice does what the button does. */
+function MoreMenu({ items, multiSelect, onPick }) {
+  const t = useT();
+  return (
+    <div className="keys-popover share-popover more-popover" role="menu" aria-label={t('Diğer')}>
+      {items.filter((id) => MORE[id] && (id !== 'multi' || coarsePointer())).map((id) => {
+        const [Icon, label] = MORE[id];
+        return (
+          <button key={id} className="download-item" role="menuitem" onClick={() => onPick(id)}>
+            <Icon size={18} /><span><b>{t(label)}</b></span>
+            {id === 'multi' && multiSelect && <Check size={16} className="more-on" aria-label={t('açık')} />}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 /**
  * The edge between the drawing and the side panel: drag it to make the panel wider or narrower
@@ -103,6 +130,8 @@ function App() {
   const [multiSelect, setMultiSelect] = React.useState(false);
   // the top bar's "Atıf" and "Geri bildirim" windows (clinician request 2026-11-04)
   const [infoOpen, setInfoOpen] = React.useState(null); // 'cite' | 'feedback'
+  // "Diğer" (⋯): the buttons the top bar had no room for (a tablet; toolbarFit.js)
+  const [moreItems, setMoreItems] = React.useState(null);
   const [focusTick, setFocusTick] = React.useState(0);
   const ringRef = React.useRef(null);
   // the ring can be put away while the person stays selected (clinician
@@ -396,7 +425,7 @@ function App() {
 
   // the toolbar's pop-up windows (Yeni, Paylaş, Diğer, keyboard help) close
   // on a click anywhere outside them, or Escape (clinician request 2026-10-27)
-  const popupOpen = !!infoOpen || newMenu || relationOpen || downloadOpen || !!share || settingsOpen || aboutOpen || openHelp;
+  const popupOpen = !!infoOpen || newMenu || relationOpen || downloadOpen || !!share || settingsOpen || aboutOpen || openHelp || !!moreItems;
   const popupClosedAt = React.useRef(-Infinity);
   // The tap that closes a pop-up window does only that (clinician request
   // 2026-10-27): the click that ends that same tap is stopped before it
@@ -425,6 +454,7 @@ function App() {
       if (except !== 'share') setShare(null);
       if (except !== 'settings') setSettingsOpen(false);
       if (except !== 'about') setAboutOpen(false);
+      if (except !== 'more') setMoreItems(null);
     };
     const onDown = (e) => {
       const inside = e.target.closest && e.target.closest('[data-popup]');
@@ -473,6 +503,17 @@ function App() {
   // "Aç": explains first which files it opens, unless the clinician turned that off (openHelp: above)
   const chooseFile = () => { setOpenHelp(false); fileInputRef.current && fileInputRef.current.click(); };
   const handleOpenClick = () => { if (view.openHelp) setOpenHelp(v => !v); else chooseFile(); };
+  // "Diğer" (⋯): each button the bar had no room for does what it does on the bar
+  const runMore = (id) => {
+    setMoreItems(null);
+    if (id === 'cite' || id === 'feedback') setInfoOpen(id);
+    else if (id === 'print') handlePrint();
+    else if (id === 'share') openShare();
+    else if (id === 'multi') setMultiSelect(v => !v);
+    else if (id === 'relayout') relayout();
+    else if (id === 'new') setNewMenu(true);
+    else if (id === 'open') handleOpenClick();
+  };
   const handleOpenProject = (e) => {
     const file = e.target.files && e.target.files[0];
     e.target.value = '';
@@ -510,8 +551,18 @@ function App() {
       e.preventDefault();
       e.returnValue = '';
     };
+    // a tablet often leaves without "beforeunload": the tab goes to the background, or the
+    // browser reloads or discards it; the last edit is written then (clinician report 2026-11-09)
+    const onHide = () => { flushDrafts(); flushAutosave(); };
+    const onVisibility = () => { if (document.visibilityState === 'hidden') onHide(); };
     window.addEventListener('beforeunload', onLeave);
-    return () => window.removeEventListener('beforeunload', onLeave);
+    window.addEventListener('pagehide', onHide);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('beforeunload', onLeave);
+      window.removeEventListener('pagehide', onHide);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
 
   // Keyboard shortcuts (clinician request 2026-10-25); never while typing
@@ -632,7 +683,8 @@ function App() {
           onBlur={e => setPatientName(nameCase(e.target.value).trim())} />
         {/* optional: the proband's age follows it, as of today (clinician decision 2026-10-25) */}
         <label className="toolbar-field" title={t('Probandın (proband yoksa danışanın) doğum tarihi (isteğe bağlı). Yazarsanız yaşı bugüne göre kendiliğinden hesaplanır. Kısa da yazabilirsiniz: 3.5.25')}>
-          <span>{t('Doğum')}</span>
+          {/* the last thing to give way on a narrow tablet: the box keeps its name for screen readers and its tooltip */}
+          <span data-overflow-order="9">{t('Doğum')}</span>
           {/* typed the quick way: 3.5.25, 3/05/2025, 030525 … (clinician request 2026-10-25) */}
           <DraftField key={probandNode ? probandNode.id : 'none'} type="text" inputMode="numeric" className="input birth-date"
             value={formatDate(probandNode && probandNode.birthDate)} placeholder={t('gg.aa.yyyy')} disabled={!probandNode}
@@ -641,7 +693,7 @@ function App() {
         <div className="toolbar-sep" data-fold-order="10" />
         <div className="toolbar-group">
           <div className="keys-wrap" data-popup="new">
-            <button className="ui-btn" onClick={() => setNewMenu(v => !v)} aria-expanded={newMenu} title={t('Yeni bir pedigri başlat: boş bir aileyle ya da hazır bir akraba evliliği şablonuyla')}><FilePlus2 size={15} /> <span className="btn-label" data-fold-order="8">{t('Yeni')}</span></button>
+            <button className="ui-btn" data-overflow="new" data-overflow-order="5" onClick={() => setNewMenu(v => !v)} aria-expanded={newMenu} title={t('Yeni bir pedigri başlat: boş bir aileyle ya da hazır bir akraba evliliği şablonuyla')}><FilePlus2 size={15} /> <span className="btn-label" data-fold-order="8">{t('Yeni')}</span></button>
             {newMenu && (
               <div className="keys-popover share-popover new-popover" role="dialog" aria-label={t('Yeni pedigri')}>
                 {/* two ways to start, each with a small pedigree of what opens (clinician request 2026-11-01) */}
@@ -664,7 +716,7 @@ function App() {
             document.body,
           )}
           <div className="keys-wrap" data-popup="open">
-            <button className="ui-btn" onClick={handleOpenClick} aria-expanded={openHelp} title={t('Daha önce kaydettiğiniz bir pedigri dosyasını (.peditree.json) ya da bir PED dosyasını açar')}><FolderOpen size={15} /> <span className="btn-label" data-fold-order="7">{t('Aç')}</span></button>
+            <button className="ui-btn" data-overflow="open" data-overflow-order="6" onClick={handleOpenClick} aria-expanded={openHelp} title={t('Daha önce kaydettiğiniz bir pedigri dosyasını (.peditree.json) ya da bir PED dosyasını açar')}><FolderOpen size={15} /> <span className="btn-label" data-fold-order="7">{t('Aç')}</span></button>
             {openHelp && (
               <div className="keys-popover share-popover open-popover" role="dialog" aria-label={t('Dosya aç')}>
                 <div className="keys-title">{t('Dosya aç')}</div>
@@ -688,11 +740,11 @@ function App() {
             title={_history && _history.length > 0 ? t('Geri al ({n} adım)', { n: _history.length }) : t('Geri alınacak adım yok')} aria-label={t('Geri al')}><Undo2 size={15} /></button>
           <button className="ui-btn ui-btn-icon" onClick={handleRedo} disabled={!_future || _future.length === 0}
             title={_future && _future.length > 0 ? t('Yinele ({n} adım)', { n: _future.length }) : t('Yinelenecek adım yok')} aria-label={t('Yinele')}><Redo2 size={15} /></button>
-          <button className="ui-btn" onClick={relayout} title={t('Konumlandır: kişileri çizimde baştan yerleştirir; kimin kiminle akraba olduğu değişmez. Geri alınabilir.')}><LayoutGrid size={15} /> <span className="btn-label" data-fold-order="4">{t('Konumlandır')}</span></button>
+          <button className="ui-btn" data-overflow="relayout" data-overflow-order="8" onClick={relayout} title={t('Konumlandır: kişileri çizimde baştan yerleştirir; kimin kiminle akraba olduğu değişmez. Geri alınabilir.')}><LayoutGrid size={15} /> <span className="btn-label" data-fold-order="4">{t('Konumlandır')}</span></button>
         </div>
         {/* the right end: it stays at the right edge, also when the toolbar takes two rows */}
         <div className="toolbar-end">
-        <button className={`ui-btn touch-only${multiSelect ? ' ui-btn-primary' : ''}`} aria-pressed={multiSelect}
+        <button className={`ui-btn touch-only${multiSelect ? ' ui-btn-primary' : ''}`} aria-pressed={multiSelect} data-overflow="multi" data-overflow-order="7"
           onClick={() => setMultiSelect(v => !v)} title={t('Açıkken dokunduğunuz her kişi seçime eklenir; yeniden dokunursanız çıkarılır. Birden çok kişiyi birlikte değiştirmek için.')}>
           <CheckSquare size={15} /> <span className="btn-label" data-fold-order="5">{t('Çoklu seçim')}</span>
         </button>
@@ -734,9 +786,9 @@ function App() {
               </div>
             )}
           </div>
-          <button className="ui-btn" onClick={handlePrint} title={t('Çizimi tek bir A4 sayfaya yazdırır (Cmd/Ctrl+P)')}><Printer size={15} /> <span className="btn-label icon-only">{t('Yazdır')}</span></button>
+          <button className="ui-btn" data-overflow="print" data-overflow-order="3" onClick={handlePrint} title={t('Çizimi tek bir A4 sayfaya yazdırır (Cmd/Ctrl+P)')}><Printer size={15} /> <span className="btn-label icon-only">{t('Yazdır')}</span></button>
           <div className="keys-wrap" data-popup="share">
-            <button className="ui-btn" onClick={openShare} aria-expanded={!!share} title={t('Pedigri resmini WhatsApp, Gmail gibi bir uygulamayla gönderir')}>
+            <button className="ui-btn" data-overflow="share" data-overflow-order="4" onClick={openShare} aria-expanded={!!share} title={t('Pedigri resmini WhatsApp, Gmail gibi bir uygulamayla gönderir')}>
               <Share2 size={15} /> <span className="btn-label icon-only">{t('Paylaş')}</span>
             </button>
             {share && (
@@ -761,7 +813,7 @@ function App() {
         {/* what people share and ask about most, one click away (clinician request 2026-11-04) */}
         <div className="toolbar-group">
           <div className="keys-wrap" data-popup="cite">
-            <button className="ui-btn" onClick={() => setInfoOpen(v => (v === 'cite' ? null : 'cite'))} aria-expanded={infoOpen === 'cite'}
+            <button className="ui-btn" data-overflow="cite" data-overflow-order="1" onClick={() => setInfoOpen(v => (v === 'cite' ? null : 'cite'))} aria-expanded={infoOpen === 'cite'}
               title={t('PediTree’ye nasıl atıf yapılır')}><Quote size={15} /> <span className="btn-label" data-fold-order="3">{t('Atıf')}</span></button>
             {infoOpen === 'cite' && (
               <div className="keys-popover share-popover info-popover about-text" role="dialog" aria-label={t('Atıf')}>
@@ -770,7 +822,7 @@ function App() {
             )}
           </div>
           <div className="keys-wrap" data-popup="feedback">
-            <button className="ui-btn" onClick={() => setInfoOpen(v => (v === 'feedback' ? null : 'feedback'))} aria-expanded={infoOpen === 'feedback'}
+            <button className="ui-btn" data-overflow="feedback" data-overflow-order="2" onClick={() => setInfoOpen(v => (v === 'feedback' ? null : 'feedback'))} aria-expanded={infoOpen === 'feedback'}
               title={t('Hata bildirin ya da öneri paylaşın')}><MessageSquareText size={15} /> <span className="btn-label" data-fold-order="2">{t('Geri bildirim')}</span></button>
             {infoOpen === 'feedback' && (
               <div className="keys-popover share-popover info-popover about-text" role="dialog" aria-label={t('Hata ve öneriler')}>
@@ -780,6 +832,12 @@ function App() {
           </div>
         </div>
         <div className="toolbar-sep" data-fold-order="10" />
+          {/* shown only while some buttons had no room on the bar (a tablet; clinician report 2026-11-09) */}
+          <div className="keys-wrap toolbar-more" data-popup="more">
+            <button className="ui-btn ui-btn-icon" onClick={() => setMoreItems(v => (v ? null : overflowed(toolbarRef.current)))} aria-expanded={!!moreItems}
+              aria-label={t('Diğer')} title={t('Üst çubuğa sığmayan düğmeler')}><MoreHorizontal size={16} /></button>
+            {moreItems && <MoreMenu items={moreItems} multiSelect={multiSelect} onPick={runMore} />}
+          </div>
           <div className="keys-wrap" data-popup="settings">
             <button className="ui-btn" onClick={() => (settingsOpen ? setSettingsOpen(false) : openSettings())} aria-expanded={settingsOpen}
               title={t('Ayarlar: dil, çizimin görünümü, yazı tipi, halka menü ve indirilen resimler')}>

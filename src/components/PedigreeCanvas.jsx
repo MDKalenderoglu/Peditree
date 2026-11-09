@@ -220,6 +220,41 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     if (!b.width || !r.width) return null;
     return { cx: r.left + r.width / 2 - s0.left, cy: r.top + r.height / 2 - s0.top, spu: r.width / b.width };
   };
+  // The side panel opens, closes or is dragged wider: the drawing's box changes width while the
+  // window does not. The drawing then stays where it was on screen, the same size, instead of
+  // shrinking and jumping to the middle (clinician report 2026-11-09, tablet: "the page gets mixed
+  // up when the side panel opens"); the person being worked on is brought into view if the
+  // narrower box would hide them. A turned tablet or a resized window fits the drawing as before.
+  const placeRef = useRef(null); // { w, h, win, a, e, f }: the drawing's screen matrix, the box it was in
+  const notePlace = useCallback(() => {
+    const el = svgRef.current;
+    const vp = el && el.querySelector('.pedigree-viewport');
+    const m = vp && vp.getScreenCTM && vp.getScreenCTM();
+    if (!m || !m.a) { placeRef.current = null; return; }
+    const r = el.getBoundingClientRect();
+    placeRef.current = { w: r.width, h: r.height, win: window.innerWidth, a: m.a, e: m.e - r.left, f: m.f - r.top };
+  }, []);
+  const holdPlace = useCallback((was) => {
+    const el = svgRef.current;
+    const zoom = el && el.__zoom_ref;
+    if (!el || !was || !zoom || !el.getScreenCTM) return false;
+    const r = el.getBoundingClientRect();
+    if (Math.abs(r.width - was.w) < 1 || Math.abs(r.height - was.h) > 1 || window.innerWidth !== was.win) return false;
+    const s = el.getScreenCTM(); // the box's own fit of the drawing (viewBox)
+    if (!s || !s.a || !s.d) return false;
+    const svg = d3.select(el);
+    svg.call(zoom.transform, d3.zoomIdentity.translate((was.e + r.left - s.e) / s.a, (was.f + r.top - s.f) / s.d).scale(was.a / s.a));
+    // the person being worked on stays in view, with room for the ring round them
+    const shape = el.querySelector('.node-selected .pedigree-shape');
+    const b = shape && shape.getBoundingClientRect();
+    if (b && b.width) {
+      const cx = b.left + b.width / 2 - r.left;
+      const room = Math.min(150, r.width / 4);
+      const dx = cx < room ? room - cx : cx > r.width - room ? r.width - room - cx : 0;
+      if (dx) svg.call(zoom.translateBy, dx / (s.a * d3.zoomTransform(el).k), 0);
+    }
+    return true;
+  }, []);
   const placeQuickBar = useCallback(() => {
     const shape = svgRef.current && svgRef.current.querySelector('.node-selected .pedigree-shape');
     if (!shape || !boxRef.current || selectedNodeId2 || selectedIds.length > 1) { setAnchor(null); return; }
@@ -239,6 +274,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const svg = d3.select(svgRef.current);
     // the selected person's place on screen, from the drawing about to go
     const before = selectedNodeId && keepRef.current && keepRef.current.id === selectedNodeId ? keepRef.current : null;
+    // the drawing's place on screen and the box it was in (the side panel may have opened since)
+    const placeBefore = placeRef.current;
     // a person with the keyboard focus keeps it across the redraw
     const focusedId = svgRef.current.contains(document.activeElement) ? document.activeElement.getAttribute('data-node-id') : null;
     svg.selectAll('*').remove();
@@ -1047,12 +1084,15 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       .scaleExtent([0.1, 4])
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
+        notePlace();
         paintPaper(svg.node(), drawing && drawing.paper); // squared / dotted paper moves with the drawing
         placeQuickBar();
         const m = measureSelected();
         keepRef.current = m && selectedNodeId ? { id: selectedNodeId, ...m } : null;
       });
     svg.call(zoom);
+    // this drawing's zoom, for everything below and outside (the old one moved the drawing just removed)
+    svg.node().__zoom_ref = zoom;
     // a quick second tap on a tablet selects again; it must not zoom
     svg.on('dblclick.zoom', null);
     // a click on the empty drawing (people, lines and texts stop theirs; a
@@ -1061,6 +1101,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // keep the clinician's zoom/pan across edits (it used to jump back after
     // every change); "Sığdır" resets it
     svg.call(zoom.transform, d3.zoomTransform(svg.node()));
+    // the side panel opened or closed with this change: the drawing stays where it was
+    holdPlace(placeBefore);
     // same person still selected after a redraw: keep them where they were,
     // the same size — the rest of the drawing moves around them
     const now = before && measureSelected();
@@ -1081,20 +1123,22 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       keepRef.current = m && selectedNodeId ? { id: selectedNodeId, ...m } : null;
     }
 
-    // Store for external reset
-    svg.node().__zoom_ref = zoom;
 
-  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar, patientName, startEdit, multiSelect, focusTick, onNodeDrop, onBackgroundClick, drawing, fontsTick, lang]);
+  }, [nodes, edges, selectedNodeId, selectedNodeId2, selectedIds, onNodeSelect, onUnionSelect, conditionKey, placeQuickBar, patientName, startEdit, multiSelect, focusTick, onNodeDrop, onBackgroundClick, drawing, fontsTick, lang, holdPlace, notePlace]);
 
   // the drawing area changes size (window, side panel): the drawing moves on
   // screen, and the paper with it
   useEffect(() => {
     const el = svgRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
-    const watch = new ResizeObserver(() => paintPaper(el, drawing && drawing.paper));
+    const watch = new ResizeObserver(() => {
+      // the side panel dragged wider or narrower: the drawing stays where it was
+      if (!holdPlace(placeRef.current)) notePlace();
+      paintPaper(el, drawing && drawing.paper);
+    });
     watch.observe(el);
     return () => watch.disconnect();
-  }, [drawing]);
+  }, [drawing, holdPlace, notePlace]);
 
   // a menu around the selected person that needs more room slides the
   // drawing by (dx, dy) screen pixels (a narrow tablet screen)

@@ -64,6 +64,12 @@
 }
 
 body { font-family: var(--font-ui); font-size: 14px; line-height: 1.45; color: var(--ink-2); background: var(--frame); }
+/* a tablet (clinician report 2026-11-09: the page reloaded by itself and nothing stayed in place):
+   the page itself never scrolls or bounces, a pull from the top never reloads it, the text keeps
+   its size when the tablet turns, and a quick double tap never zooms the page */
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+.app-shell, .side, .settings-backdrop, .relation-backdrop, .keys-popover { touch-action: manipulation; }
+.side, .keys-popover, .canvas-notices { overscroll-behavior: contain; }
 button, input, select, textarea { font-family: inherit; }
 
 /* ── shell ── */
@@ -73,6 +79,7 @@ button, input, select, textarea { font-family: inherit; }
   grid-template-columns: minmax(0, 1fr) 0;
   grid-template-rows: auto minmax(0, 1fr);
   height: 100vh;
+  height: 100dvh; /* the part of the screen a tablet's browser leaves free */
 }
 .app-shell > .toolbar { grid-column: 1 / -1; }
 .app-shell.has-editor { grid-template-columns: minmax(0, 1fr) var(--panel-w, 328px); }
@@ -153,6 +160,12 @@ button, input, select, textarea { font-family: inherit; }
 }
 .toolbar .ui-btn:has(> .btn-label.folded), .toolbar .ui-btn:has(> .btn-label.icon-only) { padding: 0 9px; }
 .toolbar .brand-sub.folded, .toolbar .brand-text.folded, .toolbar .toolbar-sep.folded { display: none; }
+/* a tablet: buttons with no room on the bar wait in "Diğer" (⋯), shown only then (toolbarFit.js; 2026-11-09) */
+.toolbar .overflowed { display: none; }
+.toolbar:not(.has-overflow) .toolbar-more { display: none; }
+.more-popover { width: 220px; gap: 0; padding: 6px; }
+.more-popover .download-item { align-items: center; }
+.more-popover .more-on { margin-left: auto; color: var(--accent); }
 .toolbar .patient-name.folded { width: 150px; }
 
 /* ── fields ── */
