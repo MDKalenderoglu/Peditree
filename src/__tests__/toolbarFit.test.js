@@ -7,7 +7,7 @@
  */
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { fitToolbar, wraps, overflowed } from '../utils/toolbarFit';
+import { fitToolbar, wraps, overflowed, watchToolbar } from '../utils/toolbarFit';
 
 /**
  * A bar of `width` px holding [name, width, foldOrder?, wordWidth?, overflowOrder?] items; "more" (⋯)
@@ -137,5 +137,20 @@ describe('the top bar keeps to one row', () => {
     for (const l of el.querySelectorAll('.folded')) wide.querySelector(`[data-name="${l.parentNode.dataset.name}"] span`).classList.add('folded');
     fitToolbar(wide);
     expect(folded(wide)).toEqual([]);
+  });
+  it('the words grow after the first fit (the typeface arrives late): the bar is fitted again, though its width is the same', () => {
+    const el = bar(total, ITEMS);
+    Object.defineProperty(el, 'clientWidth', { get: () => total });
+    let changed = null;
+    class FakeObserver { constructor(cb) { changed = cb; } observe() {} disconnect() {} }
+    const stop = watchToolbar(el, FakeObserver);
+    expect(folded(el)).toEqual([]);
+    // the real typeface: Konumlandır's word is wider now, the bar takes a second row
+    el.querySelector('[data-name="Konumlandır"]').dataset.w = 170;
+    expect(wraps(el)).toBe(true);
+    changed();
+    expect(wraps(el)).toBe(false);
+    expect(folded(el).length).toBeGreaterThan(0);
+    stop();
   });
 });
