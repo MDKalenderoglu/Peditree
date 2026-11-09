@@ -31,7 +31,7 @@ import { layoutParentage } from '../layout/pcl/art';
 import { auditLayoutIntegrity } from '../utils/layoutIntegrity';
 import { assessRelationshipMutation } from '../utils/relationshipSafety';
 import { validateDocument } from '../graph/validate';
-import { subjectOf } from '../graph/model';
+import { subjectOf, displayParentage } from '../graph/model';
 import * as ops from '../graph/ops';
 import { fromPed } from '../graph/ped';
 import { buildTemplate } from '../graph/templates';
@@ -228,7 +228,8 @@ export const usePedigreeStore = create((zSet, get) => {
       return res;
     }
     let d = get().doc;
-    const children = (doc) => doc.graph.parentChildRelationships.find((r) => r.unionId === m.unionId).children;
+    // the sibship as drawn (an adopted-in child stands among the biological ones)
+    const children = (doc) => displayParentage(doc.graph).graph.parentChildRelationships.find((r) => r.unionId === m.unionId).children;
     for (let i = 0; i < children(d).length; i++) {
       const r = ops.moveChild(d, m.unionId, id, m.dir);
       if (!r.ok) return apply(r);
