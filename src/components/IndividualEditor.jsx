@@ -294,10 +294,10 @@ const REPRO_BUTTONS = [
   ['gestational_carrier', tk('Gestasyonel taşıyıcı (G)'), tk('Gebeliği taşır, yumurtası kullanılmaz; çocuk onun altında')],
   ['surrogate', tk('Taşıyıcı anne (D)'), tk('Yumurtasını verir ve gebeliği taşır; çocuk onun altında')],
 ];
-function ReproCard({ info, onAdd, onRemove }) {
+function ReproCard({ info, onAdd, onRemove, onSetOwn }) {
   const [who, setWho] = useState('');
   if (!info) return null;
-  const { links, canHave, candidates, roleOf } = info;
+  const { links, canHave, candidates, roleOf, own } = info;
   return (
     <div className="card">
       <div className="card-title">{t('Yardımcı üreme')}</div>
@@ -306,6 +306,19 @@ function ReproCard({ info, onAdd, onRemove }) {
       )}
       {canHave ? (
         <>
+          {/* a same-sex couple's child: whose own egg or sperm (clinician 2026-11-10); a second tap takes it back */}
+          {own && onSetOwn && (
+            <div className="field-col">
+              <span className="field-label">{own.gamete === 'egg' ? t('Yumurta kimin?') : t('Sperm kimin?')}</span>
+              <div className="segmented" role="radiogroup" aria-label={own.gamete === 'egg' ? t('Yumurta kimin?') : t('Sperm kimin?')}>
+                {own.partners.map(p => (
+                  <button key={p.id} role="radio" aria-checked={own.current === p.id} className={own.current === p.id ? 'on' : undefined}
+                    onClick={() => onSetOwn(own.current === p.id ? null : p.id)}>{p.name}</button>
+                ))}
+              </div>
+              <span className="field-hint">{own.current ? t('Akrabalık ve akrabalık katsayısı bu eş ve donör üzerinden hesaplanır.') : t('Seçilmezse bilinmiyor sayılır; akrabalık yalnız donör üzerinden hesaplanır.')}</span>
+            </div>
+          )}
           {links.map(l => (
             <div key={l.personId + l.role} className="btn-row">
               <span>{t(l.label)}: {l.name}</span>
@@ -488,7 +501,7 @@ export default function IndividualEditor({
   onClearSelection, onReorderChild, onSetUnionRelationshipBackground, onSetLineNote, onSetUnionStatus, onSetChildlessness,
   onSetPregnancyKind, onSetGestationWeeks,
   onSetMultipleBirth, onAddMultiple, onSetZygosity, onLeaveMultiple,
-  onSetGroupCount, onSplitGroup, mergeCheck, onMergeGroup, adoptionInfo, onSetAdoption, reproInfo, onAddRepro, onRemoveRepro,
+  onSetGroupCount, onSplitGroup, mergeCheck, onMergeGroup, adoptionInfo, onSetAdoption, reproInfo, onAddRepro, onRemoveRepro, onSetOwnGamete,
   wizardParents, onSetParentsField,
   selectedNodes = [], onUpdateMany, onSetFindingStatusMany, onAddFindingMany,
 }) {
@@ -574,7 +587,7 @@ export default function IndividualEditor({
   const holds = {
     genetic: !!node.geneticTest || gLines.length > 0, adoption: !!(adoptionInfo && adoptionInfo.current),
     sexAtBirth: !!node.sexAtBirth, recordsReviewed: !!node.recordsReviewed, birthOrder: !!ownParentRel?.birthOrderExplicit, lmp: !!node.lmp,
-    repro: !!(reproInfo && (reproInfo.links.length || reproInfo.roleOf.length)),
+    repro: !!(reproInfo && (reproInfo.links.length || reproInfo.roleOf.length || reproInfo.own)),
   };
   const moreOpen = moreFor === node.id;
   const tucked = PANEL_PARTS.filter(x => applies[x.id] && !holds[x.id] && panel.hidden.includes(x.id));
@@ -715,7 +728,8 @@ export default function IndividualEditor({
         )}
 
         {shows('repro') && (
-          <ReproCard key={node.id} info={reproInfo} onAdd={(role, opts) => onAddRepro(node.id, role, opts)} onRemove={pid => onRemoveRepro(node.id, pid)} />
+          <ReproCard key={node.id} info={reproInfo} onAdd={(role, opts) => onAddRepro(node.id, role, opts)} onRemove={pid => onRemoveRepro(node.id, pid)}
+            onSetOwn={onSetOwnGamete && ((pid) => onSetOwnGamete(node.id, pid))} />
         )}
 
         {!node.placeholder && !group && (

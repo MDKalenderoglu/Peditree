@@ -20,7 +20,7 @@
  * Mutates the (already cloned) graph in place and returns it.
  */
 import { computeGenerations } from '../utils/graphTraversal';
-import { indexGraph, displayParentage, isPregnancy, normalizeGenetics, REPRO_ROLES, CARRIER_ROLES } from './model';
+import { indexGraph, displayParentage, isPregnancy, normalizeGenetics, REPRO_ROLES, CARRIER_ROLES, sameReproductiveSex } from './model';
 import { kinshipOf } from './kinship';
 import { deriveConditionKey } from './conditionKey';
 import { normalizeMultiples } from './multiples';
@@ -41,6 +41,7 @@ export function finalizeGraph(graph, { anchorId = 'proband' } = {}) {
   // twins / multiple births stand together whatever the order rule did
   normalizeMultiples(graph);
   shareTwinLinks(graph);
+  keepOwnGamete(graph);
   graph.individuals.forEach(normalizeGenetics);
 
   const anchor = idx0.byId.has(anchorId)
@@ -161,5 +162,36 @@ export function shareTwinLinks(graph) {
     }
   }
   graph.reproductiveLinks = links;
+  return graph;
+}
+
+/**
+ * The partner whose own gamete made a child of a same-sex couple (PCR.ownGamete; clinician 2026-11-10)
+ * stays only while it means something: the child is still that couple's, the partner still one of them,
+ * and the two still of the same reproductive sex (a sex at birth written later can make them able to have
+ * a child together — then the entry goes, as "Aynı köy"'s words go with another choice). One partner per
+ * child; identical twins come from one egg and one sperm, so they share it.
+ */
+export function keepOwnGamete(graph) {
+  const byId = new Map(graph.individuals.map((i) => [i.id, i]));
+  const unionById = new Map(graph.unions.map((u) => [u.id, u]));
+  for (const rel of graph.parentChildRelationships) {
+    if (!rel.ownGamete) continue;
+    const u = unionById.get(rel.unionId);
+    const same = u && sameReproductiveSex(byId.get(u.partners[0]), byId.get(u.partners[1]));
+    const seen = new Set();
+    let kept = same ? rel.ownGamete.filter((e) => {
+      if (seen.has(e.childId) || !rel.children.includes(e.childId) || !u.partners.includes(e.partnerId)) return false;
+      seen.add(e.childId);
+      return true;
+    }) : [];
+    for (const m of rel.multiples || []) {
+      if (m.zygosity !== 'monozygotic') continue;
+      const named = kept.find((e) => m.children.includes(e.childId));
+      if (!named) continue;
+      kept = [...kept.filter((e) => !m.children.includes(e.childId)), ...m.children.map((c) => ({ childId: c, partnerId: named.partnerId }))];
+    }
+    if (kept.length) rel.ownGamete = kept; else delete rel.ownGamete;
+  }
   return graph;
 }

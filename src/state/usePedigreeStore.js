@@ -503,6 +503,8 @@ export const usePedigreeStore = create((zSet, get) => {
     setAdoption: (id, to) => apply(ops.setAdoption(get().doc, id, to)),
     // assisted reproduction (model.js REPRO_ROLES): a donor or carrier for a child
     addReproductiveLink: (childId, role, opts = {}) => apply(ops.addReproductiveLink(get().doc, childId, role, opts)),
+    // a same-sex couple's child: whose own egg / sperm (clinician 2026-11-10); null = not known
+    setOwnGamete: (childId, partnerId) => apply(ops.setOwnGamete(get().doc, childId, partnerId)),
     removeReproductiveLink: (childId, personId) => apply(ops.removeReproductiveLink(get().doc, childId, personId)),
 
     deleteIndividual: (id) => {

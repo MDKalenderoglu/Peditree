@@ -16,7 +16,9 @@ import { useViewSettings } from '../utils/drawingStyle';
 import * as ops from '../graph/ops';
 import { validateDocument } from '../graph/validate';
 import { indexGraph } from '../graph/model';
-import { childInbreeding } from '../graph/kinship';
+import { childInbreeding, personInbreeding } from '../graph/kinship';
+import { addMultipleSibling } from '../graph/multiples';
+import { serializeDocument, parseProjectFile } from '../graph/persistenceV2';
 
 const S = () => usePedigreeStore.getState();
 const allow = (on) => useViewSettings.getState().setView({ sameSexPartners: on });
@@ -118,6 +120,100 @@ describe('their children: a donor, adoption, or partners whose sex at birth diff
     const idx = indexGraph(r.doc.graph);
     expect(idx.geneticParents(r.created.childId)).toEqual([r.created.personId, null]);
     expect(childInbreeding(r.doc.graph, unionId)).toBe(0);
+  });
+});
+
+describe('whose own egg or sperm (clinician 2026-11-10: "Evet, seçilsin")', () => {
+  /** two women; the mother's sister (a drawn aunt's line) gives nothing — the donor is the mother's own brother */
+  const familyWithDonorBrother = () => {
+    const { doc, unionId, partner } = twoWomen();
+    const sib = ops.addSibling(doc, 'mother', { sex: 'male' });
+    const brother = sib.doc.graph.individuals.find((i) => i.sex === 'male' && sib.doc.graph.parentChildRelationships.some((r) => r.children.includes(i.id) && r.children.includes('mother')));
+    // her brother gives the sperm (a known donor in the family): the child's F depends on whose egg
+    const r = ops.addChild(sib.doc, unionId, { sex: 'female', reproRole: 'sperm_donor' });
+    const linked = ops.removeReproductiveLink(r.doc, r.created.childId, r.created.personId);
+    expect(linked.ok).toBe(false); // (the donor stays — the child would have no sperm source)
+    const swap = ops.commit(r.doc, (d) => {
+      const l = d.graph.reproductiveLinks.find((x) => x.childId === r.created.childId);
+      d.graph.individuals = d.graph.individuals.filter((i) => i.id !== l.personId);
+      l.personId = brother.id;
+    });
+    expect(swap.ok).toBe(true);
+    return { doc: swap.doc, unionId, partner, child: r.created.childId, brother: brother.id };
+  };
+
+  it('not chosen: unknown; the mother chosen: her egg — her brother as donor gives the child F = 1/4; her partner chosen: F = 0', () => {
+    const { doc, partner, child, brother } = familyWithDonorBrother();
+    expect(indexGraph(doc.graph).geneticParents(child)).toEqual([brother, null]);
+    expect(personInbreeding(doc.graph, child)).toBe(0);
+    const hers = ops.setOwnGamete(doc, child, 'mother');
+    expect(hers.ok).toBe(true);
+    expect(indexGraph(hers.doc.graph).geneticParents(child)).toEqual([brother, 'mother']);
+    expect(personInbreeding(hers.doc.graph, child)).toBe(0.25); // brother and sister
+    const theirs = ops.setOwnGamete(hers.doc, child, partner);
+    expect(indexGraph(theirs.doc.graph).geneticParents(child)).toEqual([brother, partner]);
+    expect(personInbreeding(theirs.doc.graph, child)).toBe(0);
+    const cleared = ops.setOwnGamete(theirs.doc, child, null);
+    expect(indexGraph(cleared.doc.graph).geneticParents(child)).toEqual([brother, null]);
+  });
+
+  it('two men: whose sperm, beside the egg donor', () => {
+    const { doc, unionId, partner } = twoMen();
+    const r = ops.addChild(doc, unionId, { sex: 'male', reproRole: 'egg_donor' });
+    const his = ops.setOwnGamete(r.doc, r.created.childId, partner);
+    expect(indexGraph(his.doc.graph).geneticParents(r.created.childId)).toEqual([partner, r.created.personId]);
+  });
+
+  it('only for a same-sex couple’s child, only one of its two parents', () => {
+    const r = ops.setOwnGamete(S().doc, 'proband', 'mother');
+    expect(r.ok).toBe(false);
+    const { doc, unionId } = twoWomen();
+    const c = ops.addChild(doc, unionId, { sex: 'female', reproRole: 'sperm_donor' });
+    expect(ops.setOwnGamete(c.doc, c.created.childId, 'father').ok).toBe(false);
+  });
+
+  it('identical twins share it; it goes when the couple could have the child themselves (a sex at birth written later)', () => {
+    const { doc, unionId, partner } = twoWomen();
+    const a = ops.addChild(doc, unionId, { sex: 'female', reproRole: 'sperm_donor' });
+    const twins = addMultipleSibling(a.doc, a.created.childId, { sex: 'female', zygosity: 'monozygotic' }); // shares the donor
+    expect(twins.ok).toBe(true);
+    const b = { created: { childId: twins.doc.graph.parentChildRelationships.find((r) => r.unionId === unionId).children.find((c) => c !== a.created.childId) } };
+    const own = ops.setOwnGamete(twins.doc, a.created.childId, 'mother');
+    const rel = own.doc.graph.parentChildRelationships.find((r) => r.unionId === unionId);
+    expect(rel.ownGamete.map((e) => [e.childId, e.partnerId]).sort()).toEqual([[a.created.childId, 'mother'], [b.created.childId, 'mother']].sort());
+    const amab = ops.updatePerson(own.doc, partner, { sexAtBirth: 'AMAB' });
+    expect(amab.ok).toBe(true);
+    expect(amab.doc.graph.parentChildRelationships.find((r) => r.unionId === unionId).ownGamete).toBeUndefined();
+  });
+
+  it('kept in the file: saved and opened again the same', () => {
+    const { doc, unionId } = twoWomen();
+    const c = ops.addChild(doc, unionId, { sex: 'female', reproRole: 'sperm_donor' });
+    const own = ops.setOwnGamete(c.doc, c.created.childId, 'mother');
+    const back = parseProjectFile(serializeDocument(own.doc));
+    expect(back.ok).toBe(true);
+    expect(back.doc.graph.parentChildRelationships.find((r) => r.unionId === unionId).ownGamete).toEqual([{ childId: c.created.childId, partnerId: 'mother' }]);
+    const broken = JSON.parse(serializeDocument(own.doc));
+    broken.graph.parentChildRelationships.find((r) => r.unionId === unionId).ownGamete = [{ childId: 3 }];
+    expect(parseProjectFile(JSON.stringify(broken)).ok).toBe(false);
+  });
+
+  it('the side panel asks "Yumurta kimin?" with the two women, and a second tap takes the choice back', async () => {
+    await settle(() => { allow(true); S().addSpouseTo('mother', 'female'); });
+    const women = S().doc.graph.unions.find((u) => u.partners.includes('mother') && !u.partners.includes('father'));
+    await settle(() => S().addChildToUnion(women.id, 'female', { reproRole: 'sperm_donor' }));
+    const child = S().doc.graph.parentChildRelationships.find((r) => r.unionId === women.id).children[0];
+    await settle(() => S().selectIndividual(child));
+    const group = [...view.container.querySelectorAll('.editor-panel [role="radiogroup"]')].find((x) => x.getAttribute('aria-label') === 'Yumurta kimin?');
+    expect(group).toBeTruthy();
+    const choices = [...group.querySelectorAll('button')];
+    expect(choices.length).toBe(2);
+    const click = (el) => settle(() => el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })));
+    await click(choices[0]);
+    const own = () => S().doc.graph.parentChildRelationships.find((r) => r.unionId === women.id).ownGamete;
+    expect(own()).toEqual([{ childId: child, partnerId: women.partners[0] }]);
+    await click([...view.container.querySelectorAll('.editor-panel [role="radiogroup"]')].find((x) => x.getAttribute('aria-label') === 'Yumurta kimin?').querySelector('[aria-checked="true"]'));
+    expect(own()).toBeUndefined();
   });
 });
 
