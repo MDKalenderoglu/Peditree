@@ -271,7 +271,7 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .editor-panel .field-label { font-weight: 600; color: var(--ink); }
 /* a choice of a few: the whole width, equal parts */
 .editor-panel .card > .segmented, .editor-panel .field-col > .segmented { display: flex; border-color: transparent; border-radius: 9px; }
-.editor-panel .card > .segmented > button, .editor-panel .field-col > .segmented > button { flex: 1 1 auto; padding: 5px 8px; font-size: 12.5px; }
+.editor-panel .card > .segmented > button, .editor-panel .field-col > .segmented > button { flex: 1 1 auto; padding: 5px 8px; font-size: 12.5px; line-height: 1.25; }
 .editor-panel .segmented button.on { font-weight: 600; box-shadow: 0 1px 3px rgba(24, 33, 44, 0.12), inset 0 0 0 1px var(--accent-line); }
 /* a row you tap: "Diğer bilgiler", "Kişiyi sil" */
 .list-row {
