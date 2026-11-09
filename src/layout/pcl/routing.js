@@ -318,7 +318,7 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
         const x = lx + Math.sign(rx - lx) * (CLEAR + 2);
         best = { x, lo: x, hi: x };
       }
-      unionGeom.set(u.id, { y: laneY, prefX: best.x, lo: best.lo, hi: best.hi });
+      unionGeom.set(u.id, { y: laneY, prefX: best.x, lo: best.lo, hi: best.hi, lane: true });
     }
   }
 
@@ -400,8 +400,10 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
     const xs = [...new Set(kids.map(c => apexX(c, kids)))];
     // An only child a few px off the couple's midpoint (solver tolerance)
     // gets a straight line of descent instead of a tiny jog, as long as the
-    // drop still starts on the couple's own line.
-    const only = xs.length === 1 && xs[0] >= geom.lo && xs[0] <= geom.hi && Math.abs(xs[0] - geom.prefX) <= SNAP_ONLY_CHILD;
+    // drop still starts on the couple's own line. Under a lane the line leaves
+    // through a free gap anyway, never from the middle: anywhere in that gap an
+    // only child gets a straight line (clinician report 2026-11-07: a staircase).
+    const only = xs.length === 1 && xs[0] >= geom.lo && xs[0] <= geom.hi && (geom.lane || Math.abs(xs[0] - geom.prefX) <= SNAP_ONLY_CHILD);
     const pref = only ? xs[0] : geom.prefX;
     buses.push({ u, geom, kids, childY, kidMin: Math.min(...xs), kidMax: Math.max(...xs), dropX: pref, pref });
   }
