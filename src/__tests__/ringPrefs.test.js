@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { normalizeRing, moveInRing, toggleInRing, DEFAULT_RING, RING_STATUS } from '../utils/ringPrefs';
 
 describe('ring preferences', () => {
-  it('the default shows everything in the usual order, except the rare "Yardımcı üreme ile" and "Belirtisiz taşıyıcı" (under "Diğer…")', () => {
+  it('the default shows everything in the usual order, except the rare "Yardımcı üreme ile" and "Presemptomatik" (under "Diğer…")', () => {
     expect(normalizeRing(DEFAULT_RING)).toEqual({
       rows: ['pregnancy', 'adopted', 'group', 'art'],
       status: ['affected', 'carrier', 'deceased', 'proband', 'consultand', 'presymptomatic'],

@@ -320,7 +320,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       ...conditionKey.filter(e => has('carrier', e)).map(e => ({ ...e, carrier: true, text: td('{label} taşıyıcısı', { label: e.label }) })),
       ...(plainCarrier ? [{ label: null, region: 'q1', fill: CARRIER_FILL, carrier: true, dot: carrierMark === 'dot', text: td('Taşıyıcı') }] : []),
       // the vertical line is explained in the key too (NSGC 2022 Fig 2)
-      ...(nodes.some(n => n.presymptomatic && !isSmallSymbol(n)) ? [{ label: null, presymptomatic: true, text: td('Belirtisiz taşıyıcı (şu an belirtisi yok)') }] : []),
+      ...(nodes.some(n => n.presymptomatic && !isSmallSymbol(n)) ? [{ label: null, presymptomatic: true, text: td('Presemptomatik (henüz belirti yok)') }] : []),
       ...(nodes.some(n => n.recordsReviewed) ? [{ label: null, recordsReviewed: true, text: td('Kayıtlarla doğrulandı (tıbbi kayıt ya da rapor görüldü)') }] : []),
     ];
     // a text of spaces only is nothing to read (symbolText.js): no [n] for it
@@ -689,7 +689,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         pedigreeIds.get(d.id)?.displayId, d.displayLabel,
         isGroup(d) ? `${d.count === 'n' ? t('sayısı bilinmeyen') : d.count} ${t({ male: 'erkek', female: 'kadın' }[d.sex] || 'kişi')}`
           : pregnancyKind(d) ? t(PREGNANCY_LABEL[pregnancyKind(d)]).toLocaleLowerCase(currentLang()) : t({ male: 'erkek', female: 'kadın' }[d.sex] || 'cinsiyeti bilinmiyor'),
-        d.proband && 'proband', d.consultand && t('danışan'), d.reproMark === 'G' && t('gestasyonel taşıyıcı'), d.reproMark === 'D' && t('donör'), d.affected && t('etkilenmiş'), d.carrier && t('taşıyıcı'), d.presymptomatic && t('belirtisiz taşıyıcı'), d.recordsReviewed && t('kayıtlarla doğrulandı'), d.sexAtBirth, d.deceased && t('vefat'),
+        d.proband && 'proband', d.consultand && t('danışan'), d.reproMark === 'G' && t('gestasyonel taşıyıcı'), d.reproMark === 'D' && t('donör'), d.affected && t('etkilenmiş'), d.carrier && t('taşıyıcı'), d.presymptomatic && t('presemptomatik'), d.recordsReviewed && t('kayıtlarla doğrulandı'), d.sexAtBirth, d.deceased && t('vefat'),
       ].filter(Boolean).join(', '))
       .on('click', (event, d) => {
         event.stopPropagation();
