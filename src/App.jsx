@@ -18,7 +18,7 @@ import { toPed } from './graph/ped';
 import { mergeIntoGroup as checkMerge } from './graph/ops';
 import SettingsDialog from './components/SettingsDialog';
 import RelationChooser from './components/RelationChooser';
-import Tour from './components/Tour';
+import Tour, { TourFamily } from './components/Tour';
 import { withGeneticLine, subjectOf, adoptionOf, ancestorsOf, REPRO_LABEL, EGG_SOURCE, CARRIER_ROLES, ART_DONOR_RELATION, isPregnancy } from './graph/model';
 import { clinicalNamer } from './utils/clinicalNotices';
 import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, ringAlphaOf, PANEL_WIDTH } from './utils/drawingStyle';
@@ -1097,6 +1097,7 @@ function App() {
     {/* the first opening on this device offers the tour, once; "?" in the top bar brings it back */}
     {view.tourOffer && !tourCtx && (
       <div className="tour-offer" role="dialog" aria-label={t('Tanıtım turu')}>
+        <div className="tour-hero"><TourFamily /></div>
         <b>{t('PediTree’ye hoş geldiniz')}</b>
         <p>{t('PediTree’yi örnek bir aile üzerinde adım adım gösteren kısa bir tur (2 dakika). Çiziminize dokunulmaz.')}</p>
         <div className="btn-row">

@@ -121,4 +121,13 @@ describe('stylesheet rules', () => {
     expect(rule).toMatch(/clip-path: inset\(50%\)/);
     expect(rule).not.toMatch(/display:\s*none/);
   });
+  it('the guided tour has a look of its own (clinician 2026-11-10: "çok kaba ve düz"): a navy dim, a lit part with a white and indigo ring, a card that glides, a picture that draws itself; still with reduced motion', () => {
+    expect(block('ui.css', '.tour-scrim')).toMatch(/background: rgba\(19, 30, 47, 0\.6\)/);
+    expect(block('ui.css', '.tour-spot')).toMatch(/0 0 0 2px #ffffff, 0 0 0 4px var\(--accent\)/);
+    expect(block('ui.css', '.tour-card')).toMatch(/transition: left 0\.32s/);
+    expect(block('ui.css', '.tour-card')).not.toMatch(/border-top: 3px/);
+    expect(block('ui.css', '.tour-hero')).toMatch(/var\(--ink\)/);
+    expect(css('ui.css')).toMatch(/\.tour-family \.tf-line \{[^}]*stroke-dashoffset: 1;[^}]*animation: tf-draw/);
+    expect(css('ui.css')).toMatch(/prefers-reduced-motion: reduce\) \{\s*\.tour-card, \.tour-offer, \.tour-body, \.tour-spot::after \{ animation: none; transition: none; \}/);
+  });
 });
