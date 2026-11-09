@@ -674,6 +674,60 @@ describe('a tablet: the top bar keeps one row (clinician report 2026-11-09)', ()
 });
 
 describe('the side panel opens beside the drawing (clinician report 2026-11-09, tablet)', () => {
+  it('closing slides a still copy of the panel out over the drawing (clinician 2026-11-09: it vanished at once); the drawing gets its width at once, the copy takes no click and is gone when the motion ends', async () => {
+    const proto = window.HTMLElement.prototype;
+    const own = Object.getOwnPropertyDescriptor(proto, 'animate'); // jsdom has none
+    const runs = [];
+    proto.animate = function (frames, opts) {
+      let end; const finished = new Promise((r) => { end = r; });
+      runs.push({ el: this, frames, opts, end });
+      return { finished };
+    };
+    const ghost = () => document.body.querySelector('.panel-ghost');
+    try {
+      await select('mother');
+      const typed = $('.side-right input');
+      expect(ghost()).toBeNull();
+      await key('Escape');
+      if ($('.app-shell').classList.contains('has-editor')) await key('Escape');
+      expect($('.app-shell').classList.contains('has-editor')).toBe(false); // the drawing widens at once
+      const g = ghost();
+      expect(g).not.toBeNull();
+      expect(g.getAttribute('aria-hidden')).toBe('true');
+      expect(g.hasAttribute('inert')).toBe(true);
+      expect(g.querySelector('[id]')).toBeNull();
+      expect(g.textContent).toContain(drawn('mother').__data__.displayLabel || '');
+      if (typed) expect(g.querySelector('input').value).toBe(typed.value);
+      expect(view.container.contains(g)).toBe(false); // outside the app: the app itself is already closed
+      expect(runs).toHaveLength(1);
+      expect(runs[0].el).toBe(g);
+      expect(runs[0].frames.at(-1)).toMatchObject({ opacity: 0 });
+      await run(() => runs[0].end());
+      expect(ghost()).toBeNull();
+      // switching from one person to another is no closing
+      await select('mother');
+      await select('father');
+      expect(ghost()).toBeNull();
+      expect(runs).toHaveLength(1);
+      await key('Escape');
+      if ($('.app-shell').classList.contains('has-editor')) await key('Escape');
+      await run(() => runs.at(-1).end());
+      // reduced motion: no copy, no motion
+      const mm = window.matchMedia;
+      window.matchMedia = (q) => ({ ...mm(q), matches: q.includes('reduced-motion') });
+      try {
+        await select('mother');
+        await key('Escape');
+        if ($('.app-shell').classList.contains('has-editor')) await key('Escape');
+        expect(ghost()).toBeNull();
+        expect(runs).toHaveLength(2);
+      } finally { window.matchMedia = mm; }
+    } finally {
+      if (own) Object.defineProperty(proto, 'animate', own); else delete proto.animate;
+      document.body.querySelectorAll('.panel-ghost').forEach((n) => n.remove());
+    }
+  });
+
   it('the drawing stays where it was on screen, the same size, when the panel narrows its box; "Sığdır" still fits it', async () => {
     // jsdom has no layout: the drawing's box is 1000 px wide, 700 px while the side panel is open,
     // and the drawing fits its viewBox into that box (preserveAspectRatio meet), moved by the zoom
