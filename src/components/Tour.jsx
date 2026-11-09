@@ -88,10 +88,10 @@ export const TOUR_STEPS = [
     target: () => cardTitled('Doğum sırası'), prepare: (c) => c.select(c.ids.proband) },
   { id: 'couple', icon: Link2, title: tk('Eşler arasındaki çizgi'),
     text: tk('İki eşi birleştiren çizgiye tıklandığında panelde çiftin kartı açılır. İlişkinin sürdüğü ya da sona erdiği, çocuksuzluk (isteğe bağlı ya da infertilite) burada işaretlenir; çifte yeni çocuk da buradan eklenir.'),
-    target: () => cardTitled('Bu çift'), prepare: (c) => c.selectCouple(c.ids.mother, c.ids.father) },
+    target: (c) => ({ areas: [[drawnNode(c.ids.father), drawnNode(c.ids.mother)], [cardTitled('Bu çift')]] }), prepare: (c) => c.selectCouple(c.ids.mother, c.ids.father) },
   { id: 'kinship', icon: Link2, title: tk('Akrabalık ve Aynı köy'),
     text: tk('Eşler arasında kan bağı varsa Var seçilir ve çizgi çift çizgiye dönüşür. Anne ile babanın akrabalık derecesi seçildiğinde ortak atalar çizime kendiliğinden eklenir ve çocuklar için akrabalık katsayısı (F) hesaplanır. Aynı köy akrabalık sayılmaz; çizgi tek kalır, üzerine yalnızca bir not yazılır.'),
-    target: () => fieldCol('Akrabalık'), prepare: (c) => c.selectCouple(c.ids.mother, c.ids.father) },
+    target: (c) => ({ areas: [[drawnNode(c.ids.father), drawnNode(c.ids.mother)], [fieldCol('Akrabalık')]] }), prepare: (c) => c.selectCouple(c.ids.mother, c.ids.father) },
   { id: 'patient', icon: CalendarDays, title: tk('Hasta adı ve doğum tarihi'),
     text: tk('Hasta adı çizimin başlığında ve kaydedilen dosyaların adında yer alır. Probandın doğum tarihi kısaltılarak da yazılabilir (3.5.25); yaşı bugünün tarihine göre hesaplanır.'),
     target: () => [one('.toolbar .patient-name'), one('.toolbar .toolbar-field')], prepare: (c) => c.clear() },
@@ -121,7 +121,8 @@ export const TOUR_STEPS = [
     target: () => one('.settings-dialog .settings-nav'), prepare: (c) => { c.clear(); c.openSettings('language'); } },
   { id: 'about', icon: Info, title: tk('Hakkında ve geri bildirim'),
     text: tk('Bu bölümde sürüm bilgisi, atıf metni ve lisans yer alır. Bir hata ya da öneri bildirmek için Hata bildir, Öneri paylaş ya da E-posta bağlantılarını kullanabilirsiniz. Bildirime hastayı tanıtan bir bilgi ya da ekran görüntüsü eklemeyin.'),
-    target: () => { const l = one('.settings-dialog .about-links'); return l ? [l.previousElementSibling, l, l.nextElementSibling] : null; },
+    // "Hata ve öneriler": its heading, its words, its three links and the note under them
+    target: () => { const l = one('.settings-dialog .about-links'); return l ? [l.previousElementSibling && l.previousElementSibling.previousElementSibling, l.previousElementSibling, l, l.nextElementSibling] : null; },
     prepare: (c) => { c.clear(); c.openSettings('about'); } },
   { id: 'again', icon: CircleHelp, title: tk('Turu yeniden açmak'),
     text: tk('Tura istediğiniz zaman bu düğmeden dönebilirsiniz. İyi çalışmalar.'),
@@ -133,38 +134,92 @@ const visible = (el) => {
   const r = el.getBoundingClientRect();
   return r.width > 0 || r.height > 0;
 };
+// the boxes a part scrolls in: the lit area never reaches past what can be seen of them
+const SCROLLERS = '.side, .settings-pane';
+/** A step's parts as lit areas: one area, or several ({ areas: [[…], […]] }, e.g. the couple and its card). */
+const areasOf = (found) => (found && found.areas ? found.areas : [Array.isArray(found) ? found : [found]]).map((a) => a.filter(Boolean)).filter((a) => a.length);
 
-/** The lit area for a step: the parts' joint box; a part that went into "Diğer" is shown there. */
-function aim(step, ctx) {
-  const found = step.target(ctx);
-  const list = (Array.isArray(found) ? found : [found]).filter(Boolean);
-  if (!list.length) return { rect: null, folded: false };
-  let shown = list.filter(visible);
-  let folded = false;
-  if (shown.length < list.length) {
-    const more = one('.toolbar .toolbar-more > button');
-    if (visible(more)) { shown = [...shown, more]; folded = true; }
-  }
-  if (!shown.length) return { rect: null, folded: false };
-  const rs = shown.map((e) => e.getBoundingClientRect());
+function boxOf(els) {
+  const rs = els.map((e) => {
+    const r = e.getBoundingClientRect();
+    const sc = e.closest && e.closest(SCROLLERS);
+    if (!sc) return r;
+    const b = sc.getBoundingClientRect();
+    return { left: Math.max(r.left, b.left), top: Math.max(r.top, b.top), right: Math.min(r.right, b.right), bottom: Math.min(r.bottom, b.bottom) };
+  }).filter((r) => r.right > r.left && r.bottom > r.top);
+  if (!rs.length) return null;
   const left = Math.min(...rs.map((r) => r.left)) - PAD;
   const top = Math.min(...rs.map((r) => r.top)) - PAD;
   const right = Math.max(...rs.map((r) => r.right)) + PAD;
   const bottom = Math.max(...rs.map((r) => r.bottom)) + PAD;
-  return { rect: { left, top, right, bottom, width: right - left, height: bottom - top }, folded };
+  return { left, top, right, bottom, width: right - left, height: bottom - top };
 }
 
-/** Where the card stands beside the lit area: below, above, left or right, whichever fits first. */
+/** The lit areas for a step; a part that went into "Diğer" is shown there. */
+function aim(step, ctx) {
+  let folded = false;
+  const rects = areasOf(step.target(ctx)).map((list) => {
+    let shown = list.filter(visible);
+    if (shown.length < list.length) {
+      const more = one('.toolbar .toolbar-more > button');
+      if (visible(more)) { shown = [...shown, more]; folded = true; }
+    }
+    return shown.length ? boxOf(shown) : null;
+  }).filter(Boolean);
+  return { rects, folded };
+}
+
+/** A part further down a scrolling box (the side panel, a settings section) is brought into view, smoothly. */
+function bringIntoView(step, ctx) {
+  const areas = areasOf(step.target(ctx));
+  if (!areas.length) return false; // not there yet (the panel still filling): try again on the next look
+  for (const list of areas) {
+    const box = list[0] && list[0].closest && list[0].closest(SCROLLERS);
+    if (!box) continue;
+    const rs = list.map((e) => e.getBoundingClientRect());
+    const top = Math.min(...rs.map((r) => r.top));
+    const bottom = Math.max(...rs.map((r) => r.bottom));
+    const b = box.getBoundingClientRect();
+    const head = box.classList.contains('side') ? 90 : 16; // below the panel's sticky header
+    if (top >= b.top + head && bottom <= b.bottom - 8) continue;
+    const by = top - b.top - Math.max(head, (b.height - (bottom - top)) / 3);
+    scrollGently(box, Math.max(0, box.scrollTop + by));
+  }
+  return true;
+}
+
+/**
+ * Scrolls a box in the tour's own motion. Not the browser's smooth scrolling: a page in the background
+ * may never run it, and the part would stay out of sight; here the box is in place once the time is up.
+ */
+function scrollGently(box, to) {
+  const from = box.scrollTop;
+  if (still() || typeof window.requestAnimationFrame !== 'function' || Math.abs(to - from) < 2) { box.scrollTop = to; return; }
+  const t0 = performance.now();
+  let over = false;
+  const run = () => {
+    if (over) return;
+    const k = Math.min(1, (performance.now() - t0) / GLIDE);
+    box.scrollTop = from + (to - from) * (1 - (1 - k) ** 3);
+    if (k < 1) window.requestAnimationFrame(run);
+  };
+  window.requestAnimationFrame(run);
+  window.setTimeout(() => { over = true; box.scrollTop = to; }, GLIDE + 80);
+}
+
 const RADIUS = 10;   // the lit area's corners
-const GLIDE = 320;   // ms: the lit area glides from one part to the next
+const GLIDE = 420;   // ms: the lit area, the card and its words move from one step to the next together (ui.css --t-tour)
 
 const still = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/** A rounded hole in the dimmed page (even-odd: the window minus the lit area). */
-function scrimPath(r, w, h) {
-  const k = Math.max(0, Math.min(RADIUS, r.width / 2, r.height / 2));
-  const { left: x, top: y, right: X, bottom: Y } = r;
-  return `M0 0H${w}V${h}H0Z M${x + k} ${y}H${X - k}Q${X} ${y} ${X} ${y + k}V${Y - k}Q${X} ${Y} ${X - k} ${Y}H${x + k}Q${x} ${Y} ${x} ${Y - k}V${y + k}Q${x} ${y} ${x + k} ${y}Z`;
+/** Rounded holes in the dimmed page (even-odd: the window minus the lit areas). */
+function scrimPath(rects, w, h) {
+  const hole = (r) => {
+    const k = Math.max(0, Math.min(RADIUS, r.width / 2, r.height / 2));
+    const { left: x, top: y, right: X, bottom: Y } = r;
+    return ` M${x + k} ${y}H${X - k}Q${X} ${y} ${X} ${y + k}V${Y - k}Q${X} ${Y} ${X - k} ${Y}H${x + k}Q${x} ${Y} ${x} ${Y - k}V${y + k}Q${x} ${y} ${x + k} ${y}Z`;
+  };
+  return `M0 0H${w}V${h}H0Z${rects.map(hole).join('')}`;
 }
 
 /**
@@ -186,7 +241,11 @@ export function TourFamily({ className = '' }) {
   );
 }
 
-export function placeCard(rect, card, view) {
+/**
+ * Where the card stands beside the first lit area: below, above, left or right, the first that fits on the
+ * screen and covers none of the other lit areas (the couple's card in the panel, say).
+ */
+export function placeCard(rect, card, view, others = []) {
   const { w, h } = card;
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   if (!rect) return { left: (view.w - w) / 2, top: (view.h - h) / 2, side: null, arrow: 0 };
@@ -194,31 +253,42 @@ export function placeCard(rect, card, view) {
   const cy = (rect.top + rect.bottom) / 2;
   const across = () => clamp(cx - w / 2, EDGE, view.w - w - EDGE);
   const down = () => clamp(cy - h / 2, EDGE, view.h - h - EDGE);
-  if (rect.bottom + GAP + h <= view.h - EDGE) { const left = across(); return { left, top: rect.bottom + GAP, side: 'below', arrow: clamp(cx - left, 18, w - 18) }; }
-  if (rect.top - GAP - h >= EDGE) { const left = across(); return { left, top: rect.top - GAP - h, side: 'above', arrow: clamp(cx - left, 18, w - 18) }; }
-  if (rect.left - GAP - w >= EDGE) { const top = down(); return { left: rect.left - GAP - w, top, side: 'left', arrow: clamp(cy - top, 18, h - 18) }; }
-  if (rect.right + GAP + w <= view.w - EDGE) { const top = down(); return { left: rect.right + GAP, top, side: 'right', arrow: clamp(cy - top, 18, h - 18) }; }
-  // nowhere beside it (a window nearly as large as the screen): in the corner where it covers least of it
+  const area = (x, y, r) => Math.max(0, Math.min(x + w, r.right) - Math.max(x, r.left)) * Math.max(0, Math.min(y + h, r.bottom) - Math.max(y, r.top));
+  const clear = (p) => others.every((o) => area(p.left, p.top, o) === 0);
+  const sides = [
+    () => rect.bottom + GAP + h <= view.h - EDGE && (() => { const left = across(); return { left, top: rect.bottom + GAP, side: 'below', arrow: clamp(cx - left, 18, w - 18) }; })(),
+    () => rect.top - GAP - h >= EDGE && (() => { const left = across(); return { left, top: rect.top - GAP - h, side: 'above', arrow: clamp(cx - left, 18, w - 18) }; })(),
+    () => rect.left - GAP - w >= EDGE && (() => { const top = down(); return { left: rect.left - GAP - w, top, side: 'left', arrow: clamp(cy - top, 18, h - 18) }; })(),
+    () => rect.right + GAP + w <= view.w - EDGE && (() => { const top = down(); return { left: rect.right + GAP, top, side: 'right', arrow: clamp(cy - top, 18, h - 18) }; })(),
+  ];
+  for (const side of sides) { const p = side(); if (p && clear(p)) return p; }
+  // nowhere beside it (a window nearly as large as the screen): in the corner where it covers least
   const corners = [[view.w - w - EDGE, view.h - h - EDGE], [EDGE, view.h - h - EDGE], [view.w - w - EDGE, EDGE], [EDGE, EDGE]];
-  const covered = ([x, y]) => Math.max(0, Math.min(x + w, rect.right) - Math.max(x, rect.left)) * Math.max(0, Math.min(y + h, rect.bottom) - Math.max(y, rect.top));
+  const covered = ([x, y]) => [rect, ...others].reduce((sum, r) => sum + area(x, y, r), 0);
   const [left, top] = corners.reduce((best, c) => (covered(c) < covered(best) ? c : best));
   return { left, top, side: null, arrow: 0 };
 }
 
 export default function Tour({ ctx, onClose }) {
   const t = useT();
+  // at: the step asked for (its screen is being set up); shown: the step on the card and its lit areas.
+  // The card, its words and the light change together, once the asked step's screen has come to rest
+  // (clinician 2026-11-10: the words came first and the light after; a window opened behind and the
+  // light came later)
   const [at, setAt] = useState(0);
-  const [aimed, setAimed] = useState({ rect: null, folded: false });
-  const [lit, setLit] = useState(null); // the lit area as drawn: it glides towards aimed.rect
-  const litRef = useRef(null);
+  const [shown, setShown] = useState({ at: 0, rects: null, folded: false });
+  const [lit, setLit] = useState([]); // the lit areas as drawn: they glide towards shown.rects
+  const litRef = useRef([]);
   const [size, setSize] = useState({ w: 340, h: 200 });
   const cardRef = useRef(null);
   const nextRef = useRef(null);
   const ctxRef = useRef(ctx);
   ctxRef.current = ctx;
   const step = TOUR_STEPS[at];
-  const last = at === TOUR_STEPS.length - 1;
-  const welcome = step.id === 'welcome';
+  const card = TOUR_STEPS[shown.at];
+  const last = shown.at === TOUR_STEPS.length - 1;
+  const welcome = card.id === 'welcome';
+  const waiting = shown.at !== at || shown.rects === null;
 
   // each step sets the screen up as it talks about it
   useLayoutEffect(() => {
@@ -227,59 +297,49 @@ export default function Tour({ ctx, onClose }) {
     if (step.prepare) step.prepare(c);
   }, [step]);
 
-  // the page knows the tour runs (a window the tour opens does not dim the page a second time)
+  // the page knows the tour runs (a window the tour opens does not dim the page a second time, nor
+  // grow on its own: the tour shows it when it stands still)
   useEffect(() => {
     document.body.classList.add('touring');
     return () => document.body.classList.remove('touring');
   }, []);
 
-  // the lit area follows what moves (the panel sliding in, the ring opening, a resized window)
+  // the asked step's screen: its ring part opened, its part scrolled into view; once it stands still
+  // (the same in two looks in a row) the card turns to it
   useEffect(() => {
-    let prev = '';
     let seen = '';
+    let done = '';
     let scrolled = false;
     let acted = !step.act;
     const tick = () => {
-      // the step opens its part of the ring, one click per tick, once the ring is there
       if (!acted) acted = step.act();
-      // a part further down the side panel (or a window) is scrolled into view, once
-      if (!scrolled) {
-        const found = step.target(ctxRef.current);
-        const first = (Array.isArray(found) ? found : [found]).find(Boolean);
-        const box = first && first.closest && (first.closest('.side') || first.closest('.settings-pane'));
-        if (box) {
-          scrolled = true;
-          const r = first.getBoundingClientRect();
-          const b = box.getBoundingClientRect();
-          // below the panel's sticky header
-          if (r.top < b.top || r.bottom > b.bottom) box.scrollTop += r.top - b.top - Math.max(box.classList.contains('side') ? 90 : 24, (b.height - r.height) / 3);
-        }
-      }
-      // the lit area moves once what it points at has come to rest (a window still opening, a panel
-      // still sliding in or scrolling): following every frame of that made the glide restart and
-      // speed up (clinician report 2026-11-10, from step 7 to 8)
+      if (acted && !scrolled) scrolled = bringIntoView(step, ctxRef.current);
       const a = aim(step, ctxRef.current);
       const key = JSON.stringify(a);
-      const settled = key === seen;
+      const settled = acted && key === seen;
       seen = key;
-      if (settled && key !== prev) { prev = key; setAimed(a); }
-      if (cardRef.current) {
-        const r = cardRef.current.getBoundingClientRect();
-        setSize((s) => (Math.abs(s.w - r.width) > 0.5 || Math.abs(s.h - r.height) > 0.5 ? { w: r.width, h: r.height } : s));
-      }
+      if (settled && key !== done) { done = key; setShown({ at, ...a }); }
     };
     tick();
     // a timer, not animation frames: it also runs when the window is in the background
     const timer = window.setInterval(tick, 60);
     return () => window.clearInterval(timer);
-  }, [step]);
+  }, [step, at]);
 
-  // the lit area glides from the last part to the next (at once the first time, and with reduced motion)
+  // the card's size for its place, measured before the screen is painted (its words just changed)
+  useLayoutEffect(() => {
+    if (!cardRef.current) return;
+    const r = cardRef.current.getBoundingClientRect();
+    setSize((s) => (Math.abs(s.w - r.width) > 0.5 || Math.abs(s.h - r.height) > 0.5 ? { w: r.width, h: r.height } : s));
+  });
+
+  // the lit areas glide from the last step's parts to the next (at once the first time, with reduced motion,
+  // and when the number of areas changes)
   useEffect(() => {
-    const to = aimed.rect;
+    const to = shown.rects || [];
     const from = litRef.current;
-    const put = (r) => { litRef.current = r; setLit(r); };
-    if (!to || !from || still() || typeof window.requestAnimationFrame !== 'function') { put(to); return undefined; }
+    const put = (rs) => { litRef.current = rs; setLit(rs); };
+    if (!to.length || from.length !== to.length || still() || typeof window.requestAnimationFrame !== 'function') { put(to); return undefined; }
     const t0 = performance.now();
     let frame = 0;
     let over = false;
@@ -288,18 +348,20 @@ export default function Tour({ ctx, onClose }) {
     const run = () => {
       if (over) return;
       const k = ease(Math.max(0, Math.min(1, (performance.now() - t0) / GLIDE)));
-      const mix = (p) => from[p] + (to[p] - from[p]) * k;
-      const left = mix('left'); const top = mix('top'); const right = mix('right'); const bottom = mix('bottom');
-      put({ left, top, right, bottom, width: right - left, height: bottom - top });
+      put(to.map((r, i) => {
+        const mix = (p) => from[i][p] + (r[p] - from[i][p]) * k;
+        const left = mix('left'); const top = mix('top'); const right = mix('right'); const bottom = mix('bottom');
+        return { left, top, right, bottom, width: right - left, height: bottom - top };
+      }));
       if (k < 1) frame = window.requestAnimationFrame(run);
     };
     frame = window.requestAnimationFrame(run);
-    // a background window gets no frames: the lit area is in place anyway once the glide's time is up
+    // a background window gets no frames: the lit areas are in place anyway once the glide's time is up
     const late = window.setTimeout(() => { over = true; put(to); }, GLIDE + 80);
     return () => { over = true; window.cancelAnimationFrame(frame); window.clearTimeout(late); };
-  }, [aimed.rect]);
+  }, [shown]);
 
-  useEffect(() => { if (nextRef.current) nextRef.current.focus({ preventScroll: true }); }, [at]);
+  useEffect(() => { if (nextRef.current) nextRef.current.focus({ preventScroll: true }); }, [shown.at]);
 
   const finish = useCallback(() => { ctxRef.current.closeAll(); onClose(); }, [onClose]);
   const go = useCallback((d) => setAt((i) => {
@@ -334,38 +396,40 @@ export default function Tour({ ctx, onClose }) {
   }, [go, finish]);
 
   const view = { w: window.innerWidth, h: window.innerHeight };
-  // the card stands beside where the lit area is going, not where it is on the way
-  const place = placeCard(aimed.rect, size, view);
-  const r = lit;
-  const titleId = `tour-title-${step.id}`;
-  const Icon = step.icon;
+  const rects = shown.rects || [];
+  // the card stands beside where the light is going, not where it is on the way
+  const place = placeCard(rects[0] || null, size, view, rects.slice(1));
+  const titleId = `tour-title-${card.id}`;
+  const Icon = card.icon;
 
   return (
     // data-popup: a tap on the card is "inside", so the page never swallows the click that closed a window
-    <div className="tour" data-step={step.id} data-popup="tour">
+    <div className="tour" data-step={step.id} data-shown={card.id} data-popup="tour">
       {/* the page takes no click while the tour runs */}
       <div className="tour-block" onPointerDown={(e) => e.preventDefault()} onClick={(e) => e.stopPropagation()} />
-      {/* the page dims round the lit part: one layer with a rounded hole (an SVG layer was left unpainted
+      {/* the page dims round the lit parts: one layer with rounded holes (an SVG layer was left unpainted
           by Chrome now and then once its shape changed; a clip on a plain layer is not) */}
-      <div className="tour-scrim" style={r ? { clipPath: `path(evenodd, '${scrimPath(r, view.w, view.h)}')` } : undefined} aria-hidden="true" />
-      {r && <div key={step.id} className="tour-spot" style={{ left: r.left, top: r.top, width: r.width, height: r.height }} aria-hidden="true" />}
-      <div ref={cardRef} className={`tour-card${welcome ? ' tour-card-welcome' : ''}`} role="dialog" aria-modal="true" aria-labelledby={titleId}
+      <div className="tour-scrim" style={lit.length ? { clipPath: `path(evenodd, '${scrimPath(lit, view.w, view.h)}')` } : undefined} aria-hidden="true" />
+      {lit.map((r, i) => <div key={`${card.id}-${i}`} className="tour-spot" style={{ left: r.left, top: r.top, width: r.width, height: r.height }} aria-hidden="true" />)}
+      <div ref={cardRef} className={`tour-card${welcome ? ' tour-card-welcome' : ''}${waiting ? ' is-waiting' : ''}`} role="dialog" aria-modal="true" aria-labelledby={titleId}
         data-side={place.side || 'none'} style={{ left: place.left, top: place.top, '--arrow': `${place.arrow}px` }}>
         <div className="tour-track" aria-hidden="true">
-          {TOUR_STEPS.map((s, i) => <span key={s.id} className={i < at ? 'done' : i === at ? 'now' : ''} />)}
+          {TOUR_STEPS.map((s, i) => <span key={s.id} className={i < shown.at ? 'done' : i === shown.at ? 'now' : ''} />)}
         </div>
-        <button className="tour-close" onClick={finish} aria-label={t('Turu bitir')} title={t('Turu bitir (Esc)')}>×</button>
-        <div key={step.id} className="tour-body">
+        <div key={card.id} className="tour-body">
           {welcome ? <div className="tour-hero"><TourFamily /></div> : Icon && <span className="tour-icon" aria-hidden="true"><Icon size={18} strokeWidth={2} /></span>}
-          <h3 id={titleId} className="tour-title">{t(step.title)}</h3>
-          <p className="tour-text">{t(step.text)}</p>
-          {aimed.folded && <p className="tour-note">{t('Ekran dar olduğu için bu düğme ⋯ Diğer menüsünde.')}</p>}
+          <h3 id={titleId} className="tour-title">{t(card.title)}</h3>
+          <p className="tour-text">{t(card.text)}</p>
+          {shown.folded && <p className="tour-note">{t('Ekran dar olduğu için bu düğme ⋯ Diğer menüsünde.')}</p>}
         </div>
+        {/* after the words, so it is painted over them and always takes its click (clinician 2026-11-10:
+            the tour could not be left halfway — the words' box lay over the ×) */}
+        <button className="tour-close" onClick={finish} aria-label={t('Turu bitir')} title={t('Turu bitir (Esc)')}>×</button>
         <div className="tour-foot">
-          <span className="tour-count">{t('{n} / {all}', { n: at + 1, all: TOUR_STEPS.length })}</span>
+          <span className="tour-count">{t('{n} / {all}', { n: shown.at + 1, all: TOUR_STEPS.length })}</span>
           {!ctx.coarse && <span className="tour-keys" aria-hidden="true"><kbd>←</kbd><kbd>→</kbd></span>}
           <span className="tour-actions">
-            {at > 0 && <button className="tour-back" onClick={() => go(-1)}>{t('Geri')}</button>}
+            {shown.at > 0 && <button className="tour-back" onClick={() => go(-1)}>{t('Geri')}</button>}
             <button ref={nextRef} className="ui-btn ui-btn-primary tour-next" onClick={() => go(1)}>{last ? t('Bitir') : t('İleri')}</button>
           </span>
         </div>
