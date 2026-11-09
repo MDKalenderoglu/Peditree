@@ -18,6 +18,7 @@ import { toPed } from './graph/ped';
 import { mergeIntoGroup as checkMerge } from './graph/ops';
 import SettingsDialog from './components/SettingsDialog';
 import RelationChooser from './components/RelationChooser';
+import Tour from './components/Tour';
 import { withGeneticLine, subjectOf, adoptionOf, ancestorsOf, REPRO_LABEL, EGG_SOURCE, CARRIER_ROLES, ART_DONOR_RELATION, isPregnancy } from './graph/model';
 import { clinicalNamer } from './utils/clinicalNotices';
 import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, ringAlphaOf, PANEL_WIDTH } from './utils/drawingStyle';
@@ -25,7 +26,7 @@ import { ProductInfo, LicenseInfo, CitationInfo, FeedbackInfo } from './componen
 import { nameCase } from './utils/nameCase';
 import { RELEASE_STAGE } from './utils/appInfo';
 import { watchToolbar, overflowed } from './utils/toolbarFit';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check } from 'lucide-react';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check, CircleHelp } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
 // the clinician's logo (docs/brand/peditree-logo.webp): the tree, and the name in its own lettering
@@ -204,6 +205,25 @@ function App() {
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [settingsAt, setSettingsAt] = React.useState('language'); // the section Ayarlar opens at
   const openSettings = (at = 'language') => { setSettingsAt(at); setSettingsOpen(true); };
+
+  // the guided tour (Tour.jsx; clinician request 2026-11-09): on a sample family, the patient's
+  // drawing kept aside and given back when it ends; offered once on the first opening
+  const [tourIds, setTourIds] = React.useState(null);
+  const startTour = () => {
+    flushDrafts();
+    setMoreItems(null); setDownloadOpen(false); setSettingsOpen(false); setInfoOpen(null); setNewMenu(false); setOpenHelp(false); setAboutOpen(false);
+    setView({ tourOffer: false });
+    setTourIds(usePedigreeStore.getState().startTour());
+  };
+  const endTour = () => { usePedigreeStore.getState().endTour(); setTourIds(null); };
+  const tourCtx = tourIds && {
+    ids: tourIds,
+    coarse: coarsePointer(),
+    select: (id) => { usePedigreeStore.getState().selectIndividual(id); setRingHidden(false); },
+    clear: () => usePedigreeStore.getState().clearSelection(),
+    openSettings: (at) => openSettings(at),
+    closeSettings: () => setSettingsOpen(false),
+  };
   const [openHelp, setOpenHelp] = React.useState(false); // "Aç"'s window: which files it opens
   // the logo: what PediTree is, its version and licence (the rest: Ayarlar → Hakkında)
   const [aboutOpen, setAboutOpen] = React.useState(false);
@@ -583,7 +603,9 @@ function App() {
     const onLeave = (e) => {
       flushDrafts();   // a box still being typed in
       flushAutosave(); // a reload keeps the very last edit
-      if (!needsLeaveWarning(usePedigreeStore.getState().doc, downloadedDoc.current)) return;
+      // during the tour, the patient's drawing kept aside is what would be lost (startTour)
+      const st = usePedigreeStore.getState();
+      if (!needsLeaveWarning(st.tourBackup ? st.tourBackup.doc : st.doc, downloadedDoc.current)) return;
       e.preventDefault();
       e.returnValue = '';
     };
@@ -874,6 +896,8 @@ function App() {
               aria-label={t('Diğer')} title={t('Üst çubuğa sığmayan düğmeler')}><MoreHorizontal size={16} /></button>
             {moreItems && <MoreMenu items={moreItems} multiSelect={multiSelect} onPick={runMore} />}
           </div>
+          <button className="ui-btn ui-btn-icon tour-btn" onClick={startTour} aria-label={t('Tanıtım turu')}
+            title={t('Tanıtım turu: PediTree’yi örnek bir aile üzerinde adım adım gösterir')}><CircleHelp size={16} /></button>
           <div className="keys-wrap" data-popup="settings">
             <button className="ui-btn" onClick={() => (settingsOpen ? setSettingsOpen(false) : openSettings())} aria-expanded={settingsOpen}
               title={t('Ayarlar: dil, çizimin görünümü, yazı tipi, halka menü ve indirilen resimler')}>
@@ -1069,6 +1093,18 @@ function App() {
         />
       </SidePanel>
     </div>
+    {tourCtx && <Tour ctx={tourCtx} onClose={endTour} />}
+    {/* the first opening on this device offers the tour, once; "?" in the top bar brings it back */}
+    {view.tourOffer && !tourCtx && (
+      <div className="tour-offer" role="dialog" aria-label={t('Tanıtım turu')}>
+        <b>{t('PediTree’ye hoş geldiniz')}</b>
+        <p>{t('PediTree’yi örnek bir aile üzerinde adım adım gösteren kısa bir tur (2 dakika). Çiziminize dokunulmaz.')}</p>
+        <div className="btn-row">
+          <button className="ui-btn ui-btn-primary" onClick={startTour}>{t('Turu başlat')}</button>
+          <button className="ui-btn" onClick={() => setView({ tourOffer: false })} title={t('Tur her zaman üst çubuktaki ? düğmesinden açılır')}>{t('Sonra')}</button>
+        </div>
+      </div>
+    )}
     {/* what printing shows (A4): the drawing as exported, and the date */}
     <div id="print-root" ref={printRef} aria-hidden="true" />
     </>

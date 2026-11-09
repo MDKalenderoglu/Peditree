@@ -76,8 +76,9 @@ export const fontById = (id) => DRAWING_FONTS.find(f => f.id === id) || DRAWING_
 // carrierMark: a carrier without a named finding, half (NSGC 2022) or dot (conditionKey.js CARRIER_MARKS; 2026-11-04)
 // theme: the screens' accent colour, warm to cool (THEMES); ringClear: how see-through the ring's parts are, in %
 // (RING_CLEAR); panelWidth: the side panel's width in px, dragged at its edge, 0 = the usual width (PANEL_WIDTH)
-// (clinician requests 2026-11-07) — the look of the screen only, never the drawing or a file
-export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringClear: 5, panelWidth: 0 };
+// (clinician requests 2026-11-07) — the look of the screen only, never the drawing or a file;
+// tourOffer: the first opening offers the guided tour, until it is started or put off (2026-11-09)
+export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringClear: 5, panelWidth: 0, tourOffer: true };
 
 /** Colour themes, warm to cool; Standart is the indigo palette (ui.css :root[data-theme]). */
 export const THEMES = [
@@ -143,6 +144,7 @@ export function normalizeView(v) {
     theme: THEMES.some(x => x.id === o.theme) ? o.theme : 'indigo',
     ringClear: clearOf(o),
     panelWidth: panelWidthOf(o),
+    tourOffer: o.tourOffer !== false,
   };
 }
 
