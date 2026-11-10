@@ -29,7 +29,7 @@ export default function BulkEditor({ nodes, conditionKey = [], onUpdateMany, onS
     const st = flag(key, list);
     return (
       <button key={key} className={`chip${st === 'all' ? ' on' : st === 'some' ? ' chip-carrier' : ''}`} aria-pressed={st === 'all'}
-        title={st === 'some' ? t('Seçilenlerin bazılarında var; tıklarsanız hepsine uygulanır') : undefined} onClick={() => toggle(key, list)} disabled={!list.length}>
+        title={st === 'some' ? t('Seçilen kişilerin yalnızca bir kısmında işaretli; tıklandığında hepsine uygulanır') : undefined} onClick={() => toggle(key, list)} disabled={!list.length}>
         {label}{st === 'some' ? t(' (bazıları)') : ''}
       </button>
     );

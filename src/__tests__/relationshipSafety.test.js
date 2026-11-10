@@ -59,11 +59,11 @@ describe('relationshipSafety — describeNewGraphErrors (pure)', () => {
     const before = [];
     const after = [{ severity: 'error', code: 'X', ids: ['a'], message: 'Test error message.' }];
     expect(describeNewGraphErrors(before, after)).toContain('Test error message.');
-    expect(describeNewGraphErrors(before, after)).toMatch(/güvenli çizilemiyor/);
+    expect(describeNewGraphErrors(before, after)).toMatch(/güvenli biçimde çizilemiyor/);
   });
 
   it('falls back to a generic clinical-language message if no new error is actually found', () => {
-    expect(describeNewGraphErrors([], [])).toMatch(/güvenli çizilemiyor/);
+    expect(describeNewGraphErrors([], [])).toMatch(/güvenli biçimde çizilemiyor/);
   });
 });
 
@@ -103,7 +103,7 @@ describe('relationshipSafety — introducesNewLayoutAmbiguity / assessRelationsh
     const after = [{ severity: 'error', code: 'SIBLING_GENERATION_INCONSISTENT', ids: ['U1'], message: 'x' }];
     const result = assessRelationshipMutation(before, after);
     expect(result.blocked).toBe(true);
-    expect(result.reason).toMatch(/güvenli çizilemiyor/);
+    expect(result.reason).toMatch(/güvenli biçimde çizilemiyor/);
   });
 
   it('assessRelationshipMutation blocks on increased ambiguity with a readability-focused message', () => {
@@ -140,7 +140,7 @@ describe('relationshipSafety — end-to-end detection against a real broken pedi
 
     expect(introducesNewGraphErrors(cleanIssues, brokenIssues)).toBe(true);
     const reason = describeNewGraphErrors(cleanIssues, brokenIssues);
-    expect(reason).toMatch(/güvenli çizilemiyor/);
+    expect(reason).toMatch(/güvenli biçimde çizilemiyor/);
   });
 
   it('does NOT flag a safe custom-consanguinity link (same generation, no pre-existing parents) as introducing new errors', () => {

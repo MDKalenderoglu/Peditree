@@ -62,7 +62,7 @@ describe('2, 9 — PED files', () => {
   it('a code that is not 0, -9, 1 or 2 is refused, naming the person', () => {
     const r = fromPed('F A 0 0 1 banana\n');
     expect(r.ok).toBe(false);
-    expect(r.reason).toMatch(/"A".*"banana"/);
+    expect(r.reason).toMatch(/“A”.*“banana”/);
   });
 
   it('nobody affected: no proband is invented; with an affected person, that person is the proband', () => {

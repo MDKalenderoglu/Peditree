@@ -41,8 +41,8 @@ describe('the consultand', () => {
     const missing = issues.find(i => i.code === 'PROBAND_MISSING');
     expect(missing.severity).toBe('warning');
     const notes = clinicalNotices({ warningIssues: [{ item: missing, _warningId: 'w' }] }, S().pedigreeData);
-    expect(notes[0].text).toMatch(/taşıyıcı taraması/);
-    expect(notes[0].text).toMatch(/kapatabilirsiniz/);
+    expect(notes[0].text).toMatch(/taşıyıcılık taramasında/);
+    expect(notes[0].text).toMatch(/not kapatılabilir/);
   });
 
   it('never a pregnancy, a placeholder or a group; a file with two consultands is refused', () => {

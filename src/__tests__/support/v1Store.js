@@ -89,10 +89,10 @@ function partnerSexConflict(pedigreeData, personId, newSex) {
     const partner = byId.get(u.partners.find(p => p !== personId));
     if (!partner || partner.placeholder) continue;
     if (newSex === 'unknown') {
-      return 'Bu bireyin bir eşi/birlikteliği var; cinsiyet "bilinmiyor" olarak değiştirilemez.';
+      return 'Bu kişinin bir eşi bulunduğundan cinsiyeti “bilinmiyor” olarak değiştirilemez.';
     }
     if (partner.sex === newSex) {
-      return 'Bu cinsiyet değişikliği mevcut bir birlikteliği aynı cinsiyetli yapar; değişiklik uygulanmadı.';
+      return 'Bu değişiklik mevcut bir çifti aynı cinsiyetten iki eşe dönüştüreceği için uygulanmadı.';
     }
   }
   return null;
@@ -577,7 +577,7 @@ export const useV1Store = create((zSet, get) => {
    */
   addSpouseTo: (targetId, spouseSex = 'unknown') => set((state) => {
     const target = (state.pedigreeData.individuals || []).find(i => i.id === targetId);
-    if (!target) return blocked('Birey grafikte bulunamadı.');
+    if (!target) return blocked('Kişi çizimde bulunamadı.');
     if (target.sex === 'unknown') {
       return blocked('Eş eklemek için önce bu bireyin cinsiyeti belirtilmeli (birey düzenleme panelinden).');
     }

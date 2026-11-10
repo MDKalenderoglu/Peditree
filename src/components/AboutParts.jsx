@@ -23,9 +23,9 @@ export function ProductInfo() {
           <div className="field-hint">{t('Genetik danışmanlık için pedigri çizimi')} · {versionLine()}</div>
         </div>
       </div>
-      {RELEASE_STAGE && <p className="share-note">{t('Bu bir deneme (beta) sürümüdür. Hata ya da eksik görürseniz “Geri bildirim” ile yazın.')}</p>}
-      <p className="share-note">{t('PediTree bir çizim aracıdır, tıbbi cihaz değildir. Çizimi kullanmadan önce kontrol edin; tanı ve danışmanlık kararı klinik değerlendirmeye dayanır.')}</p>
-      <p className="share-note">{t('Hasta bilgisi hiçbir sunucuya gönderilmez. Çalışma yalnızca bu sekmede tutulur; “Kaydet” ile indirdiğiniz dosyalar sizin cihazınızda kalır.')}</p>
+      {RELEASE_STAGE && <p className="share-note">{t('Bu, PediTree’nin deneme (beta) sürümüdür. Fark ettiğiniz hata ve eksiklikleri “Geri bildirim” bölümünden iletebilirsiniz.')}</p>}
+      <p className="share-note">{t('PediTree bir pedigri çizim aracıdır ve tıbbi cihaz niteliği taşımaz. Çizimin kullanılmadan önce kontrol edilmesi gerekir; tanı ve danışmanlık kararları klinik değerlendirmeye dayanır.')}</p>
+      <p className="share-note">{t('Hasta bilgileri hiçbir sunucuya gönderilmez. Çalışma yalnızca bu tarayıcı sekmesinde tutulur; “Kaydet” ile indirilen dosyalar yalnızca sizin cihazınızda saklanır.')}</p>
     </>
   );
 }
@@ -52,7 +52,7 @@ export function CitationInfo({ title = true }) {
   return (
     <>
       {title && <div className="more-title">{t('Atıf')}</div>}
-      <p className="share-note">{t('PediTree ile çizdiğiniz pedigriler sizindir. Bir yayında, sunumda ya da eğitim materyalinde kullandıysanız atıf yapmanız rica edilir:')}</p>
+      <p className="share-note">{t('PediTree ile çizilen pedigriler kullanıcısına aittir. Bir yayında, sunumda ya da eğitim materyalinde kullanıldığında aşağıdaki biçimde atıf yapılması rica olunur:')}</p>
       <p className="about-cite">{citationText()}</p>
       <button className="ui-btn" onClick={copy}>{copied ? t('Kopyalandı') : t('Atfı kopyala')}</button>
     </>
@@ -65,13 +65,13 @@ export function FeedbackInfo({ title = true }) {
   return (
     <>
       {title && <div className="more-title">{t('Hata ve öneriler')}</div>}
-      <p className="share-note">{t('Bir hata mı buldunuz, bir öneriniz ya da deneyiminiz mi var? GitHub’daki formu doldurun ya da e-posta gönderin.')}</p>
+      <p className="share-note">{t('Hata bildirimlerinizi, önerilerinizi ve kullanım deneyimlerinizi GitHub’daki form aracılığıyla ya da e-postayla iletebilirsiniz.')}</p>
       <div className="about-links">
         <a className="ui-btn" href={issueUrl('hata-bildirimi')} target="_blank" rel="noreferrer">{t('Hata bildir')}</a>
         <a className="ui-btn" href={issueUrl('oneri')} target="_blank" rel="noreferrer">{t('Öneri paylaş')}</a>
         <a className="ui-btn" href={`mailto:${CONTACT_EMAIL}?subject=PediTree`}>{t('E-posta')}</a>
       </div>
-      <p className="share-note">{CONTACT_EMAIL} · {t('Bildirime hasta adı, doğum tarihi ya da kimliği belli eden bir ekran görüntüsü eklemeyin.')}</p>
+      <p className="share-note">{CONTACT_EMAIL} · {t('Bildirimlere hasta adı, doğum tarihi ya da hastanın kimliğini belli eden bir ekran görüntüsü eklenmemelidir.')}</p>
     </>
   );
 }
@@ -84,24 +84,24 @@ const KEY_HELP = [
     ['← →', tk('Aynı kuşakta soldaki ya da sağdaki kişiye geçer.')],
     ['↑', tk('Kişinin annesine ya da babasına geçer.')],
     ['↓', tk('Kişinin çocuğuna geçer.')],
-    ['Esc', tk('Bir adım geri gider: önce açık paneli, sonra kişinin çevresindeki düğmeleri, en son seçimi kapatır. Çizimde boş bir yere tıklamak da aynısını yapar.')],
-    [{ text: tk('Cmd veya Ctrl + tıklama') }, tk('Birden çok kişiyi birlikte seçer (Mac’te Cmd, Windows’ta Ctrl). Tablette üstteki “Çoklu seçim” düğmesini kullanın.')],
+    ['Esc', tk('Bir adım geri gider: önce açık paneli, ardından kişinin çevresindeki düğmeleri, en son da seçimi kapatır. Çizimde boş bir yere tıklamak da aynı işi görür.')],
+    [{ text: tk('Cmd veya Ctrl + tıklama') }, tk('Birden çok kişiyi birlikte seçer (Mac’te Cmd, Windows’ta Ctrl). Dokunmatik ekranda üst çubuktaki “Çoklu seçim” düğmesi kullanılır.')],
   ]],
   [tk('Seçili kişi için (önce bir kişiye tıklayın)'), [
     // a letter of the interface's language (keyboardNav.js KEY_LETTERS)
     [{ action: 'parents' }, tk('Annesini ve babasını ekler.')],
     [{ action: 'spouse' }, tk('Eşini ekler.')],
-    [{ action: 'left' }, tk('Kardeş ekler: kız, erkek, düşük … seçenekleri açılır.')],
-    [{ action: 'bottom' }, tk('Çocuk ekler: kız, erkek, düşük … seçenekleri açılır.')],
+    [{ action: 'left' }, tk('Kardeş ekler; kız, erkek, düşük gibi seçenekler açılır.')],
+    [{ action: 'bottom' }, tk('Çocuk ekler; kız, erkek, düşük gibi seçenekler açılır.')],
     [{ action: 'findings' }, tk('Bulgu (hastalık ya da özellik) ekler ya da değiştirir.')],
-    [{ action: 'status' }, tk('Durumunu değiştirir: cinsiyet, hasta (etkilenmiş), taşıyıcı, vefat, proband, danışan.')],
+    [{ action: 'status' }, tk('Kişinin cinsiyetini ve durumunu (etkilenmiş, taşıyıcı, vefat, proband, danışan) değiştirir.')],
     [{ action: 'twins' }, tk('İkiz kardeş ekler.')],
-    [{ action: 'note' }, tk('Bilgiler düğmesini açar: yaş, genetik sonuç, not.')],
-    ['Shift + ← →', tk('Kişiyi yana kaydırır: eşiyle yer değiştirir ya da kardeşlerinin arasında bir sıra kayar. Kişiyi fareyle sürükleyerek de yapılır.')],
+    [{ action: 'note' }, tk('Bilgiler düğmesini açar; yaş, genetik test sonucu ve not buradan girilir.')],
+    ['Shift + ← →', tk('Kişiyi yana taşır: eşiyle yer değiştirir ya da kardeşleri arasında bir sıra kayar. Aynı işlem kişi fareyle sürüklenerek de yapılabilir.')],
     ['Delete', tk('Kişiyi siler (önce sorar).')],
   ]],
   [tk('Genel'), [
-    ['Cmd/Ctrl + Z', tk('Son işlemi geri alır. Shift ile birlikte: geri alınan işlemi yeniden yapar.')],
+    ['Cmd/Ctrl + Z', tk('Son işlemi geri alır; Shift ile birlikte kullanıldığında geri alınan işlemi yineler.')],
     ['Cmd/Ctrl + S', tk('Pedigriyi bilgisayarınıza dosya olarak kaydeder.')],
     ['Cmd/Ctrl + P', tk('Pedigriyi A4 sayfaya yazdırır.')],
     ['+  −  0', tk('Yakınlaştırır, uzaklaştırır, tüm pedigriyi ekrana sığdırır.')],

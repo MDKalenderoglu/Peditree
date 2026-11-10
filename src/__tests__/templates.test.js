@@ -55,7 +55,7 @@ describe('consanguinity templates', () => {
     expect(relationInfo({ father: 1, mother: 1 }, { father: ['female'], mother: ['female'] }).name).toBe('1. derece kuzen (teyze çocukları)');
     expect(relationInfo({ father: 1, mother: 1 }, { father: ['male'], mother: ['female'] }).name).toBe('1. derece kuzen (hala–dayı çocukları)');
     expect(relationInfo({ father: 3, mother: 3 })).toMatchObject({ name: '3. derece kuzen', F: 1 / 256 });
-    expect(relationInfo({ father: 1, mother: 2 })).toMatchObject({ name: '1. derece kuzenin çocuğu (bir kuşak fark)', sentence: 'Anne, babanın kuzeninin kızıdır; bir kuşak aşağıdadır.', F: 1 / 32 });
+    expect(relationInfo({ father: 1, mother: 2 })).toMatchObject({ name: '1. derece kuzenin çocuğu (bir kuşak farkla)', sentence: 'Anne, babanın kuzeninin kızıdır; bir kuşak aşağıdadır.', F: 1 / 32 });
     expect(relationInfo({ father: 3, mother: 2 }).sentence).toBe('Baba, annenin 2. derece kuzeninin oğludur; bir kuşak aşağıdadır.');
   });
 

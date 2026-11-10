@@ -70,7 +70,7 @@ describe('graph operations', () => {
     const snapshot = JSON.stringify(doc);
     const r = ops.addPartner(doc, 'proband', { sex: 'male' }); // proband is male: same-sex
     expect(r.ok).toBe(false);
-    expect(r.reason).toMatch(/kadın ve erkek/);
+    expect(r.reason).toMatch(/bir kadın ve bir erkek/);
     expect(r.doc).toBe(doc);
     expect(JSON.stringify(doc)).toBe(snapshot);
   });

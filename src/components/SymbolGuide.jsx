@@ -27,24 +27,24 @@ const GROUPS = [
     [() => <Square />, tk('Erkek'), null],
     [() => <Circle />, tk('Kadın'), null],
     [() => <Diamond />, tk('Cinsiyeti bilinmeyen'), null],
-    [() => <><Square /><Letter>3</Letter></>, tk('Birden çok kişi'), tk('İçindeki sayı kadar kişi; sayı bilinmiyorsa n')],
+    [() => <><Square /><Letter>3</Letter></>, tk('Birden çok kişi'), tk('Sembolün içindeki sayı kadar kişiyi gösterir; sayı bilinmiyorsa n yazılır')],
     [() => <><Square x={26} y={14} fill={INK} /><Arrow /><Letter x={5} y={28} size={9}>P</Letter></>, tk('Proband'), tk('Ailede incelemeye yol açan ilk etkilenmiş kişi')],
     [() => <><Square x={26} y={14} /><Arrow /></>, tk('Danışan'), tk('Danışmanlık için başvuran kişi (P yazmaz)')],
   ]],
   [tk('Durum'), [
-    [() => <Square fill={INK} />, tk('Etkilenmiş'), tk('Hasta; birden çok bulgu sembolde ayrı bölgelerdir, açıklamada yazar')],
+    [() => <Square fill={INK} />, tk('Etkilenmiş'), tk('Etkilenmiş birey; birden çok bulgu sembolde ayrı bölgelerle gösterilir ve açıklamada belirtilir')],
     [(carrier) => (carrier === 'dot'
       ? <><Square /><circle cx={22} cy={16} r={2.4} fill={INK} /></>
       : <><defs><pattern id="sg-hatch" patternUnits="userSpaceOnUse" width="3" height="3" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="3" stroke={INK} strokeWidth="1.1" /></pattern></defs>
-        <Square /><path d="M13,7h9v18h-9z" fill="url(#sg-hatch)" stroke="none" /><path d="M22,7v18" {...line} /><Square fill="none" /></>), tk('Taşıyıcı'), tk('Hasta değil, hastalığa yol açan geni taşıyor (gösterimi Ayarlar → Çizim)')],
+        <Square /><path d="M13,7h9v18h-9z" fill="url(#sg-hatch)" stroke="none" /><path d="M22,7v18" {...line} /><Square fill="none" /></>), tk('Taşıyıcı'), tk('Hastalığa yol açan varyantı taşıyan, ancak etkilenmemiş birey (gösterimi Ayarlar → Çizim’den seçilir)')],
     [() => <><Square /><path d="M22,7v18" {...line} /></>, tk('Presemptomatik'), tk('Şu an belirtisi yok, ileride çıkabilir')],
-    [() => <><Square /><path d="M10,29L34,3" {...line} /></>, tk('Vefat'), tk('Altında ölüm yaşı: "ölüm 42 y"')],
-    [() => <><Square /><path d="M16,4h-5v24h5M28,4h5v24h-5" {...line} /></>, tk('Evlat edinilmiş'), tk('Köşeli parantez içinde; evlat edinen aileden kesikli çizgi')],
+    [() => <><Square /><path d="M10,29L34,3" {...line} /></>, tk('Vefat'), tk('Sembolün altında ölüm yaşı yazılır (örneğin “ölüm 42 y”)')],
+    [() => <><Square /><path d="M16,4h-5v24h5M28,4h5v24h-5" {...line} /></>, tk('Evlat edinilmiş'), tk('Köşeli parantez içinde gösterilir; evlat edinen aileden kesikli bir çizgiyle bağlanır')],
     [() => <><Square /><Letter x={34} y={28} size={11}>*</Letter></>, tk('Kayıtlarla doğrulandı'), tk('Bulgu tıbbi kayıt ya da raporla görüldü')],
     // nothing inside the symbol: the result lines stand under it (drawn here as short lines of text)
-    [() => <><Square y={11} /><path d="M12,26H32M15,31H29" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" /></>, tk('Genetik test'), tk('Sembolün altında sonuç satırları; satır yoksa "test yapıldı"')],
+    [() => <><Square y={11} /><path d="M12,26H32M15,31H29" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" /></>, tk('Genetik test'), tk('Sembolün altında sonuç satırları yer alır; sonuç girilmemişse “test yapıldı” yazar')],
     [() => <><Square /><Letter>D</Letter></>, tk('Donör'), tk('Sperm ya da yumurta veren kişi')],
-    [() => <><Circle /><Letter>G</Letter></>, tk('Gestasyonel taşıyıcı'), tk('Gebeliği taşıyan, yumurtası kullanılmayan kadın')],
+    [() => <><Circle /><Letter>G</Letter></>, tk('Gestasyonel taşıyıcı'), tk('Gebeliği taşıyan ancak kendi yumurtası kullanılmayan kadın')],
   ]],
   [tk('Gebelik'), [
     [() => <><Diamond /><Letter>P</Letter></>, tk('Devam eden gebelik (P)'), tk('Altında son adet tarihi')],
@@ -55,9 +55,9 @@ const GROUPS = [
   ]],
   [tk('Çizgiler'), [
     [() => <Couple><path d="M17,14H27" {...line} /></Couple>, tk('Eşler'), null],
-    [() => <Couple><path d="M17,12H27M17,16H27" {...line} /></Couple>, tk('Akraba evliliği'), tk('Çift çizgi; derece ve F yan panelde')],
+    [() => <Couple><path d="M17,12H27M17,16H27" {...line} /></Couple>, tk('Akraba evliliği'), tk('Çift çizgiyle gösterilir; akrabalık derecesi ve F yan panelde yer alır')],
     [() => <Couple><path d="M17,14H27M19,19L23,9M22,19L26,9" {...line} /></Couple>, tk('Ayrılmış ya da boşanmış'), tk('Çizginin üstünde //')],
-    [() => <Couple><path d="M17,14H27" {...line} /><text x={22} y={7} textAnchor="middle" fontSize="5.5" fill={INK}>{'…'}</text></Couple>, tk('Aynı köy'), tk('Akrabalık değil; çizgi tek kalır, üstünde yazar')],
+    [() => <Couple><path d="M17,14H27" {...line} /><text x={22} y={7} textAnchor="middle" fontSize="5.5" fill={INK}>{'…'}</text></Couple>, tk('Aynı köy'), tk('Akrabalık sayılmaz; çizgi tek kalır ve üzerine not düşülür')],
     [() => <Couple><path d="M17,14H27M22,14V27M16,27H28" {...line} /></Couple>, tk('Çocuksuz çift'), tk('Kendi isteğiyle ya da nedeni bilinmiyor')],
     [() => <Couple><path d="M17,14H27M22,14V25M16,25H28M16,29H28" {...line} /></Couple>, tk('İnfertil'), tk('Kısırlık')],
     [() => <><path d="M8,4H36M22,4V10L12,26M22,10L32,26M15,21H29" {...line} /></>, tk('Tek yumurta ikiz'), null],

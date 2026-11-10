@@ -293,7 +293,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         .attr('text-anchor', 'middle')
         .attr('fill', '#64748b')
         .attr('font-size', '16px')
-        .text(t('Yeni bir pedigri başlatmak için üstteki "Yeni" düğmesine basın.'));
+        .text(t('Yeni bir pedigri başlatmak için üst çubuktaki “Yeni” düğmesini kullanın.'));
       return;
     }
 

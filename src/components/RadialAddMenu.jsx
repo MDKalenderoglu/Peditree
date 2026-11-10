@@ -287,7 +287,7 @@ export default function RadialAddMenu({
   const setInfo = (patch) => onUpdate(node.id, patch);
   const satLabel = (s) => (s.key === 'note' && group ? t('Not') : t(s.label));
   const infoPart = panel === 'note' && !group && infoFor && infoFor.node === node.id ? infoFor.part : null;
-  const GROUP_HINT = t('Bu sembol birden çok kişiyi gösteriyor; eş, çocuk ya da bulgu için önce sağdaki panelden “Tek tek ayır”.');
+  const GROUP_HINT = t('Bu sembol birden çok kişiyi gösterir; eş, çocuk ya da bulgu eklemek için önce sağdaki panelden “Tek tek ayır” seçilmelidir.');
 
   const pcrs = pedigreeData.parentChildRelationships || [];
   const unions = (pedigreeData.unions || []).filter(u => u.partners.includes(node.id));
@@ -325,12 +325,12 @@ export default function RadialAddMenu({
   const ART_FOR = { female: ['sperm_donor'], male: ['egg_donor', 'surrogate'] };
 
   // a donor or carrier added for assisted reproduction has no family of their own (clinician decision 2026-11-01)
-  const DONOR_HINT = node.relation === ART_DONOR_RELATION ? t('Donör ya da taşıyıcının ailesi çizilmez; aile öyküsünü Not ve Bulgu ile girin.') : null;
+  const DONOR_HINT = node.relation === ART_DONOR_RELATION ? t('Donörün ya da taşıyıcının ailesi çizilmez; aile öyküsü Bilgiler ve Bulgu alanlarına girilebilir.') : null;
   const disabled = DONOR_HINT ? { top: DONOR_HINT, right: DONOR_HINT, bottom: DONOR_HINT, left: DONOR_HINT } : {
     // a pregnancy outcome takes parents and siblings, never a partner or children (clinician 2026-10-25)
-    top: hasParents ? t('Bu kişinin annesi ve babası zaten çizili.') : null,
-    right: group ? GROUP_HINT : isLoss ? t('Düşüğe, ölü doğuma ya da süren gebeliğe eş eklenemez.') : sexKnown ? null : t('Eş eklemek için önce bu kişinin cinsiyetini seçin: Durum düğmesi → Erkek ya da Kadın.'),
-    bottom: group ? GROUP_HINT : isLoss ? t('Düşüğe, ölü doğuma ya da süren gebeliğe çocuk eklenemez.') : !unions.length && !sexKnown ? t('Çocuk eklemek için önce bu kişinin cinsiyetini seçin: Durum düğmesi → Erkek ya da Kadın.') : null,
+    top: hasParents ? t('Bu kişinin annesi ve babası çizimde zaten yer alıyor.') : null,
+    right: group ? GROUP_HINT : isLoss ? t('Düşüğe, ölü doğuma ya da süren gebeliğe eş eklenemez.') : sexKnown ? null : t('Eş eklemek için önce kişinin cinsiyeti seçilmelidir (Durum → Erkek ya da Kadın).'),
+    bottom: group ? GROUP_HINT : isLoss ? t('Düşüğe, ölü doğuma ya da süren gebeliğe çocuk eklenemez.') : !unions.length && !sexKnown ? t('Çocuk eklemek için önce kişinin cinsiyeti seçilmelidir (Durum → Erkek ya da Kadın).') : null,
     left: null,
   };
   // one click: parents = a mother and a father; spouse = the opposite sex
@@ -383,7 +383,7 @@ export default function RadialAddMenu({
       <div className="flyout-row">
         <span className="flyout-row-label">{t('Evlat edinilmiş')}</span>
         {[['male', t('erkek')], ['female', t('kız')], ['unknown', t('cinsiyeti bilinmeyen')]].map(([sex, word]) => {
-          const title = t('{who}: evlat edinilmiş {what} (köşeli parantez, kesikli iniş çizgisi)', { who: active === 'left' ? t('Kardeş') : t('Çocuk'), what: word });
+          const title = t('{who}: evlat edinilmiş {what} (köşeli parantez içinde, kesikli çizgiyle bağlı)', { who: active === 'left' ? t('Kardeş') : t('Çocuk'), what: word });
           return (
             <button key={sex} className="quick-btn" title={title} aria-label={title}
               onClick={() => { addAdopted[active](sex); setActive(null); }}><Glyph kind={`adopted-${sex}`} /></button>
@@ -418,10 +418,10 @@ export default function RadialAddMenu({
       <div className="flyout-row">
         <span className="flyout-row-label">{t('Birden çok')}</span>
         <input className="flyout-count" value={groupCount} inputMode="numeric" maxLength={2} aria-label={t('Kişi sayısı (bilinmiyorsa n)')}
-          title={t('Kişi sayısı: 2–99; bilinmiyorsa n')} onChange={(e) => setGroupCount(e.target.value)} />
+          title={t('Kişi sayısı (2–99); bilinmiyorsa n')} onChange={(e) => setGroupCount(e.target.value)} />
         {[['male', t('erkek')], ['female', t('kız')], ['unknown', t('cinsiyeti karışık ya da bilinmeyen')]].map(([sex, word]) => {
           const count = parseGroupCount(groupCount);
-          const title = t('{who}: {count} {what} (tek sembol, içinde sayı)', { who: active === 'left' ? t('Kardeş') : t('Çocuk'), count: count ?? '?', what: word });
+          const title = t('{who}: {count} {what} (sayısı içine yazılan tek bir sembol)', { who: active === 'left' ? t('Kardeş') : t('Çocuk'), count: count ?? '?', what: word });
           return (
             <button key={sex} className="quick-btn" title={count ? title : t('Önce 2–99 arası bir sayı ya da n yazın')} aria-label={title} disabled={!count}
               onClick={() => { addGroup[active](sex, count); setActive(null); }}><Glyph kind={`group-${sex}`} label={count ?? '?'} /></button>
@@ -489,7 +489,7 @@ export default function RadialAddMenu({
   };
 
   // "Diğer…" / "Daha az": the choices hidden in Ayarlar → Halka menü, never lost
-  const moreItem = (hiddenHere) => (hiddenHere.length ? [{ label: showMore ? t('Daha az') : t('Diğer…'), more: true, onClick: () => setShowMore(), title: showMore ? t('Gizlediğiniz seçenekleri yeniden gizle') : t('Halka menüden gizlediğiniz seçenekler (Ayarlar → Halka menü)') }] : []);
+  const moreItem = (hiddenHere) => (hiddenHere.length ? [{ label: showMore ? t('Daha az') : t('Diğer…'), more: true, onClick: () => setShowMore(), title: showMore ? t('Gizlediğiniz seçenekleri yeniden gizle') : t('Halka menüden gizlenen seçenekler (Ayarlar → Halka menü)') }] : []);
   const firstLine = (s) => String(s || '').split('\n').find((l) => l.trim()) || '';
   const infoItems = () => {
     const avail = ring.info.filter((id) => !(id === 'age' && isLoss));
@@ -518,13 +518,13 @@ export default function RadialAddMenu({
     status: () => {
       const sexes = isLoss ? [] : [['male', t('Erkek')], ['female', t('Kadın')], ['unknown', t('Bilinmiyor')]];
       const byId = {
-        affected: { label: t('Etkilenmiş'), on: !!node.affected, onClick: () => onUpdate(node.id, { affected: !node.affected }), title: t('Kişi hasta (etkilenmiş): sembolün içi tamamen dolar. Hastalığın adını yazmak için Bulgu düğmesini kullanın.') },
-        carrier: { label: t('Taşıyıcı'), on: !!node.carrier, onClick: () => onUpdate(node.id, { carrier: !node.carrier }), title: t('Kişi hasta değil ama hastalığa yol açan geni taşıyor') },
-        deceased: isLoss ? null : { label: t('Vefat'), on: !!node.deceased, onClick: () => onUpdate(node.id, { deceased: !node.deceased }), title: t('Kişi hayatta değil: sembolün üzerine çapraz çizgi çekilir') },
-        proband: { label: t('Proband'), on: !!node.proband, onClick: () => (node.proband ? onClearProband() : onSetProband(node.id)), title: t('Ailede incelemeye yol açan ilk etkilenmiş kişi: yanında ok ve P harfi çizilir') },
-        presymptomatic: isLoss ? null : { label: t('Presemptomatik'), on: !!node.presymptomatic, onClick: () => onUpdate(node.id, { presymptomatic: !node.presymptomatic }), title: t('Şu an belirtisi yok ama ileride belirti gösterebilir (çoğunlukla dominant hastalıklarda): sembolün ortasından dikey çizgi geçer, açıklamada yazılır') },
+        affected: { label: t('Etkilenmiş'), on: !!node.affected, onClick: () => onUpdate(node.id, { affected: !node.affected }), title: t('Kişi etkilenmiştir; sembolün içi tamamen doldurulur. Hastalığın adı Bulgu düğmesinden girilir.') },
+        carrier: { label: t('Taşıyıcı'), on: !!node.carrier, onClick: () => onUpdate(node.id, { carrier: !node.carrier }), title: t('Kişi etkilenmemiştir, ancak hastalığa yol açan varyantı taşır') },
+        deceased: isLoss ? null : { label: t('Vefat'), on: !!node.deceased, onClick: () => onUpdate(node.id, { deceased: !node.deceased }), title: t('Kişi hayatta değildir; sembolün üzerine çapraz bir çizgi çekilir') },
+        proband: { label: t('Proband'), on: !!node.proband, onClick: () => (node.proband ? onClearProband() : onSetProband(node.id)), title: t('Ailenin incelenmesine yol açan ilk etkilenmiş kişi; yanında ok ve P harfi gösterilir') },
+        presymptomatic: isLoss ? null : { label: t('Presemptomatik'), on: !!node.presymptomatic, onClick: () => onUpdate(node.id, { presymptomatic: !node.presymptomatic }), title: t('Şu anda belirtisi yoktur, ancak ileride belirti gösterebilir (çoğunlukla dominant kalıtılan hastalıklarda); sembolün ortasından dikey bir çizgi geçer ve açıklamada belirtilir') },
         // the consultand (clinician decisions 2026-11-01): an arrow without "P"
-        consultand: isLoss || !onSetConsultand ? null : { label: t('Danışan'), on: !!node.consultand, onClick: () => (node.consultand ? onClearConsultand() : onSetConsultand(node.id)), title: t('Danışmanlık için başvuran kişi: yanında yalnız ok çizilir (P yok). Ailede bir danışan olur; proband ile aynı kişi olabilir.') },
+        consultand: isLoss || !onSetConsultand ? null : { label: t('Danışan'), on: !!node.consultand, onClick: () => (node.consultand ? onClearConsultand() : onSetConsultand(node.id)), title: t('Genetik danışmanlık için başvuran kişi; yanında yalnızca ok gösterilir (P harfi yoktur). Bir ailede tek danışan bulunur ve proband ile aynı kişi olabilir.') },
       };
       // the clinician's order; hidden choices under "Diğer…" (Ayarlar → Halka menü)
       const available = ring.status.filter((id) => byId[id]);
@@ -567,7 +567,7 @@ export default function RadialAddMenu({
         onSetStatus={onSetFindingStatus} onAdd={onAddFinding} onSetStyle={onSetFindingStyle} onSetOnset={onSetFindingOnset} onRename={onRenameFinding} />
     ),
     twins: (
-      <span className="radial-hint">{isLoss ? t('Düşük, ölü doğum ya da süren gebelik kaydına buradan ikiz eklenemez.') : t('İkiz eklemek için önce bu kişinin anne ve babasını ekleyin (yukarıdaki Ebeveyn düğmesi).')}</span>
+      <span className="radial-hint">{isLoss ? t('Düşük, ölü doğum ya da süren gebelik kaydına buradan ikiz eklenemez.') : t('İkiz eklemek için önce kişinin anne ve babası eklenmelidir (halkanın üstündeki Ebeveyn bölümü).')}</span>
     ),
     // a symbol for several people: its note only (the others open from the Bilgiler band)
     note: <NoteField node={node} set={setInfo} compact />,
@@ -637,7 +637,7 @@ export default function RadialAddMenu({
               {active === 'left' && adoptedIn && (
                 <div className="flyout-row flyout-choose" role="radiogroup" aria-label={t('Yeni kardeş ne?')}>
                   <span className="flyout-row-label">{t('Yeni kardeş')}</span>
-                  {[['family', t('Ailenin öz çocuğu'), t('Evlat edinen anne-babanın kendi çocuğu')], ['adopted', t('Evlat edinilmiş'), t('Aynı ailenin evlat edindiği başka bir çocuk')], ['biological', t('Biyolojik kardeşi'), t('Bu kişinin biyolojik kardeşi: biyolojik anne-babası (bilinmiyor) da çizilir')]].map(([k, label, title]) => (
+                  {[['family', t('Ailenin öz çocuğu'), t('Evlat edinen anne-babanın kendi çocuğu')], ['adopted', t('Evlat edinilmiş'), t('Aynı ailenin evlat edindiği başka bir çocuk')], ['biological', t('Biyolojik kardeşi'), t('Bu kişinin biyolojik kardeşi; bilinmeyen biyolojik anne ve babası da çizilir')]].map(([k, label, title]) => (
                     <button key={k} role="radio" aria-checked={sibKind === k} className={`quick-text${sibKind === k ? ' on' : ''}`} title={title}
                       onClick={() => setChoiceFor({ node: node.id, sibling: k })}>{label}</button>
                   ))}
@@ -649,8 +649,8 @@ export default function RadialAddMenu({
               {/* the sexes, then the rows in the clinician's order (Ayarlar → Halka menü; ringPrefs.js) */}
               {needsDonor(active) ? (
                 <span className="radial-hint">{needsDonor(active) === 'female'
-                  ? t('İki kadın eşin çocuğu: aşağıdan sperm donörüyle ya da evlat edinilmiş olarak ekleyin.')
-                  : t('İki erkek eşin çocuğu: aşağıdan yumurta donörü ya da taşıyıcı anneyle, ya da evlat edinilmiş olarak ekleyin.')}</span>
+                  ? t('İki kadın eşin çocuğu aşağıdan sperm donörüyle ya da evlat edinilmiş olarak eklenir.')
+                  : t('İki erkek eşin çocuğu aşağıdan yumurta donörü ya da taşıyıcı anneyle veya evlat edinilmiş olarak eklenir.')}</span>
               ) : (
               <div className="flyout-row">
                 {choices[active].filter((c) => (c[3] || 1) === 1).map(([title, glyph, run]) => (

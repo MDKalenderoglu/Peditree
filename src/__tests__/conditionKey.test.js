@@ -52,7 +52,7 @@ describe('the legend follows the findings', () => {
     const before = S().doc;
     S().addFinding('mother', 'B', { region: 'q3', fill: 'hatch' });
     expect(S().doc).toBe(before);
-    expect(S().actionNotice.message).toMatch(/başka bir bulguyu gösteriyor/);
+    expect(S().actionNotice.message).toMatch(/başka bir bulguyu göstermektedir/);
     S().setFindingStyle('A', { region: 'q1', fill: 'dots' });
     expect(regionsOf('father')).toEqual(['q1:dots']);
   });

@@ -80,7 +80,7 @@ export function loadDocument() {
     const r = parseProjectFile(raw);
     if (r.ok && !r.migrated) return { doc: r.doc, source: 'v2', ...(r.normalizations.length ? { notice: r.normalizations.join(' ') } : {}) };
     keepBrokenSession(ls, raw);
-    return { doc: null, source: null, notice: t('Bu sekmede kayıtlı pedigri açılamadı ({v0}); boş bir pedigriyle başlandı. Kayıt silinmedi, üzerine yazılmasın diye ayrı saklandı.', { v0: r.ok ? t('biçim tanınmadı') : r.reason.replace(/\.$/, '') }) };
+    return { doc: null, source: null, notice: t('Bu sekmede kayıtlı pedigri açılamadı ({v0}); boş bir pedigriyle başlandı. Kayıt silinmedi; üzerine yazılmaması için ayrıca saklandı.', { v0: r.ok ? t('biçim tanınmadı') : r.reason.replace(/\.$/, '') }) };
   }
 
   let rawV1;
@@ -89,16 +89,16 @@ export function loadDocument() {
 
   let envelope;
   try { envelope = JSON.parse(rawV1); } catch {
-    return { doc: null, source: null, notice: t('Eski kayıt okunamadı (geçersiz JSON); dokunulmadı.') };
+    return { doc: null, source: null, notice: t('Eski kayıt okunamadı (geçersiz JSON); kayıt değiştirilmeden bırakıldı.') };
   }
   const wdOk = (w) => w && typeof w === 'object' && w.proband && typeof w.proband === 'object' && w.parents && typeof w.parents === 'object';
   if (!envelope || envelope.schemaVersion !== 1 || !wdOk(envelope.wizardData)) {
-    return { doc: null, source: null, notice: t('Eski kayıt tanınmadı; dokunulmadı.') };
+    return { doc: null, source: null, notice: t('Eski kayıt tanınmadı; kayıt değiştirilmeden bırakıldı.') };
   }
   const result = migrateV1ToV2({ ...envelope.wizardData, savedAt: envelope.savedAt });
-  if (!result.ok) return { doc: null, source: null, notice: t('{reason} Eski kayıt dokunulmadan bırakıldı.', { reason: result.reason }) };
+  if (!result.ok) return { doc: null, source: null, notice: t('{reason} Eski kayıt değiştirilmeden bırakıldı.', { reason: result.reason }) };
   if (!saveDocument(result.doc)) {
-    return { doc: result.doc, source: 'migrated-v1', normalizations: result.normalizations, notice: t('Taşınan pedigri kaydedilemedi; eski kayıt korunuyor.') };
+    return { doc: result.doc, source: 'migrated-v1', normalizations: result.normalizations, notice: t('Yeni biçime aktarılan pedigri kaydedilemedi; eski kayıt korunuyor.') };
   }
   try {
     ls.setItem(V1_BACKUP_KEY, rawV1);
@@ -161,7 +161,7 @@ export function shapeProblem(doc) {
   }
   for (const u of g.unions) {
     if (!isObj(u) || !isId(u.id) || !Array.isArray(u.partners) || u.partners.length !== 2 || !u.partners.every(isId) || u.partners[0] === u.partners[1]) {
-      return `${t('bir birliktelik tam iki farklı kişiyi bağlamıyor')}${isObj(u) && u.id ? ` (${u.id})` : ''}`;
+      return `${t('bir çift kaydı tam olarak iki farklı kişiyi içermiyor')}${isObj(u) && u.id ? ` (${u.id})` : ''}`;
     }
   }
   for (const r of g.parentChildRelationships) {
@@ -187,25 +187,25 @@ export function shapeProblem(doc) {
  */
 export function parseProjectFile(text) {
   if (typeof text !== 'string') return { ok: false, reason: t('Dosya okunamadı.') };
-  if (text.length > MAX_PROJECT_FILE_CHARS) return { ok: false, reason: t('Dosya çok büyük (20 MB üstü); bir Peditree pedigrisi değil gibi görünüyor, açılmadı.') };
+  if (text.length > MAX_PROJECT_FILE_CHARS) return { ok: false, reason: t('Dosya çok büyük (20 MB üzeri) ve bir PediTree pedigrisi olarak tanınmadığı için açılmadı.') };
   try {
     return parseChecked(text);
   } catch (err) {
     console.warn('[persistenceV2] Project file could not be read:', err);
-    return { ok: false, reason: t('Dosya okunamadı: içeriği bozuk, açılmadı.') };
+    return { ok: false, reason: t('Dosyanın içeriği bozuk olduğundan dosya açılamadı.') };
   }
 }
 
 function parseChecked(text) {
   let parsed;
   try { parsed = JSON.parse(text); } catch {
-    return { ok: false, reason: t('Dosya okunamadı: geçerli bir JSON değil.') };
+    return { ok: false, reason: t('Dosya okunamadı; geçerli bir JSON dosyası değil.') };
   }
   let doc, migrated = false, normalizations = [];
   if (isDocumentV2(parsed)) {
     doc = parsed;
     const problem = shapeProblem(doc);
-    if (problem) return { ok: false, reason: t('Dosyadaki pedigri bozuk, açılmadı: {problem}.', { problem }) };
+    if (problem) return { ok: false, reason: t('Dosyadaki pedigri bozuk olduğundan açılmadı: {problem}.', { problem }) };
     if (!Array.isArray(doc.graph.socialParentLinks)) doc.graph.socialParentLinks = [];
     if (!Array.isArray(doc.graph.reproductiveLinks)) doc.graph.reproductiveLinks = [];
     if (!Array.isArray(doc.graph.conditionKey)) doc.graph.conditionKey = [];
@@ -215,15 +215,15 @@ function parseChecked(text) {
   } else {
     const wizardData = parsed && parsed.schemaVersion === 1 && parsed.wizardData ? parsed.wizardData
       : (parsed && parsed.proband && parsed.parents ? parsed : null);
-    if (!wizardData) return { ok: false, reason: t('Dosya bir Peditree pedigrisi değil (tanınmayan biçim).') };
+    if (!wizardData) return { ok: false, reason: t('Dosya bir PediTree pedigrisi olarak tanınmadı.') };
     const r = migrateV1ToV2(wizardData);
     if (!r.ok) return { ok: false, reason: r.reason };
     doc = r.doc; migrated = true; normalizations = r.normalizations;
   }
   const cleared = doc.graph.unions.filter((u) => u.childless).length;
   clearChildlessWithChildren(doc.graph);
-  if (doc.graph.unions.filter((u) => u.childless).length < cleared) normalizations = [...normalizations, t('Çocuğu olan bir çiftteki "çocuksuz / kısır" işareti kaldırıldı.')];
+  if (doc.graph.unions.filter((u) => u.childless).length < cleared) normalizations = [...normalizations, t('Çocuğu bulunan bir çiftteki “çocuksuz / infertil” işareti kaldırıldı.')];
   const errors = errorsOf(validateDocument(doc));
-  if (errors.length) return { ok: false, reason: t('Dosyadaki pedigri tutarsız, açılmadı: {v0}', { v0: errors[0].message }) };
+  if (errors.length) return { ok: false, reason: t('Dosyadaki pedigri tutarsız olduğundan açılmadı: {v0}', { v0: errors[0].message }) };
   return { ok: true, doc, migrated, normalizations };
 }
