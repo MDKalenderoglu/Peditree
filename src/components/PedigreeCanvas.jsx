@@ -1190,12 +1190,16 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const bring = () => {
       const el = svgRef.current;
       const shape = el && el.querySelector('.node-selected .pedigree-shape');
-      const sheet = document.querySelector('.app-shell > .side-right');
+      const sheet = document.querySelector('.touch-sheet');
       if (!shape || !sheet) return;
       const r = shape.getBoundingClientRect();
-      const box = el.getBoundingClientRect();
+      const full = el.getBoundingClientRect();
+      const sh = sheet.getBoundingClientRect();
+      // the sheet below (portrait) or at the right (landscape): the part of the drawing still in sight
+      const side = sh.top <= full.top + 40;
+      const box = { left: full.left, top: full.top, right: side ? Math.min(full.right, sh.left) : full.right, bottom: full.bottom };
       const top = box.top;
-      const bottom = Math.min(box.bottom, sheet.getBoundingClientRect().top);
+      const bottom = side ? box.bottom : Math.min(box.bottom, sh.top);
       if (!(bottom > top) || !r.width) return;
       const ROOM = 96; // the ring round the person
       const cx = r.left + r.width / 2;

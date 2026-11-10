@@ -83,6 +83,12 @@ function LookSection() {
         <Segmented label={t('Renk teması')} value={view.theme} onChange={(v) => setView({ theme: v })}
           options={THEMES.map((x) => [x.id, <><span className="theme-swatch" style={{ background: x.swatch }} aria-hidden="true" />{t(x.label)}</>])} />
       </Row>
+      {/* the touch screen (clinician request 2026-11-10): on by itself on a phone; a tablet may choose it */}
+      <Row title={t('Dokunmatik görünüm')} hint={t('Büyük, yazılı düğmeler')}
+        more={t('Dokunmatik görünümde çizim bütün ekranı kaplar; bir kişiye dokunulduğunda alttan yazılı düğmeler açılır ve ayrıntılar bu paneli yukarı çekerek görülür. Otomatik seçildiğinde telefonda kendiliğinden açılır.')}>
+        <Segmented label={t('Dokunmatik görünüm')} value={view.touchMode || 'auto'} onChange={(v) => setView({ touchMode: v })}
+          options={[['auto', t('Otomatik')], ['on', t('Açık')], ['off', t('Kapalı')]]} />
+      </Row>
       <Row title={t('Simidin saydamlığı')} hint={t('Arkadaki çizim ne kadar görünsün')}>
         <RingClear value={view.ringClear} onChange={(v) => setView({ ringClear: v })} />
       </Row>

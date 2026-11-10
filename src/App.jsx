@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import * as d3 from 'd3';
 import { usePedigreeStore, needsLeaveWarning, flushAutosave } from './state/usePedigreeStore';
+import { computePedigreeIds } from './utils/pedigreeNumbering';
 import { exportSVG, exportPNG, exportPDF, exportFileName, pngBlob, shareFile, downloadBlob, prepareExportSvg } from './utils/exportUtils';
 import { assessExportReadiness } from './utils/exportReadiness';
 import { withStableIdsExcludingDismissed } from './utils/warningIds';
@@ -26,7 +27,7 @@ import { ProductInfo, LicenseInfo, CitationInfo, FeedbackInfo } from './componen
 import { nameCase } from './utils/nameCase';
 import { RELEASE_STAGE } from './utils/appInfo';
 import { watchToolbar, overflowed } from './utils/toolbarFit';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check, CircleHelp, UserRound, ChevronUp } from 'lucide-react';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check, CircleHelp, UserRound, ChevronUp, Menu as MenuIcon, X as XIcon } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
 // the clinician's logo (docs/brand/peditree-logo.webp): the tree, and the name in its own lettering
@@ -40,9 +41,19 @@ const MORE = {
   new: [FilePlus2, tk('Yeni')], open: [FolderOpen, tk('Aç')],
   // on a phone only (they come last; a tablet keeps them on the bar): clinician 2026-11-10
   tour: [CircleHelp, tk('Tanıtım turu')], redo: [Redo2, tk('Yinele')], settings: [SlidersHorizontal, tk('Ayarlar')],
+  undo: [Undo2, tk('Geri al')], about: [Info, tk('PediTree hakkında')],
 };
-/** A phone (clinician request 2026-11-10): the top bar in one row, the side panel a sheet from below. ui.css has the same width. */
-const PHONE = '(max-width: 600px)';
+/** The touch mode's menu: everything the top bar holds on a computer, with its name, in this order. */
+const TOUCH_MENU = ['undo', 'redo', 'new', 'open', 'relayout', 'multi', 'print', 'share', 'settings', 'tour', 'cite', 'feedback', 'about'];
+/**
+ * The touch mode (clinician request 2026-11-10: on a phone the desktop screen, made smaller, could not be
+ * used — the ring covered the drawing, the panel ate the page, icons said too little). Same pedigree, same
+ * operations, same files; only the screen differs: a short top bar with a labelled menu, the drawing over
+ * the whole screen, and a sheet with the person's labelled tiles (the ring's choices) that is drawn up for
+ * the details and down to close. A phone in either orientation turns it on (Ayarlar → Görünüm can turn it
+ * on for a tablet, or off).
+ */
+const PHONE = '(max-width: 600px), (max-height: 500px) and (pointer: coarse)';
 function usePhone() {
   const query = () => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia(PHONE).matches;
   const [phone, setPhone] = React.useState(query);
@@ -118,6 +129,55 @@ function MoreMenu({ items, multiSelect, onPick }) {
         );
       })}
     </div>
+  );
+}
+
+/**
+ * The touch mode's sheet (clinician request 2026-11-10): over the lower part of the screen in portrait, a
+ * column at the right in landscape. Its handle is drawn: up opens the person's details, down closes them,
+ * and down again closes the sheet (the person is let go); a tap on the handle does the same one step.
+ */
+function TouchSheet({ full, canDock, onFull, onClose, title, children }) {
+  const t = useT();
+  const drag = React.useRef(null);
+  const [pull, setPull] = React.useState(0); // how far the sheet follows the finger, in px (down is +)
+  const step = (dir) => {
+    if (dir < 0) { if (canDock && !full) onFull(true); }
+    else if (full && canDock) onFull(false);
+    else onClose();
+  };
+  const down = (e) => {
+    drag.current = { y: e.clientY, id: e.pointerId };
+    if (e.currentTarget.setPointerCapture && e.pointerId !== undefined) e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const move = (e) => { if (drag.current) setPull(Math.max(-120, Math.min(260, e.clientY - drag.current.y))); };
+  const up = (e) => {
+    const d = drag.current;
+    drag.current = null;
+    setPull(0);
+    if (!d) return;
+    const dy = e.clientY - d.y;
+    if (Math.abs(dy) < 8) step(full && canDock ? 1 : -1); // a tap: one step
+    else if (dy < -40) step(-1);
+    else if (dy > 40) step(1);
+  };
+  return (
+    <section className={`touch-sheet${full ? ' sheet-full' : ''}`} aria-label={title || t('Kişi')}
+      style={pull ? { transform: `translateY(${pull}px)`, transition: 'none' } : undefined}>
+      <div className="sheet-grip" role="button" tabIndex={0} aria-label={full && canDock ? t('Ayrıntıları kapat') : full ? t('Kapat') : t('Ayrıntıları aç')}
+        onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { drag.current = null; setPull(0); }}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); step(full && canDock ? 1 : -1); } }}>
+        <span aria-hidden="true" />
+      </div>
+      {canDock && !full && (
+        <div className="sheet-head">
+          <b className="sheet-title">{title}</b>
+          <button className="ui-btn sheet-details" onClick={() => onFull(true)}><ChevronUp size={16} /> {t('Ayrıntılar')}</button>
+          <button className="ui-btn ui-btn-icon" onClick={onClose} aria-label={t('Kapat')}><XIcon size={18} /></button>
+        </div>
+      )}
+      <div className="sheet-body">{children}</div>
+    </section>
   );
 }
 
@@ -255,7 +315,9 @@ function App() {
   const [aboutOpen, setAboutOpen] = React.useState(false);
   // a phone: the patient's name and date of birth in a small window of their own (the bar has no room)
   const [patientOpen, setPatientOpen] = React.useState(false);
-  const phone = usePhone();
+  const phoneScreen = usePhone();
+  const phone = view.touchMode === 'on' || (view.touchMode !== 'off' && phoneScreen); // the touch mode
+  const touch = phone;
   // a phone: the side panel's sheet at half height, or drawn up to the whole screen
   const [sheetFull, setSheetFull] = React.useState(false);
   // a phone's browser closes a tab left in the background more readily: unsaved work is easier to lose
@@ -609,6 +671,8 @@ function App() {
     else if (id === 'tour') startTour();
     else if (id === 'redo') handleRedo();
     else if (id === 'settings') openSettings();
+    else if (id === 'undo') handleUndo();
+    else if (id === 'about') setAboutOpen(true);
   };
   const handleOpenProject = (e) => {
     const file = e.target.files && e.target.files[0];
@@ -744,9 +808,75 @@ function App() {
   // the tap that closed a pop-up window does only that
   const onBackgroundClick = React.useCallback(() => stepBackRef.current(), []);
 
+  // the ring round the selected person, or (touch mode) its labelled tiles in the sheet
+  // touch mode: one person chosen gets the tiles; two people, a couple or several go straight to the details
+  const dockable = !!selectedNode && !selectedNode.placeholder && !selectedNode2 && (selectedIds || []).length <= 1;
+  const touchTitle = selectedNode && !selectedNode2 ? [computePedigreeIds(pedigreeData.nodes || []).get(selectedNode.id)?.displayId, selectedNode.displayLabel].filter(Boolean).join(' · ') : '';
+  const ringOf = (anchor, panBy, dock) => (
+            <RadialAddMenu ref={ringRef} anchor={anchor} node={selectedNode} pedigreeData={pedigreeData} onNeedRoom={panBy} dock={dock}
+              onAddSibling={addSiblingTo} onAddSpouse={addSpouseTo} onAddParents={addParentsTo} onAddTwin={addMultipleSibling}
+              onUpdate={updateIndividual} onSetProband={setProband} onClearProband={clearProband} onSetConsultand={setConsultand} onClearConsultand={clearConsultand}
+              onAddFinding={addFinding} onSetFindingStatus={setFindingStatus} onSetFindingStyle={setFindingStyle} onSetFindingOnset={setFindingOnset} onRenameFinding={renameFinding}
+              onAddChild={(unionId, sex, targetId, extra) => (unionId ? addChildToUnion(unionId, sex, extra) : addChildTo(targetId, sex, extra))}
+              sameSex={!!view.sameSexPartners} />
+  );
+  const editorEl = (
+        <IndividualEditor
+          node={selectedNode}
+          node2={selectedNode2}
+          pedigreeData={pedigreeData}
+          onUpdate={updateIndividual}
+          onAddSpouse={addSpouseTo}
+          onAddChild={(unionId, sex, targetId, extra) => {
+            if (unionId) {
+              addChildToUnion(unionId, sex, extra);
+            } else if (targetId) {
+              addChildTo(targetId, sex, extra);
+            }
+          }}
+          onSetProband={setProband}
+          onClearProband={clearProband}
+          onDeleteIndividual={deleteIndividual}
+          onCreateUnion={createUnionBetween}
+          onMakeSiblings={addCustomConsanguinity}
+          onClearSelection={clearSelection}
+          onReorderChild={reorderChild}
+          onSetUnionRelationshipBackground={setUnionRelationshipBackground}
+          onSetLineNote={setLineNote}
+          onSetUnionStatus={setUnionStatus}
+          onSetChildlessness={setChildlessness}
+          onSetPregnancyKind={setPregnancyKind}
+          onSetGestationWeeks={setGestationWeeks}
+          onSetMultipleBirth={setMultipleBirth}
+          onAddMultiple={addMultipleSibling}
+          onSetZygosity={setMultipleZygosity}
+          onLeaveMultiple={leaveMultipleBirth}
+          onSetGroupCount={setGroupCount}
+          onSplitGroup={splitGroup}
+          mergeCheck={mergeCheck}
+          adoptionInfo={adoptionInfo}
+          onSetAdoption={setAdoption}
+          reproInfo={reproInfo}
+          onAddRepro={addReproductiveLink}
+          onRemoveRepro={removeReproductiveLink}
+          onSetOwnGamete={setOwnGamete}
+          onMergeGroup={mergeIntoGroup}
+          onAddFinding={addFinding}
+          onSetFindingStatus={setFindingStatus}
+          onSetFindingStyle={setFindingStyle}
+          selectedNodes={selectedNodes}
+          onUpdateMany={updateMany}
+          onSetFindingStatusMany={setFindingStatusMany}
+          onAddFindingMany={addFindingMany}
+          wizardParents={wizardData.parents}
+          onSetParentsField={(field, value) => updateWizardData('parents', field, value)}
+          onAddParents={addParentsTo}
+          onAddSibling={addSiblingTo}
+        />
+  );
   return (
     <>
-    <div className={`app-shell${selectedNode || selectedNode2 ? ' has-editor' : ''}`} ref={shellRef}
+    <div className={`app-shell${selectedNode || selectedNode2 ? ' has-editor' : ''}${touch ? ' touch' : ''}`} ref={shellRef}
       style={view.panelWidth ? { '--panel-w': `${view.panelWidth}px` } : undefined}>
 
       {/* KI-5/KI-6: toolbar and notices sit in normal flow ABOVE the canvas —
@@ -754,7 +884,7 @@ function App() {
           narrow windows instead of overlapping the canvas controls. The
           toolbar spans the person panel too, so selecting someone never
           changes its height (and never moves the drawing). */}
-      <div className="canvas-toolbar toolbar" ref={toolbarRef} data-fold="0">
+      <div className={`canvas-toolbar toolbar${touch ? ' touch-bar' : ''}`} ref={toolbarRef} data-fold="0">
         <div className="keys-wrap" data-popup="about">
           <button className="brand toolbar-brand brand-btn" onClick={() => setAboutOpen(v => !v)} aria-expanded={aboutOpen}
             aria-label={t('PediTree hakkında')} title={t('PediTree hakkında: sürüm, atıf, lisans')}>
@@ -780,7 +910,7 @@ function App() {
           // a phone: the name and date of birth wait behind one button (clinician request 2026-11-10)
           <div className="keys-wrap" data-popup="patient">
             <button className="ui-btn ui-btn-icon patient-btn" onClick={() => setPatientOpen(v => !v)} aria-expanded={patientOpen}
-              aria-label={t('Hasta bilgileri')} title={t('Hasta adı ve doğum tarihi')}><UserRound size={16} /></button>
+              aria-label={t('Hasta bilgileri')} title={t('Hasta adı ve doğum tarihi')}><UserRound size={16} /><span className="patient-btn-name">{doc.patientName || t('Hasta')}</span></button>
             {patientOpen && (
               <div className="keys-popover share-popover patient-popover" role="dialog" aria-label={t('Hasta bilgileri')}>
                 <div className="keys-title">{t('Hasta bilgileri')}</div>
@@ -964,8 +1094,13 @@ function App() {
         <div className="toolbar-sep" data-fold-order="10" />
           {/* shown only while some buttons had no room on the bar (a tablet; clinician report 2026-11-09) */}
           <div className="keys-wrap toolbar-more" data-popup="more">
-            <button className="ui-btn ui-btn-icon" onClick={() => setMoreItems(v => (v ? null : overflowed(toolbarRef.current)))} aria-expanded={!!moreItems}
-              aria-label={t('Diğer')} title={t('Üst çubuğa sığmayan düğmeler')}><MoreHorizontal size={16} /></button>
+            {touch ? (
+              <button className="ui-btn touch-menu-btn" onClick={() => setMoreItems(v => (v ? null : TOUCH_MENU))} aria-expanded={!!moreItems}
+                aria-label={t('Menü')}><MenuIcon size={18} /> <span>{t('Menü')}</span></button>
+            ) : (
+              <button className="ui-btn ui-btn-icon" onClick={() => setMoreItems(v => (v ? null : overflowed(toolbarRef.current)))} aria-expanded={!!moreItems}
+                aria-label={t('Diğer')} title={t('Üst çubuğa sığmayan düğmeler')}><MoreHorizontal size={16} /></button>
+            )}
             {moreItems && <MoreMenu items={moreItems} multiSelect={multiSelect} onPick={runMore} />}
           </div>
           <button className="ui-btn ui-btn-icon tour-btn" data-overflow="tour" data-overflow-order="10" onClick={startTour} aria-label={t('Tanıtım turu')}
@@ -1075,7 +1210,7 @@ function App() {
           edges={pedigreeData.edges || []}
           selectedNodeId={selectedId}
           selectedNodeId2={selectedId2}
-          keepAbove={phone && (selectedNode || selectedNode2) && !sheetFull ? 'sheet' : null}
+          keepAbove={touch && dockable && !sheetFull ? 'sheet' : null}
           selectedIds={selectedIds || []}
           multiSelect={multiSelect}
           onNodeDrop={dropOnto}
@@ -1107,14 +1242,7 @@ function App() {
             else if (kind === 'lmp') updateIndividual(target, { lmp: v.trim() });
             else updateIndividual(target, { [kind]: v }); // displayLabel, condition, causeOfDeath
           }}
-          renderQuickBar={(anchor, panBy) => ringHidden ? null : (
-            <RadialAddMenu ref={ringRef} anchor={anchor} node={selectedNode} pedigreeData={pedigreeData} onNeedRoom={panBy}
-              onAddSibling={addSiblingTo} onAddSpouse={addSpouseTo} onAddParents={addParentsTo} onAddTwin={addMultipleSibling}
-              onUpdate={updateIndividual} onSetProband={setProband} onClearProband={clearProband} onSetConsultand={setConsultand} onClearConsultand={clearConsultand}
-              onAddFinding={addFinding} onSetFindingStatus={setFindingStatus} onSetFindingStyle={setFindingStyle} onSetFindingOnset={setFindingOnset} onRenameFinding={renameFinding}
-              onAddChild={(unionId, sex, targetId, extra) => (unionId ? addChildToUnion(unionId, sex, extra) : addChildTo(targetId, sex, extra))}
-              sameSex={!!view.sameSexPartners} />
-          )}
+          renderQuickBar={(anchor, panBy) => (ringHidden || touch ? null : ringOf(anchor, panBy, false))}
         />
         </div>
       </div>
@@ -1122,67 +1250,15 @@ function App() {
       {(selectedNode || selectedNode2) && !phone && (
         <PanelResizer shellRef={shellRef} width={view.panelWidth} onChange={(w) => setView({ panelWidth: w })} />
       )}
-      <SidePanel open={!!(selectedNode || selectedNode2)} full={phone && sheetFull}>
-        {/* a phone: the sheet's handle draws it up to the whole screen and back (clinician request 2026-11-10) */}
-        {phone && (
-          <button className="sheet-handle" onClick={() => setSheetFull(v => !v)} aria-expanded={sheetFull}
-            aria-label={sheetFull ? t('Paneli küçült') : t('Paneli büyüt')} title={sheetFull ? t('Paneli küçült') : t('Paneli büyüt')}>
-            <span aria-hidden="true" />
-          </button>
-        )}
-        <IndividualEditor
-          node={selectedNode}
-          node2={selectedNode2}
-          pedigreeData={pedigreeData}
-          onUpdate={updateIndividual}
-          onAddSpouse={addSpouseTo}
-          onAddChild={(unionId, sex, targetId, extra) => {
-            if (unionId) {
-              addChildToUnion(unionId, sex, extra);
-            } else if (targetId) {
-              addChildTo(targetId, sex, extra);
-            }
-          }}
-          onSetProband={setProband}
-          onClearProband={clearProband}
-          onDeleteIndividual={deleteIndividual}
-          onCreateUnion={createUnionBetween}
-          onMakeSiblings={addCustomConsanguinity}
-          onClearSelection={clearSelection}
-          onReorderChild={reorderChild}
-          onSetUnionRelationshipBackground={setUnionRelationshipBackground}
-          onSetLineNote={setLineNote}
-          onSetUnionStatus={setUnionStatus}
-          onSetChildlessness={setChildlessness}
-          onSetPregnancyKind={setPregnancyKind}
-          onSetGestationWeeks={setGestationWeeks}
-          onSetMultipleBirth={setMultipleBirth}
-          onAddMultiple={addMultipleSibling}
-          onSetZygosity={setMultipleZygosity}
-          onLeaveMultiple={leaveMultipleBirth}
-          onSetGroupCount={setGroupCount}
-          onSplitGroup={splitGroup}
-          mergeCheck={mergeCheck}
-          adoptionInfo={adoptionInfo}
-          onSetAdoption={setAdoption}
-          reproInfo={reproInfo}
-          onAddRepro={addReproductiveLink}
-          onRemoveRepro={removeReproductiveLink}
-          onSetOwnGamete={setOwnGamete}
-          onMergeGroup={mergeIntoGroup}
-          onAddFinding={addFinding}
-          onSetFindingStatus={setFindingStatus}
-          onSetFindingStyle={setFindingStyle}
-          selectedNodes={selectedNodes}
-          onUpdateMany={updateMany}
-          onSetFindingStatusMany={setFindingStatusMany}
-          onAddFindingMany={addFindingMany}
-          wizardParents={wizardData.parents}
-          onSetParentsField={(field, value) => updateWizardData('parents', field, value)}
-          onAddParents={addParentsTo}
-          onAddSibling={addSiblingTo}
-        />
-      </SidePanel>
+      {!touch && <SidePanel open={!!(selectedNode || selectedNode2)}>
+        {editorEl}
+      </SidePanel>}
+      {touch && (selectedNode || selectedNode2) && (
+        <TouchSheet full={sheetFull || !dockable} canDock={dockable} onFull={setSheetFull} onClose={() => { clearSelection(); setSheetFull(false); }}
+          title={touchTitle}>
+          {dockable && !sheetFull ? ringOf({ x: 0, y: 0 }, null, true) : editorEl}
+        </TouchSheet>
+      )}
     </div>
     {tourCtx && <Tour ctx={tourCtx} onClose={endTour} />}
     {/* the first opening on this device offers the tour, once; "?" in the top bar brings it back */}
