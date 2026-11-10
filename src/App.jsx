@@ -26,7 +26,7 @@ import { ProductInfo, LicenseInfo, CitationInfo, FeedbackInfo } from './componen
 import { nameCase } from './utils/nameCase';
 import { RELEASE_STAGE } from './utils/appInfo';
 import { watchToolbar, overflowed } from './utils/toolbarFit';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check, CircleHelp } from 'lucide-react';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check, CircleHelp, UserRound, ChevronUp } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
 // the clinician's logo (docs/brand/peditree-logo.webp): the tree, and the name in its own lettering
@@ -38,7 +38,23 @@ const MORE = {
   cite: [Quote, tk('Atıf')], feedback: [MessageSquareText, tk('Geri bildirim')], print: [Printer, tk('Yazdır')],
   share: [Share2, tk('Paylaş')], multi: [CheckSquare, tk('Çoklu seçim')], relayout: [LayoutGrid, tk('Konumlandır')],
   new: [FilePlus2, tk('Yeni')], open: [FolderOpen, tk('Aç')],
+  // on a phone only (they come last; a tablet keeps them on the bar): clinician 2026-11-10
+  tour: [CircleHelp, tk('Tanıtım turu')], redo: [Redo2, tk('Yinele')], settings: [SlidersHorizontal, tk('Ayarlar')],
 };
+/** A phone (clinician request 2026-11-10): the top bar in one row, the side panel a sheet from below. ui.css has the same width. */
+const PHONE = '(max-width: 600px)';
+function usePhone() {
+  const query = () => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia(PHONE).matches;
+  const [phone, setPhone] = React.useState(query);
+  React.useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const m = window.matchMedia(PHONE);
+    const on = () => setPhone(m.matches);
+    if (m.addEventListener) m.addEventListener('change', on); else if (m.addListener) m.addListener(on);
+    return () => { if (m.removeEventListener) m.removeEventListener('change', on); else if (m.removeListener) m.removeListener(on); };
+  }, []);
+  return phone;
+}
 /** A finger or a pen (the multi-select switch is for touch screens). */
 const coarsePointer = () => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
 
@@ -77,13 +93,14 @@ class SidePanel extends React.Component {
     document.body.appendChild(ghost);
     ghost.scrollTop = scrollTop;
     const motion = ghost.animate(
-      [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(28px)' }],
+      // a phone's sheet goes down, the side panel to the right
+      [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: window.matchMedia && window.matchMedia(PHONE).matches ? 'translateY(40px)' : 'translateX(28px)' }],
       { duration: PANEL_OUT_MS, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' },
     );
     const done = () => ghost.remove();
     if (motion && motion.finished) motion.finished.then(done, done); else setTimeout(done, PANEL_OUT_MS);
   }
-  render() { return <aside ref={this.ref} className="side side-right editor-panel">{this.props.children}</aside>; }
+  render() { return <aside ref={this.ref} className={`side side-right editor-panel${this.props.full ? ' sheet-full' : ''}`}>{this.props.children}</aside>; }
 }
 
 /** "Diğer" (⋯): the buttons the bar had no room for, in their order; a choice does what the button does. */
@@ -236,6 +253,13 @@ function App() {
   const [openHelp, setOpenHelp] = React.useState(false); // "Aç"'s window: which files it opens
   // the logo: what PediTree is, its version and licence (the rest: Ayarlar → Hakkında)
   const [aboutOpen, setAboutOpen] = React.useState(false);
+  // a phone: the patient's name and date of birth in a small window of their own (the bar has no room)
+  const [patientOpen, setPatientOpen] = React.useState(false);
+  const phone = usePhone();
+  // a phone: the side panel's sheet at half height, or drawn up to the whole screen
+  const [sheetFull, setSheetFull] = React.useState(false);
+  // a phone's browser closes a tab left in the background more readily: unsaved work is easier to lose
+  const [saveTipClosed, setSaveTipClosed] = React.useState(false);
   // an export in the style the clinician chose for exports, the typeface inside the file;
   // fontMissing: the typeface could not be put in (the file then shows a system typeface elsewhere)
   const exportOpts = async (extra = {}) => {
@@ -493,7 +517,7 @@ function App() {
 
   // the toolbar's pop-up windows (Yeni, Paylaş, Diğer, keyboard help) close
   // on a click anywhere outside them, or Escape (clinician request 2026-10-27)
-  const popupOpen = !!infoOpen || newMenu || relationOpen || downloadOpen || !!share || settingsOpen || aboutOpen || openHelp || !!moreItems;
+  const popupOpen = !!infoOpen || newMenu || relationOpen || downloadOpen || !!share || settingsOpen || aboutOpen || openHelp || !!moreItems || patientOpen;
   const popupClosedAt = React.useRef(-Infinity);
   // The tap that closes a pop-up window does only that (clinician request
   // 2026-10-27): the click that ends that same tap is stopped before it
@@ -522,6 +546,7 @@ function App() {
       if (except !== 'share') setShare(null);
       if (except !== 'settings') setSettingsOpen(false);
       if (except !== 'about') setAboutOpen(false);
+      if (except !== 'patient') setPatientOpen(false);
       if (except !== 'more') setMoreItems(null);
     };
     const onDown = (e) => {
@@ -581,6 +606,9 @@ function App() {
     else if (id === 'relayout') relayout();
     else if (id === 'new') setNewMenu(true);
     else if (id === 'open') handleOpenClick();
+    else if (id === 'tour') startTour();
+    else if (id === 'redo') handleRedo();
+    else if (id === 'settings') openSettings();
   };
   const handleOpenProject = (e) => {
     const file = e.target.files && e.target.files[0];
@@ -748,6 +776,30 @@ function App() {
           )}
         </div>
         <div className="toolbar-sep" data-fold-order="10" />
+        {phone ? (
+          // a phone: the name and date of birth wait behind one button (clinician request 2026-11-10)
+          <div className="keys-wrap" data-popup="patient">
+            <button className="ui-btn ui-btn-icon patient-btn" onClick={() => setPatientOpen(v => !v)} aria-expanded={patientOpen}
+              aria-label={t('Hasta bilgileri')} title={t('Hasta adı ve doğum tarihi')}><UserRound size={16} /></button>
+            {patientOpen && (
+              <div className="keys-popover share-popover patient-popover" role="dialog" aria-label={t('Hasta bilgileri')}>
+                <div className="keys-title">{t('Hasta bilgileri')}</div>
+        <input className="input patient-name" data-fold-order="9" value={doc.patientName || ''} placeholder={t('Hasta adı soyadı')}
+                  aria-label={t('Hasta adı soyadı')} onChange={e => setPatientName(e.target.value)}
+                  onBlur={e => setPatientName(nameCase(e.target.value).trim())} />
+                {/* optional: the proband's age follows it, as of today (clinician decision 2026-10-25) */}
+                <label className="toolbar-field" title={t('Probandın doğum tarihi; proband işaretlenmemişse danışanın doğum tarihi. İsteğe bağlıdır; girildiğinde yaş bugünün tarihine göre hesaplanır. Tarih kısaltılarak da yazılabilir (3.5.25).')}>
+                  {/* the last thing to give way on a narrow tablet: the box keeps its name for screen readers and its tooltip */}
+                  <span data-overflow-order="9">{t('Doğum')}</span>
+                  {/* typed the quick way: 3.5.25, 3/05/2025, 030525 … (clinician request 2026-10-25) */}
+                  <DraftField key={probandNode ? probandNode.id : 'none'} type="text" inputMode="numeric" className="input birth-date"
+                    value={formatDate(probandNode && probandNode.birthDate)} placeholder={t('gg.aa.yyyy')} disabled={!probandNode}
+                    aria-label={t('Probandın ya da danışanın doğum tarihi')} onCommit={v => setProbandBirthDate(v.trim() ? (parseTypedDate(v) || v.trim()) : '')} />
+                </label>
+              </div>
+            )}
+          </div>
+        ) : (<>
         <input className="input patient-name" data-fold-order="9" value={doc.patientName || ''} placeholder={t('Hasta adı soyadı')}
           aria-label={t('Hasta adı soyadı')} onChange={e => setPatientName(e.target.value)}
           onBlur={e => setPatientName(nameCase(e.target.value).trim())} />
@@ -760,6 +812,7 @@ function App() {
             value={formatDate(probandNode && probandNode.birthDate)} placeholder={t('gg.aa.yyyy')} disabled={!probandNode}
             aria-label={t('Probandın ya da danışanın doğum tarihi')} onCommit={v => setProbandBirthDate(v.trim() ? (parseTypedDate(v) || v.trim()) : '')} />
         </label>
+        </>)}
         <div className="toolbar-sep" data-fold-order="10" />
         <div className="toolbar-group">
           <div className="keys-wrap" data-popup="new">
@@ -851,7 +904,7 @@ function App() {
         <div className="toolbar-group">
           <button className="ui-btn ui-btn-icon" onClick={handleUndo} disabled={!_history || _history.length === 0}
             title={_history && _history.length > 0 ? t('Geri al ({n} adım)', { n: _history.length }) : t('Geri alınacak adım yok')} aria-label={t('Geri al')}><Undo2 size={15} /></button>
-          <button className="ui-btn ui-btn-icon" onClick={handleRedo} disabled={!_future || _future.length === 0}
+          <button className="ui-btn ui-btn-icon" data-overflow="redo" data-overflow-order="11" onClick={handleRedo} disabled={!_future || _future.length === 0}
             title={_future && _future.length > 0 ? t('Yinele ({n} adım)', { n: _future.length }) : t('Yinelenecek adım yok')} aria-label={t('Yinele')}><Redo2 size={15} /></button>
           <button className="ui-btn" data-overflow="relayout" data-overflow-order="8" onClick={relayout} title={t('Konumlandır, kişileri çizimde yeniden yerleştirir. Akrabalık ilişkileri değişmez ve işlem geri alınabilir.')}><LayoutGrid size={15} /> <span className="btn-label" data-fold-order="4">{t('Konumlandır')}</span></button>
         </div>
@@ -915,10 +968,10 @@ function App() {
               aria-label={t('Diğer')} title={t('Üst çubuğa sığmayan düğmeler')}><MoreHorizontal size={16} /></button>
             {moreItems && <MoreMenu items={moreItems} multiSelect={multiSelect} onPick={runMore} />}
           </div>
-          <button className="ui-btn ui-btn-icon tour-btn" onClick={startTour} aria-label={t('Tanıtım turu')}
+          <button className="ui-btn ui-btn-icon tour-btn" data-overflow="tour" data-overflow-order="10" onClick={startTour} aria-label={t('Tanıtım turu')}
             title={t('Tanıtım turu: PediTree’yi örnek bir aile üzerinde adım adım tanıtır')}><CircleHelp size={16} /></button>
           <div className="keys-wrap" data-popup="settings">
-            <button className="ui-btn" onClick={() => (settingsOpen ? setSettingsOpen(false) : openSettings())} aria-expanded={settingsOpen}
+            <button className="ui-btn" data-overflow="settings" data-overflow-order="12" onClick={() => (settingsOpen ? setSettingsOpen(false) : openSettings())} aria-expanded={settingsOpen}
               title={t('Ayarlar: dil, çizimin görünümü, yazı tipi, halka menü ve indirilen resimler')}>
               <SlidersHorizontal size={15} /> <span className="btn-label" data-fold-order="6">{t('Ayarlar')}</span>
             </button>
@@ -943,6 +996,15 @@ function App() {
             <p className="notice-text">
               {t('Tarayıcının depolama alanı dolu ya da kapalı olduğundan son değişiklikler sayfa yenilendiğinde kaybolabilir. Çalışmanızı “Kaydet” ile bir dosyaya kaydetmeniz önerilir.')}
             </p>
+          </div>
+        )}
+        {phone && !saveTipClosed && !tourIds && needsLeaveWarning(doc, downloadedDoc.current) && (
+          <div className="warning-panel save-tip" data-tone="info" role="status">
+            <div className="notice-head">
+              <h4 className="notice-title"><Save size={16} /> {t('Çalışmanızı kaydedin')}</h4>
+              <button className="notice-dismiss" onClick={() => setSaveTipClosed(true)} title={t('Kapat')} aria-label={t('Kapat')}>×</button>
+            </div>
+            <p className="notice-text">{t('Telefon tarayıcıları arka planda kalan sekmeleri kapatabilir; bu durumda kaydedilmemiş çizim kaybolur. Çalışmanızı ara ara “Kaydet” ile kaydetmeniz önerilir.')}</p>
           </div>
         )}
         {actionNotice && (
@@ -1013,6 +1075,7 @@ function App() {
           edges={pedigreeData.edges || []}
           selectedNodeId={selectedId}
           selectedNodeId2={selectedId2}
+          keepAbove={phone && (selectedNode || selectedNode2) && !sheetFull ? 'sheet' : null}
           selectedIds={selectedIds || []}
           multiSelect={multiSelect}
           onNodeDrop={dropOnto}
@@ -1056,10 +1119,17 @@ function App() {
         </div>
       </div>
 
-      {(selectedNode || selectedNode2) && (
+      {(selectedNode || selectedNode2) && !phone && (
         <PanelResizer shellRef={shellRef} width={view.panelWidth} onChange={(w) => setView({ panelWidth: w })} />
       )}
-      <SidePanel open={!!(selectedNode || selectedNode2)}>
+      <SidePanel open={!!(selectedNode || selectedNode2)} full={phone && sheetFull}>
+        {/* a phone: the sheet's handle draws it up to the whole screen and back (clinician request 2026-11-10) */}
+        {phone && (
+          <button className="sheet-handle" onClick={() => setSheetFull(v => !v)} aria-expanded={sheetFull}
+            aria-label={sheetFull ? t('Paneli küçült') : t('Paneli büyüt')} title={sheetFull ? t('Paneli küçült') : t('Paneli büyüt')}>
+            <span aria-hidden="true" />
+          </button>
+        )}
         <IndividualEditor
           node={selectedNode}
           node2={selectedNode2}
