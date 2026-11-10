@@ -245,14 +245,14 @@ export function auditPedigreeGraph(graph) {
       issues.push({
         severity: 'warning',
         code: 'PROBAND_MISSING',
-        message: t('Pedigride proband (index vaka) işaretlenmemiş.'),
+        message: t('Pedigride proband (indeks olgu) işaretlenmemiş.'),
         ids: [],
       });
     } else if (probandIds.length > 1) {
       issues.push({
         severity: 'error',
         code: 'PROBAND_MULTIPLE',
-        message: t('Pedigride birden fazla proband işaretli: {v0}', { v0: probandIds.join(', ') }),
+        message: t('Pedigride birden fazla proband işaretlenmiş: {v0}', { v0: probandIds.join(', ') }),
         ids: probandIds,
       });
     }
@@ -285,7 +285,7 @@ export function auditPedigreeGraph(graph) {
       issues.push({
         severity: 'warning',
         code: 'CONSANGUINITY_UNRESOLVED',
-        message: t('Union \'{id}\' akraba evliliği olarak işaretli; ortak ata yapısı grafikte henüz modellenmedi (reported_unresolved). Bu, çizimi etkilemez — standart siyah çift çizgi zaten gösteriliyor; sadece derece/ortak ata bilgisi kayıt amaçlı eksik.', { id: u.id }),
+        message: t('Bir çift ({id}) akraba evliliği olarak işaretli, ancak ortak atalar çizimde yer almıyor. Bu durum çizimi etkilemez; standart çift çizgi gösterilmektedir. Yalnızca derece ve ortak ata bilgisi kayıtta eksiktir.', { id: u.id }),
         ids: [u.id],
       });
     }
@@ -306,7 +306,7 @@ export function auditPedigreeGraph(graph) {
       issues.push({
         severity: 'error',
         code: 'CONSANGUINITY_STATUS_MISSING',
-        message: t('Union \'{id}\' consanguineous=true ancak consanguinityStatus geçerli bir değere sahip değil (\'{consanguinityStatus}\').', { id: u.id, consanguinityStatus: u.consanguinityStatus }),
+        message: t('Bir çift ({id}) akraba evliliği olarak işaretli, ancak akrabalık durumu geçersiz (“{consanguinityStatus}”).', { id: u.id, consanguinityStatus: u.consanguinityStatus }),
         ids: [u.id],
       });
     }

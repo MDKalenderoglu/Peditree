@@ -68,7 +68,7 @@ describe('donors and carriers', () => {
     S().addSiblingTo('proband', 'male', { count: 3 });
     const group = g().individuals.find(i => i.count).id;
     expect(S().addReproductiveLink(group, 'sperm_donor').ok).toBe(false);
-    expect(S().addReproductiveLink('pat_gf', 'sperm_donor').reason).toMatch(/anne-babası/);
+    expect(S().addReproductiveLink('pat_gf', 'sperm_donor').reason).toMatch(/anne ve babasının/);
   });
 
   it('a relative may carry: the mother sister as the gestational carrier keeps her own family', () => {
@@ -84,7 +84,7 @@ describe('donors and carriers', () => {
     const d = add('proband', 'sperm_donor');
     for (const r of [S().addParentsTo(d), S().addSpouseTo(d, 'female'), S().addSiblingTo(d, 'male', { createParents: true }), S().addChildTo(d, 'male')]) {
       expect(r.ok).toBe(false);
-      expect(r.reason).toMatch(/aile öyküsünü not ve bulgu/);
+      expect(r.reason).toMatch(/aile öyküsü not ve bulgu/);
     }
     // notes and findings are fine
     expect(S().updateIndividual(d, { notes: 'Babası 45 yaşında MI' }).ok).toBe(true);

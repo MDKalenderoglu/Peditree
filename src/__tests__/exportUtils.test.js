@@ -27,12 +27,12 @@ afterEach(() => {
 describe('exportUtils.js (v0.2)', () => {
   it('exportSVG throws an explicit ExportError when no svg element is available (no ref, no #pedigree-svg)', () => {
     expect(() => exportSVG(null)).toThrow(ExportError);
-    expect(() => exportSVG(undefined)).toThrow(/Pedigri çizimi bulunamadı/);
+    expect(() => exportSVG(undefined)).toThrow(/pedigri çizimi bulunamadı/);
   });
 
   it('exportPNG rejects with an explicit ExportError when no svg element is available', async () => {
     await expect(exportPNG(null)).rejects.toBeInstanceOf(ExportError);
-    await expect(exportPNG(undefined)).rejects.toThrow(/Pedigri çizimi bulunamadı/);
+    await expect(exportPNG(undefined)).rejects.toThrow(/pedigri çizimi bulunamadı/);
   });
 
   it('exportSVG succeeds and triggers a download when a real svg element is passed', () => {

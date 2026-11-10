@@ -39,7 +39,7 @@ export function migrateV1ToV2(rawWizardData, { now = new Date().toISOString() } 
   try {
     ({ graph } = deriveV1Graph(wd));
   } catch (err) {
-    return { ok: false, reason: t('Eski kayıt okunamadı (v1 grafiği oluşturulamadı): {v0}', { v0: err && err.message }) };
+    return { ok: false, reason: t('Eski kayıt okunamadı (eski biçimdeki pedigri kurulamadı): {v0}', { v0: err && err.message }) };
   }
 
   const idx = indexGraph({ ...graph, socialParentLinks: [] });
@@ -85,11 +85,11 @@ export function semanticDiff(a, b) {
     const mx = new Map(xs.map((x) => [keyOf(x), x]));
     const my = new Map(ys.map((y) => [keyOf(y), y]));
     for (const [k, x] of mx) {
-      if (!my.has(k)) { out.push(t('{kind} {k}: yalnız ilk grafikte', { kind, k })); continue; }
+      if (!my.has(k)) { out.push(t('{kind} {k}: yalnızca ilk pedigride var', { kind, k })); continue; }
       const fx = fmt(x), fy = fmt(my.get(k));
       if (fx !== fy) out.push(`${kind} ${k}: ${fx} ≠ ${fy}`);
     }
-    for (const k of my.keys()) if (!mx.has(k)) out.push(t('{kind} {k}: yalnız ikinci grafikte', { kind, k }));
+    for (const k of my.keys()) if (!mx.has(k)) out.push(t('{kind} {k}: yalnızca ikinci pedigride var', { kind, k }));
   };
   cmpById(t('kişi'), a.individuals, b.individuals, (i) => i.id, (i) => stable(i));
   cmpById('birliktelik', a.unions, b.unions, (u) => u.id, (u) => stable(u));

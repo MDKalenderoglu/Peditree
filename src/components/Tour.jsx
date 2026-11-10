@@ -125,7 +125,7 @@ export const TOUR_STEPS = [
     target: () => { const l = one('.settings-dialog .about-links'); return l ? [l.previousElementSibling && l.previousElementSibling.previousElementSibling, l.previousElementSibling, l, l.nextElementSibling] : null; },
     prepare: (c) => { c.clear(); c.openSettings('about'); } },
   { id: 'again', icon: CircleHelp, title: tk('Turu yeniden açmak'),
-    text: tk('Tura istediğiniz zaman bu düğmeden dönebilirsiniz. İyi çalışmalar.'),
+    text: tk('Tura istediğiniz zaman bu düğmeden yeniden ulaşabilirsiniz. İyi çalışmalar dileriz.'),
     target: () => one('.toolbar .tour-btn'), prepare: (c) => c.clear() },
 ];
 
@@ -420,7 +420,7 @@ export default function Tour({ ctx, onClose }) {
           {welcome ? <div className="tour-hero"><TourFamily /></div> : Icon && <span className="tour-icon" aria-hidden="true"><Icon size={18} strokeWidth={2} /></span>}
           <h3 id={titleId} className="tour-title">{t(card.title)}</h3>
           <p className="tour-text">{t(card.text)}</p>
-          {shown.folded && <p className="tour-note">{t('Ekran dar olduğu için bu düğme ⋯ Diğer menüsünde.')}</p>}
+          {shown.folded && <p className="tour-note">{t('Ekran dar olduğundan bu düğme ⋯ Diğer menüsünde yer alıyor.')}</p>}
         </div>
         {/* after the words, so it is painted over them and always takes its click (clinician 2026-11-10:
             the tour could not be left halfway — the words' box lay over the ×) */}

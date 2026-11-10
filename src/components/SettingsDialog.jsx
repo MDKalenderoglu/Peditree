@@ -20,14 +20,14 @@ import { CARRIER_MARKS } from '../graph/conditionKey';
 
 const SECTIONS = [
   { id: 'language', label: tk('Dil'), Icon: Globe, intro: tk('Ekran ve çizim ayrı dillerde olabilir.') },
-  { id: 'look', label: tk('Görünüm'), Icon: Paintbrush, intro: tk('Ekranın renkleri ve simidin saydamlığı; çizim ve dosyalar değişmez.') },
+  { id: 'look', label: tk('Görünüm'), Icon: Paintbrush, intro: tk('Ekranın renkleri ve simidin saydamlığı; çizim ve dosyalar bundan etkilenmez.') },
   { id: 'drawing', label: tk('Çizim'), Icon: Palette, intro: tk('Sembollerin ve çizgilerin anlamı hiçbir seçenekte değişmez.') },
-  { id: 'ring', label: tk('Halka menü'), Icon: CircleDot, intro: tk('Sık kullandıklarınızı öne alın. Gizlenenler halkada “Diğer…” altında durur.') },
-  { id: 'panel', label: tk('Yan panel'), Icon: PanelRight, intro: tk('Gizlenenler panelde “Diğer bilgiler” altında durur; bir kişide dolu olan her zaman görünür.') },
+  { id: 'ring', label: tk('Halka menü'), Icon: CircleDot, intro: tk('Sık kullandığınız seçenekleri öne alabilirsiniz; gizlenen seçenekler halkada “Diğer…” altında yer alır.') },
+  { id: 'panel', label: tk('Yan panel'), Icon: PanelRight, intro: tk('Gizlenen bölümler panelde “Diğer bilgiler” altında yer alır; bir kişide doldurulmuş bölüm her zaman görünür.') },
   { id: 'files', label: tk('Dosyalar'), Icon: FolderOpen, intro: null },
   // not settings but kept here (clinician requests 2026-11-04, 2026-11-05): what to look up once in a while
   { id: 'symbols', label: tk('Semboller'), Icon: Shapes, intro: tk('Çizimdeki sembollerin ve çizgilerin anlamı (NSGC 2022).'), info: true },
-  { id: 'keys', label: tk('Klavye kısayolları'), Icon: Keyboard, intro: tk('Fareyle yaptığınız her şeyi klavyeyle de yapabilirsiniz.'), info: true },
+  { id: 'keys', label: tk('Klavye kısayolları'), Icon: Keyboard, intro: tk('Fareyle yapılan her işlem klavyeyle de yapılabilir.'), info: true },
   { id: 'about', label: tk('Hakkında'), Icon: Info, intro: null, info: true },
 ];
 
@@ -64,11 +64,11 @@ function LanguageSection() {
         <Segmented label={t('Ekranın dili')} value={ui} onChange={(v) => setLang({ ui: v })}
           options={[['tr', 'Türkçe', 'tr'], ['en', 'English', 'en']]} />
       </Row>
-      <Row title={t('Çizimin dili')} hint={t('Çizimin, indirilen ve yazdırılan dosyaların dili')}>
+      <Row title={t('Çizimin dili')} hint={t('Çizimin ve indirilen ya da yazdırılan dosyaların dili')}>
         <Segmented label={t('Çizimin dili')} value={drawing} onChange={(v) => setLang({ drawing: v })}
           options={[['same', t('Ekranla aynı')], ['tr', 'Türkçe', 'tr'], ['en', 'English', 'en']]} />
       </Row>
-      <p className="set-note">{t('Yazdığınız adlar, notlar ve bulgular çevrilmez.')}</p>
+      <p className="set-note">{t('Girdiğiniz adlar, notlar ve bulgular çevrilmez.')}</p>
     </div>
   );
 }
@@ -128,22 +128,22 @@ function DrawingSection() {
   return (
     <>
       <div className="set-block">
-        <Row title={t('Çizimin görünümü')} more={t('El çiziminde çizgiler ve semboller kalemle çizilmiş gibi hafifçe titrer.')}>
+        <Row title={t('Çizimin görünümü')} more={t('El çizimi görünümünde çizgiler ve semboller kalemle çizilmiş gibi hafifçe dalgalı görünür.')}>
           <Segmented label={t('Çizimin görünümü')} value={view.drawStyle} onChange={(v) => setView({ drawStyle: v })}
             options={[['standard', t('Standart')], ['hand', t('El çizimi')]]} />
         </Row>
         {/* clinician request 2026-11-03: squared or dotted paper, like other tools */}
-        <Row title={t('Sayfa zemini')} hint={t('Yalnız ekranda')} more={t('Yalnızca ekranda: çizimle birlikte kayar ve büyür. İndirilen ve yazdırılan çizim düz kalır.')}>
+        <Row title={t('Sayfa zemini')} hint={t('Yalnız ekranda')} more={t('Yalnızca ekranda görünür ve çizimle birlikte kayıp büyür; indirilen ve yazdırılan çizimin zemini düz kalır.')}>
           <Segmented label={t('Sayfa zemini')} value={view.paper} onChange={(v) => setView({ paper: v })}
             options={PAPERS.map((p) => [p.id, <><span className="paper-swatch" data-paper={p.id} aria-hidden="true" />{t(p.label)}</>])} />
         </Row>
         {/* clinician decision 2026-11-04: the NSGC 2022 half or the classic dot, chosen by the viewer */}
-        <Row title={t('Taşıyıcı gösterimi')} hint={t('Adı girilmemiş taşıyıcı için')} more={t('Adı girilmemiş taşıyıcı için. NSGC 2022 noktayı artık önermiyor. Anahtar seçileni açıklar.')}>
+        <Row title={t('Taşıyıcı gösterimi')} hint={t('Adı girilmemiş taşıyıcı için')} more={t('Adı girilmemiş taşıyıcılık için geçerlidir. NSGC 2022 nokta gösterimini artık önermemektedir; seçilen gösterim çizimin açıklamasında belirtilir.')}>
           <Segmented label={t('Taşıyıcı gösterimi')} value={view.carrierMark} onChange={(v) => setView({ carrierMark: v })}
             options={CARRIER_MARKS.map((m) => [m.id, <><span className="carrier-swatch" data-mark={m.id} aria-hidden="true" />{t(m.label)}</>])} />
         </Row>
         {/* every text of the drawing (clinician request 2026-11-05) */}
-        <Row title={t('Yazı boyutu')} hint={t('Çizimdeki bütün yazılar')} more={t('Sembollerin altındaki yazılar, pedigri numaraları, hasta adı, açıklama ve notlar; indirilen ve yazdırılan çizimde de. Yazı büyüyünce kişiler birbirinden biraz açılır; semboller aynı boyutta kalır.')}>
+        <Row title={t('Yazı boyutu')} hint={t('Çizimdeki bütün yazılar')} more={t('Sembollerin altındaki yazıları, pedigri numaralarını, hasta adını, açıklamayı ve notları kapsar; indirilen ve yazdırılan çizimde de geçerlidir. Yazı büyüdükçe kişiler arasındaki mesafe biraz artar, semboller aynı boyutta kalır.')}>
           <Segmented label={t('Yazı boyutu')} value={view.legendSize} onChange={(v) => setView({ legendSize: v })}
             options={LEGEND_SIZES.map((z) => [z.id, t(z.label)])} />
         </Row>
@@ -155,7 +155,7 @@ function DrawingSection() {
       {/* clinician decision 2026-11-10 (NSGC 2022 records same-sex relationships): off unless chosen */}
       <div className="set-block">
         <Row title={t('Aynı cinsiyetten eşler')} hint={t('İki kadın ya da iki erkek eş olabilir')}
-          more={t('İki kadın ya da iki erkek eş olarak eklenebilir. Biyolojik çocukları donörle (sperm donörü; yumurta donörü ya da taşıyıcı anne) ya da evlat edinilmiş olarak eklenir. Doğumda atanan cinsiyetleri farklıysa (AMAB / AFAB) çocuk doğrudan eklenir.')}>
+          more={t('İki kadın ya da iki erkek eş olarak eklenebilir. Bu çiftlerin biyolojik çocukları donörle (sperm donörü; yumurta donörü ya da taşıyıcı anne) ya da evlat edinilmiş olarak eklenir. Eşlerin doğumda atanan cinsiyetleri farklıysa (AMAB / AFAB) çocuk doğrudan eklenebilir.')}>
           <Switch checked={!!view.sameSexPartners} label={t('Aynı cinsiyetten eşler')} onChange={(v) => setView({ sameSexPartners: v })} />
         </Row>
       </div>
@@ -176,8 +176,8 @@ function DrawingSection() {
           ))}
         </div>
         <label className="set-row set-row-switch">
-          <span className="set-row-text"><span className="set-row-title">{t('El yazısında numaralar düz')}</span><span className="set-row-hint">{t('Pedigri numaraları (I-1, II-3) el yazısında da düz yazılsın')}</span></span>
-          <Switch checked={!!view.plainNumbers} label={t('Pedigri numaraları (I-1, II-3) el yazısında da düz yazılsın')} onChange={(v) => setView({ plainNumbers: v })} />
+          <span className="set-row-text"><span className="set-row-title">{t('El yazısında numaralar düz')}</span><span className="set-row-hint">{t('Pedigri numaraları (I-1, II-3) el çizimi görünümünde de düz yazıyla gösterilsin')}</span></span>
+          <Switch checked={!!view.plainNumbers} label={t('Pedigri numaraları (I-1, II-3) el çizimi görünümünde de düz yazıyla gösterilsin')} onChange={(v) => setView({ plainNumbers: v })} />
         </label>
       </div>
     </>
@@ -192,9 +192,9 @@ function FilesSection() {
       <label className="set-row set-row-switch">
         <span className="set-row-text">
           <span className="set-row-title">{t('“Aç” penceresi')}</span>
-          <span className="set-row-hint">{t('“Aç”a basınca hangi dosyaların açılabildiğini anlatan pencere görünsün')}</span>
+          <span className="set-row-hint">{t('“Aç” düğmesine basıldığında hangi dosyaların açılabileceğini açıklayan pencere gösterilsin')}</span>
         </span>
-        <Switch checked={!!view.openHelp} label={t('“Aç”a basınca hangi dosyaların açılabildiğini anlatan pencere görünsün')} onChange={(v) => setView({ openHelp: v })} />
+        <Switch checked={!!view.openHelp} label={t('“Aç” düğmesine basıldığında hangi dosyaların açılabileceğini açıklayan pencere gösterilsin')} onChange={(v) => setView({ openHelp: v })} />
       </label>
     </div>
   );
@@ -266,7 +266,7 @@ export default function SettingsDialog({ onClose, initial = 'language' }) {
           <Body />
         </section>
       </div>
-      {!current.info && <p className="settings-foot" title={t('Bu ayarlar yalnızca bu cihazda saklanır. Pedigri dosyası değişmez; dosyayı açan başka biri kendi ayarıyla görür.')}>{t('Yalnız bu cihazda saklanır; pedigri dosyası değişmez.')}</p>}
+      {!current.info && <p className="settings-foot" title={t('Bu ayarlar yalnızca bu cihazda saklanır ve pedigri dosyasını değiştirmez; dosyayı açan başka bir kişi çizimi kendi ayarlarıyla görür.')}>{t('Yalnızca bu cihazda saklanır; pedigri dosyasını değiştirmez.')}</p>}
     </div>
   );
 }

@@ -129,7 +129,7 @@ describe('v0.3a.1 round 2 — computeSiblingCreationPlan ("Kardeş Yap" safety)'
     const state = usePedigreeStore.getState();
     const plan = computeSiblingCreationPlan(state.pedigreeData, 'mat_uncle_0', 'pat_aunt_0');
     expect(plan.ok).toBe(false);
-    expect(plan.reason).toMatch(/anne-babası ayrı ayrı çizili/);
+    expect(plan.reason).toMatch(/anne ve babası ayrı ayrı çizilmiş/);
   });
 
   it('blocks a self-pair', () => {

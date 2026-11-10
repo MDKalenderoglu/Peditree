@@ -32,7 +32,7 @@ export function sidewaysMove(data, id, dir) {
     const k = rel.children.indexOf(id);
     if (dir === 'left' ? k > 0 : k < rel.children.length - 1) return { kind: 'sibling', unionId: rel.unionId, dir };
   }
-  return { kind: 'none', reason: t('Bu kişinin {v0} yer değiştirebileceği bir eşi ya da kardeşi yok.', { v0: dir === 'left' ? t('solunda') : t('sağında') }) };
+  return { kind: 'none', reason: t('Bu kişinin {v0} yer değiştirebileceği bir eşi ya da kardeşi bulunmuyor.', { v0: dir === 'left' ? t('solunda') : t('sağında') }) };
 }
 
 /** Dropped onto another person: swap with a partner, or take a sibling's place in the birth order. */
@@ -46,7 +46,7 @@ export function dropMove(data, id, targetId) {
     const from = rel.children.indexOf(id), to = rel.children.indexOf(targetId);
     return { kind: 'sibling', unionId: rel.unionId, dir: to < from ? 'left' : 'right', target: targetId };
   }
-  return { kind: 'none', reason: t('Yalnızca eşiyle yer değiştirebilir ya da kardeşleri arasında taşınabilir.') };
+  return { kind: 'none', reason: t('Kişi yalnızca eşiyle yer değiştirebilir ya da kardeşleri arasında taşınabilir.') };
 }
 
 /** The aged liveborn siblings out of age order (oldest left), for a warning. */

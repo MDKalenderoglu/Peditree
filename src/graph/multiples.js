@@ -84,7 +84,7 @@ export function setMultipleBirth(doc, childIds, zygosity = 'unknown') {
     if (!ZYGOSITY.includes(zygosity)) block(`Bilinmeyen zigosite: ${zygosity}`);
     const idx = indexGraph(d.graph);
     const uids = new Set(childIds.map((c) => idx.bioParentUnion.get(c)));
-    if (childIds.length < 2 || uids.size !== 1 || uids.has(undefined)) block(t('İkiz/üçüz yalnızca aynı anne-babanın çocukları arasında olabilir.'));
+    if (childIds.length < 2 || uids.size !== 1 || uids.has(undefined)) block(t('İkiz ya da üçüzler yalnızca aynı anne ve babanın çocukları olabilir.'));
     if (childIds.some((c) => idx.byId.get(c)?.placeholder)) block(t('Belirtilmemiş ebeveyn ikiz yapılamaz.'));
     const rel = d.graph.parentChildRelationships.find((r) => r.unionId === [...uids][0]);
     rel.multiples = rel.multiples || [];
@@ -102,7 +102,7 @@ export function addMultipleSibling(doc, personId, { sex = 'unknown', zygosity } 
   return commit(doc, (d) => {
     const idx = indexGraph(d.graph);
     const uid = idx.bioParentUnion.get(personId);
-    if (!uid) block(t('İkiz eklemek için önce anne ve baba çizili olmalı.'));
+    if (!uid) block(t('İkiz eklemek için önce anne ve babanın çizilmesi gerekir.'));
     const person = idx.byId.get(personId);
     const rel = d.graph.parentChildRelationships.find((r) => r.unionId === uid);
     const r = allocateId(d.ids, d.graph, 'twin_');
@@ -128,7 +128,7 @@ export function setMultipleZygosity(doc, personId, zygosity) {
   return commit(doc, (d) => {
     if (!ZYGOSITY.includes(zygosity)) block(`Bilinmeyen zigosite: ${zygosity}`);
     const found = groupOf(d.graph, personId);
-    if (!found) block(t('Bu kişi bir ikiz/üçüz grubunda değil.'));
+    if (!found) block(t('Bu kişi bir ikiz ya da üçüz grubunda yer almıyor.'));
     found.group.zygosity = zygosity;
   });
 }
@@ -151,7 +151,7 @@ export function multiplesWarnings(graph) {
       if (m.zygosity !== 'monozygotic') continue;
       const sexes = new Set(m.children.map((c) => byId.get(c)?.sex).filter((s) => s === 'male' || s === 'female'));
       if (sexes.size > 1) {
-        out.push({ severity: 'warning', code: 'MONOZYGOTIC_SEX_DIFFERS', message: t('Tek yumurta ikizleri olarak işaretli kişilerin cinsiyeti farklı; kontrol edin.'), ids: m.children });
+        out.push({ severity: 'warning', code: 'MONOZYGOTIC_SEX_DIFFERS', message: t('Tek yumurta ikizi olarak işaretlenen kişilerin cinsiyetleri farklı; kaydın kontrol edilmesi önerilir.'), ids: m.children });
       }
     }
   }

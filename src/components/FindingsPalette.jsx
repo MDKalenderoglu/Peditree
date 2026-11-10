@@ -82,7 +82,7 @@ function FindingName({ label, onRename }) {
   if (!onRename) return <span className="finding-name" title={label}>{label}</span>;
   if (text === null) {
     return (
-      <button className="finding-name finding-name-btn" title={t('Adı düzeltmek için tıklayın (bu bulgusu olan herkeste ve açıklamada düzelir)')}
+      <button className="finding-name finding-name-btn" title={t('Adı düzeltmek için tıklayın; değişiklik bu bulguya sahip herkese ve açıklamaya yansır')}
         aria-label={t('{label}: adı düzelt', { label })} onClick={() => { cancelled.current = false; setText(label); }}>
         <span className="finding-name-text">{label}</span><Pencil size={12} aria-hidden="true" />
       </button>
@@ -128,7 +128,7 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
             const st = stateOf(e.label);
             return (
               <div key={e.id} className="finding-row">
-                <button className="finding-glyph" title={t('Bu bulgunun sembolde gösterildiği yeri ve deseni değiştir (bu bulgusu olan herkeste değişir)')}
+                <button className="finding-glyph" title={t('Bulgunun sembolde gösterildiği bölgeyi ve deseni değiştirir; değişiklik bu bulguya sahip herkese uygulanır')}
                   onClick={() => setEditing(editing === e.id ? null : e.id)}>
                   <FindingGlyph region={e.region} fill={e.fill} shape={shape} carrier={st === 'carrier'} />
                 </button>
@@ -136,14 +136,14 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
                 <div className="segmented finding-state" role="radiogroup" aria-label={e.label}>
                   {[['none', t('Yok')], ['affected', t('Var')], ['carrier', t('Taşıyıcı')], ['unknown', '?']].map(([v, label]) => (
                     <button key={v} className={st === v ? 'on' : undefined} role="radio" aria-checked={st === v}
-                      title={{ none: t('Bu kişide bu bulgu yok'), affected: t('Bu kişide bu bulgu var (hasta)'), carrier: t('Bu kişi hasta değil, taşıyıcı'), unknown: t('Bilinmiyor: bu kişide olup olmadığından emin değilim') }[v]} aria-label={v === 'unknown' ? t('Bilinmiyor') : undefined}
+                      title={{ none: t('Bu kişide bu bulgu yok'), affected: t('Bu kişide bu bulgu var (hasta)'), carrier: t('Bu kişi hasta değil, taşıyıcı'), unknown: t('Bilinmiyor: bulgunun bu kişide bulunup bulunmadığı bilinmiyor') }[v]} aria-label={v === 'unknown' ? t('Bilinmiyor') : undefined}
                       onClick={() => onSetStatus(node.id, e.label, v)}>{label}</button>
                   ))}
                 </div>
                 {/* the age it was diagnosed at, free text right beside the finding (shown in the notes;
                     clinician decisions 2026-10-25, 2026-11-07) */}
                 {onSetOnset && (st === 'affected' || st === 'carrier') && (
-                  <label className="finding-onset" title={t('Tanı yaşı: 12, 3 ay, "çocuklukta"… (notlarda yazar)')}>
+                  <label className="finding-onset" title={t('Tanı yaşı (örneğin 12, 3 ay ya da “çocuklukta”); notlarda gösterilir')}>
                     <DraftField key={`${node.id}-${e.id}-onset`} type="text" className="input input-age" placeholder={t('tanı yaşı')} aria-label={t('Tanı yaşı')}
                       value={(conds.find(x => normLabel(x.label) === normLabel(e.label)) || {}).onsetAge || ''}
                       onCommit={v => onSetOnset(node.id, e.label, v.trim())} />
@@ -163,7 +163,7 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
         <>
         <div className="finding-new">
           <FindingGlyph region={suggested.region} fill={suggested.fill} shape={shape} />
-          <input type="text" className="input" value={draft} placeholder={t('Yeni bulgu, ör. miyop')} aria-label={t('Yeni bulgunun adı')}
+          <input type="text" className="input" value={draft} placeholder={t('Yeni bulgu (örneğin miyopi)')} aria-label={t('Yeni bulgunun adı')}
             onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }} />
           <button className="ui-btn ui-btn-sm ui-btn-primary" disabled={!draft.trim()} onClick={add}>{t('Ekle')}</button>
         </div>

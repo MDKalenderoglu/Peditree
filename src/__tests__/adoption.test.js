@@ -37,7 +37,7 @@ describe('adoption', () => {
     expect(S().pedigreeData.nodes.find(n => n.id === id).y).toBe(S().pedigreeData.nodes.find(n => n.id === 'proband').y);
     valid();
     // cannot be undone into a person with no parents at all
-    expect(S().setAdoption(id, null).reason).toMatch(/biyolojik ebeveynlerini ekleyin/);
+    expect(S().setAdoption(id, null).reason).toMatch(/biyolojik ebeveynlerinin eklenmesi gerekir/);
   });
 
   it('adopted out: a mark on a child of drawn parents; refused without parents', () => {

@@ -47,7 +47,7 @@ export function buildTemplate(base, spec) {
   if (spec.older) {
     const r = ops.commit(doc, (d) => {
       const u = d.graph.unions.find((x) => x.partners.includes('father') && x.partners.includes('mother'));
-      if (!u) ops.block(t('Anne-baba birlikteliği yok.'));
+      if (!u) ops.block(t('Anne ve baba çift olarak çizilmemiş.'));
       const [older, younger] = spec.older === 'father' ? ['father', 'mother'] : ['mother', 'father'];
       const by = (id) => d.graph.individuals.find((i) => i.id === id);
       u.crossGeneration = true;
@@ -139,7 +139,7 @@ export function relationInfo(up, paths = null) {
   }
   const [younger, older] = up.father > up.mother ? ['Baba', 'annenin'] : ['Anne', 'babanın'];
   return {
-    name: t('{lo}. derece kuzenin çocuğu (bir kuşak fark)', { lo }),
+    name: t('{lo}. derece kuzenin çocuğu (bir kuşak farkla)', { lo }),
     sentence: `${younger}, ${older} ${lo === 1 ? '' : `${lo}. derece `}kuzeninin ${younger === 'Anne' ? 'kızıdır' : 'oğludur'}; bir kuşak aşağıdadır.`,
     F,
   };
@@ -156,7 +156,7 @@ export function relationSpec(paths) {
 /** Double first cousins: two pairs of siblings, kept as the two ready-made families. */
 export const DOUBLE_FIRST_COUSINS = [
   { id: 'double-same', label: tk('Babaları kardeş, anneleri de kardeş'), sub: tk('Dedeler kardeş, anneanne ile babaanne kardeş'), spec: { pairs: [{ father: ['male'], mother: ['male'] }, { father: ['female'], mother: ['female'] }] } },
-  { id: 'double-cross', label: tk('Berdel'), sub: tk('Babanın babası ile annenin annesi kardeş, babanın annesi ile annenin babası kardeş'), spec: { pairs: [{ father: ['male'], mother: ['female'] }, { father: ['female'], mother: ['male'] }] } },
+  { id: 'double-cross', label: tk('Berdel'), sub: tk('Babanın babası ile annenin annesi kardeştir; babanın annesi ile annenin babası da kardeştir'), spec: { pairs: [{ father: ['male'], mother: ['female'] }, { father: ['female'], mother: ['male'] }] } },
 ];
 
 /** The relatives who were made siblings in a family built from `spec` (the preview marks them). */
