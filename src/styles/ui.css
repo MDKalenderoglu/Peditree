@@ -928,37 +928,95 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
   .tour-family .tf-line, .tour-family .tf-proband { animation: none; stroke-dashoffset: 0; fill-opacity: 1; }
 }
 
-/* ── a phone (clinician request 2026-11-10; App usePhone has the same width) ──
-   the top bar in one row: the patient's name and date of birth behind one button (App), the least used
-   buttons in "Diğer" (toolbarFit); the side panel a sheet over the lower half of the screen, its handle
-   draws it up to the whole screen; the drawing keeps the whole width, the person chosen is brought above
-   the sheet (PedigreeCanvas keepAbove) */
-.sheet-handle { display: none; }
-/* the button stands near the left end of the bar: the window opens rightwards from it, never off the screen */
+/* ── the touch mode (clinician request 2026-11-10; App: a phone turns it on, Ayarlar → Görünüm may for a tablet) ──
+   the same pedigree and operations, another screen: a short top bar (Menü with every action named, the
+   patient, Kaydet), the drawing over the whole screen, and a sheet with the person's labelled tiles — below
+   in portrait, a column at the right in landscape. Large targets for a finger throughout. */
 .patient-popover { width: 290px; max-width: calc(100vw - 24px); left: -58px; right: auto; transform-origin: top left; }
-.patient-popover .patient-name, .patient-popover .birth-date { width: 100%; box-sizing: border-box; height: 40px; margin-top: 8px; }
+.patient-popover .patient-name, .patient-popover .birth-date { width: 100%; box-sizing: border-box; height: 44px; margin-top: 8px; font-size: 16px; }
 .patient-popover .toolbar-field { display: block; }
 .patient-popover .toolbar-field > span { display: block; margin-top: 10px; font-size: 13px; color: var(--muted); }
-@media (max-width: 600px) {
-  .app-shell.has-editor { grid-template-columns: minmax(0, 1fr) 0; }
-  .app-shell > .side-right {
-    position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 15; width: auto; height: 52dvh; max-height: 52vh;
-    border-left: none; border-top: 1px solid var(--accent-line); border-radius: 18px 18px 0 0;
-    box-shadow: 0 -12px 30px -14px rgba(24, 33, 44, 0.45);
-    padding-bottom: env(safe-area-inset-bottom);
+
+/* the top bar: Menü, the patient, Kaydet; everything else is in the menu */
+.toolbar.touch-bar { gap: 8px; padding: 8px 10px; flex-wrap: nowrap; }
+.toolbar.touch-bar > * { display: none; }
+.toolbar.touch-bar > .keys-wrap[data-popup="about"], .toolbar.touch-bar > .keys-wrap[data-popup="patient"],
+.toolbar.touch-bar > .toolbar-group, .toolbar.touch-bar > .toolbar-end { display: flex; align-items: center; }
+.toolbar.touch-bar .brand-text, .toolbar.touch-bar .beta-badge, .toolbar.touch-bar .toolbar-sep { display: none; }
+.toolbar.touch-bar > .keys-wrap[data-popup="about"] > button { display: none; } /* About is in the menu */
+.toolbar.touch-bar .toolbar-group > :not([data-popup="download"]) { display: none; }
+.toolbar.touch-bar .toolbar-end > :not(.toolbar-more) { display: none; }
+.toolbar.touch-bar .toolbar-end { margin-left: 0; order: -1; }
+.toolbar.touch-bar .toolbar-more { display: flex !important; }
+.toolbar.touch-bar > .keys-wrap[data-popup="patient"] { flex: 1; min-width: 0; }
+.touch-menu-btn, .toolbar.touch-bar .patient-btn, .toolbar.touch-bar [data-popup="download"] > button { height: 44px; font-size: 15px; }
+.touch-menu-btn { gap: 6px; padding: 0 12px; }
+.toolbar.touch-bar .patient-btn { width: 100%; justify-content: flex-start; gap: 8px; padding: 0 12px; overflow: hidden; }
+.patient-btn-name { display: none; }
+.toolbar.touch-bar .patient-btn-name { display: inline; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the bar's windows (Kaydet, Yeni, Paylaş, the menu …) open as a wide sheet under the bar */
+.toolbar.touch-bar .keys-popover { position: fixed; left: 8px; right: 8px; top: 64px; width: auto; max-width: none; max-height: calc(100dvh - 80px); overflow-y: auto; transform-origin: top center; }
+.toolbar.touch-bar .more-popover .download-item, .toolbar.touch-bar .download-popover .download-item { min-height: 48px; font-size: 16px; }
+.toolbar.touch-bar .toolbar-more > button { display: flex; }
+
+/* the sheet */
+.touch-sheet { display: none; }
+.app-shell.touch.has-editor { grid-template-columns: minmax(0, 1fr) 0; }
+.app-shell.touch .touch-sheet {
+  display: flex; flex-direction: column; position: fixed; left: 0; right: 0; bottom: 0; z-index: 15;
+  max-height: 46dvh; background: var(--panel); border-top: 1px solid var(--accent-line); border-radius: 18px 18px 0 0;
+  box-shadow: 0 -12px 30px -14px rgba(24, 33, 44, 0.45); padding-bottom: env(safe-area-inset-bottom);
+  animation: sheet-in var(--t-move) var(--ease); transition: transform var(--t-pop) var(--ease);
+}
+.app-shell.touch .touch-sheet.sheet-full { max-height: none; height: calc(100dvh - 60px); }
+.sheet-grip { display: flex; justify-content: center; align-items: center; height: 26px; flex: none; cursor: grab; touch-action: none; }
+.sheet-grip > span { width: 46px; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.sheet-grip:focus-visible { outline: none; box-shadow: inset var(--focus); }
+.sheet-head { display: flex; align-items: center; gap: 8px; padding: 0 12px 8px; flex: none; }
+.sheet-title { flex: 1; min-width: 0; font-size: 16px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-head .ui-btn { height: 40px; }
+.sheet-body { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+.touch-sheet .editor-tip { display: none; }
+
+/* the tiles: the ring's four relatives and four buttons, named */
+.radial-menu.ring-dock { position: static; width: auto; height: auto; pointer-events: auto; display: flex; flex-direction: column; gap: 8px; padding: 0 10px 10px; }
+.ring-dock .radial-flyout, .ring-dock .radial-panel, .ring-dock button { pointer-events: auto; }
+.dock-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+/* the tiles stay at the sheet's foot while a long list above them scrolls */
+.ring-dock .dock-tiles { position: sticky; bottom: 0; z-index: 1; padding-top: 6px; background: var(--panel); }
+.dock-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 60px; padding: 6px 2px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: 600 13px var(--font-ui); cursor: pointer;
+}
+.ring-dock .dock-tile { position: static; left: auto; top: auto; transform: none; translate: none; box-shadow: none; }
+.dock-tile svg { color: var(--accent); }
+/* the ring's sector paint (a pale fill) is not for the tiles' icons */
+.ring-dock .dock-tile.radial-sector path, .ring-dock .dock-tile.radial-sector svg * { fill: none; stroke: currentColor; }
+.ring-dock .dock-tile.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.dock-tile.off { opacity: 0.55; }
+.dock-tile:focus-visible { outline: none; box-shadow: var(--focus); }
+/* what a tile opens stands above the tiles, in the sheet, never over the drawing */
+.ring-dock .radial-flyout, .ring-dock .radial-panel { position: static; transform: none; translate: none; width: auto; max-width: none; animation: none; }
+.ring-dock .radial-flyout { white-space: normal; }
+.ring-dock .flyout-row { flex-wrap: wrap; }
+.ring-dock .quick-btn { min-width: 64px; height: auto; min-height: 52px; flex-direction: column; gap: 2px; padding: 6px; }
+.dock-word { display: block; font-size: 12px; line-height: 1.2; color: var(--ink-2); }
+.ring-dock .ring-aside { position: static; margin-top: 6px; }
+
+/* the drawing keeps the whole screen; its zoom buttons step aside for the sheet */
+.app-shell.touch.has-editor .zoom-controls { display: none; }
+.app-shell.touch .panel-resizer { display: none; }
+
+/* landscape: the sheet is a column at the right, the drawing beside it */
+@media (orientation: landscape) {
+  .app-shell.touch.has-editor { grid-template-columns: minmax(0, 1fr) 320px; }
+  .app-shell.touch .touch-sheet, .app-shell.touch .touch-sheet.sheet-full {
+    top: 60px; left: auto; width: 320px; height: auto; max-height: none; border-top: none; border-left: 1px solid var(--accent-line);
+    border-radius: 0; box-shadow: -10px 0 28px -14px rgba(24, 33, 44, 0.38); animation-name: panel-in;
   }
-  .app-shell > .side-right.sheet-full { height: calc(100dvh - 64px); max-height: calc(100vh - 64px); }
-  .app-shell.has-editor > .side-right { animation: sheet-in var(--t-move) var(--ease); }
-  .sheet-handle {
-    display: flex; justify-content: center; align-items: center; position: sticky; top: 0; z-index: 3;
-    width: 100%; height: 22px; margin: 0; padding: 0; border: 0; background: var(--panel); cursor: pointer;
-  }
-  .sheet-handle > span { width: 44px; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--accent) 45%, var(--line)); }
-  .sheet-handle:focus-visible { outline: none; box-shadow: inset var(--focus); }
-  .app-shell > .side-right .side-header { top: 22px; }
-  .panel-resizer { display: none; }
-  .toolbar .brand-text, .toolbar .beta-badge, .toolbar .toolbar-sep { display: none; }
-  .canvas-notices { max-width: calc(100vw - 24px); }
+  .app-shell.touch .sheet-grip { display: none; }
+  .app-shell.touch.has-editor .zoom-controls { display: flex; }
+  .dock-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @keyframes sheet-in { from { opacity: 0.35; transform: translateY(48px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .app-shell.has-editor > .side-right { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .app-shell.touch .touch-sheet { animation: none; transition: none; } }

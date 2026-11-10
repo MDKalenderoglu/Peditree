@@ -11,7 +11,7 @@
  * panel; the store refuses (with a reason) anything the graph rules forbid.
  */
 import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
-import { Stethoscope, HeartPulse, Users, StickyNote, Check } from 'lucide-react';
+import { Stethoscope, HeartPulse, Users, StickyNote, Check, ArrowUp, ArrowDown, UsersRound, HeartHandshake } from 'lucide-react';
 import FindingsPalette from './FindingsPalette';
 import { NameField, AgeField, NoteField, GeneticTextField } from './InfoFields';
 import { groupOf, multipleName } from '../graph/multiples';
@@ -159,7 +159,7 @@ function sectorPath(a0, a1, r, R, gapDeg = 3) {
 export default function RadialAddMenu({
   anchor, node, pedigreeData, onAddSibling, onAddChild, onAddSpouse, onAddParents, onAddTwin,
   onUpdate, onSetProband, onClearProband, onSetConsultand, onClearConsultand, onAddFinding, onSetFindingStatus, onSetFindingStyle, onSetFindingOnset, onRenameFinding,
-  onNeedRoom, sameSex = false, ref,
+  onNeedRoom, sameSex = false, dock = false, ref,
 }) {
   const [active, setActive] = useState(null);   // sector under the pointer
   const [panel, setPanel] = useState(null);     // satellite panel (stays open)
@@ -191,7 +191,7 @@ export default function RadialAddMenu({
   const menuRef = useRef(null);
   useLayoutEffect(() => {
     const el = popRef.current;
-    if (!el) { setNudge({ x: 0, y: 0 }); return; }
+    if (!el || dock) { setNudge({ x: 0, y: 0 }); return; }
     const fit = () => {
       el.style.translate = '0px 0px';
       // a Bilgiler part's box stands beside the list: both must be on screen
@@ -242,7 +242,7 @@ export default function RadialAddMenu({
   // the drawing slides by that much (clinician request 2026-11-03)
   useLayoutEffect(() => {
     const root = menuRef.current;
-    if (!root || !onNeedRoom) return;
+    if (!root || !onNeedRoom || dock) return;
     const host = root.closest('.canvas-stage');
     if (!host) return;
     const parts = [...root.querySelectorAll('.radial-ring, .radial-sat')].map((el) => el.getBoundingClientRect()).filter((b) => b.width);
@@ -374,7 +374,7 @@ export default function RadialAddMenu({
       <div className="flyout-row">
         <span className="flyout-row-label">{t('Gebelik')}</span>
         {pregnancyChoices(active).map(([title, glyph, run]) => (
-          <button key={title} className="quick-btn" title={title} aria-label={title} onClick={() => { run(); setActive(null); }}><Glyph kind={glyph} /></button>
+          <button key={title} className="quick-btn" title={title} aria-label={title} onClick={() => { run(); setActive(null); }}><Glyph kind={glyph} />{dock && <span className="dock-word">{title.split(': ').pop()}</span>}</button>
         ))}
       </div>
     ),
@@ -580,6 +580,96 @@ export default function RadialAddMenu({
     name: <NameField node={node} set={setInfo} autoFocus />,
   };
 
+  // the touch mode's dock (clinician request 2026-11-10: on a phone the ring covered the drawing and its
+  // icons said too little): the same four relatives and four buttons as labelled tiles, and what each
+  // opens shown above them in the sheet, never over the drawing
+  if (dock) {
+    const tiles = [['top', ArrowUp], ['left', UsersRound], ['right', HeartHandshake], ['bottom', ArrowDown]];
+    return (
+      <div className="radial-menu ring-dock" ref={menuRef} onClick={e => e.stopPropagation()}>
+      {/* a sector with neither choices nor a reason (it became a one-click
+          action, e.g. after "Tek tek ayır") shows nothing */}
+      {active && (choices[active] || disabled[active]) && (
+        <div className="radial-flyout" ref={popRef}  onPointerEnter={(e) => isHover(e) && open(active)} onPointerLeave={(e) => isHover(e) && leave()}>
+          {disabled[active] ? (
+            <span className="radial-hint">{disabled[active]}</span>
+          ) : (
+            <>
+              {active === 'bottom' && unions.length > 1 && (
+                <div className="flyout-row flyout-choose" role="radiogroup" aria-label={t('Çocuk hangi eşten?')}>
+                  <span className="flyout-row-label">{t('Hangi eşten?')}</span>
+                  {unions.map((u) => {
+                    const other = u.partners.find((p) => p !== node.id);
+                    const on = childUnion && childUnion.id === u.id;
+                    return <button key={u.id} role="radio" aria-checked={!!on} className={`quick-text${on ? ' on' : ''}`}
+                      onClick={() => setChoiceFor({ node: node.id, union: u.id })}>{t('{name} ile', { name: nameOf(other) })}</button>;
+                  })}
+                </div>
+              )}
+              {active === 'left' && adoptedIn && (
+                <div className="flyout-row flyout-choose" role="radiogroup" aria-label={t('Yeni kardeş ne?')}>
+                  <span className="flyout-row-label">{t('Yeni kardeş')}</span>
+                  {[['family', t('Ailenin öz çocuğu'), t('Evlat edinen anne-babanın kendi çocuğu')], ['adopted', t('Evlat edinilmiş'), t('Aynı ailenin evlat edindiği başka bir çocuk')], ['biological', t('Biyolojik kardeşi'), t('Bu kişinin biyolojik kardeşi; bilinmeyen biyolojik anne ve babası da çizilir')]].map(([k, label, title]) => (
+                    <button key={k} role="radio" aria-checked={sibKind === k} className={`quick-text${sibKind === k ? ' on' : ''}`} title={title}
+                      onClick={() => setChoiceFor({ node: node.id, sibling: k })}>{label}</button>
+                  ))}
+                </div>
+              )}
+              {!ready(active) ? (
+                <span className="radial-hint">{active === 'bottom' ? t('Önce çocuğun hangi eşten olduğunu seçin.') : t('Önce yeni kardeşin ne olduğunu seçin.')}</span>
+              ) : (<>
+              {/* the sexes, then the rows in the clinician's order (Ayarlar → Halka menü; ringPrefs.js) */}
+              {needsDonor(active) ? (
+                <span className="radial-hint">{needsDonor(active) === 'female'
+                  ? t('İki kadın eşin çocuğu aşağıdan sperm donörüyle ya da evlat edinilmiş olarak eklenir.')
+                  : t('İki erkek eşin çocuğu aşağıdan yumurta donörü ya da taşıyıcı anneyle veya evlat edinilmiş olarak eklenir.')}</span>
+              ) : (
+              <div className="flyout-row">
+                {choices[active].filter((c) => (c[3] || 1) === 1).map(([title, glyph, run]) => (
+                  <button key={title} className="quick-btn" title={title} aria-label={title} onClick={() => { run(); setActive(null); }}><Glyph kind={glyph} />{dock && <span className="dock-word">{title.split(': ').pop()}</span>}</button>
+                ))}
+              </div>
+              )}
+              {flyoutRows(active).map((rowId) => rowView[rowId] && <Fragment key={rowId}>{rowView[rowId]}</Fragment>)}
+              {flyoutHasHidden(active) && (
+                <button className="flyout-more" onClick={() => setShowMore()} aria-expanded={showMore}>
+                  {showMore ? t('Daha az') : t('Diğer…')}
+                </button>
+              )}
+              </>)}
+            </>
+          )}
+        </div>
+      )}
+      {panel && (
+        <div className={`radial-panel${listPanel ? ' ring-list-panel' : hintOnly ? ' ring-hint-panel' : panel === 'findings' ? ' findings-panel' : ''}`} ref={popRef} 
+          onPointerEnter={(e) => isHover(e) && keepPanel()} onPointerLeave={(e) => isHover(e) && leavePanel()}>
+          {/* a list or the findings need no title: their button, named, stands right beside them */}
+          {!listPanel && !hintOnly && panel !== 'findings' && <div className="radial-panel-title">{satLabel(SATELLITES.find(s => s.key === panel))}</div>}
+          {listPanel ? lists[panel]() : panels[panel]}
+        </div>
+      )}
+        <div className="dock-tiles">
+          {tiles.map(([k, Icon]) => (
+            <button key={k} className={`dock-tile radial-sector${active === k ? ' on' : ''}${disabled[k] ? ' off' : ''}`}
+              onClick={() => { setPanel(null); pressSector(k); }} aria-label={t(SECTORS[k].label)} aria-disabled={!!disabled[k]} aria-expanded={active === k}>
+              <Icon size={20} aria-hidden="true" /><span>{t(SECTORS[k].label)}</span>
+            </button>
+          ))}
+          {SATELLITES.filter((sat) => !group || sat.key === 'note').map((sat) => {
+            const { Icon } = sat;
+            return (
+              <button key={sat.key} className={`dock-tile radial-sat${panel === sat.key ? ' on' : ''}`} aria-label={satLabel(sat)} aria-expanded={panel === sat.key}
+                onClick={() => { setActive(null); setPanel(panel === sat.key ? null : sat.key); }}>
+                <Icon size={20} aria-hidden="true" /><span>{satLabel(sat)}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="radial-menu" ref={menuRef} style={{ left: anchor.x, top: anchor.y }} onClick={e => e.stopPropagation()}>
       <svg className="radial-ring" width={2 * box} height={2 * box} viewBox={`${-box} ${-box} ${2 * box} ${2 * box}`}
@@ -654,7 +744,7 @@ export default function RadialAddMenu({
               ) : (
               <div className="flyout-row">
                 {choices[active].filter((c) => (c[3] || 1) === 1).map(([title, glyph, run]) => (
-                  <button key={title} className="quick-btn" title={title} aria-label={title} onClick={() => { run(); setActive(null); }}><Glyph kind={glyph} /></button>
+                  <button key={title} className="quick-btn" title={title} aria-label={title} onClick={() => { run(); setActive(null); }}><Glyph kind={glyph} />{dock && <span className="dock-word">{title.split(': ').pop()}</span>}</button>
                 ))}
               </div>
               )}

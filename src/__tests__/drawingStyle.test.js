@@ -35,7 +35,7 @@ function samplePath(d, steps = 20) {
 
 describe('drawing style settings', () => {
   it('starts standard, with plain pedigree numbers and exports as on screen; the carrier as NSGC 2022 draws it', () => {
-    expect(DEFAULT_VIEW).toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringClear: 5, panelWidth: 0, tourOffer: true, sameSexPartners: false });
+    expect(DEFAULT_VIEW).toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringClear: 5, panelWidth: 0, tourOffer: true, sameSexPartners: false, touchMode: 'auto' });
     expect(drawingSpec(DEFAULT_VIEW)).toMatchObject({ hand: false, family: STANDARD_FAMILY, k: 1, numberK: 1 });
   });
 
@@ -53,7 +53,7 @@ describe('drawing style settings', () => {
 
   it('keeps only known values from storage', () => {
     expect(normalizeView({ drawStyle: 'crayon', fontId: 'comic', plainNumbers: 'no', exportAs: 'x', openHelp: 'maybe', legendSize: 'huge', paper: 'tartan', carrierMark: 'star', theme: 'neon', ringAlpha: 'glass', panelWidth: 'wide', tourOffer: 'perhaps' }))
-      .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringClear: 5, panelWidth: 0, tourOffer: true, sameSexPartners: false });
+      .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringClear: 5, panelWidth: 0, tourOffer: true, sameSexPartners: false, touchMode: 'auto' });
     // the ring's transparency in steps of 5 % within 0–60; the four words of the first version carried over
     expect(normalizeView({ ringClear: 7 }).ringClear).toBe(5);
     // the tour is offered until it was started or put off (2026-11-09)
