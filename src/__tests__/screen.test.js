@@ -45,6 +45,33 @@ const pointer = (type, pointerType, related) => {
   return ev;
 };
 
+describe('a pen on a tablet (clinician report 2026-11-10: the ring did not open with the pen)', () => {
+  // a pen reports a pixel or two of movement in every tap; the drawing's pan cancels such a touch, so the
+  // tap never became a click. The drawing now turns a short, still pen tap into the click itself.
+  const penTap = async (el, { dx = 2, ms = 120 } = {}) => {
+    const at = (type, x, t) => { const ev = pointer(type, 'pen'); Object.defineProperty(ev, 'clientX', { value: x }); Object.defineProperty(ev, 'clientY', { value: 50 }); Object.defineProperty(ev, 'timeStamp', { value: t }); return ev; };
+    await run(() => el.dispatchEvent(at('pointerdown', 100, 1000)));
+    await run(() => el.dispatchEvent(at('pointerup', 100 + dx, 1000 + ms)));
+  };
+  it('a pen tap on a person selects them and opens the ring; a tap on the empty drawing steps back', async () => {
+    await penTap(drawn('mother').querySelector('circle, rect, path'));
+    expect(S().selectedIds).toEqual(['mother']);
+    expect($('.radial-menu')).not.toBeNull();
+    await penTap($('#pedigree-svg'));
+    expect($('.radial-menu')).toBeNull();
+  });
+  it('a pen that really moves pans the drawing: no selection; a mouse or a finger keeps its own click', async () => {
+    await penTap(drawn('father').querySelector('circle, rect, path'), { dx: 30 });
+    expect(S().selectedIds || []).toEqual([]);
+    await penTap(drawn('father').querySelector('circle, rect, path'), { ms: 1500 }); // a long press is no tap
+    expect(S().selectedIds || []).toEqual([]);
+    const mouseUp = pointer('pointerup', 'mouse');
+    await run(() => drawn('father').dispatchEvent(pointer('pointerdown', 'mouse')));
+    await run(() => drawn('father').dispatchEvent(mouseUp));
+    expect(S().selectedIds || []).toEqual([]); // no click made for a mouse: its own click comes
+  });
+});
+
 describe('marks around a person', () => {
   it('the proband: an arrow with "P"; the consultand: an arrow without "P"; the same person: one arrow with "P"', async () => {
     await run(() => S().setConsultand('mother'));
