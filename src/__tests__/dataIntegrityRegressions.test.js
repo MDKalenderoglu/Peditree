@@ -210,6 +210,6 @@ describe('KI-7 — no false "not connected" warnings for people who married into
       individuals: [{ id: 'a', sex: 'male', generation: 3, label: 'Ali' }],
       unions: [], parentChildRelationships: [],
     });
-    expect(w.some(m => m.includes('Ali') && m.includes('ne bir ebeveyn çiftine'))).toBe(true);
+    expect(w.some(m => m.includes('Ali') && m.includes('ne bir anne–baba çiftine'))).toBe(true);
   });
 });

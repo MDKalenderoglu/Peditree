@@ -102,7 +102,7 @@ describe('v0.3a.1 — validators.js warning text correction', () => {
     expect(consangWarning).not.toMatch(/çift çizgi çizilmeyecek/);
     expect(consangWarning).not.toMatch(/turuncu|kesikli|"\?"/);
     // Must describe it as unresolved-so-far, informational only.
-    expect(consangWarning).toMatch(/modellenmedi/);
+    expect(consangWarning).toMatch(/derece ve ortak ata bilgisi/);
   });
 });
 
@@ -407,7 +407,7 @@ describe('v0.3a.1 — store: computeUnionCreationPlan / createUnionBetween', () 
     const plan = computeUnionCreationPlan(state.pedigreeData, 'proband', siblingId);
     expect(plan.ok).toBe(false);
     // siblings are never partners, consanguinity flag or not (CLAUDE.md rule 3; Codex audit 2026-11-01)
-    expect(plan.reason).toMatch(/kardeşler eş olamaz/);
+    expect(plan.reason).toMatch(/kardeşler eş yapılamaz/);
     expect(usePedigreeStore.getState().createUnionBetween('proband', siblingId, { markConsanguineous: true }).ok).toBe(false);
   });
 
@@ -482,7 +482,7 @@ describe('v0.3a.1 — store: computeUnionCreationPlan / createUnionBetween', () 
 
     const plan = computeUnionCreationPlan(state.pedigreeData, unknownSexParentId, 'mat_gf');
     expect(plan.ok).toBe(false);
-    expect(plan.reason).toMatch(/bilinmiyor/);
+    expect(plan.reason).toMatch(/Cinsiyeti bilinmeyen/);
   });
 
   it('Step 5A: explicitly blocks a direct parent-child union (mat_gf + mother)', () => {
@@ -491,7 +491,7 @@ describe('v0.3a.1 — store: computeUnionCreationPlan / createUnionBetween', () 
     expect(plan.ok).toBe(false);
     // Cross-generation would also block this, but Step 5A adds an explicit,
     // dedicated parent-child reason ahead of the generic generation check.
-    expect(plan.reason).toMatch(/ebeveyn-çocuk/);
+    expect(plan.reason).toMatch(/ebeveyn–çocuk/);
   });
 
   it('Step 5A: addSpouseTo does not create a same-sex spouse (male target + male spouseSex is a no-op)', () => {

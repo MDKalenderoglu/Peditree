@@ -253,7 +253,7 @@ describe('the screens in English', () => {
     expect(strip().textContent).toMatch(/No proband is marked/);
     const before = S().pedigreeData.nodes.map((n) => [n.id, n.x, n.y]);
     await settle(() => useLang.getState().setLang({ ui: 'tr' }));
-    expect(strip().textContent).toMatch(/Proband işaretlenmedi/);
+    expect(strip().textContent).toMatch(/Proband işaretlenmemiş/);
     expect(S().pedigreeData.nodes.map((n) => [n.id, n.x, n.y])).toEqual(before);
     await settle(() => useLang.getState().setLang({ ui: 'en' }));
     expect(strip().textContent).toMatch(/No proband is marked/);

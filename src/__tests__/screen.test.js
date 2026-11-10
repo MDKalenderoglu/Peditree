@@ -236,7 +236,7 @@ describe('the ring menu', () => {
   it('"Birden çok" in the ring adds one symbol with the number inside', async () => {
     await select('proband');
     await key('k');
-    const add = buttons(flyout()).find(b => /3 erkek \(tek sembol/.test(b.getAttribute('aria-label') || ''));
+    const add = buttons(flyout()).find(b => /3 erkek \(sayısı içine yazılan tek bir sembol/.test(b.getAttribute('aria-label') || ''));
     await click(add);
     expect(g().individuals.filter(i => i.count === 3 && i.sex === 'male')).toHaveLength(1);
   });
@@ -486,7 +486,7 @@ describe('saving, opening and downloading', () => {
       // one line per format; PED's question shows once PED is chosen (clinician 2026-11-05: the menu said too much)
       expect($('[data-popup="download"]').textContent).not.toMatch(/Dosyada kim/);
       await click(buttons($('[data-popup="download"]')).find(b => b.textContent.startsWith('PED')));
-      expect($('[data-popup="download"]').textContent).toMatch(/Dosyada kim “hasta” olarak yazılsın/);
+      expect($('[data-popup="download"]').textContent).toMatch(/Dosyada hangi kişiler “etkilenmiş” olarak işaretlensin/);
       await click(buttons().find(b => b.textContent.includes('PED indir')));
       const ped = dl.files.at(-1);
       expect(ped.name).not.toMatch(/Ay[sş]e|Y[ıi]lmaz/i);
@@ -501,7 +501,7 @@ describe('saving, opening and downloading', () => {
       await click(buttons().find(b => b.textContent.trim() === 'Aç'));
       const help = $('[aria-label="Dosya aç"]');
       expect(help.textContent).toMatch(/PediTree dosyası.*\.peditree\.json/);
-      expect(help.textContent).toMatch(/PED dosyası.*isim, yaş ve bulgular gelmez/);
+      expect(help.textContent).toMatch(/PED dosyası.*ad, yaş ve bulgular aktarılmaz/);
       await click(help.querySelector('input[type="checkbox"]'));
       expect(useViewSettings.getState().view.openHelp).toBe(false);
       await key('Escape');
@@ -822,7 +822,7 @@ describe('a beta (clinician decision 2026-11-07)', () => {
     await click($('.toolbar .brand-btn'));
     const about = $('[aria-label="PediTree hakkında"][role="dialog"]');
     expect(about.textContent).toMatch(/Sürüm \d+\.\d+\.\d+ \(beta\)/);
-    expect(about.textContent).toMatch(/Bu bir deneme \(beta\) sürümüdür/);
+    expect(about.textContent).toMatch(/deneme \(beta\) sürümüdür/);
     await key('Escape');
   });
 });
@@ -888,7 +888,7 @@ describe('more of what the clinician sees', () => {
       await click(saveButton());
       await click(buttons().find(b => /SVG/.test(b.textContent)));
       await settle();
-      expect(view.container.textContent).toMatch(/Seçtiğiniz yazı tipi dosyaya eklenemedi/);
+      expect(view.container.textContent).toMatch(/Seçilen yazı tipi dosyaya eklenemedi/);
     } finally {
       globalThis.fetch = realFetch;
       dl.restore();
@@ -1289,8 +1289,8 @@ describe('the About window (the logo), Atıf and Geri bildirim (clinician reques
     await click(button('PediTree hakkında'));
     const about = $('[data-popup="about"] [role="dialog"]');
     const text = about.textContent;
-    expect(text).toMatch(/tıbbi cihaz değildir/);
-    expect(text).toMatch(/Hasta bilgisi hiçbir sunucuya gönderilmez/);
+    expect(text).toMatch(/tıbbi cihaz niteliği taşımaz/);
+    expect(text).toMatch(/Hasta bilgileri hiçbir sunucuya gönderilmez/);
     expect(text).toMatch(/Apache 2\.0/);
     expect(text).toMatch(/© 2026 Muhammed Doğukan Kalenderoğlu/);
     expect(text).not.toMatch(/lisansa dahil değildir/);
@@ -1301,7 +1301,7 @@ describe('the About window (the logo), Atıf and Geri bildirim (clinician reques
     const dialog = document.querySelector('.settings-dialog');
     expect(dialog.querySelector('[role="tab"][aria-selected="true"]').textContent).toMatch(/Hakkında/);
     const all = dialog.querySelector('[role="tabpanel"]').textContent;
-    for (const part of [/tıbbi cihaz değildir/, /Atfı kopyala/, /Hata bildir/, /Apache 2\.0/, /© 2026/]) expect(all).toMatch(part);
+    for (const part of [/tıbbi cihaz niteliği taşımaz/, /Atfı kopyala/, /Hata bildir/, /Apache 2\.0/, /© 2026/]) expect(all).toMatch(part);
     await key('Escape');
   });
 
@@ -1312,7 +1312,7 @@ describe('the About window (the logo), Atıf and Geri bildirim (clinician reques
     expect(cite.querySelector('.about-cite').textContent).toBe(citationText());
     expect(buttons(cite).some(b => b.textContent === 'Atfı kopyala')).toBe(true);
     // the request reads plainly, no "şöyle" (clinician 2026-11-07); the citation follows it
-    expect(cite.textContent).toMatch(/kullandıysanız atıf yapmanız rica edilir:/);
+    expect(cite.textContent).toMatch(/atıf yapılması rica olunur:/);
     await key('Escape');
     expect($('[data-popup="cite"] [role="dialog"]')).toBeNull();
     await click(button('Geri bildirim'));
@@ -1590,7 +1590,7 @@ describe('the two free texts of a person (clinician question 2026-11-03)', () =>
     const noteField = fields.find(l => l.textContent.includes('Not'));
     // one line under the two boxes (clinician 2026-11-05: the panel was too wordy), right after them
     const where = noteField.nextElementSibling;
-    expect(where.textContent).toBe('Ad sembolün altında, not pedigrinin altında numarasıyla görünür.');
+    expect(where.textContent).toBe('Ad sembolün altında, not ise pedigrinin altında kişinin numarasıyla birlikte gösterilir.');
     await typeInto(nameField.querySelector('input'), 'Ayşe');
     await key('Enter', {}, nameField.querySelector('input'));
     await typeInto(noteField.querySelector('textarea'), 'Kardiyoloji takibinde');
@@ -1603,7 +1603,7 @@ describe('the two free texts of a person (clinician question 2026-11-03)', () =>
     expect($('.notes-legend').textContent).toMatch(/Kardiyoloji takibinde/);
     // a long name: the panel says to put the details in the note
     await run(() => S().updateIndividual('mother', { displayLabel: 'Ayşe Yılmaz, 3 yıl önce opere' }));
-    expect(panelText()).toMatch(/Uzun yazı çizimi kalabalıklaştırır/);
+    expect(panelText()).toMatch(/Uzun metinler çizimi kalabalıklaştırır/);
   });
 });
 
@@ -1739,7 +1739,7 @@ describe('the Settings window (clinician request 2026-11-03)', () => {
     const hints = [...dialog.querySelectorAll('.set-row-hint')].map(h => h.textContent);
     for (const h of hints.filter(h => !h.includes('(I-1, II-3)'))) expect(h.length).toBeLessThanOrEqual(40);
     const paper = [...dialog.querySelectorAll('.set-row')].find(r => r.textContent.includes('Sayfa zemini'));
-    expect(paper.getAttribute('title')).toMatch(/İndirilen ve yazdırılan çizim düz kalır/);
+    expect(paper.getAttribute('title')).toMatch(/indirilen ve yazdırılan çizimin zemini düz kalır/);
     expect(dialog.querySelector('.set-intro').textContent.length).toBeLessThanOrEqual(80);
     await key('Escape');
   });

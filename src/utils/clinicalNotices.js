@@ -9,10 +9,10 @@ import { t, shownLabel } from '../i18n';
 
 /** Rewrite rules for issue codes whose raw message is technical. */
 const BY_CODE = {
-  CONSANGUINITY_UNRESOLVED: (pair) => t('{pair}: akraba evliliği işaretli, ortak ataları çizimde yok. Çift çizgi gösteriliyor; ortak ataları çizmek için çiftin arasındaki çizgiye tıklayıp derece ve yolu seçin.', { pair }),
+  CONSANGUINITY_UNRESOLVED: (pair) => t('{pair}: akraba evliliği işaretli, ancak ortak atalar çizimde yer almıyor. Çift çizgi gösterilmektedir; ortak ataları çizmek için eşler arasındaki çizgiye tıklayıp akrabalık derecesini ve yolunu seçin.', { pair }),
   CONSANGUINITY_STATUS_MISSING: (pair) => t('{pair}: akraba evliliği bilgisi eksik.', { pair }),
   // a soft note (clinician decision 2026-11-01): no proband is normal in carrier screening or prenatal counselling
-  PROBAND_MISSING: () => t('Proband işaretlenmedi. Aileyi incelemeye getiren etkilenmiş kişi varsa onu Durum → Proband ile işaretleyin; yoksa (ör. taşıyıcı taraması) bu notu kapatabilirsiniz.'),
+  PROBAND_MISSING: () => t('Proband işaretlenmemiş. Ailenin incelenmesine yol açan etkilenmiş bir kişi varsa Durum → Proband ile işaretleyin; böyle bir kişi yoksa (örneğin taşıyıcılık taramasında) bu not kapatılabilir.'),
 };
 
 /**

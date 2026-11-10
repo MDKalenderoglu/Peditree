@@ -116,7 +116,7 @@ export const MAX_PED_PEOPLE = 3000;
 
 export function fromPed(text) {
   // limits (second audit 2026-10-25): a clinical family is far smaller
-  if (String(text || '').length > MAX_PED_CHARS) return { ok: false, reason: t('PED dosyası çok büyük (20 MB üstü), açılmadı.') };
+  if (String(text || '').length > MAX_PED_CHARS) return { ok: false, reason: t('PED dosyası çok büyük olduğundan (20 MB üzeri) açılmadı.') };
   const lines = String(text || '').split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
   if (!lines.length) return { ok: false, reason: t('PED dosyası boş.') };
   let rows = lines.map((l) => l.split(/\s+/));
@@ -124,12 +124,12 @@ export function fromPed(text) {
   if (rows[0].filter((w) => HEADER_WORDS.test(w)).length >= 3) {
     cols = columnsOf(rows[0]);
     rows = rows.slice(1);
-    if (cols.id < 0 || cols.father < 0 || cols.mother < 0) return { ok: false, reason: t('PED başlığında kişi, baba ve anne sütunları bulunamadı.') };
+    if (cols.id < 0 || cols.father < 0 || cols.mother < 0) return { ok: false, reason: t('PED dosyasının başlığında kişi, baba ve anne sütunları bulunamadı.') };
   } else {
     const n = rows[0].length;
     if (n >= 6) cols = { family: 0, id: 1, father: 2, mother: 3, sex: 4, pheno: 5 };
     else if (n >= 4) cols = { family: -1, id: 0, father: 1, mother: 2, sex: 3, pheno: n >= 5 ? 4 : -1 };
-    else return { ok: false, reason: t('Dosya bir PED dosyası gibi görünmüyor (en az 4 sütun gerekir: kişi, baba, anne, cinsiyet).') };
+    else return { ok: false, reason: t('Dosya bir PED dosyası olarak tanınmadı; en az dört sütun (kişi, baba, anne, cinsiyet) bulunması gerekir.') };
   }
   const get = (r, k) => (cols[k] >= 0 ? r[cols[k]] : undefined);
   const families = [...new Set(rows.map((r) => get(r, 'family') ?? ''))];
@@ -146,14 +146,14 @@ export function fromPed(text) {
   // into "no" (Codex audit 2026-11-01); any other code is refused
   for (const r of recs) {
     if (r.pheno === null) { r.affected = false; r.unknown = true; continue; }
-    if (!PED_PHENO[r.pheno]) return { ok: false, reason: t('PED dosyasında "{id}" için hastalık durumu "{pheno}" anlaşılamadı (2 = hasta, 1 = sağlam, 0 ya da -9 = bilinmiyor).', { id: r.id, pheno: r.pheno }) };
+    if (!PED_PHENO[r.pheno]) return { ok: false, reason: t('PED dosyasında “{id}” için hastalık durumu (“{pheno}”) okunamadı (2 = etkilenmiş, 1 = etkilenmemiş, 0 ya da -9 = bilinmiyor).', { id: r.id, pheno: r.pheno }) };
     r.affected = PED_PHENO[r.pheno] === 'affected';
     r.unknown = PED_PHENO[r.pheno] === 'unknown';
   }
-  if (recs.length > MAX_PED_PEOPLE) return { ok: false, reason: t('PED dosyasındaki aile {MAX_PED_PEOPLE} kişiden büyük ({length}); bu boyutta bir pedigri çizilemez.', { MAX_PED_PEOPLE, length: recs.length }) };
+  if (recs.length > MAX_PED_PEOPLE) return { ok: false, reason: t('PED dosyasındaki aile {MAX_PED_PEOPLE} kişiden büyük olduğundan ({length}) bu boyutta bir pedigri çizilemez.', { MAX_PED_PEOPLE, length: recs.length }) };
   const seen = new Set();
   for (const r of recs) {
-    if (seen.has(r.id)) return { ok: false, reason: t('PED dosyasında "{id}" iki kez geçiyor.', { id: r.id }) };
+    if (seen.has(r.id)) return { ok: false, reason: t('PED dosyasında “{id}” iki kez yer alıyor.', { id: r.id }) };
     seen.add(r.id);
   }
   // parents named but not listed get a row of their own
@@ -162,11 +162,11 @@ export function fromPed(text) {
     for (const [role, sex] of [['father', 'male'], ['mother', 'female']]) {
       const pid = r[role];
       if (!pid) continue;
-      if (pid === r.id) return { ok: false, reason: t('"{id}" kendi ebeveyni olarak yazılmış.', { id: r.id }) };
+      if (pid === r.id) return { ok: false, reason: t('“{id}” kendi ebeveyni olarak girilmiş.', { id: r.id }) };
       if (!byId.has(pid)) { const add = { id: pid, father: null, mother: null, sex, affected: false, unknown: true }; recs.push(add); byId.set(pid, add); }
       const parent = byId.get(pid);
       if (parent.sex === 'unknown') parent.sex = sex;
-      else if (parent.sex !== sex) return { ok: false, reason: t('"{pid}" hem {v1} olarak yazılmış hem de cinsiyeti {v2}.', { pid, v1: sex === 'male' ? t('baba') : t('anne'), v2: parent.sex === 'male' ? t('erkek') : t('kadın') }) };
+      else if (parent.sex !== sex) return { ok: false, reason: t('“{pid}” {v1} olarak girilmiş, ancak cinsiyeti {v2}.', { pid, v1: sex === 'male' ? t('baba') : t('anne'), v2: parent.sex === 'male' ? t('erkek') : t('kadın') }) };
     }
   }
   // nobody may be their own ancestor (iterative: a very deep ancestry must
@@ -196,7 +196,7 @@ export function fromPed(text) {
     return false;
   };
   const loop = recs.find((r) => cyclic(r.id));
-  if (loop) return { ok: false, reason: t('"{id}" kendi atası olarak görünüyor; dosya açılmadı.', { id: loop.id }) };
+  if (loop) return { ok: false, reason: t('“{id}” kendi atası olarak görünüyor; dosya açılmadı.', { id: loop.id }) };
 
   const pid = new Map(recs.map((r, k) => [r.id, `ped_${k + 1}`]));
   const individuals = recs.map((r) => makePerson({
@@ -245,9 +245,9 @@ export function fromPed(text) {
   if (errors.length) return { ok: false, reason: t('PED dosyasındaki aile çizilemedi: {v0}', { v0: errors[0].message }) };
   const unknownN = recs.filter((r) => r.unknown).length;
   const notes = [proband
-    ? t('PED dosyasından {length} kişi açıldı; proband olarak "{id}" seçildi (değiştirebilirsiniz).', { length: recs.length, id: proband.id })
-    : t('PED dosyasından {length} kişi açıldı; dosyada hasta (2) işaretli kimse olmadığı için proband işaretlenmedi.', { length: recs.length })];
-  if (unknownN) notes.push(t('{unknownN} kişinin hastalık durumu bilinmiyor; "{PED_UNKNOWN_LABEL}" bulgusu "?" olarak işaretlendi.', { unknownN, PED_UNKNOWN_LABEL: t(PED_UNKNOWN_LABEL) }));
-  if (families.length > 1) notes.push(t('Dosyada {length} aile vardı; ilki ("{family}") açıldı.', { length: families.length, family }));
+    ? t('PED dosyasından {length} kişi aktarıldı; proband olarak “{id}” seçildi (bu seçim değiştirilebilir).', { length: recs.length, id: proband.id })
+    : t('PED dosyasından {length} kişi aktarıldı; dosyada etkilenmiş (2) olarak işaretli kimse bulunmadığından proband işaretlenmedi.', { length: recs.length })];
+  if (unknownN) notes.push(t('{unknownN} kişinin hastalık durumu bilinmiyor; bu kişilerde “{PED_UNKNOWN_LABEL}” bulgusu “?” olarak işaretlendi.', { unknownN, PED_UNKNOWN_LABEL: t(PED_UNKNOWN_LABEL) }));
+  if (families.length > 1) notes.push(t('Dosyada {length} aile bulunuyordu; yalnızca ilki (“{family}”) açıldı.', { length: families.length, family }));
   return { ok: true, doc, notice: notes.join(' ') };
 }

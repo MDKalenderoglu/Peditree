@@ -28,7 +28,7 @@ export class ExportError extends Error {
 function resolveSvgElement(svgElement) {
   const el = svgElement || (typeof document !== 'undefined' ? document.getElementById('pedigree-svg') : null);
   if (!el) {
-    throw new ExportError(t('Pedigri çizimi bulunamadı — dışa aktarılamadı. Önce bir pedigri oluşturun.'));
+    throw new ExportError(t('Dışa aktarılacak bir pedigri çizimi bulunamadı; önce bir pedigri oluşturulmalıdır.'));
   }
   return el;
 }
@@ -194,7 +194,7 @@ function renderCanvas(svgElement, opts, scaleFor, what) {
 
     img.onerror = function () {
       URL.revokeObjectURL(url);
-      reject(new ExportError(t('{what} oluşturulamadı — SVG görüntüye dönüştürülemedi.', { what })));
+      reject(new ExportError(t('{what} oluşturulamadı; çizim resme dönüştürülemedi.', { what })));
     };
 
     img.src = url;

@@ -54,7 +54,7 @@ const validStyle = (e) => REGIONS.includes(e.region) && FILLS.includes(e.fill);
 // from the others; adding one is refused with this message (clinician
 // decision 2026-10-25: an explicit warning, the clinician simplifies)
 export const KEY_CAPACITY = REGIONS.length * FILLS.length;
-export const KEY_FULL_MESSAGE = tk('16 bulgu sınırına ulaşıldı: her bulgu sembolde kendine ait bir çeyrek ve dolguyla gösteriliyor ve boş işaret kalmadı. Yeni bulgu eklemek için benzer bulguları tek bir adda toplayın ya da gereksiz bir bulguyu kaldırın.');
+export const KEY_FULL_MESSAGE = tk('16 bulgu sınırına ulaşıldı: her bulgu sembolde kendine ait bir çeyrek ve dolguyla gösterildiğinden kullanılabilecek işaret kalmadı. Yeni bir bulgu eklemek için benzer bulgular tek bir ad altında toplanabilir ya da gereksiz bir bulgu kaldırılabilir.');
 
 export function keyFull(key = []) {
   return new Set(key.filter(validStyle).map(signature)).size >= KEY_CAPACITY;
@@ -290,7 +290,7 @@ export function carrierFindingIssues(graph) {
     if (carried.map(fillOf).some((f) => right.has(f))) {
       issues.push({
         severity: 'error', code: 'CARRIER_FINDING_INDISTINCT', ids: [p.id],
-        message: t('Bu kişinin taşıyıcılığı ile bulgusu aynı dolguyla çizilir ve ayırt edilemez; boş işaret kalmadı. Benzer bulguları tek adda toplayın ya da birini kaldırın.'),
+        message: t('Bu kişinin taşıyıcılığı ile bulgusu aynı dolguyla çizileceğinden birbirinden ayırt edilemez ve kullanılabilecek başka işaret kalmadı. Benzer bulgular tek bir ad altında toplanabilir ya da biri kaldırılabilir.'),
       });
     }
   }

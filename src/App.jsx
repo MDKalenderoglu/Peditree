@@ -129,7 +129,7 @@ function PanelResizer({ shellRef, width, onChange }) {
   };
   return (
     <div className="panel-resizer" role="separator" aria-orientation="vertical" tabIndex={0}
-      aria-label={t('Yan panelin genişliği')} title={t('Sürükleyerek genişletin ya da daraltın; çift tıklayınca eski genişliğine döner')}
+      aria-label={t('Yan panelin genişliği')} title={t('Paneli sürükleyerek genişletebilir ya da daraltabilirsiniz; çift tıklandığında ilk genişliğine döner')}
       aria-valuemin={PANEL_WIDTH.min} aria-valuemax={PANEL_WIDTH.max} aria-valuenow={width || undefined}
       onPointerDown={drag} onDoubleClick={() => onChange(0)}
       onKeyDown={(e) => {
@@ -245,7 +245,7 @@ function App() {
     try { fontCss = await embeddedFontCss(spec.fontId); } catch { fontMissing = true; }
     return { ...extra, spec, fontCss, fontMissing, lang: drawLang };
   };
-  const FONT_MISSING_TEXT = t('Seçtiğiniz yazı tipi dosyaya eklenemedi. Dosya başka bir bilgisayarda açılırsa yazılar o bilgisayarın yazı tipiyle görünür.');
+  const FONT_MISSING_TEXT = t('Seçilen yazı tipi dosyaya eklenemedi. Dosya başka bir bilgisayarda açıldığında yazılar o bilgisayarın yazı tipiyle görüntülenir.');
   const exportNoticeFor = (assessment, opts) => {
     const lines = [];
     if (assessment.warnings.length > 0) lines.push(`${t('Dışa aktarıldı — dikkat edilmesi gerekenler:')}\n${assessment.warnings.join('\n')}`);
@@ -335,7 +335,7 @@ function App() {
 
     if (!assessment.canExport) {
       setExportNotice(null);
-      setExportError(`${t('Dışa aktarma yapılmadı (önce düzeltilmesi gereken sorunlar var):')}\n${assessment.fatal.join('\n')}`);
+      setExportError(`${t('Çizim dışa aktarılamadı; önce aşağıdaki sorunların giderilmesi gerekiyor:')}\n${assessment.fatal.join('\n')}`);
       return null;
     }
 
@@ -416,7 +416,7 @@ function App() {
       if (opts.fontMissing) setExportNotice(FONT_MISSING_TEXT);
     } catch (err) {
       setShare(null);
-      setExportError(err.message || t('Paylaşım için resim hazırlanamadı.'));
+      setExportError(err.message || t('Paylaşılacak resim hazırlanamadı.'));
     }
   };
   const doShare = async (file) => {
@@ -424,7 +424,7 @@ function App() {
       const r = await shareFile(file, t('Pedigri'));
       if (r === 'unsupported') {
         downloadBlob(file, file.name);
-        setExportNotice(t('Bu tarayıcı doğrudan paylaşmayı desteklemiyor; resim indirildi. WhatsApp ya da Gmail’de ek olarak seçebilirsiniz.'));
+        setExportNotice(t('Bu tarayıcı doğrudan paylaşımı desteklemediği için resim bilgisayarınıza indirildi. İndirilen dosyayı e-posta ya da mesaj uygulamasında ek olarak gönderebilirsiniz.'));
       }
       setShare(null);
     } catch (err) {
@@ -481,7 +481,7 @@ function App() {
   const handleNewPedigree = (spec = null) => {
     setNewMenu(false);
     setRelationOpen(false);
-    if (window.confirm(t('Yeni pedigri başlatılsın mı?\n\nŞu anki pedigriyi “Kaydet” ile dosyaya kaydetmediyseniz kaybolur ve geri getirilemez.'))) {
+    if (window.confirm(t('Yeni bir pedigri başlatılsın mı?\n\nAçık olan pedigri “Kaydet” ile bir dosyaya kaydedilmediyse silinir ve geri getirilemez.'))) {
       // resetPedigree() / newFromTemplate() clear selection and the undo
       // stack — see usePedigreeStore.js. Only export-banner state (local to
       // App.jsx) is cleared here.
@@ -601,7 +601,7 @@ function App() {
   function openFile(file) {
     if (!file) return;
     // asks whenever work would be replaced, also when only the patient's name was typed
-    if (needsLeaveWarning(doc, downloadedDoc.current) && !window.confirm(t('Açık pedigrinin yerine dosyadaki pedigri yüklensin mi? (Geri Al ile dönebilirsiniz.)'))) return;
+    if (needsLeaveWarning(doc, downloadedDoc.current) && !window.confirm(t('Açık olan pedigrinin yerine dosyadaki pedigri yüklensin mi? Bu işlem “Geri al” ile geri alınabilir.'))) return;
     // a project file is JSON; anything else is read as a PED file
     file.text().then(text => (/\.(ped|fam|txt)$/i.test(file.name) || !text.trim().startsWith('{') ? importPedFile(text) : openProjectFile(text)))
       .catch(() => openProjectFile(null));
@@ -659,7 +659,7 @@ function App() {
         const [only] = k.selectedNodes;
         if (k.selectedNodes.length !== 1 || only.proband || only.placeholder) return;
         e.preventDefault();
-        if (window.confirm(tNow('Seçili kişi silinsin mi?\n\nÇocukları silinmez; diğer ebeveynlerine bağlı kalırlar. Yanlışlıkla sildiyseniz "Geri Al" (Cmd/Ctrl+Z) ile geri getirebilirsiniz.'))) k.deleteIndividual(only.id);
+        if (window.confirm(tNow('Seçili kişi silinsin mi?\n\nKişinin çocukları silinmez ve diğer ebeveynlerine bağlı kalır. Silme işlemi “Geri al” (Cmd/Ctrl+Z) ile geri alınabilir.'))) k.deleteIndividual(only.id);
         return;
       }
       const zoom = { '+': tk('Yakınlaştır'), '=': tk('Yakınlaştır'), '-': tk('Uzaklaştır'), '0': tk('Sığdır') }[e.key];
@@ -736,7 +736,7 @@ function App() {
               <span className="brand-sub" data-fold-order="1">{t('Klinik pedigri')}</span>
             </span>
             {/* a small badge, never folded (clinician decision 2026-11-07) */}
-            {RELEASE_STAGE && <span className="beta-badge" title={t('Deneme sürümü: geri bildiriminiz değerli')}>{t('Beta')}</span>}
+            {RELEASE_STAGE && <span className="beta-badge" title={t('Deneme sürümü: geri bildirimleriniz uygulamanın gelişmesine katkı sağlar')}>{t('Beta')}</span>}
           </button>
           {aboutOpen && (
             <div className="keys-popover share-popover about-popover about-text" role="dialog" aria-label={t('PediTree hakkında')}>
@@ -752,7 +752,7 @@ function App() {
           aria-label={t('Hasta adı soyadı')} onChange={e => setPatientName(e.target.value)}
           onBlur={e => setPatientName(nameCase(e.target.value).trim())} />
         {/* optional: the proband's age follows it, as of today (clinician decision 2026-10-25) */}
-        <label className="toolbar-field" title={t('Probandın (proband yoksa danışanın) doğum tarihi (isteğe bağlı). Yazarsanız yaşı bugüne göre kendiliğinden hesaplanır. Kısa da yazabilirsiniz: 3.5.25')}>
+        <label className="toolbar-field" title={t('Probandın doğum tarihi; proband işaretlenmemişse danışanın doğum tarihi. İsteğe bağlıdır; girildiğinde yaş bugünün tarihine göre hesaplanır. Tarih kısaltılarak da yazılabilir (3.5.25).')}>
           {/* the last thing to give way on a narrow tablet: the box keeps its name for screen readers and its tooltip */}
           <span data-overflow-order="9">{t('Doğum')}</span>
           {/* typed the quick way: 3.5.25, 3/05/2025, 030525 … (clinician request 2026-10-25) */}
@@ -763,7 +763,7 @@ function App() {
         <div className="toolbar-sep" data-fold-order="10" />
         <div className="toolbar-group">
           <div className="keys-wrap" data-popup="new">
-            <button className="ui-btn" data-overflow="new" data-overflow-order="5" onClick={() => setNewMenu(v => !v)} aria-expanded={newMenu} title={t('Yeni bir pedigri başlat: boş bir aileyle ya da hazır bir akraba evliliği şablonuyla')}><FilePlus2 size={15} /> <span className="btn-label" data-fold-order="8">{t('Yeni')}</span></button>
+            <button className="ui-btn" data-overflow="new" data-overflow-order="5" onClick={() => setNewMenu(v => !v)} aria-expanded={newMenu} title={t('Boş bir aileyle ya da hazır bir akraba evliliği şablonuyla yeni bir pedigri başlatır')}><FilePlus2 size={15} /> <span className="btn-label" data-fold-order="8">{t('Yeni')}</span></button>
             {newMenu && (
               <div className="keys-popover share-popover new-popover" role="dialog" aria-label={t('Yeni pedigri')}>
                 {/* two ways to start, each with a small pedigree of what opens (clinician request 2026-11-01) */}
@@ -791,7 +791,7 @@ function App() {
               <div className="keys-popover share-popover open-popover" role="dialog" aria-label={t('Dosya aç')}>
                 <div className="keys-title">{t('Dosya aç')}</div>
                 <div className="download-item-head"><Save size={18} /><span><b>{t('PediTree dosyası')}</b> (.peditree.json)<small>{t('Kaldığınız yerden, bütün bilgileriyle')}</small></span></div>
-                <div className="download-item-head"><Table2 size={18} /><span><b>{t('PED dosyası')}</b> (.ped, .fam, .txt)<small>{t('Aile bağları ve hastalık; isim, yaş ve bulgular gelmez')}</small></span></div>
+                <div className="download-item-head"><Table2 size={18} /><span><b>{t('PED dosyası')}</b> (.ped, .fam, .txt)<small>{t('Yalnızca aile bağları ve etkilenme durumu aktarılır; ad, yaş ve bulgular aktarılmaz')}</small></span></div>
                 <button className="ui-btn ui-btn-primary" onClick={chooseFile}><FolderOpen size={15} /> {t('Dosya seç')}</button>
                 <p className="share-note mouse-only">{t('Dosyayı çizimin üzerine bırakarak da açabilirsiniz.')}</p>
                 <label className="check" title={t('Ayarlar’dan geri açabilirsiniz')}>
@@ -815,25 +815,25 @@ function App() {
                 <button className="download-item" title={t('Sunum, mesaj ve belgeler için')} onClick={() => { setDownloadOpen(false); handleExportPNG(); }}>
                   <ImageIcon size={18} /><span><b>PNG</b><small>{t('rapora, sunuma, mesaja eklemek için')}</small></span>
                 </button>
-                <button className="download-item" title={t('Tek A4 sayfa; yazdırmaya ve hasta dosyasına eklemeye hazır')} onClick={() => { setDownloadOpen(false); handleExportPDF(); }}>
+                <button className="download-item" title={t('Tek bir A4 sayfası; yazdırılmaya ve hasta dosyasına eklenmeye uygundur')} onClick={() => { setDownloadOpen(false); handleExportPDF(); }}>
                   <FileText size={18} /><span><b>PDF</b><small>{t('A4 sayfa')}</small></span>
                 </button>
-                <button className="download-item" title={t('Büyütülünce bozulmaz; yayın, Word ve PowerPoint için')} onClick={() => { setDownloadOpen(false); handleExportSVG(); }}>
+                <button className="download-item" title={t('Büyütüldüğünde netliğini korur; yayınlar ile Word ve PowerPoint belgeleri için uygundur')} onClick={() => { setDownloadOpen(false); handleExportSVG(); }}>
                   <FileCode2 size={18} /><span><b>SVG</b><small>{t('büyütülebilir çizim')}</small></span>
                 </button>
                 <div className="download-group">{t('Sonra düzenlemek için')}</div>
-                <button className="download-item" title={t('Pedigriyi bütün bilgileriyle bilgisayarınıza kaydeder (.peditree.json). Sonra “Aç” ile açıp kaldığınız yerden devam edebilirsiniz.')} onClick={() => { setDownloadOpen(false); handleSaveProject(); }}>
-                  <Save size={18} /><span><b>{t('PediTree dosyası')}</b><small>{t('“Aç” ile açıp kaldığınız yerden sürdürmek için')}</small></span>
+                <button className="download-item" title={t('Pedigriyi bütün bilgileriyle bilgisayarınıza kaydeder (.peditree.json). Dosya daha sonra “Aç” ile açılarak çalışmaya kalınan yerden devam edilebilir.')} onClick={() => { setDownloadOpen(false); handleSaveProject(); }}>
+                  <Save size={18} /><span><b>{t('PediTree dosyası')}</b><small>{t('daha sonra “Aç” ile açıp düzenlemek için')}</small></span>
                 </button>
                 <div className="download-group">{t('Analiz programları için')}</div>
                 <button className="download-item" aria-expanded={pedOpen} onClick={() => setPedOpen(v => !v)}
-                  title={t('Genetik analiz programları ve laboratuvarlar için. Yalnızca anne, baba, cinsiyet ve hasta olup olmadığı yazılır; kişiler pedigri numarasıyla (ör. II-3) geçer, hasta adı yazılmaz.')}>
+                  title={t('Genetik analiz programları ve laboratuvarlar için hazırlanır. Dosyada yalnızca anne, baba, cinsiyet ve etkilenme durumu yer alır; kişiler pedigri numarasıyla (örneğin II-3) gösterilir, hasta adı yazılmaz.')}>
                   <Table2 size={18} /><span><b>PED</b><small>{t('kişiler numarayla geçer, ad yazılmaz')}</small></span>
                 </button>
                 {pedOpen && (
                   <div className="download-ped">
                     <label className="field-col">
-                      <span className="field-label">{t('Dosyada kim “hasta” olarak yazılsın?')}</span>
+                      <span className="field-label">{t('Dosyada hangi kişiler “etkilenmiş” olarak işaretlensin?')}</span>
                       <select className="select" value={pedPhenotype} onChange={e => setPedPhenotype(e.target.value)}>
                         <option value="affected">{t('Durum’da “Etkilenmiş” işaretlenen kişiler')}</option>
                         {(pedigreeData.conditionKey || []).map(e => <option key={e.id} value={e.label}>{t('“{label}” bulgusu olanlar', { label: e.label })}</option>)}
@@ -853,24 +853,24 @@ function App() {
             title={_history && _history.length > 0 ? t('Geri al ({n} adım)', { n: _history.length }) : t('Geri alınacak adım yok')} aria-label={t('Geri al')}><Undo2 size={15} /></button>
           <button className="ui-btn ui-btn-icon" onClick={handleRedo} disabled={!_future || _future.length === 0}
             title={_future && _future.length > 0 ? t('Yinele ({n} adım)', { n: _future.length }) : t('Yinelenecek adım yok')} aria-label={t('Yinele')}><Redo2 size={15} /></button>
-          <button className="ui-btn" data-overflow="relayout" data-overflow-order="8" onClick={relayout} title={t('Konumlandır: kişileri çizimde baştan yerleştirir; kimin kiminle akraba olduğu değişmez. Geri alınabilir.')}><LayoutGrid size={15} /> <span className="btn-label" data-fold-order="4">{t('Konumlandır')}</span></button>
+          <button className="ui-btn" data-overflow="relayout" data-overflow-order="8" onClick={relayout} title={t('Konumlandır, kişileri çizimde yeniden yerleştirir. Akrabalık ilişkileri değişmez ve işlem geri alınabilir.')}><LayoutGrid size={15} /> <span className="btn-label" data-fold-order="4">{t('Konumlandır')}</span></button>
         </div>
         {/* the right end: it stays at the right edge, also when the toolbar takes two rows */}
         <div className="toolbar-end">
         <button className={`ui-btn touch-only${multiSelect ? ' ui-btn-primary' : ''}`} aria-pressed={multiSelect} data-overflow="multi" data-overflow-order="7"
-          onClick={() => setMultiSelect(v => !v)} title={t('Açıkken dokunduğunuz her kişi seçime eklenir; yeniden dokunursanız çıkarılır. Birden çok kişiyi birlikte değiştirmek için.')}>
+          onClick={() => setMultiSelect(v => !v)} title={t('Açıkken dokunulan her kişi seçime eklenir, yeniden dokunulduğunda seçimden çıkarılır. Birden çok kişide aynı değişikliği yapmak için kullanılır.')}>
           <CheckSquare size={15} /> <span className="btn-label" data-fold-order="5">{t('Çoklu seçim')}</span>
         </button>
         {/* Yazdır, Paylaş: icons alone, their words for screen readers and in the tooltip (clinician 2026-11-05) */}
         <div className="toolbar-group">
           <button className="ui-btn" data-overflow="print" data-overflow-order="3" onClick={handlePrint} title={t('Çizimi tek bir A4 sayfaya yazdırır (Cmd/Ctrl+P)')}><Printer size={15} /> <span className="btn-label icon-only">{t('Yazdır')}</span></button>
           <div className="keys-wrap" data-popup="share">
-            <button className="ui-btn" data-overflow="share" data-overflow-order="4" onClick={openShare} aria-expanded={!!share} title={t('Pedigri resmini WhatsApp, Gmail gibi bir uygulamayla gönderir')}>
+            <button className="ui-btn" data-overflow="share" data-overflow-order="4" onClick={openShare} aria-expanded={!!share} title={t('Pedigrinin resmini cihazınızdaki bir uygulamayla (e-posta, mesajlaşma) gönderir')}>
               <Share2 size={15} /> <span className="btn-label icon-only">{t('Paylaş')}</span>
             </button>
             {share && (
               <div className="keys-popover share-popover" role="dialog" aria-label={t('Paylaş')}>
-                <p className="share-note">{t('Dikkat: resim, seçeceğiniz uygulamayla bu cihazın dışına gönderilir ve hasta bilgilerini içerir.')}</p>
+                <p className="share-note">{t('Resim, seçtiğiniz uygulama aracılığıyla bu cihazın dışına gönderilir ve hasta bilgilerini içerir.')}</p>
                 {share.busy ? <p className="share-note">{t('Resim hazırlanıyor…')}</p> : (
                   <div className="share-actions">
                     {share.withName && (
@@ -881,7 +881,7 @@ function App() {
                     </button>
                   </div>
                 )}
-                {share.withName && <p className="share-note">{t('“Hasta adı olmadan” seçilirse yalnızca en üstteki hasta adı resimden çıkarılır. Sembollerin altındaki etiketler ve notlar resimde kalır.')}</p>}
+                {share.withName && <p className="share-note">{t('“Hasta adı olmadan” seçildiğinde yalnızca başlıktaki hasta adı resimden çıkarılır; sembollerin altındaki etiketler ve notlar resimde kalır.')}</p>}
               </div>
             )}
           </div>
@@ -916,7 +916,7 @@ function App() {
             {moreItems && <MoreMenu items={moreItems} multiSelect={multiSelect} onPick={runMore} />}
           </div>
           <button className="ui-btn ui-btn-icon tour-btn" onClick={startTour} aria-label={t('Tanıtım turu')}
-            title={t('Tanıtım turu: PediTree’yi örnek bir aile üzerinde adım adım gösterir')}><CircleHelp size={16} /></button>
+            title={t('Tanıtım turu: PediTree’yi örnek bir aile üzerinde adım adım tanıtır')}><CircleHelp size={16} /></button>
           <div className="keys-wrap" data-popup="settings">
             <button className="ui-btn" onClick={() => (settingsOpen ? setSettingsOpen(false) : openSettings())} aria-expanded={settingsOpen}
               title={t('Ayarlar: dil, çizimin görünümü, yazı tipi, halka menü ve indirilen resimler')}>
@@ -941,7 +941,7 @@ function App() {
               <AlertTriangle size={16} /> {t('Otomatik kayıt yapılamıyor')}
             </h4>
             <p className="notice-text">
-              {t('Tarayıcı depolaması dolu ya da kapalı. Sayfa yenilenirse son değişiklikler kaybolabilir; çalışmanızı “Kaydet” ile dosyaya indirin.')}
+              {t('Tarayıcının depolama alanı dolu ya da kapalı olduğundan son değişiklikler sayfa yenilendiğinde kaybolabilir. Çalışmanızı “Kaydet” ile bir dosyaya kaydetmeniz önerilir.')}
             </p>
           </div>
         )}
@@ -1120,10 +1120,10 @@ function App() {
       <div className="tour-offer" role="dialog" aria-label={t('Tanıtım turu')}>
         <div className="tour-hero"><TourFamily /></div>
         <b>{t('PediTree’ye hoş geldiniz')}</b>
-        <p>{t('PediTree’yi örnek bir aile üzerinde adım adım gösteren kısa bir tur (2 dakika). Çiziminize dokunulmaz.')}</p>
+        <p>{t('PediTree’yi örnek bir aile üzerinde adım adım tanıtan kısa bir tur (yaklaşık iki dakika). Kendi çiziminiz değişmeden korunur.')}</p>
         <div className="btn-row">
           <button className="ui-btn ui-btn-primary" onClick={startTour}>{t('Turu başlat')}</button>
-          <button className="ui-btn" onClick={() => setView({ tourOffer: false })} title={t('Tur her zaman üst çubuktaki ? düğmesinden açılır')}>{t('Sonra')}</button>
+          <button className="ui-btn" onClick={() => setView({ tourOffer: false })} title={t('Tura istediğiniz zaman üst çubuktaki ? düğmesinden ulaşabilirsiniz')}>{t('Sonra')}</button>
         </div>
       </div>
     )}

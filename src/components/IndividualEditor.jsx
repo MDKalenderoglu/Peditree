@@ -97,7 +97,7 @@ const PATH_TEXT = {
 };
 const DEGREE_OPTIONS = [
   ['unknown', tk('Bilinmiyor')], ['first_cousin', tk('1. derece kuzen')], ['second_cousin', tk('2. derece kuzen')], ['third_cousin', tk('3. derece kuzen')],
-  ['first_cousin_once_removed', tk('1. kuzenin çocuğu (bir kuşak fark)')], ['second_cousin_once_removed', tk('2. kuzenin çocuğu (bir kuşak fark)')],
+  ['first_cousin_once_removed', tk('Birinci derece kuzenin çocuğu (bir kuşak farkla)')], ['second_cousin_once_removed', tk('İkinci derece kuzenin çocuğu (bir kuşak farkla)')],
   ['double_first_cousin', tk('Çift 1. derece kuzen')], ['multiple_relationship', tk('Birden fazla akrabalık yolu')], ['other', tk('Diğer')],
 ];
 
@@ -118,7 +118,7 @@ function RelationshipChoice({ u, onSetBackground, onSetLineNote, parentsCons, gr
   // informational, for counselling and homozygosity comparison (clinician request 2026-10-25)
   const cousinName = graph ? cousinMarriageName(graph, u.partners[0], u.partners[1]) : null;
   const F = graph ? childInbreeding(graph, u.id) : 0;
-  const inbreeding = F > 0 && <span className="field-hint">{t('Bu çiftin çocuklarında akrabalık (inbreeding) katsayısı:')} <b>F = {formatCoefficient(F)}</b></span>;
+  const inbreeding = F > 0 && <span className="field-hint">{t('Bu çiftin çocuklarında beklenen akrabalık (inbreeding) katsayısı:')} <b>F = {formatCoefficient(F)}</b></span>;
   if (drawn) {
     const nameOf = parentsCons ? parentsCons.nameOf : (x) => x;
     return (
@@ -157,10 +157,10 @@ function RelationshipChoice({ u, onSetBackground, onSetLineNote, parentsCons, gr
           {onSetLineNote && (
             <DraftField key={`${u.id}-linenote`} type="text" className="input input-wide" value={u.lineNote || ''} maxLength={40}
               placeholder={t('Aynı köy')} aria-label={t('Çizginin üstündeki yazı')}
-              title={t('Eşleri bağlayan çizginin üstünde yazar; ör. yakın köy, uzak akraba. Boş bırakılırsa “Aynı köy”.')}
+              title={t('Eşleri birleştiren çizginin üzerinde gösterilir (örneğin yakın köy, uzak akraba). Boş bırakılırsa “Aynı köy” yazılır.')}
               onCommit={v => onSetLineNote(u.id, v)} />
           )}
-          <span className="field-hint">{t('Akrabalık sayılmaz; çizgi tek kalır, üstünde bu yazı çıkar.')}</span>
+          <span className="field-hint">{t('Akrabalık sayılmaz; çizgi tek kalır ve üzerinde bu not gösterilir.')}</span>
         </>
       )}
       {isParents && value === 'yes' && (
@@ -178,12 +178,12 @@ function RelationshipChoice({ u, onSetBackground, onSetLineNote, parentsCons, gr
           )}
           {kin
             ? <span className="field-hint">{t('Ortak atalar çizime eklendi: {names}', { names: kin.ancestors.map(parentsCons.nameOf).join(', ') })}</span>
-            : <span className="field-hint">{t('Akrabalık derecesini seçin (1. kuzenlerde ortak atanın hangi taraftan olduğunu da). Ortak atalar çizime kendiliğinden eklenir. Seçmezseniz eşlerin arasına yalnızca çift çizgi çizilir.')}</span>}
+            : <span className="field-hint">{t('Akrabalık derecesini seçin; birinci derece kuzenlerde ortak atanın hangi taraftan geldiğini de belirtin. Ortak atalar çizime kendiliğinden eklenir. Derece seçilmezse eşlerin arasına yalnızca çift çizgi çizilir.')}</span>}
           {kin && cousinName && <span className="field-hint">{t('Eşler {relation}.', { relation: cousinName })}</span>}
           {inbreeding}
         </>
       )}
-      {!isParents && value === 'yes' && <span className="field-hint">{t('Ortak atalar çizimde yok; çift çizgi yalnızca ailenin söylediğine dayanıyor.')}</span>}
+      {!isParents && value === 'yes' && <span className="field-hint">{t('Ortak atalar çizimde yer almıyor; çift çizgi yalnızca ailenin beyanına dayanmaktadır.')}</span>}
     </div>
   );
 }
@@ -225,7 +225,7 @@ function UnionControls({ u, pcrs, onAddChild, onSetUnionStatus, onSetUnionRelati
           {u.childless && (
             <>
               <DraftField key={`${u.id}-childless`} type="text" className="input input-wide" value={u.childlessReason || ''}
-                placeholder={t('Nedeni (isteğe bağlı), ör. azospermi')} onCommit={v => onSetChildlessness(u.id, undefined, v)} />
+                placeholder={t('Nedeni (isteğe bağlı; örneğin azospermi)')} onCommit={v => onSetChildlessness(u.id, undefined, v)} />
               <span className="field-hint">{u.childless === 'infertile' ? t('Çizimde çift kısa çizgi: kısırlık (infertilite).') : t('Çizimde tek kısa çizgi: kendi isteğiyle çocuksuz ya da nedeni bilinmiyor.')}</span>
             </>
           )}
@@ -256,10 +256,10 @@ function AdoptionCard({ info, onSet }) {
       <div className="card-title">{t('Evlat edinme')}</div>
       <div className="segmented" role="radiogroup" aria-label={t('Evlat edinme')}>
         <button role="radio" aria-checked={kind === 'none'} className={kind === 'none' ? 'on' : undefined}
-          disabled={kind === 'in'} title={kind === 'in' ? t('Bu kişinin biyolojik ebeveynleri çizili değil; önce onları ekleyin') : undefined}
+          disabled={kind === 'in'} title={kind === 'in' ? t('Bu kişinin biyolojik ebeveynleri çizimde yer almıyor; önce ebeveynleri ekleyin') : undefined}
           onClick={() => onSet(null)}>{t('Yok')}</button>
         <button role="radio" aria-checked={kind === 'out'} className={kind === 'out' ? 'on' : undefined}
-          disabled={!hasParents} title={!hasParents ? t('Önce biyolojik ebeveynleri ekleyin') : t('Evlat verildiyse ve evlat edinen aile çizimde yoksa “Evlat verildi”; aile çizimdeyse (ör. teyze ve eşi) listeden seçin.')}
+          disabled={!hasParents} title={!hasParents ? t('Önce biyolojik ebeveynleri ekleyin') : t('Kişi evlat verildiyse ve evlat edinen aile çizimde yoksa “Evlat verildi” seçilir; aile çizimdeyse (örneğin teyze ve eşi) listeden seçilir.')}
           onClick={() => onSet('out')}>{t('Evlat verildi')}</button>
       </div>
       <label className="field">
@@ -273,9 +273,9 @@ function AdoptionCard({ info, onSet }) {
       {/* what the drawing shows, once something is chosen; the choices explain themselves (title) */}
       {kind !== 'none' && (
         <span className="field-hint">
-          {kind === 'out' ? t('Evlat verildi: sembol köşeli parantez içinde, biyolojik ailesinden düz çizgi. Evlat edinen aile çizimde yok.')
-            : kind === 'relative' ? t('Evlat edinildi; biyolojik ve evlat edinen ailesi çizimde: biyolojik ailesinden düz, evlat edinen aileden kesikli çizgi.')
-            : t('Evlat edinildi: evlat edinen ailesinin altında, kesikli çizgiyle.')}
+          {kind === 'out' ? t('Evlat verildi: sembol köşeli parantez içinde gösterilir ve biyolojik ailesine düz çizgiyle bağlanır. Evlat edinen aile çizimde yer almaz.')
+            : kind === 'relative' ? t('Evlat edinildi; biyolojik ve evlat edinen ailesi çizimde yer alır. Biyolojik ailesine düz, evlat edinen ailesine kesikli çizgiyle bağlanır.')
+            : t('Evlat edinildi: evlat edinen ailesinin altında, kesikli çizgiyle gösterilir.')}
         </span>
       )}
     </div>
@@ -289,10 +289,10 @@ function AdoptionCard({ info, onSet }) {
  * whom they are a donor or carrier for.
  */
 const REPRO_BUTTONS = [
-  ['sperm_donor', tk('Sperm donörü'), tk('Çocuğun genetik babası; çizimde D, çiftle arasında ilişki çizgisi yok')],
-  ['egg_donor', tk('Yumurta donörü'), tk('Çocuğun genetik annesi; çizimde D')],
-  ['gestational_carrier', tk('Gestasyonel taşıyıcı (G)'), tk('Gebeliği taşır, yumurtası kullanılmaz; çocuk onun altında')],
-  ['surrogate', tk('Taşıyıcı anne (D)'), tk('Yumurtasını verir ve gebeliği taşır; çocuk onun altında')],
+  ['sperm_donor', tk('Sperm donörü'), tk('Çocuğun genetik babası; çizimde D harfiyle gösterilir ve çiftle arasında ilişki çizgisi bulunmaz')],
+  ['egg_donor', tk('Yumurta donörü'), tk('Çocuğun genetik annesi; çizimde D harfiyle gösterilir')],
+  ['gestational_carrier', tk('Gestasyonel taşıyıcı (G)'), tk('Gebeliği taşır, ancak yumurtası kullanılmaz; çocuk onun altında çizilir')],
+  ['surrogate', tk('Taşıyıcı anne (D)'), tk('Hem yumurtasını verir hem de gebeliği taşır; çocuk onun altında çizilir')],
 ];
 function ReproCard({ info, onAdd, onRemove, onSetOwn }) {
   const [who, setWho] = useState('');
@@ -302,7 +302,7 @@ function ReproCard({ info, onAdd, onRemove, onSetOwn }) {
     <div className="card">
       <div className="card-title">{t('Yardımcı üreme')}</div>
       {roleOf.length > 0 && (
-        <span className="field-hint">{roleOf.map(r => t('{child} için {role}', { child: r.childName, role: t(r.label).toLocaleLowerCase(currentLang()) })).join('; ')}. {t('Aile öyküsünü not ve bulgu olarak girin.')}</span>
+        <span className="field-hint">{roleOf.map(r => t('{child} için {role}', { child: r.childName, role: t(r.label).toLocaleLowerCase(currentLang()) })).join('; ')}. {t('Aile öyküsü not ve bulgu olarak girilebilir.')}</span>
       )}
       {canHave ? (
         <>
@@ -316,7 +316,7 @@ function ReproCard({ info, onAdd, onRemove, onSetOwn }) {
                     onClick={() => onSetOwn(own.current === p.id ? null : p.id)}>{p.name}</button>
                 ))}
               </div>
-              <span className="field-hint">{own.current ? t('Akrabalık ve akrabalık katsayısı bu eş ve donör üzerinden hesaplanır.') : t('Seçilmezse bilinmiyor sayılır; akrabalık yalnız donör üzerinden hesaplanır.')}</span>
+              <span className="field-hint">{own.current ? t('Akrabalık ve akrabalık katsayısı bu eş ve donör üzerinden hesaplanır.') : t('Seçim yapılmazsa bilinmiyor kabul edilir ve akrabalık yalnızca donör üzerinden hesaplanır.')}</span>
             </div>
           )}
           {links.map(l => (
@@ -338,10 +338,10 @@ function ReproCard({ info, onAdd, onRemove, onSetOwn }) {
                 onClick={() => onAdd(role, who ? { personId: who } : {})}>{t(text)}</button>
             ))}
           </div>
-          <span className="field-hint">{t('Donörün ve taşıyıcının ailesi çizilmez; aile öyküsünü onların not ve bulgu alanına yazın. Akrabalık katsayısı genetik ebeveynlere göre hesaplanır.')}</span>
+          <span className="field-hint">{t('Donörün ve taşıyıcının ailesi çizilmez; aile öyküleri kendi not ve bulgu alanlarına yazılabilir. Akrabalık katsayısı genetik ebeveynlere göre hesaplanır.')}</span>
         </>
       ) : roleOf.length === 0 && (
-        <span className="field-hint">{t('Yardımcı üreme işaretlemek için önce bu kişinin anne-babasını (ya da tek ebeveynini) ekleyin.')}</span>
+        <span className="field-hint">{t('Yardımcı üreme bilgisi girmek için önce bu kişinin anne ve babası (ya da tek ebeveyni) eklenmelidir.')}</span>
       )}
     </div>
   );
@@ -406,7 +406,7 @@ function PairKinship({ a, b, graph }) {
     <div className="card">
       <div className="card-title">{t('Akrabalık')}</div>
       <span className="field-hint">{what}</span>
-      <span className="field-hint">{t('Ortak gen oranı (ortak atalardan gelen aynı genlerin beklenen oranı):')} <b>{formatCoefficient(2 * phi)}</b></span>
+      <span className="field-hint">{t('Ortak gen oranı (ortak atalardan kalıtılan aynı genlerin beklenen oranı):')} <b>{formatCoefficient(2 * phi)}</b></span>
     </div>
   );
 }
@@ -422,7 +422,7 @@ function MergeCard({ check, onMerge, ids }) {
       <div className="card-title">{t('Tek sembolde birleştir')}</div>
       <span className="field-hint">
         {made
-          ? t('Seçili kardeşler tek bir {shape} olarak çizilir, içinde {count} yazar. Gerekirse “Tek tek ayır” ile yeniden ayrılır.', { shape: t(GROUP_SHAPE[made.sex || 'unknown']), count: made.count })
+          ? t('Seçili kardeşler tek bir {shape} olarak çizilir ve içine {count} yazılır. Gerektiğinde “Tek tek ayır” ile yeniden ayrılabilirler.', { shape: t(GROUP_SHAPE[made.sex || 'unknown']), count: made.count })
           : check.reason}
       </span>
       <button className="ui-btn" disabled={!made} onClick={() => onMerge(ids)}>{t('Birleştir')}</button>
@@ -470,7 +470,7 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
                 </button>
               ))}
             </div>
-            <span className="field-hint">{t('Biri zaten ikizse diğeri de aynı gruba katılır ve üçüz olurlar.')}</span>
+            <span className="field-hint">{t('Kişilerden biri zaten bir ikiz grubundaysa diğeri de bu gruba katılır ve üçüz olarak gösterilirler.')}</span>
           </div>
         )}
         {siblings && merge}
@@ -489,7 +489,7 @@ function TwoPersonActions({ node, node2, pedigreeData, onCreateUnion, onMakeSibl
         </div>
         )}
         {bulk}
-        <div className="field-hint">{t('İpucu: Cmd (Mac) ya da Ctrl (Windows) tuşuna basılı tutup kişilere tıklarsanız birden çok kişi seçilir. İki eşi bağlayan çizgiye tıklarsanız o çift seçilir.')}</div>
+        <div className="field-hint">{t('İpucu: Cmd (Mac) ya da Ctrl (Windows) tuşu basılıyken kişilere tıklanarak birden çok kişi seçilebilir. İki eşi birleştiren çizgiye tıklandığında o çift seçilir.')}</div>
       </div>
     </>
   );
@@ -535,7 +535,7 @@ export default function IndividualEditor({
         <div className="editor-body">
           {merge}
           {bulk}
-          <div className="field-hint">{t('Seçime kişi eklemek ya da çıkarmak için Cmd (Mac) ya da Ctrl (Windows) tuşuna basılı tutup o kişiye tıklayın.')}</div>
+          <div className="field-hint">{t('Seçime kişi eklemek ya da seçimden çıkarmak için Cmd (Mac) ya da Ctrl (Windows) tuşu basılıyken o kişiye tıklayın.')}</div>
         </div>
       </>
     );
@@ -598,13 +598,13 @@ export default function IndividualEditor({
       <Header title={pedigreeId || '—'} chips={chips} glyph={<PersonGlyph p={node} />} onClose={onClearSelection} />
       <div className="editor-body">
         {node.placeholder && (
-          <div className="field-hint">{t('Bu boş sembol, silinen ya da bilinmeyen bir ebeveynin yerini tutar; çocuklar ebeveynsiz kalmasın diye çizilir.')}</div>
+          <div className="field-hint">{t('Bu boş sembol, silinmiş ya da bilinmeyen bir ebeveynin yerini tutar; çocukların ebeveyn bağının korunması için çizilir.')}</div>
         )}
 
         {/* said once on this device, then out of the way (clinician 2026-11-05: the panel was too wordy) */}
         {!node.placeholder && !tip.seen && (
           <div className="editor-tip">
-            <span className="field-hint">{t('Akraba eklemek, bulgu, durum, ikiz ya da not girmek için çizimde bu kişinin çevresindeki düğmeleri kullanın. Düğmeler görünmüyorsa kişinin sembolüne yeniden tıklayın.')}</span>
+            <span className="field-hint">{t('Akraba eklemek ya da bulgu, durum, ikiz ve not girmek için çizimde bu kişinin çevresindeki düğmeleri kullanabilirsiniz. Düğmeler görünmüyorsa kişinin sembolüne yeniden tıklayın.')}</span>
             <button className="ui-btn ui-btn-sm ui-btn-ghost" onClick={tip.dismiss}>{t('Anladım')}</button>
           </div>
         )}
@@ -613,11 +613,11 @@ export default function IndividualEditor({
         {group && (
           <div className="card">
             <div className="card-title">{t('Birden çok kişi')}</div>
-            <div className="field-hint">{t('Bu sembol birden çok kişiyi gösteriyor; sayı sembolün içine yazılır. Bulgu, eş, çocuk ya da proband gerekiyorsa kişileri “Tek tek ayır” ile ayrı çizin.')}</div>
+            <div className="field-hint">{t('Bu sembol birden çok kişiyi gösterir ve kişi sayısı sembolün içine yazılır. Bulgu, eş, çocuk ya da proband bilgisi girilecekse kişiler “Tek tek ayır” ile ayrı ayrı çizilmelidir.')}</div>
             <label className="field">
               <span className="field-label">{t('Kişi sayısı')}</span>
               <DraftField key={`${node.id}-count`} type="text" className="input input-age" value={String(node.count)} placeholder={t('3 ya da n')}
-                title={t('2–99; bilinmiyorsa n. 1 yazarsanız tek kişi olur.')}
+                title={t('2 ile 99 arasında bir sayı; bilinmiyorsa n. 1 yazıldığında sembol tek kişiyi gösterir.')}
                 onCommit={v => onSetGroupCount && onSetGroupCount(node.id, v.trim() === '1' ? 1 : (parseGroupCount(v) ?? v))} />
             </label>
             <div className="segmented" role="radiogroup" aria-label={t('Cinsiyet')}>
@@ -651,12 +651,12 @@ export default function IndividualEditor({
               <label className="field">
                 <span className="field-label">{t('Son adet tarihi')}</span>
                 <DraftField key={`${node.id}-lmp`} type="text" inputMode="numeric" className="input birth-date" value={formatDate(node.lmp)} placeholder={t('gg.aa.yyyy')}
-                  title={t('Süren gebelikte son adet tarihi; çizimde P\'nin altında yazar. Kısa da yazabilirsiniz: 3.5.26')}
+                  title={t('Süren gebelikte son adet tarihi; çizimde P harfinin altında gösterilir. Tarih kısaltılarak da yazılabilir (3.5.26).')}
                   onCommit={v => set({ lmp: v.trim() })} />
               </label>
             )}
             {node.ongoingPregnancy && (
-              <button className="ui-btn" onClick={() => onSetPregnancyKind(node.id, '')}>{t('Bebek doğdu: gebelik yerine kişi olarak göster')}</button>
+              <button className="ui-btn" onClick={() => onSetPregnancyKind(node.id, '')}>{t('Bebek doğdu: gebelik yerine kişi olarak gösterilsin')}</button>
             )}
           </div>
         )}
@@ -668,13 +668,13 @@ export default function IndividualEditor({
                 under the symbol, and a note in the numbered Notes under the pedigree */}
             <NameField node={node} set={set} where={false} />
             <NoteField node={node} set={set} where={false} />
-            <span className="field-hint card-foot">{t('Ad sembolün altında, not pedigrinin altında numarasıyla görünür.')}</span>
+            <span className="field-hint card-foot">{t('Ad sembolün altında, not ise pedigrinin altında kişinin numarasıyla birlikte gösterilir.')}</span>
             {!isLoss && <AgeField node={node} set={set} />}
             {shows('recordsReviewed') && (
               <label className="check">
                 <input type="checkbox" checked={!!node.recordsReviewed} onChange={e => set({ recordsReviewed: e.target.checked })} />
                 {t('Kayıtlarla doğrulandı (*)')}
-                <span className="field-hint">{t('Bulguları tıbbi kayıt, epikriz ya da test raporu görülerek doğrulandıysa işaretleyin; sembolün sağ altında yıldız (*) çıkar (NSGC 2022). Aileden duyulan bilgi işaretsiz kalır.')}</span>
+                <span className="field-hint">{t('Bulgular tıbbi kayıt, epikriz ya da test raporu incelenerek doğrulandıysa işaretleyin; sembolün sağ alt köşesinde yıldız (*) gösterilir (NSGC 2022). Yalnızca aileden edinilen bilgi işaretlenmez.')}</span>
               </label>
             )}
             {shows('sexAtBirth') && (
@@ -686,7 +686,7 @@ export default function IndividualEditor({
                       onClick={() => set({ sexAtBirth: v })}>{label}</button>
                   ))}
                 </div>
-                <span className="field-hint">{t('Sembol kişinin cinsiyet kimliğini gösterir. Doğumda atanan cinsiyet farklıysa seçin; sembolün altına yazılır (AMAB: doğumda erkek, AFAB: doğumda kadın, UAAB: doğumda atanmamış; NSGC 2022).')}</span>
+                <span className="field-hint">{t('Sembol kişinin cinsiyet kimliğini gösterir. Doğumda atanan cinsiyet farklıysa burada seçilir ve sembolün altına yazılır (AMAB: doğumda erkek olarak atanmış, AFAB: doğumda kadın olarak atanmış, UAAB: doğumda atanmamış; NSGC 2022).')}</span>
               </div>
             )}
             {!!node.deceased && !isLoss && (
@@ -779,7 +779,7 @@ export default function IndividualEditor({
         {onDeleteIndividual && !node.placeholder && (
           <button className="list-row list-row-danger" aria-describedby={whyNotFor === node.id ? 'delete-why' : undefined} onClick={() => {
               if (node.proband) { setWhyNotFor(node.id); return; }
-              if (window.confirm(t('"{name}" silinsin mi?\n\nÇocukları silinmez; diğer ebeveynlerine bağlı kalırlar ve silinen kişinin yerinde boş bir "belirtilmemiş ebeveyn" sembolü görünür. Bu kişinin çocuğu olmayan eş ilişkileri de kaldırılır.\n\nYanlışlıkla sildiyseniz "Geri Al" ile geri getirebilirsiniz.', { name: displayNameFor(node.id) }))) {
+              if (window.confirm(t('“{name}” silinsin mi?\n\nKişinin çocukları silinmez; diğer ebeveynlerine bağlı kalır ve silinen kişinin yerinde boş bir “belirtilmemiş ebeveyn” sembolü gösterilir. Kişinin çocuğu olmayan eş ilişkileri de kaldırılır.\n\nSilme işlemi “Geri al” ile geri alınabilir.', { name: displayNameFor(node.id) }))) {
                 onDeleteIndividual(node.id);
               }
             }}>
@@ -787,7 +787,7 @@ export default function IndividualEditor({
           </button>
         )}
         {whyNotFor === node.id && node.proband && (
-          <div id="delete-why" className="field-hint" role="status">{t('Proband silinemez. Silmek için önce başka bir kişiyi proband yapın (Durum → Proband).')}</div>
+          <div id="delete-why" className="field-hint" role="status">{t('Proband silinemez. Silmeden önce başka bir kişinin proband olarak işaretlenmesi gerekir (Durum → Proband).')}</div>
         )}
       </div>
     </>

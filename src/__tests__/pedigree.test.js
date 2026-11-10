@@ -2031,7 +2031,7 @@ describe('childOrders — Non-proband unions', () => {
       assertZeroErrors(issues);
 
       // Should have an info-level message about unknown degree
-      const infoMsg = warnings.find(w => w.includes('Bilgi') && w.includes('bilinmiyor'));
+      const infoMsg = warnings.find(w => w.includes('Bilgi') && w.includes('bilinme'));
       expect(infoMsg).toBeDefined();
 
       // Should NOT have the "derece seçilmemiş" error-level warning

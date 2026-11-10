@@ -104,7 +104,7 @@ export default function RelationChooser({ onStart, onClose }) {
             </div>
           ) : (
             <div className="relation-sides">
-              <p className="relation-hint">{t('Kardeş olan büyükler; bilinmiyorsa olduğu gibi bırakın.')}</p>
+              <p className="relation-hint">{t('Kardeş olan büyükanne ya da büyükbabalar; bilinmiyorsa seçim olduğu gibi bırakılabilir.')}</p>
               {side('father', t('Babanın'))}
               {side('mother', t('Annenin'))}
             </div>

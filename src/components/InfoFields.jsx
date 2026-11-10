@@ -52,7 +52,7 @@ export function NameField({ node, set, autoFocus = false, where = true }) {
       <DraftField key={`${node.id}-label`} type="text" className="input input-wide" value={node.displayLabel || ''} placeholder={t('Ayşe, A.Y., amca…')}
         onCommit={v => set({ displayLabel: v })} autoFocus={autoFocus} />
       {(node.displayLabel || '').length > 24 && (
-        <span className="field-hint field-warn">{t('Uzun yazı çizimi kalabalıklaştırır; ayrıntıyı aşağıdaki nota yazın.')}</span>
+        <span className="field-hint field-warn">{t('Uzun metinler çizimi kalabalıklaştırır; ayrıntılar aşağıdaki not alanına yazılabilir.')}</span>
       )}
     </label>
   );
@@ -65,7 +65,7 @@ export function AgeField({ node, set, autoFocus = false }) {
       <span className="field-label">{t('Yaş')}</span>
       <DraftField key={`${node.id}-age`} type="text" className="input input-age" value={node.age || ''} placeholder={t('35, 3 ay…')}
         disabled={!!node.birthDate}
-        title={node.birthDate ? t('Yaş, üstteki doğum tarihinden bugüne göre hesaplanıyor; değiştirmek için doğum tarihini düzeltin') : `${t('Yıl, ay ya da gün')} — ${t(AGE_EXAMPLE)}`}
+        title={node.birthDate ? t('Yaş, üst çubuktaki doğum tarihinden bugünün tarihine göre hesaplanmaktadır; değiştirmek için doğum tarihini düzeltin') : `${t('Yıl, ay ya da gün')} — ${t(AGE_EXAMPLE)}`}
         onCommit={v => set({ age: v.trim() })} autoFocus={autoFocus} />
     </label>
   );
@@ -81,7 +81,7 @@ export function NoteField({ node, set, compact = false, autoFocus = false, where
         aria-describedby={compact ? 'radial-note-help' : undefined}
         onCommit={v => set({ notes: v })} autoFocus={autoFocus} />
       {/* what the box is for is said under it: a long placeholder is cut off (clinician 2026-11-03) */}
-      {compact && <span id="radial-note-help" className="field-hint">{t('Pedigrinin altındaki “Notlar” bölümünde, numarasıyla çıkar. Alt satır için Shift+Enter.')}</span>}
+      {compact && <span id="radial-note-help" className="field-hint">{t('Not, pedigrinin altındaki “Notlar” bölümünde kişinin numarasıyla birlikte gösterilir. Yeni satır için Shift+Enter kullanılır.')}</span>}
     </label>
   );
 }
@@ -107,7 +107,7 @@ export function GeneticField({ node, set, individuals = [] }) {
               title={title} aria-label={title}
               onClick={() => {
                 if ((node.geneticTest || '') === v) return;
-                if (!v && gLines.length && !window.confirm(t('Genetik test "−" yapılırsa yazılan {n} satır da silinir. Devam edilsin mi?\n\n"Geri Al" (Cmd/Ctrl+Z) ile geri alınabilir.', { n: gLines.length }))) return;
+                if (!v && gLines.length && !window.confirm(t('Genetik test “−” olarak işaretlenirse girilen {n} satır da silinir. Devam edilsin mi?\n\nBu işlem “Geri al” (Cmd/Ctrl+Z) ile geri alınabilir.', { n: gLines.length }))) return;
                 set({ geneticTest: v });
               }}>{sign}</button>
           ))}
@@ -115,7 +115,7 @@ export function GeneticField({ node, set, individuals = [] }) {
       </div>
       {/* − and + say what they mean on their own (title); the lines' rule once there are lines to write */}
       {tested && (
-        <span className="field-hint">{t('Her satır sembolün altında ayrı satırda çıkar. Hiçbir şey yazmazsanız sembolün altında "test yapıldı" yazar.')}</span>
+        <span className="field-hint">{t('Her satır sembolün altında ayrı bir satır olarak gösterilir. Hiçbir sonuç girilmezse sembolün altında “test yapıldı” yazar.')}</span>
       )}
       {tested && (
         <div className="genetic-lines">
@@ -129,7 +129,7 @@ export function GeneticField({ node, set, individuals = [] }) {
           ))}
           <AddLineField key={`${node.id}-gadd`} type="text" className="input input-wide"
             aria-label={t('Varyant ya da sonuç ekle')}
-            placeholder={gLines.length ? t('Bir varyant / sonuç daha (Enter)') : t('Varyant ya da sonuç, ör. FBN1 c.1585C>T het')}
+            placeholder={gLines.length ? t('Bir varyant / sonuç daha (Enter)') : t('Varyant ya da sonuç (örneğin FBN1 c.1585C>T het)')}
             onAdd={t => setGeneticLine(Infinity, t)} />
         </div>
       )}
@@ -173,13 +173,13 @@ export function GeneticTextField({ node, set, individuals = [] }) {
         ))}
         <AddLineField key={`${node.id}-gadd`} type="text" className="input input-wide" autoFocus
           aria-label={t('Varyant ya da sonuç ekle')} aria-describedby="radial-genetic-help"
-          placeholder={gLines.length ? t('Bir satır daha (Enter)') : t('ör. FBN1:c.1585C>T het')}
+          placeholder={gLines.length ? t('Bir satır daha (Enter)') : t('örneğin FBN1:c.1585C>T het')}
           onAdd={text => setLine(Infinity, text)} />
       </div>
-      <span id="radial-genetic-help" className="field-hint">{t('Varyant ya da sonuç; her satır sembolün altında çıkar. Enter ile kaydedin.')}</span>
+      <span id="radial-genetic-help" className="field-hint">{t('Varyant ya da sonuç; her satır sembolün altında gösterilir. Kaydetmek için Enter tuşuna basın.')}</span>
       {tested && !gLines.length && (
         <span className="field-hint">
-          {t('Sembolün altında “test yapıldı” yazıyor.')}{' '}
+          {t('Sembolün altında “test yapıldı” yazmaktadır.')}{' '}
           <button className="ui-btn ui-btn-ghost ui-btn-sm" onClick={() => set({ geneticTest: '' })}>{t('Kaldır')}</button>
         </span>
       )}
@@ -187,7 +187,7 @@ export function GeneticTextField({ node, set, individuals = [] }) {
           clinician's language like a line they type (clinician requests 2026-11-06, 2026-11-07) */}
       {!gLines.length && (
         <button className="ui-btn ui-btn-sm" onClick={() => setLine(Infinity, t('sonuç bekleniyor'))}
-          title={t('Testin yapıldığını işaretler; sembolün altında “sonuç bekleniyor” yazar. Sonuç gelince satırı düzeltin.')}>{t('Test sonucu bekleniyor')}</button>
+          title={t('Testin yapıldığını işaretler; sembolün altında “sonuç bekleniyor” yazar. Sonuç geldiğinde bu satırı güncelleyin.')}>{t('Test sonucu bekleniyor')}</button>
       )}
       {familyNotes.length > 0 && (
         <div className="suggest-row">

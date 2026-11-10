@@ -33,7 +33,7 @@ describe('Yeniden Düzenle: fewest bends', () => {
     S().addSiblingOfCategory('female');
     const steps = S()._history.length;
     S().relayout();
-    expect(S().layoutInfo.reason).toMatch(/en az kırılma/);
+    expect(S().layoutInfo.reason).toMatch(/en az çizgi kırılması/);
     expect(S()._history.length).toBe(steps + 1);
     expect(Math.floor(bendScore(S().pedigreeData.edges))).toBeLessThanOrEqual(Math.floor(bendScore(computePclLayout(S().doc.graph).edges)));
   });

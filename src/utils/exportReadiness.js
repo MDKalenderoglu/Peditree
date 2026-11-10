@@ -60,7 +60,7 @@ export function assessExportReadiness({ pedigreeData, integrityIssues, svgElemen
 
   // --- FATAL: no renderable SVG ---
   if (!svgElement) {
-    fatal.push(t('Pedigri çizimi bulunamadı — dışa aktarılacak bir çizim yok.'));
+    fatal.push(t('Dışa aktarılacak bir pedigri çizimi bulunamadı.'));
   }
 
   const individuals = pedigreeData?.individuals || [];
@@ -70,7 +70,7 @@ export function assessExportReadiness({ pedigreeData, integrityIssues, svgElemen
   // Individuals exist in the graph but layout produced no renderable nodes
   // for them at all — the SVG would be empty or wrong, not just imperfect.
   if (individuals.length > 0 && nodes.length === 0) {
-    fatal.push(t('Pedigri verisi bozuk görünüyor: bireyler var ancak hiçbir düzen (layout) üretilmedi.'));
+    fatal.push(t('Pedigri verisi bozuk görünüyor: kişiler kayıtlı olduğu hâlde çizim oluşturulamadı.'));
   }
 
   // --- Classify existing graph/layout integrity issues ---
@@ -97,7 +97,7 @@ export function assessExportReadiness({ pedigreeData, integrityIssues, svgElemen
   const unsupportedSymbol = individuals.filter(i => !KNOWN_SEX_SYMBOLS.has(i.sex));
   if (unsupportedSymbol.length > 0) {
     warnings.push(
-      t('Desteklenmeyen sembol türü: {ids} için tanımlı bir cinsiyet sembolü yok.', { ids: unsupportedSymbol.map(i => `"${i.id}"`).join(', ') })
+      t('Desteklenmeyen sembol türü: {ids} için tanımlı bir cinsiyet sembolü bulunmuyor.', { ids: unsupportedSymbol.map(i => `"${i.id}"`).join(', ') })
     );
   }
 
@@ -109,7 +109,7 @@ export function assessExportReadiness({ pedigreeData, integrityIssues, svgElemen
   );
   if (clinicallyRelevantUnknownSex.length > 0) {
     warnings.push(
-      t('Klinik olarak önemli bireylerde cinsiyet bilinmiyor: {ids}.', { ids: clinicallyRelevantUnknownSex.map(i => `"${i.id}"`).join(', ') })
+      t('Klinik açıdan önemli kişilerde cinsiyet bilinmiyor: {ids}.', { ids: clinicallyRelevantUnknownSex.map(i => `"${i.id}"`).join(', ') })
     );
   }
 
