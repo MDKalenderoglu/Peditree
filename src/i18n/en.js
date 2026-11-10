@@ -179,6 +179,12 @@ const EN = {
   'Bu seçim yalnızca aynı cinsiyetten iki eşin çocuğu için yapılabilir.': 'This choice is only for a child of two partners of the same sex.',
   'Seçilen kişi bu çocuğun çizili ebeveynlerinden biri değil.': 'The person chosen is not one of this child’s drawn parents.',
   'Bu kişinin anne ve babası çizimde yer almıyor.': 'This person’s parents are not drawn.',
+  // a phone (clinician request 2026-11-10)
+  'Hasta bilgileri': 'Patient details',
+  'Çalışmanızı kaydedin': 'Save your work',
+  'Telefon tarayıcıları arka planda kalan sekmeleri kapatabilir; bu durumda kaydedilmemiş çizim kaybolur. Çalışmanızı ara ara “Kaydet” ile kaydetmeniz önerilir.': 'Phone browsers may close tabs left in the background, and an unsaved drawing is then lost. Saving your work with “Save” now and then is recommended.',
+  'Paneli küçült': 'Make the panel smaller',
+  'Paneli büyüt': 'Make the panel larger',
   'Kaydet': 'Save',
   'Proje ya da PED dosyası seç': 'Choose a project or PED file',
   'Geri al ({n} adım)': 'Undo ({n})',

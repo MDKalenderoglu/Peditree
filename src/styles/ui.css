@@ -927,3 +927,38 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
   .tour-card, .tour-offer, .tour-body, .tour-spot::after { animation: none; transition: none; }
   .tour-family .tf-line, .tour-family .tf-proband { animation: none; stroke-dashoffset: 0; fill-opacity: 1; }
 }
+
+/* ── a phone (clinician request 2026-11-10; App usePhone has the same width) ──
+   the top bar in one row: the patient's name and date of birth behind one button (App), the least used
+   buttons in "Diğer" (toolbarFit); the side panel a sheet over the lower half of the screen, its handle
+   draws it up to the whole screen; the drawing keeps the whole width, the person chosen is brought above
+   the sheet (PedigreeCanvas keepAbove) */
+.sheet-handle { display: none; }
+/* the button stands near the left end of the bar: the window opens rightwards from it, never off the screen */
+.patient-popover { width: 290px; max-width: calc(100vw - 24px); left: -58px; right: auto; transform-origin: top left; }
+.patient-popover .patient-name, .patient-popover .birth-date { width: 100%; box-sizing: border-box; height: 40px; margin-top: 8px; }
+.patient-popover .toolbar-field { display: block; }
+.patient-popover .toolbar-field > span { display: block; margin-top: 10px; font-size: 13px; color: var(--muted); }
+@media (max-width: 600px) {
+  .app-shell.has-editor { grid-template-columns: minmax(0, 1fr) 0; }
+  .app-shell > .side-right {
+    position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 15; width: auto; height: 52dvh; max-height: 52vh;
+    border-left: none; border-top: 1px solid var(--accent-line); border-radius: 18px 18px 0 0;
+    box-shadow: 0 -12px 30px -14px rgba(24, 33, 44, 0.45);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .app-shell > .side-right.sheet-full { height: calc(100dvh - 64px); max-height: calc(100vh - 64px); }
+  .app-shell.has-editor > .side-right { animation: sheet-in var(--t-move) var(--ease); }
+  .sheet-handle {
+    display: flex; justify-content: center; align-items: center; position: sticky; top: 0; z-index: 3;
+    width: 100%; height: 22px; margin: 0; padding: 0; border: 0; background: var(--panel); cursor: pointer;
+  }
+  .sheet-handle > span { width: 44px; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .sheet-handle:focus-visible { outline: none; box-shadow: inset var(--focus); }
+  .app-shell > .side-right .side-header { top: 22px; }
+  .panel-resizer { display: none; }
+  .toolbar .brand-text, .toolbar .beta-badge, .toolbar .toolbar-sep { display: none; }
+  .canvas-notices { max-width: calc(100vw - 24px); }
+}
+@keyframes sheet-in { from { opacity: 0.35; transform: translateY(48px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .app-shell.has-editor > .side-right { animation: none; } }
