@@ -9,7 +9,7 @@
  * row's tooltip (clinician 2026-11-05: "minimal, premium, clear").
  */
 import { useEffect, useRef, useState } from 'react';
-import { X, Globe, Palette, Paintbrush, CircleDot, PanelRight, FolderOpen, Shapes, Keyboard, Info, Minus, Plus } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Globe, Palette, Paintbrush, CircleDot, PanelRight, FolderOpen, Shapes, Keyboard, Info, Minus, Plus } from 'lucide-react';
 import { ProductInfo, CitationInfo, FeedbackInfo, LicenseInfo, KeyHelp } from './AboutParts';
 import { useT, useLang, tk } from '../i18n';
 import { useViewSettings, DRAWING_FONTS, LEGEND_SIZES, THEMES, RING_CLEAR } from '../utils/drawingStyle';
@@ -30,6 +30,16 @@ const SECTIONS = [
   { id: 'keys', label: tk('Klavye kısayolları'), Icon: Keyboard, intro: tk('Fareyle yapılan her işlem klavyeyle de yapılabilir.'), info: true },
   { id: 'about', label: tk('Hakkında'), Icon: Info, intro: null, info: true },
 ];
+
+/**
+ * The touch screen's words for the same sections (clinician 2026-11-10: "Halka menü" and "Yan panel" name
+ * what a phone does not show); the keyboard help is left out on a phone.
+ */
+const TOUCH_SECTIONS = {
+  look: { intro: tk('Ekranın renkleri; çizim ve dosyalar bundan etkilenmez.') },
+  ring: { label: tk('Ekleme seçenekleri'), intro: tk('Kardeş ve çocuk eklerken açılan satırları ve sıralarını seçebilirsiniz; gizlenen seçenekler “Diğer…” altında yer alır.') },
+  panel: { label: tk('Kişi ayrıntıları'), intro: tk('Gizlenen bölümler kişinin ayrıntılarında “Diğer bilgiler” altında yer alır; doldurulmuş bir bölüm her zaman görünür.') },
+};
 
 /** One setting: its name and a few words on it, the control beside it; `more` in the tooltip. */
 function Row({ title, hint, more, children }) {
@@ -74,7 +84,7 @@ function LanguageSection() {
 }
 
 /** The screens' colour theme and how see-through the ring is (clinician request 2026-11-07). */
-function LookSection() {
+function LookSection({ touch = false }) {
   const t = useT();
   const { view, setView } = useViewSettings();
   return (
@@ -89,6 +99,8 @@ function LookSection() {
         <Segmented label={t('Dokunmatik görünüm')} value={view.touchMode || 'auto'} onChange={(v) => setView({ touchMode: v })}
           options={[['auto', t('Otomatik')], ['on', t('Açık')], ['off', t('Kapalı')]]} />
       </Row>
+      {/* the ring is not on a phone's screen: its transparency is not asked there */}
+      {!touch && (<>
       <Row title={t('Simidin saydamlığı')} hint={t('Arkadaki çizim ne kadar görünsün')}>
         <RingClear value={view.ringClear} onChange={(v) => setView({ ringClear: v })} />
       </Row>
@@ -107,6 +119,7 @@ function LookSection() {
         <span className="ring-preview-pill">{t('Kardeş')}</span>
         <span className="ring-preview-pill">{t('Durum')}</span>
       </div>
+      </>)}
     </div>
   );
 }
@@ -219,9 +232,11 @@ function AboutSection() {
 
 const BODY = { language: LanguageSection, look: LookSection, drawing: DrawingSection, ring: RingSection, panel: PanelSection, files: FilesSection, symbols: SymbolGuide, keys: KeyHelp, about: AboutSection };
 
-export default function SettingsDialog({ onClose, initial = 'language' }) {
+export default function SettingsDialog({ onClose, initial = 'language', touch = false }) {
   const t = useT();
-  const [section, setSection] = useState(SECTIONS.some((s) => s.id === initial) ? initial : 'language');
+  const sections = touch ? SECTIONS.filter((x) => x.id !== 'keys').map((x) => ({ ...x, ...(TOUCH_SECTIONS[x.id] || {}) })) : SECTIONS;
+  // a phone: first the list of sections, then the one chosen (with a way back); a computer: side by side
+  const [section, setSection] = useState(touch && initial === 'language' ? null : sections.some((s) => s.id === initial) ? initial : 'language');
   const tabRef = useRef(null);
   const boxRef = useRef(null);
   // focus starts on the section list and returns to where it was (the "Ayarlar" button) on closing
@@ -239,6 +254,36 @@ export default function SettingsDialog({ onClose, initial = 'language' }) {
     if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   };
+  if (touch) {
+    const cur = sections.find((x) => x.id === section);
+    const TouchBody = cur && BODY[cur.id];
+    return (
+      <div className="settings-dialog touch" role="dialog" aria-modal="true" aria-label={t('Ayarlar')} data-popup="settings" ref={boxRef} onKeyDown={keepFocus}>
+        <div className="settings-head">
+          {cur ? (
+            <button className="ui-btn ui-btn-ghost settings-back" onClick={() => setSection(null)}><ChevronLeft size={20} aria-hidden="true" /> {t('Ayarlar')}</button>
+          ) : <h2>{t('Ayarlar')}</h2>}
+          <button className="ui-btn ui-btn-ghost ui-btn-icon" onClick={onClose} aria-label={t('Kapat')} title={t('Kapat')}><X size={20} /></button>
+        </div>
+        {cur ? (
+          <section className="settings-pane" id="set-panel" aria-label={t(cur.label)}>
+            <h3>{t(cur.label)}</h3>
+            {cur.intro && <p className="set-intro">{t(cur.intro)}</p>}
+            <TouchBody touch />
+          </section>
+        ) : (
+          <nav className="settings-list" aria-label={t('Ayarlar')}>
+            {sections.map(({ id, label, Icon }) => (
+              <button key={id} className="settings-list-item" onClick={() => setSection(id)}>
+                <Icon size={20} aria-hidden="true" /><span>{t(label)}</span><ChevronRight size={18} aria-hidden="true" />
+              </button>
+            ))}
+          </nav>
+        )}
+        {cur && !cur.info && <p className="settings-foot">{t('Yalnızca bu cihazda saklanır; pedigri dosyasını değiştirmez.')}</p>}
+      </div>
+    );
+  }
   const current = SECTIONS.find((s) => s.id === section);
   const Body = BODY[section];
   const step = (dir) => {

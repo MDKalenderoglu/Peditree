@@ -129,6 +129,50 @@ export const TOUR_STEPS = [
     target: () => one('.toolbar .tour-btn'), prepare: (c) => c.clear() },
 ];
 
+
+/*
+ * The touch screen's tour (clinician report 2026-11-10: on a phone the tour pointed at parts the phone does
+ * not show and its cards covered the screen). Its own few steps, on what a phone shows: the drawing, the
+ * bar below a person, "Ekle", the details, the couple, Menü, the patient, Kaydet.
+ */
+const tile = (name) => all('.touch-sheet .dock-tile').find((b) => b.textContent.trim() === tNow(name)) || null;
+const pressTile = (name) => () => {
+  const b = tile(name);
+  if (!b) return false;
+  if (b.getAttribute('aria-expanded') !== 'true') b.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  return true;
+};
+export const TOUCH_STEPS = [
+  TOUR_STEPS[0],
+  { id: 't-drawing', icon: Shapes, title: tk('Çizim alanı'),
+    text: tk('Kare erkeği, daire kadını, içi dolu sembol etkilenmiş bireyi gösterir; ok ve P harfi probandı belirtir. Bir kişiyle çalışmak için sembolüne dokunun; iki parmakla yakınlaştırıp uzaklaştırabilirsiniz.'),
+    target: (c) => drawnNode(c.ids.proband), prepare: (c) => c.clear() },
+  { id: 't-bar', icon: CircleDot, title: tk('Kişinin çubuğu'),
+    text: tk('Bir kişiye dokunduğunuzda ekranın altında bu çubuk açılır. Ekle akraba ekler; Bulgu, Durum ve Bilgiler kişinin kendi bilgilerini düzenler.'),
+    target: () => one('.touch-sheet'), prepare: (c) => c.select(c.ids.proband) },
+  { id: 't-add', icon: UserPlus, title: tk('Akraba eklemek'),
+    text: tk('Ekle’ye dokunduğunuzda Ebeveyn, Kardeş, Eş, Çocuk ve İkiz seçenekleri açılır. Seçtiğiniz akrabanın cinsiyeti ya da gebelik sonucu ardından yazılı düğmelerle sorulur.'),
+    target: () => one('.touch-sheet'), prepare: (c) => c.select(c.ids.proband), act: pressTile('Ekle') },
+  { id: 't-details', icon: PanelRight, title: tk('Ayrıntılar'),
+    text: tk('Ayrıntılar’a dokunmak ya da çubuğu yukarı çekmek kişinin bütün bilgilerini açar: ad, yaş, not, genetik test, evlat edinme, doğum sırası. Aşağı çekince çubuğa dönülür, bir kez daha çekince kapanır.'),
+    target: () => one('.touch-sheet'), prepare: (c) => { c.select(c.ids.proband); c.openDetails(); } },
+  { id: 't-couple', icon: Link2, title: tk('Eşler arasındaki çizgi'),
+    text: tk('İki eşi birleştiren çizgiye dokunduğunuzda çiftin bilgileri açılır: ilişkinin durumu, akrabalık ya da “Aynı köy”, çocuksuzluk; çifte çocuk da buradan eklenir.'),
+    target: () => one('.touch-sheet'), prepare: (c) => c.selectCouple(c.ids.mother, c.ids.father) },
+  { id: 't-menu', icon: ListChecks, title: tk('Menü'),
+    text: tk('Geri al, Yinele, Yeni, Aç, Konumlandır, Yazdır, Paylaş, Ayarlar ve bu tur Menü’de yer alır.'),
+    target: () => one('.toolbar .more-popover'), prepare: (c) => { c.clear(); c.openMenu(); } },
+  { id: 't-patient', icon: CalendarDays, title: tk('Hasta adı ve doğum tarihi'),
+    text: tk('Hasta adı çizimin başlığında ve kaydedilen dosyaların adında yer alır. Probandın doğum tarihi girildiğinde yaşı bugünün tarihine göre hesaplanır.'),
+    target: () => one('.toolbar .patient-btn'), prepare: (c) => c.clear() },
+  { id: 't-save', icon: Save, title: tk('Kaydetmek'),
+    text: tk('Çizim yalnızca bu sekmede tutulur ve sekme kapandığında silinir. Kaydet menüsünden çizimi resim olarak alabilir ya da sonra açıp düzenlemek için PediTree dosyası olarak saklayabilirsiniz.'),
+    target: () => one('.toolbar .download-popover'), prepare: (c) => { c.clear(); c.openSave(); } },
+  { id: 't-again', icon: CircleHelp, title: tk('Turu yeniden açmak'),
+    text: tk('Tura istediğiniz zaman Menü’deki Tanıtım turu ile yeniden ulaşabilirsiniz. İyi çalışmalar dileriz.'),
+    target: () => one('.toolbar .touch-menu-btn'), prepare: (c) => c.clear() },
+];
+
 const visible = (el) => {
   if (!el || !el.isConnected || el.closest('.overflowed')) return false;
   const r = el.getBoundingClientRect();
@@ -245,6 +289,16 @@ export function TourFamily({ className = '' }) {
  * Where the card stands beside the first lit area: below, above, left or right, the first that fits on the
  * screen and covers none of the other lit areas (the couple's card in the panel, say).
  */
+/** A phone: the card across the screen, at the top or the bottom, whichever covers less of what it shows. */
+export function touchPlace(rects, card, view) {
+  const top = 72;
+  const bottom = view.h - card.h - 12;
+  if (!rects.length) return { left: 8, top: Math.max(top, (view.h - card.h) / 2), side: null, arrow: 0 };
+  const r = rects[0];
+  const cover = (y) => Math.max(0, Math.min(y + card.h, r.bottom) - Math.max(y, r.top));
+  return { left: 8, top: cover(top) <= cover(bottom) ? top : bottom, side: null, arrow: 0 };
+}
+
 export function placeCard(rect, card, view, others = []) {
   const { w, h } = card;
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -271,6 +325,7 @@ export function placeCard(rect, card, view, others = []) {
 
 export default function Tour({ ctx, onClose }) {
   const t = useT();
+  const STEPS = ctx.touch ? TOUCH_STEPS : TOUR_STEPS;
   // at: the step asked for (its screen is being set up); shown: the step on the card and its lit areas.
   // The card, its words and the light change together, once the asked step's screen has come to rest
   // (clinician 2026-11-10: the words came first and the light after; a window opened behind and the
@@ -284,9 +339,9 @@ export default function Tour({ ctx, onClose }) {
   const nextRef = useRef(null);
   const ctxRef = useRef(ctx);
   ctxRef.current = ctx;
-  const step = TOUR_STEPS[at];
-  const card = TOUR_STEPS[shown.at];
-  const last = shown.at === TOUR_STEPS.length - 1;
+  const step = STEPS[at];
+  const card = STEPS[shown.at];
+  const last = shown.at === STEPS.length - 1;
   const welcome = card.id === 'welcome';
   const waiting = shown.at !== at || shown.rects === null;
 
@@ -366,7 +421,7 @@ export default function Tour({ ctx, onClose }) {
   const finish = useCallback(() => { ctxRef.current.closeAll(); onClose(); }, [onClose]);
   const go = useCallback((d) => setAt((i) => {
     const n = i + d;
-    if (n >= TOUR_STEPS.length) { finish(); return i; }
+    if (n >= STEPS.length) { finish(); return i; }
     return Math.max(0, n);
   }), [finish]);
 
@@ -398,13 +453,13 @@ export default function Tour({ ctx, onClose }) {
   const view = { w: window.innerWidth, h: window.innerHeight };
   const rects = shown.rects || [];
   // the card stands beside where the light is going, not where it is on the way
-  const place = placeCard(rects[0] || null, size, view, rects.slice(1));
+  const place = ctx.touch ? touchPlace(rects, size, view) : placeCard(rects[0] || null, size, view, rects.slice(1));
   const titleId = `tour-title-${card.id}`;
   const Icon = card.icon;
 
   return (
     // data-popup: a tap on the card is "inside", so the page never swallows the click that closed a window
-    <div className="tour" data-step={step.id} data-shown={card.id} data-popup="tour">
+    <div className={`tour${ctx.touch ? ' touch' : ''}`} data-step={step.id} data-shown={card.id} data-popup="tour">
       {/* the page takes no click while the tour runs */}
       <div className="tour-block" onPointerDown={(e) => e.preventDefault()} onClick={(e) => e.stopPropagation()} />
       {/* the page dims round the lit parts: one layer with rounded holes (an SVG layer was left unpainted
@@ -414,7 +469,7 @@ export default function Tour({ ctx, onClose }) {
       <div ref={cardRef} className={`tour-card${welcome ? ' tour-card-welcome' : ''}${waiting ? ' is-waiting' : ''}`} role="dialog" aria-modal="true" aria-labelledby={titleId}
         data-side={place.side || 'none'} style={{ left: place.left, top: place.top, '--arrow': `${place.arrow}px` }}>
         <div className="tour-track" aria-hidden="true">
-          {TOUR_STEPS.map((s, i) => <span key={s.id} className={i < shown.at ? 'done' : i === shown.at ? 'now' : ''} />)}
+          {STEPS.map((s, i) => <span key={s.id} className={i < shown.at ? 'done' : i === shown.at ? 'now' : ''} />)}
         </div>
         <div key={card.id} className="tour-body">
           {welcome ? <div className="tour-hero"><TourFamily /></div> : Icon && <span className="tour-icon" aria-hidden="true"><Icon size={18} strokeWidth={2} /></span>}
@@ -426,7 +481,7 @@ export default function Tour({ ctx, onClose }) {
             the tour could not be left halfway — the words' box lay over the ×) */}
         <button className="tour-close" onClick={finish} aria-label={t('Turu bitir')} title={t('Turu bitir (Esc)')}>×</button>
         <div className="tour-foot">
-          <span className="tour-count">{t('{n} / {all}', { n: shown.at + 1, all: TOUR_STEPS.length })}</span>
+          <span className="tour-count">{t('{n} / {all}', { n: shown.at + 1, all: STEPS.length })}</span>
           {!ctx.coarse && <span className="tour-keys" aria-hidden="true"><kbd>←</kbd><kbd>→</kbd></span>}
           <span className="tour-actions">
             {shown.at > 0 && <button className="tour-back" onClick={() => go(-1)}>{t('Geri')}</button>}

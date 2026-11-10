@@ -11,7 +11,7 @@
  * panel; the store refuses (with a reason) anything the graph rules forbid.
  */
 import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
-import { Stethoscope, HeartPulse, Users, StickyNote, Check, ArrowUp, ArrowDown, UsersRound, HeartHandshake } from 'lucide-react';
+import { Stethoscope, HeartPulse, Users, StickyNote, Check, ArrowUp, ArrowDown, UsersRound, HeartHandshake, UserPlus as UserPlusIcon, ChevronsUp } from 'lucide-react';
 import FindingsPalette from './FindingsPalette';
 import { NameField, AgeField, NoteField, GeneticTextField } from './InfoFields';
 import { groupOf, multipleName } from '../graph/multiples';
@@ -159,10 +159,12 @@ function sectorPath(a0, a1, r, R, gapDeg = 3) {
 export default function RadialAddMenu({
   anchor, node, pedigreeData, onAddSibling, onAddChild, onAddSpouse, onAddParents, onAddTwin,
   onUpdate, onSetProband, onClearProband, onSetConsultand, onClearConsultand, onAddFinding, onSetFindingStatus, onSetFindingStyle, onSetFindingOnset, onRenameFinding,
-  onNeedRoom, sameSex = false, dock = false, ref,
+  onNeedRoom, sameSex = false, dock = false, onDetails, ref,
 }) {
   const [active, setActive] = useState(null);   // sector under the pointer
   const [panel, setPanel] = useState(null);     // satellite panel (stays open)
+  // the touch mode's "Ekle": the four relatives and İkiz, shown above the bar (clinician 2026-11-10)
+  const [adding, setAdding] = useState(false);
   // the part of Bilgiler whose box is open under its band (age, genetic, note, name)
   const [infoFor, setInfoFor] = useState(null); // { node, part }
   const closeTimer = useRef(null);
@@ -649,22 +651,42 @@ export default function RadialAddMenu({
           {listPanel ? lists[panel]() : panels[panel]}
         </div>
       )}
+        {/* "Ekle": which relative — then its list above (Kardeş: Erkek, Kız, Düşük …) */}
+        {adding && !active && (
+          <div className="dock-add" role="group" aria-label={t('Ekle')}>
+            {tiles.map(([k, Icon]) => (
+              <button key={k} className={`dock-chip radial-sector${disabled[k] ? ' off' : ''}`} aria-label={t(SECTORS[k].label)} aria-disabled={!!disabled[k]}
+                onClick={() => { setPanel(null); pressSector(k); }}>
+                <Icon size={18} aria-hidden="true" /><span>{t(SECTORS[k].label)}</span>
+              </button>
+            ))}
+            {!group && (
+              <button className="dock-chip radial-sat" aria-label={t('İkiz')} onClick={() => { setActive(null); setPanel('twins'); setAdding(false); }}>
+                <Users size={18} aria-hidden="true" /><span>{t('İkiz')}</span>
+              </button>
+            )}
+          </div>
+        )}
+        {/* the bar: five named buttons (a phone's bottom bar holds five at most) */}
         <div className="dock-tiles">
-          {tiles.map(([k, Icon]) => (
-            <button key={k} className={`dock-tile radial-sector${active === k ? ' on' : ''}${disabled[k] ? ' off' : ''}`}
-              onClick={() => { setPanel(null); pressSector(k); }} aria-label={t(SECTORS[k].label)} aria-disabled={!!disabled[k]} aria-expanded={active === k}>
-              <Icon size={20} aria-hidden="true" /><span>{t(SECTORS[k].label)}</span>
-            </button>
-          ))}
-          {SATELLITES.filter((sat) => !group || sat.key === 'note').map((sat) => {
+          <button className={`dock-tile${adding || active ? ' on' : ''}`} aria-expanded={adding || !!active}
+            onClick={() => { setPanel(null); if (active) { setActive(null); setAdding(true); } else setAdding((v) => !v); }}>
+            <UserPlusIcon size={20} aria-hidden="true" /><span>{t('Ekle')}</span>
+          </button>
+          {SATELLITES.filter((sat) => sat.key !== 'twins' && (!group || sat.key === 'note')).map((sat) => {
             const { Icon } = sat;
             return (
               <button key={sat.key} className={`dock-tile radial-sat${panel === sat.key ? ' on' : ''}`} aria-label={satLabel(sat)} aria-expanded={panel === sat.key}
-                onClick={() => { setActive(null); setPanel(panel === sat.key ? null : sat.key); }}>
+                onClick={() => { setActive(null); setAdding(false); setPanel(panel === sat.key ? null : sat.key); }}>
                 <Icon size={20} aria-hidden="true" /><span>{satLabel(sat)}</span>
               </button>
             );
           })}
+          {onDetails && (
+            <button className="dock-tile" onClick={onDetails}>
+              <ChevronsUp size={20} aria-hidden="true" /><span>{t('Ayrıntılar')}</span>
+            </button>
+          )}
         </div>
       </div>
     );
