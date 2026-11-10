@@ -1098,6 +1098,37 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // a click on the empty drawing (people, lines and texts stop theirs; a
     // pan never ends in a click) — App steps back one level
     svg.on('click.background', () => onBackgroundClick && onBackgroundClick());
+    // a pen (Apple Pencil, a Windows or Android stylus; clinician report 2026-11-10): it reports a pixel or
+    // two of movement in every tap, and the pan above cancels such a touch, so the click never came — the
+    // ring did not open. A short, nearly still pen tap is turned into a click on what it touched; the
+    // browser's own click, should one still come, is let through only once.
+    const svgEl = svg.node();
+    if (svgEl.__penTap) {
+      svgEl.removeEventListener('pointerdown', svgEl.__penTap.down, true);
+      svgEl.removeEventListener('pointerup', svgEl.__penTap.up, true);
+      svgEl.removeEventListener('click', svgEl.__penTap.click, true);
+    }
+    let penDown = null;
+    let penClickAt = -Infinity;
+    const PEN_SLOP = 10;      // px a pen may wander in a tap
+    const PEN_TAP_MS = 700;   // longer is a press, not a tap
+    const penTap = {
+      down: (e) => { penDown = e.pointerType === 'pen' ? { x: e.clientX, y: e.clientY, t: e.timeStamp, target: e.target } : null; },
+      up: (e) => {
+        const d = penDown;
+        penDown = null;
+        if (!d || e.pointerType !== 'pen') return;
+        if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > PEN_SLOP || e.timeStamp - d.t > PEN_TAP_MS) return;
+        penClickAt = performance.now();
+        d.target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY, metaKey: e.metaKey, ctrlKey: e.ctrlKey, shiftKey: e.shiftKey }));
+      },
+      // the browser's own click right after a pen tap already turned into one: not a second time
+      click: (e) => { if (e.isTrusted && performance.now() - penClickAt < 600) { penClickAt = -Infinity; e.stopPropagation(); e.preventDefault(); } },
+    };
+    svgEl.addEventListener('pointerdown', penTap.down, true);
+    svgEl.addEventListener('pointerup', penTap.up, true);
+    svgEl.addEventListener('click', penTap.click, true);
+    svgEl.__penTap = penTap;
     // keep the clinician's zoom/pan across edits (it used to jump back after
     // every change); "Sığdır" resets it
     svg.call(zoom.transform, d3.zoomTransform(svg.node()));
