@@ -169,11 +169,11 @@ function TouchSheet({ full, canDock, onFull, onClose, title, children }) {
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); step(full && canDock ? 1 : -1); } }}>
         <span aria-hidden="true" />
       </div>
+      {/* one slim line: who it is and how to close (the bar below holds the actions) */}
       {canDock && !full && (
         <div className="sheet-head">
           <b className="sheet-title">{title}</b>
-          <button className="ui-btn sheet-details" onClick={() => onFull(true)}><ChevronUp size={16} /> {t('Ayrıntılar')}</button>
-          <button className="ui-btn ui-btn-icon" onClick={onClose} aria-label={t('Kapat')}><XIcon size={18} /></button>
+          <button className="ui-btn ui-btn-icon sheet-close" onClick={onClose} aria-label={t('Kapat')}><XIcon size={18} /></button>
         </div>
       )}
       <div className="sheet-body">{children}</div>
@@ -293,6 +293,9 @@ function App() {
     setTourIds(usePedigreeStore.getState().startTour());
   };
   const endTour = () => { usePedigreeStore.getState().endTour(); setTourIds(null); };
+  const phoneScreen = usePhone();
+  const phone = view.touchMode === 'on' || (view.touchMode !== 'off' && phoneScreen); // the touch mode
+  const touch = phone;
   const tourCtx = tourIds && {
     ids: tourIds,
     coarse: coarsePointer(),
@@ -308,16 +311,17 @@ function App() {
     openRelation: () => setRelationOpen(true),
     openSave: () => setDownloadOpen(true),
     // every window and menu a step opened, closed before the next step sets its screen up
-    closeAll: () => { setSettingsOpen(false); setNewMenu(false); setRelationOpen(false); setDownloadOpen(false); setPedOpen(false); },
+    closeAll: () => { setSettingsOpen(false); setNewMenu(false); setRelationOpen(false); setDownloadOpen(false); setPedOpen(false); setMoreItems(null); setSheetFull(false); },
+    // the touch screen's tour (Tour TOUCH_STEPS)
+    touch,
+    openDetails: () => setSheetFull(true),
+    openMenu: () => setMoreItems(TOUCH_MENU),
   };
   const [openHelp, setOpenHelp] = React.useState(false); // "Aç"'s window: which files it opens
   // the logo: what PediTree is, its version and licence (the rest: Ayarlar → Hakkında)
   const [aboutOpen, setAboutOpen] = React.useState(false);
   // a phone: the patient's name and date of birth in a small window of their own (the bar has no room)
   const [patientOpen, setPatientOpen] = React.useState(false);
-  const phoneScreen = usePhone();
-  const phone = view.touchMode === 'on' || (view.touchMode !== 'off' && phoneScreen); // the touch mode
-  const touch = phone;
   // a phone: the side panel's sheet at half height, or drawn up to the whole screen
   const [sheetFull, setSheetFull] = React.useState(false);
   // a phone's browser closes a tab left in the background more readily: unsaved work is easier to lose
@@ -813,7 +817,7 @@ function App() {
   const dockable = !!selectedNode && !selectedNode.placeholder && !selectedNode2 && (selectedIds || []).length <= 1;
   const touchTitle = selectedNode && !selectedNode2 ? [computePedigreeIds(pedigreeData.nodes || []).get(selectedNode.id)?.displayId, selectedNode.displayLabel].filter(Boolean).join(' · ') : '';
   const ringOf = (anchor, panBy, dock) => (
-            <RadialAddMenu ref={ringRef} anchor={anchor} node={selectedNode} pedigreeData={pedigreeData} onNeedRoom={panBy} dock={dock}
+            <RadialAddMenu ref={ringRef} anchor={anchor} node={selectedNode} pedigreeData={pedigreeData} onNeedRoom={panBy} dock={dock} onDetails={dock ? () => setSheetFull(true) : undefined}
               onAddSibling={addSiblingTo} onAddSpouse={addSpouseTo} onAddParents={addParentsTo} onAddTwin={addMultipleSibling}
               onUpdate={updateIndividual} onSetProband={setProband} onClearProband={clearProband} onSetConsultand={setConsultand} onClearConsultand={clearConsultand}
               onAddFinding={addFinding} onSetFindingStatus={setFindingStatus} onSetFindingStyle={setFindingStyle} onSetFindingOnset={setFindingOnset} onRenameFinding={renameFinding}
@@ -1113,7 +1117,7 @@ function App() {
             {/* a window of its own, on the page (clinician request 2026-11-03) */}
             {settingsOpen && createPortal(
               <div className="settings-backdrop">
-                <SettingsDialog key={settingsAt} initial={settingsAt} onClose={() => setSettingsOpen(false)} />
+                <SettingsDialog key={settingsAt} initial={settingsAt} touch={touch} onClose={() => setSettingsOpen(false)} />
               </div>,
               document.body,
             )}
@@ -1133,13 +1137,13 @@ function App() {
             </p>
           </div>
         )}
+        {/* a slim line, not a box (clinician 2026-11-10: the reminder took a third of a phone's screen) */}
         {phone && !saveTipClosed && !tourIds && needsLeaveWarning(doc, downloadedDoc.current) && (
-          <div className="warning-panel save-tip" data-tone="info" role="status">
-            <div className="notice-head">
-              <h4 className="notice-title"><Save size={16} /> {t('Çalışmanızı kaydedin')}</h4>
-              <button className="notice-dismiss" onClick={() => setSaveTipClosed(true)} title={t('Kapat')} aria-label={t('Kapat')}>×</button>
-            </div>
-            <p className="notice-text">{t('Telefon tarayıcıları arka planda kalan sekmeleri kapatabilir; bu durumda kaydedilmemiş çizim kaybolur. Çalışmanızı ara ara “Kaydet” ile kaydetmeniz önerilir.')}</p>
+          <div className="save-tip" role="status" title={t('Telefon tarayıcıları arka planda kalan sekmeleri kapatabilir; bu durumda kaydedilmemiş çizim kaybolur. Çalışmanızı ara ara “Kaydet” ile kaydetmeniz önerilir.')}>
+            <Save size={16} aria-hidden="true" />
+            <span className="save-tip-text">{t('Kaydedilmemiş değişiklik var')}</span>
+            <button className="ui-btn ui-btn-primary save-tip-go" onClick={() => setDownloadOpen(true)}>{t('Kaydet')}</button>
+            <button className="notice-dismiss" onClick={() => setSaveTipClosed(true)} title={t('Kapat')} aria-label={t('Kapat')}>×</button>
           </div>
         )}
         {actionNotice && (
