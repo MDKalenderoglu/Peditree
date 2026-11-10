@@ -171,7 +171,7 @@ function drawStroke(g, edge, dx = 0, dy = 0) {
 // belt-and-suspenders fallback for exportUtils.js and for tests/tools
 // that query the DOM directly.
 const PedigreeCanvas = forwardRef(function PedigreeCanvas(
-  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar, patientName = '', onEditText, multiSelect = false, focusTick = 0, onNodeDrop, onBackgroundClick, drawing = null, lang = 'tr' },
+  { nodes, edges, selectedNodeId, selectedNodeId2, selectedIds = [], onNodeSelect, onUnionSelect, conditionKey = [], renderQuickBar, patientName = '', onEditText, multiSelect = false, focusTick = 0, onNodeDrop, onBackgroundClick, drawing = null, lang = 'tr', keepAbove = null },
   forwardedRef
 ) {
   const svgRef = useRef(null);
@@ -1181,6 +1181,33 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const s = (el.getScreenCTM && el.getScreenCTM()?.a) || 1;
     d3.select(el).call(zoom.translateBy, dx / (s * k), dy / (s * k));
   }, []);
+
+  // a phone (clinician request 2026-11-10): the side panel is a sheet over the lower half of the screen.
+  // The person just chosen is brought into the part of the drawing still in sight, with room for the
+  // ring round them, so neither the person nor the ring hides under the sheet
+  useEffect(() => {
+    if (!keepAbove || !selectedNodeId) return undefined;
+    const bring = () => {
+      const el = svgRef.current;
+      const shape = el && el.querySelector('.node-selected .pedigree-shape');
+      const sheet = document.querySelector('.app-shell > .side-right');
+      if (!shape || !sheet) return;
+      const r = shape.getBoundingClientRect();
+      const box = el.getBoundingClientRect();
+      const top = box.top;
+      const bottom = Math.min(box.bottom, sheet.getBoundingClientRect().top);
+      if (!(bottom > top) || !r.width) return;
+      const ROOM = 96; // the ring round the person
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const dy = cy < top + ROOM || cy > bottom - ROOM ? (top + bottom) / 2 - cy : 0;
+      const dx = cx < box.left + ROOM || cx > box.right - ROOM ? (box.left + box.right) / 2 - cx : 0;
+      if (dx || dy) panBy(dx, dy);
+    };
+    // after the sheet has come up (its own motion) and the drawing has settled
+    const late = setTimeout(bring, 320);
+    return () => clearTimeout(late);
+  }, [keepAbove, selectedNodeId, panBy]);
 
   const zoomBy = (k) => {
     const svg = d3.select(svgRef.current);
