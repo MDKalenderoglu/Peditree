@@ -583,6 +583,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         .forEach(edge => {
           g.append('path')
             .attr('class', 'ui-only union-hit')
+            .attr('data-union', edge.unionId)
             .attr('d', connectorPath(edge.x1, edge.y1, edge.x2, edge.y2, edge.bridges))
             .attr('stroke', 'transparent').attr('stroke-width', 12).attr('fill', 'none')
             .style('cursor', 'pointer').style('pointer-events', 'stroke')
