@@ -23,10 +23,10 @@ describe('the symbol guide matches the drawing', () => {
     expect(slashes(row('Ölü doğum (SB)'))).toHaveLength(1);
     expect(row('Ölü doğum (SB)').querySelector('text').textContent).toBe('SB');
   });
-  it('the deceased slash runs as the drawing draws it: from the upper left to the lower right', () => {
-    for (const name of ['Vefat', 'Ölü doğum (SB)']) {
+  it('the deceased slash runs as NSGC draws it: from the lower left to the upper right (clinician 2026-11-11)', () => {
+    for (const name of ['Vefat', 'Ölü doğum (SB)', 'Sonlandırma (TOP)', 'Dış gebelik (ECT)']) {
       const [x1, y1, x2, y2] = slashes(row(name))[0].match(/[\d.]+/g).map(Number);
-      expect(x2 > x1 && y2 > y1).toBe(true);
+      expect(x2 > x1 && y2 < y1).toBe(true);
     }
   });
 });

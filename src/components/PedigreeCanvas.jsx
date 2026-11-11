@@ -859,10 +859,13 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       // A stillbirth is drawn at full size with the slash of a deceased person
       // and "SB" below (NSGC; clinician decision 2026-10-25)
       if (d.deceased && !isSmall && !d.ongoingPregnancy) {
-        // Diagonal slash for deceased
-        el.append('line')
-          .attr('x1', -(sz + 4)).attr('y1', -(sz + 4))
-          .attr('x2', sz + 4).attr('y2', sz + 4)
+        // Diagonal slash for deceased: from the lower left to the upper right, as NSGC and the
+        // textbooks draw it (clinician 2026-11-11: no difference from the international standard);
+        // it stops at the corner where a proband's or consultand's arrow points
+        const low = d.proband || d.consultand ? 0 : 4;
+        el.append('line').attr('class', 'deceased-slash')
+          .attr('x1', -(sz + low)).attr('y1', sz + low)
+          .attr('x2', sz + 4).attr('y2', -(sz + 4))
           .attr('stroke', NODE_STROKE).attr('stroke-width', 2);
       }
 
