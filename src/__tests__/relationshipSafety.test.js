@@ -253,18 +253,20 @@ describe('v0.3a.2 — store: relationship-creation actions roll back on unsafe m
     expect(state.pedigreeData.unions.some(u => u.partners.includes('proband') && u.partners.includes(newSpouseId))).toBe(false);
   });
 
-  it('createUnionBetween rolls back (does not commit) a cross-generation pairing', () => {
-    // mat_gf's spouse stub is generation 1; pairing it with proband
-    // (generation 3) would introduce PARTNER_GENERATION_INCONSISTENT.
+  it('createUnionBetween commits a pairing two generations apart as a cross-generation union (clinician 2026-11-11)', () => {
+    // mat_gf's second partner is generation 1 and no relative of the proband
+    // (generation 3): partners from different generations, each on their own row
     usePedigreeStore.getState().addSpouseTo('mat_gf', 'female');
     let state = usePedigreeStore.getState();
     const newSpouseId = state.lastCreated.spouseId;
-    const before = usePedigreeStore.getState().wizardData;
 
     usePedigreeStore.getState().createUnionBetween('proband', newSpouseId);
     state = usePedigreeStore.getState();
-    expect(state.wizardData).toBe(before); // rolled back — no mutation committed
-    expect(state.pedigreeData.unions.some(u => u.partners.includes('proband') && u.partners.includes(newSpouseId))).toBe(false);
+    const u = state.doc.graph.unions.find(x => x.partners.includes('proband') && x.partners.includes(newSpouseId));
+    expect(u && u.crossGeneration).toBe(true);
+    const gen = (id) => state.doc.graph.individuals.find(i => i.id === id).generation;
+    expect([gen(newSpouseId), gen('proband')]).toEqual([1, 3]);
+    expect((state.integrityIssues || []).filter(i => i.severity === 'error')).toEqual([]);
   });
 
   it('Step 5A: createUnionBetween does not commit a same-sex union (blocked at the plan check, before any audit)', () => {

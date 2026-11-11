@@ -153,17 +153,15 @@ export function computeUnionCreationPlan(pedigreeData, id1, id2, opts = {}) {
     };
   }
 
-  // Partners from different generations (e.g. uncle and niece) are allowed
-  // (clinician decision 2026-10-24): each stays on their own generation row
-  // and the relationship line steps down between the rows. For now one
-  // generation apart at most — further apart the line would have to cross
-  // the rows in between. Never between an ancestor and a descendant.
+  // Partners from different generations (e.g. uncle and niece, great-uncle
+  // and great-niece) are allowed (clinician decisions 2026-10-24, and
+  // 2026-11-11: any number of generations apart): each stays on their own
+  // generation row and the relationship line steps down between the rows,
+  // through a place kept free on every row in between. Never between an
+  // ancestor and a descendant.
   let crossGeneration = false;
   if (typeof ind1.generation === 'number' && typeof ind2.generation === 'number' &&
       ind1.generation !== ind2.generation) {
-    if (Math.abs(ind1.generation - ind2.generation) > 1) {
-      return { ok: false, reason: t('Şu anda yalnızca en fazla bir kuşak farkı bulunan iki kişi eş yapılabilir.') };
-    }
     const ancestors = (id) => {
       const out = new Set();
       const stack = [id];

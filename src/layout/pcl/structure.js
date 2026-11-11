@@ -371,7 +371,8 @@ export function buildStructure(graph) {
   const gens = [...new Set(atoms.map(a => a.gen))].sort((a, b) => a - b);
 
   // cross-generation partnerships: stand-in on the lower row → upper partner
-  const crossLinks = individuals.filter(isGhost).map(g => ({ ghost: g.id, upper: g.ghostFor }));
+  // (and the passes kept free on the rows in between, crossGeneration.js)
+  const crossLinks = individuals.filter(isGhost).map(g => ({ ghost: g.id, upper: g.ghostFor, ...(g.crossGenerationPass ? { pass: true } : {}) }));
 
   return {
     crossLinks, multipleOf,
