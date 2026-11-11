@@ -94,7 +94,7 @@ export const THEMES = [
  * How much of the drawing shows through the ring's parts, in %: 0 (none) to 60, in steps of 5
  * (clinician request 2026-11-07: no words, more levels, one step at a time, seen while it is set).
  */
-export const RING_CLEAR = { min: 0, max: 60, step: 5 };
+export const RING_CLEAR = { min: 0, max: 100, step: 5 }; // up to wholly clear (clinician 2026-11-11)
 const OLD_RING_ALPHA = { solid: 0, low: 10, mid: 30, high: 45 }; // the four words of the first version
 const clearOf = (o) => {
   if (Number.isFinite(o.ringClear)) {
