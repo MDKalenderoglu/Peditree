@@ -70,7 +70,8 @@ export const DRAWING_FONTS = [
 export const fontById = (id) => DRAWING_FONTS.find(f => f.id === id) || DRAWING_FONTS[0];
 
 // openHelp: "Aç" first explains which files it opens (clinician decision 2026-10-30; "Bir daha gösterme" turns it off)
-// legendSize: the size of every text of the drawing — under the symbols, the pedigree numbers, the patient's
+// textSize: the size of every text of the drawing, in % (80–160; clinician 2026-11-11: a slider as in
+// professional applications, formerly four words, legendSize) — under the symbols, the pedigree numbers, the patient's
 // name, the key and the notes (clinician requests 2026-10-30, 2026-11-05); the layout gives larger text more room
 // paper: the page under the drawing on screen (paper.js; clinician request 2026-11-03)
 // carrierMark: a carrier without a named finding, half (NSGC 2022) or dot (conditionKey.js CARRIER_MARKS; 2026-11-04)
@@ -80,7 +81,20 @@ export const fontById = (id) => DRAWING_FONTS.find(f => f.id === id) || DRAWING_
 // tourOffer: the first opening offers the guided tour, until it is started or put off (2026-11-09)
 // touchMode: the touch screen for a phone ('auto': on a phone; 'on' / 'off'; clinician request 2026-11-10)
 // sameSexPartners: same-sex partners may be made (clinician decision 2026-11-10; off unless chosen)
-export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringClear: 5, panelWidth: 0, tourOffer: true, sameSexPartners: false, touchMode: 'auto' };
+export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, textSize: 100, paper: 'plain', carrierMark: 'split', theme: 'indigo', mode: 'system', ringClear: 5, panelWidth: 0, tourOffer: true, sameSexPartners: false, touchMode: 'auto' };
+
+/**
+ * Day or night (clinician 2026-11-11: users found the screen too white): 'system' follows the device.
+ * At night the screens are dark and the drawing lies on dimmed paper, its ink unchanged; a file, a
+ * picture and a print are always black on white.
+ */
+export const MODES = [
+  { id: 'system', label: tk('Cihazla aynı') },
+  { id: 'light', label: tk('Gündüz') },
+  { id: 'dark', label: tk('Gece') },
+];
+/** The mode the screen shows now: 'light' or 'dark'. */
+export const shownMode = (view, prefersDark) => (view.mode === 'dark' || (view.mode !== 'light' && prefersDark) ? 'dark' : 'light');
 
 /**
  * Colour themes, the warm ones first, then the cool ones, each named for the colour it is (clinician
@@ -119,12 +133,16 @@ const panelWidthOf = (o) => (Number.isFinite(o.panelWidth) && o.panelWidth > 0
  * symbols gets the room it needs from the layout (symbolText.setTextScale),
  * so any size is safe. The symbols keep their size.
  */
-export const LEGEND_SIZES = [
-  { id: 'small', label: tk('Küçük'), scale: 0.85 },
-  { id: 'normal', label: tk('Normal'), scale: 1 },
-  { id: 'large', label: tk('Büyük'), scale: 1.2 },
-  { id: 'xlarge', label: tk('Çok büyük'), scale: 1.45 },
-];
+export const TEXT_SIZE = { min: 80, max: 160, step: 5 };
+// the four words of the earlier version, as %
+const OLD_LEGEND_SIZES = { small: 85, normal: 100, large: 120, xlarge: 145 };
+function textSizeOf(o) {
+  if (Number.isFinite(o.textSize)) {
+    const v = Math.round(o.textSize / TEXT_SIZE.step) * TEXT_SIZE.step;
+    return Math.min(TEXT_SIZE.max, Math.max(TEXT_SIZE.min, v));
+  }
+  return OLD_LEGEND_SIZES[o.legendSize] || 100;
+}
 const VIEW_KEY = 'peditree.view.v1';
 
 function readView() {
@@ -145,10 +163,11 @@ export function normalizeView(v) {
     plainNumbers: o.plainNumbers !== false,
     exportAs: o.exportAs === 'standard' ? 'standard' : 'screen',
     openHelp: o.openHelp !== false,
-    legendSize: LEGEND_SIZES.some(z => z.id === o.legendSize) ? o.legendSize : 'normal',
+    textSize: textSizeOf(o),
     paper: PAPERS.some(p => p.id === o.paper) ? o.paper : 'plain',
     carrierMark: CARRIER_MARKS.some(m => m.id === o.carrierMark) ? o.carrierMark : 'split',
     theme: THEMES.some(x => x.id === o.theme) ? o.theme : 'indigo',
+    mode: ['light', 'dark'].includes(o.mode) ? o.mode : 'system',
     ringClear: clearOf(o),
     panelWidth: panelWidthOf(o),
     tourOffer: o.tourOffer !== false,
@@ -164,7 +183,7 @@ export function applyViewChange(view, patch) {
   return next;
 }
 
-const scaleOf = (view) => (LEGEND_SIZES.find(z => z.id === view.legendSize) || LEGEND_SIZES[1]).scale;
+const scaleOf = (view) => textSizeOf(view) / 100;
 const initialView = readView();
 setTextScale(scaleOf(initialView));
 
