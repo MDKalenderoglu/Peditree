@@ -70,13 +70,20 @@ describe('KI-2 store level — random edit populations', () => {
     // 2026-10-25: a pregnancy outcome may take parents and siblings
     // (clinician decision) — random edits that were refused now succeed, so
     // the population differs: random sideHangDrawn 2198 → 2208 px (recorded).
+    // 2026-11-11: an only child of a side-by-side couple is settled exactly
+    // under the middle of their line, and the line of descent always leaves
+    // that middle (clinician report: lopsided lines of descent). Side-hanging
+    // only children fall (random sideHangDrawn 2206 → 742 px, ki2 342 → 107;
+    // movedFraction 0.3912 → 0.381, 0.3857 → 0.3749); recorded costs: random
+    // meanShiftRawPx 32.9 → 33.3, ki2 22.2 → 22.6, random edits more
+    // off-centre than fresh 10 → 11.
     'random-200x12': {
-      prefix: 'stab', sequences: 200, ops: 12, parentFlips: 8, movedFraction: 0.3917, neighbourGapChanged: 0.2047, meanShiftRawPx: 33,
-      editsWorseThanFresh: { offCenter: 10, crossings: 3, longUnions: 2 }, sideHangDrawn: 2208,
+      prefix: 'stab', sequences: 200, ops: 12, parentFlips: 8, movedFraction: 0.381, neighbourGapChanged: 0.2047, meanShiftRawPx: 33.3,
+      editsWorseThanFresh: { offCenter: 11, crossings: 3, longUnions: 2 }, sideHangDrawn: 742,
     },
     'ki2-40x10': {
-      prefix: 'ki2-', sequences: 40, ops: 10, parentFlips: 1, movedFraction: 0.3857, neighbourGapChanged: 0.2016, meanShiftRawPx: 22.2,
-      editsWorseThanFresh: { offCenter: 0, crossings: 0, longUnions: 0 }, sideHangDrawn: 342,
+      prefix: 'ki2-', sequences: 40, ops: 10, parentFlips: 1, movedFraction: 0.3749, neighbourGapChanged: 0.2016, meanShiftRawPx: 22.6,
+      editsWorseThanFresh: { offCenter: 0, crossings: 0, longUnions: 0 }, sideHangDrawn: 107,
     },
   };
   for (const [name, c] of Object.entries(CEILINGS)) {
