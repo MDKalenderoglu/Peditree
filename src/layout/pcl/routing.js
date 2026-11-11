@@ -465,7 +465,10 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
     const dropClear = buses.every(o => o === b || o.busY <= upperY || o.busY >= gy || gx < o.x1 - CLEAR || gx > o.x2 + CLEAR)
       && [...verticals, ...buses.filter(o => !o.xline).map(o => ({ owner: o.u.id, x: o.dropX, y1: o.geom.y, y2: o.busY }))]
         .every(v => v.owner === b.u.id || Math.abs(v.x - gx) >= CLEAR || !overlapsY(v.y1, v.y2, upperY, gy));
-    return rowClear && linesClear && dropClear;
+    // partners several generations apart: nobody on the rows in between stands on the way down
+    const between = Object.entries(xPos).every(([id, x]) => yPos[id] <= upperY || yPos[id] >= gy || isGhost(S.indById.get(id))
+      || Math.abs(x - gx) >= halfOf(S.indById.get(id)) + CLEAR);
+    return rowClear && linesClear && dropClear && between;
   };
 
   for (const b of buses) {

@@ -422,7 +422,7 @@ describe('v0.3a.1 — store: computeUnionCreationPlan / createUnionBetween', () 
     expect(typeof plan.ok).toBe('boolean');
   });
 
-  it('v0.3a.4: blocks a cross-generation partnering by default', () => {
+  it('v0.3a.4: blocks a partnering of an ancestor and a descendant (2026-11-11: other generation gaps are allowed)', () => {
     const state = usePedigreeStore.getState();
     // v0.5 Step 5A: proband (gen 3, male) + mat_gm (gen 1, female) —
     // different generations, opposite sex, NOT direct parent-child
@@ -431,7 +431,7 @@ describe('v0.3a.1 — store: computeUnionCreationPlan / createUnionBetween', () 
     // parent-child test below, which now covers the proband+mother case).
     const plan = computeUnionCreationPlan(state.pedigreeData, 'proband', 'mat_gm');
     expect(plan.ok).toBe(false);
-    expect(plan.reason).toMatch(/kuşak/i);
+    expect(plan.reason).toMatch(/soy bağı/i);
   });
 
   it('v0.3a.4: allows a same-generation, opposite-sex, cross-branch pairing at the plan level (mat_gf + pat_gm, both gen 1)', () => {

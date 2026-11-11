@@ -155,21 +155,23 @@ export function computeGenerations(graph, anchorId = 'proband', anchorGeneration
   // which partner stood above the other before (the generations this graph came with)
   const before = new Map(individuals.map(i => [i.id, i.generation]));
   const side = (x, y) => Math.sign((before.get(x) ?? 0) - (before.get(y) ?? 0)); // +1: x below y
+  // how many rows apart they stood (one at least: partners from different generations)
+  const apart = (x, y) => Math.max(1, Math.abs((before.get(x) ?? 0) - (before.get(y) ?? 0)));
   for (let progress = true; progress;) {
     progress = false;
     for (const unionId of crossGen) {
       const [a, b] = unionToPartners.get(unionId) || [];
       if (derived.has(a) !== derived.has(b)) {
         const [known, other] = derived.has(a) ? [a, b] : [b, a];
-        seed(other, derived.get(known) + side(other, known));
+        seed(other, derived.get(known) + side(other, known) * apart(other, known));
         progress = true;
       } else if (!derived.has(a)) {
         const kid = (unionToChildren.get(unionId) || []).find(c => derived.has(c));
         if (kid) {
           const lowerGen = derived.get(kid) - 1;
           const s = side(a, b);
-          seed(a, s < 0 ? lowerGen - 1 : lowerGen);
-          seed(b, s > 0 ? lowerGen - 1 : lowerGen);
+          seed(a, s < 0 ? lowerGen - apart(a, b) : lowerGen);
+          seed(b, s > 0 ? lowerGen - apart(a, b) : lowerGen);
           progress = true;
         }
       }
