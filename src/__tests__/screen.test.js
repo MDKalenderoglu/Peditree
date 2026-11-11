@@ -324,6 +324,23 @@ describe('the ring menu', () => {
 });
 
 describe('the side panel', () => {
+  it('says what the person is to the proband (clinician 2026-11-11): Anneanne, Teyze, a cousin with its way', async () => {
+    const kin = () => ($('.side-header .person-kin') ? $('.side-header .person-kin').textContent : null);
+    await select('mat_gm');
+    expect(kin()).toBe('Anneanne');
+    await run(() => S().updateRelativeCount('maternalRelatives', 'aunts', 1));
+    const aunt = S().wizardData.maternalRelatives.aunts[0].id;
+    await select(aunt);
+    expect(kin()).toBe('Teyze');
+    await run(() => S().addSpouseTo(aunt, 'male'));
+    const u = g().unions.find(x => x.partners.includes(aunt));
+    await run(() => S().addChildToUnion(u.id, 'male'));
+    await select(g().parentChildRelationships.find(r => r.unionId === u.id).children[0]);
+    expect(kin()).toBe('1. derece kuzen (teyze oğlu)');
+    await select('proband');
+    expect(kin()).toBe(null);
+  });
+
   it('a numbered symbol: "Tek tek ayır" draws them one by one', async () => {
     await run(() => S().addSiblingTo('proband', 'male', { count: 3 }));
     await select(g().individuals.find(i => i.count).id);

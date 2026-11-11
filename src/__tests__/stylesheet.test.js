@@ -64,6 +64,16 @@ describe('stylesheet rules', () => {
     expect(css('ui.css')).toMatch(/prefers-reduced-motion: reduce\) \{ \.app-shell\.has-editor > \.side-right \{ animation: none; \}/);
   });
 
+  it('the side panel draws the eye (clinician report 2026-11-11: pale headings, one block): framed cards apart, headings in the accent colour, the panel off the window’s edge', () => {
+    expect(block('ui.css', '.card')).toMatch(/border: 1px solid var\(--line\)/);
+    expect(block('ui.css', '.card')).toMatch(/box-shadow:/);
+    expect(block('ui.css', '.editor-body')).toMatch(/gap: 1[4-9]px/);
+    expect(block('ui.css', '.card-title')).toMatch(/font-size: 14px; font-weight: 700; color: var\(--accent-ink\)/);
+    expect(css('ui.css')).toMatch(/\.card-title:not\(\.partner-title\)::before \{[^}]*background: var\(--accent\)/);
+    expect(block('ui.css', '.app-shell:not(.touch) > .side-right.editor-panel')).toMatch(/margin: 10px 10px 10px 0;[^}]*border-radius: 16px/);
+    expect(block('ui.css', '.person-kin')).toMatch(/font-weight: 700/);
+  });
+
   it('the top bar stands apart from the drawing (clinician report 2026-11-09: too pale): theme colour along its top, a tinted ground, its menus over the side panel and the ring', () => {
     const bar = css('ui.css').match(/\n\.toolbar \{[^}]*/)[0]; // the bar's own rule, not '.app-shell > .toolbar'
     expect(bar).toMatch(/border-top: 3px solid var\(--accent\)/);

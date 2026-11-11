@@ -21,6 +21,7 @@ import { usePanelPrefs, usePanelTip, PANEL_PARTS } from '../utils/panelPrefs';
 import { formatDate } from '../utils/age';
 import { t, tk, currentLang, shownLabel } from '../i18n';
 import { useViewSettings } from '../utils/drawingStyle';
+import { kinTerm } from '../graph/kinTerm';
 
 const SEX_WORD = { male: tk('Erkek'), female: tk('Kadın'), unknown: tk('Cinsiyet bilinmiyor') };
 // several people in one symbol (clinician decisions 2026-11-01)
@@ -53,12 +54,14 @@ function PersonGlyph({ p, size = 30 }) {
   );
 }
 
-function Header({ title, sub, chips, glyph, onClose }) {
+function Header({ title, kin, sub, chips, glyph, onClose }) {
   return (
     <div className="side-header">
       {glyph}
       <div className="side-header-text">
         <div className="person-id">{title}</div>
+        {/* what the person is to the proband (clinician 2026-11-11: who is who in a wide pedigree) */}
+        {kin && <div className="person-kin" title={t('Probanda göre akrabalığı')}>{kin}</div>}
         {chips && chips.length > 0
           ? <div className="person-chips">{chips.map(c => <span key={c} className="person-chip">{c}</span>)}</div>
           : sub && <div className="person-sub">{sub}</div>}
@@ -595,7 +598,7 @@ export default function IndividualEditor({
 
   return (
     <>
-      <Header title={pedigreeId || '—'} chips={chips} glyph={<PersonGlyph p={node} />} onClose={onClearSelection} />
+      <Header title={pedigreeId || '—'} kin={!node.placeholder && pedigreeData ? kinTerm(pedigreeData, node.id) : null} chips={chips} glyph={<PersonGlyph p={node} />} onClose={onClearSelection} />
       <div className="editor-body">
         {node.placeholder && (
           <div className="field-hint">{t('Bu boş sembol, silinmiş ya da bilinmeyen bir ebeveynin yerini tutar; çocukların ebeveyn bağının korunması için çizilir.')}</div>

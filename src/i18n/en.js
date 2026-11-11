@@ -1099,6 +1099,7 @@ const EN = {
   'Geri': 'Back',
   'Bitir': 'Finish',
   'İleri': 'Next',
+  'Probanda göre akrabalığı': 'Relationship to the proband',
 };
 
 export default EN;
