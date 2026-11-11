@@ -1459,6 +1459,17 @@ describe('every person, every part of the ring (the areas that kept breaking)', 
 });
 
 describe('notation per the literature (NSGC 2022 and its 2025 correction)', () => {
+  it('the deceased slash runs from the lower left to the upper right, as NSGC draws it, and stops at the corner of the proband’s arrow (clinician 2026-11-11)', async () => {
+    await run(() => { S().updateIndividual('father', { deceased: true }); S().updateIndividual('proband', { deceased: true }); });
+    for (const id of ['father', 'proband']) {
+      const l = drawn(id).querySelector('.deceased-slash');
+      const [x1, y1, x2, y2] = ['x1', 'y1', 'x2', 'y2'].map(a => Number(l.getAttribute(a)));
+      expect(x2 > x1 && y2 < y1).toBe(true);
+    }
+    const p = drawn('proband').querySelector('.deceased-slash'), f = drawn('father').querySelector('.deceased-slash');
+    expect(Number(p.getAttribute('y1'))).toBeLessThan(Number(f.getAttribute('y1')));
+  });
+
   it('ectopic pregnancy: the triangle with a slash and "ECT" below, like a termination but named', async () => {
     await run(() => { S().addChildTo('proband', 'unknown', { ectopic: true }); S().addChildTo('proband', 'unknown', { termination: true }); });
     const ect = g().individuals.find(i => i.ectopic).id, top = g().individuals.find(i => i.termination).id;
