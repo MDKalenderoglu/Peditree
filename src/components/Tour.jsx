@@ -10,8 +10,9 @@
  * prepare(ctx) }. A part of the top bar that went into "Diğer" (⋯) on a narrow screen is shown there.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Shapes, CircleDot, UserPlus, HeartPulse, Stethoscope, Users, ListChecks, PanelRight, IdCard, ArrowLeftRight, Link2, CalendarDays, Save, FolderOpen, FilePlus2, LayoutGrid, Printer, CheckSquare, SlidersHorizontal, Info, CircleHelp } from 'lucide-react';
+import { Shapes, CircleDot, UserPlus, HeartPulse, Stethoscope, Users, ListChecks, PanelRight, IdCard, ArrowLeftRight, Link2, CalendarDays, Save, FolderOpen, FilePlus2, Printer, CheckSquare, SlidersHorizontal, Info, CircleHelp } from 'lucide-react';
 import { useT, tk, t as tNow } from '../i18n';
+import TidyIcon from './TidyIcon';
 
 const PAD = 6;      // the lit area round the part
 const GAP = 14;     // between the lit area and the card (the arrow's room)
@@ -112,7 +113,7 @@ export const TOUR_STEPS = [
   { id: 'save', icon: Save, title: tk('Kaydetmek'),
     text: tk('Çizim yalnızca bu sekmede tutulur ve sekme kapandığında silinir. Kaydet menüsünden çizimi resim olarak (PNG, PDF ya da SVG) alabilir ya da sonra açıp düzenlemeye devam etmek için PediTree dosyası olarak saklayabilirsiniz. Resim rapora ve hasta dosyasına eklenir; PediTree dosyası yalnızca PediTree’de açılır.'),
     target: () => [one('.toolbar [data-popup="download"] > button'), one('.toolbar .download-popover')], prepare: (c) => { c.clear(); c.openSave(); } },
-  { id: 'arrange', icon: LayoutGrid, title: tk('Geri al ve Konumlandır'),
+  { id: 'arrange', icon: TidyIcon, title: tk('Geri al ve Konumlandır'),
     text: tk('Geri al ve Yinele her değişikliği adım adım geri getirir (Cmd/Ctrl + Z). Konumlandır, bireyleri çizimde yeniden yerleştirerek düzeni sadeleştirir; akrabalık ilişkileri değişmez ve bu işlem de geri alınabilir.'),
     target: () => [one(`.toolbar button[aria-label="${tNow('Geri al')}"]`), one(`.toolbar button[aria-label="${tNow('Yinele')}"]`), one('.toolbar [data-overflow="relayout"]')], prepare: (c) => c.clear() },
   { id: 'out', icon: Printer, title: tk('Yazdır ve Paylaş'),
