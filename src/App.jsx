@@ -33,6 +33,7 @@ import './styles/ui.css';
 // the clinician's logo (docs/brand/peditree-logo.webp): the tree, and the name in its own lettering
 import logoMark from './assets/logo-mark.png';
 import logoWordmark from './assets/logo-wordmark.png';
+import { kinTerm } from './graph/kinTerm';
 
 /** The buttons that may wait in "Diğer" (⋯) on a narrow bar: icon and name (App runMore does what they do). */
 const MORE = {
@@ -816,7 +817,8 @@ function App() {
   // the ring round the selected person, or (touch mode) its labelled tiles in the sheet
   // touch mode: one person chosen gets the tiles; two people, a couple or several go straight to the details
   const dockable = !!selectedNode && !selectedNode.placeholder && !selectedNode2 && (selectedIds || []).length <= 1;
-  const touchTitle = selectedNode && !selectedNode2 ? [computePedigreeIds(pedigreeData.nodes || []).get(selectedNode.id)?.displayId, selectedNode.displayLabel].filter(Boolean).join(' · ') : '';
+  const touchTitle = selectedNode && !selectedNode2 ? [computePedigreeIds(pedigreeData.nodes || []).get(selectedNode.id)?.displayId,
+    !selectedNode.placeholder && kinTerm(pedigreeData, selectedNode.id), selectedNode.displayLabel].filter(Boolean).join(' · ') : '';
   const ringOf = (anchor, panBy, dock) => (
             <RadialAddMenu ref={ringRef} anchor={anchor} node={selectedNode} pedigreeData={pedigreeData} onNeedRoom={panBy} dock={dock} onDetails={dock ? () => setSheetFull(true) : undefined}
               onAddSibling={addSiblingTo} onAddSpouse={addSpouseTo} onAddParents={addParentsTo} onAddTwin={addMultipleSibling}
