@@ -39,11 +39,21 @@ export function paperBackground(kind, { x, y, scale }) {
       backgroundPosition: at(step, step / 2),
     };
   }
-  const line = (ink, dir) => `linear-gradient(${dir}, ${ink} 1px, transparent 1px)`;
+  // one tile holds the heavier line and the three lighter ones between: two tiles of different
+  // sizes drifted apart as the browser rounded each, and every heavy line got a light twin beside
+  // it (clinician report 2026-11-11: doubled lines, tiring to look at)
+  const b = +big.toFixed(3), st = +step.toFixed(3);
+  const lines = [];
+  for (let k = 1; k < MAJOR; k++) {
+    const v = (k * st).toFixed(3);
+    lines.push(`<path d='M${v} 0V${b}M0 ${v}H${b}' stroke='${MINOR_INK}'/>`);
+  }
+  lines.push(`<path d='M0.5 0V${b}M0 0.5H${b}' stroke='${MAJOR_INK}'/>`);
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${b}' height='${b}' viewBox='0 0 ${b} ${b}' fill='none' stroke-width='1'>${lines.join('')}</svg>`;
   return {
-    backgroundImage: [line(MAJOR_INK, 'to right'), line(MAJOR_INK, 'to bottom'), line(MINOR_INK, 'to right'), line(MINOR_INK, 'to bottom')].join(', '),
-    backgroundSize: [big, big, step, step].map((s) => `${s}px ${s}px`).join(', '),
-    backgroundPosition: [at(big), at(big), at(step), at(step)].join(', '),
+    backgroundImage: `url("data:image/svg+xml,${encodeURIComponent(svg)}")`,
+    backgroundSize: `${b}px ${b}px`,
+    backgroundPosition: at(big),
   };
 }
 
