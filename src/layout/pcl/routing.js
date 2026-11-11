@@ -41,7 +41,7 @@ const TOP_RISER_STEP = 7;
 //   −38 … −28  pedigree id label above the symbol; −20 symbol top
 // When a row needs more levels than fit in the default 160 px row spacing,
 // planBands() makes that gap taller instead of letting lines collide.
-const SNAP_ONLY_CHILD = 12;   // px
+const SNAP_ONLY_CHILD = 1;    // px
 
 export const BAND = {
   LANE_FIRST: 46, LANE_STEP: 12,
@@ -398,11 +398,12 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
     if (!geom || !kids.length) continue;
     const childY = Math.min(...kids.map(c => yPos[c]));
     const xs = [...new Set(kids.map(c => apexX(c, kids)))];
-    // An only child a few px off the couple's midpoint (solver tolerance)
-    // gets a straight line of descent instead of a tiny jog, as long as the
-    // drop still starts on the couple's own line. Under a lane the line leaves
-    // through a free gap anyway, never from the middle: anywhere in that gap an
-    // only child gets a straight line (clinician report 2026-11-07: a staircase).
+    // The line of descent leaves the middle of the couple's line, as far from
+    // one partner as from the other (clinician report 2026-11-11); index.js
+    // settles an only child right under it, and one within a pixel of it gets
+    // a straight line. Under a lane the line leaves through a free gap anyway,
+    // never from the middle: anywhere in that gap an only child gets a
+    // straight line (clinician report 2026-11-07: a staircase).
     const only = xs.length === 1 && xs[0] >= geom.lo && xs[0] <= geom.hi && (geom.lane || Math.abs(xs[0] - geom.prefX) <= SNAP_ONLY_CHILD);
     const pref = only ? xs[0] : geom.prefX;
     buses.push({ u, geom, kids, childY, kidMin: Math.min(...xs), kidMax: Math.max(...xs), dropX: pref, pref });
