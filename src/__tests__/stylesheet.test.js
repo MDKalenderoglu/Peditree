@@ -74,6 +74,17 @@ describe('stylesheet rules', () => {
     expect(block('ui.css', '.person-kin')).toMatch(/font-weight: 700/);
   });
 
+  it('a phone, third pass (clinician report 2026-11-11: coarse top bar, clumsy bottom bar): a slim bar with a tinted Kaydet, a floating, compact person bar', () => {
+    const phone = css('ui.css').slice(css('ui.css').indexOf('/* a phone, third pass'));
+    expect(phone).toMatch(/\.touch-menu-btn, \.toolbar\.touch-bar \.patient-btn, \.toolbar\.touch-bar \[data-popup="download"\] > button \{ height: 40px;/);
+    expect(phone).toMatch(/\[data-popup="download"\] > button \{[^}]*background: var\(--surface\); color: var\(--accent-ink\)/);
+    expect(phone).toMatch(/orientation: portrait\) \{\s*\.app-shell\.touch \.touch-sheet \{[^}]*left: 8px; right: 8px; bottom: max\(8px/);
+    expect(phone).toMatch(/\.sheet-head \.sheet-close \{ flex: none; width: 40px; height: 34px; padding: 0;/);
+    expect(phone).toMatch(/\.sheet-title \{ font: 700 14\.5px\/1\.3 var\(--font-ui\)/);
+    // after the rules it overrides
+    expect(css('ui.css').indexOf('/* a phone, third pass')).toBeGreaterThan(css('ui.css').indexOf('.app-shell.touch .touch-sheet {'));
+  });
+
   it('the top bar stands apart from the drawing (clinician report 2026-11-09: too pale): theme colour along its top, a tinted ground, its menus over the side panel and the ring', () => {
     const bar = css('ui.css').match(/\n\.toolbar \{[^}]*/)[0]; // the bar's own rule, not '.app-shell > .toolbar'
     expect(bar).toMatch(/border-top: 3px solid var\(--accent\)/);
