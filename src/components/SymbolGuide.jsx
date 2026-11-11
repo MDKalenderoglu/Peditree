@@ -38,7 +38,7 @@ const GROUPS = [
       : <><defs><pattern id="sg-hatch" patternUnits="userSpaceOnUse" width="3" height="3" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="3" stroke={INK} strokeWidth="1.1" /></pattern></defs>
         <Square /><path d="M13,7h9v18h-9z" fill="url(#sg-hatch)" stroke="none" /><path d="M22,7v18" {...line} /><Square fill="none" /></>), tk('Taşıyıcı'), tk('Hastalığa yol açan varyantı taşıyan, ancak etkilenmemiş birey (gösterimi Ayarlar → Çizim’den seçilir)')],
     [() => <><Square /><path d="M22,7v18" {...line} /></>, tk('Presemptomatik'), tk('Şu an belirtisi yok, ileride çıkabilir')],
-    [() => <><Square /><path d="M10,29L34,3" {...line} /></>, tk('Vefat'), tk('Sembolün altında ölüm yaşı yazılır (örneğin “ölüm 42 y”)')],
+    [() => <><Square /><path d="M10,3L34,29" {...line} /></>, tk('Vefat'), tk('Sembolün altında ölüm yaşı yazılır (örneğin “ölüm 42 y”)')],
     [() => <><Square /><path d="M16,4h-5v24h5M28,4h5v24h-5" {...line} /></>, tk('Evlat edinilmiş'), tk('Köşeli parantez içinde gösterilir; evlat edinen aileden kesikli bir çizgiyle bağlanır')],
     [() => <><Square /><Letter x={34} y={28} size={11}>*</Letter></>, tk('Kayıtlarla doğrulandı'), tk('Bulgu tıbbi kayıt ya da raporla görüldü')],
     // nothing inside the symbol: the result lines stand under it (drawn here as short lines of text)
@@ -50,8 +50,10 @@ const GROUPS = [
     [() => <><Diamond /><Letter>P</Letter></>, tk('Devam eden gebelik (P)'), tk('Altında son adet tarihi')],
     [() => <Triangle />, tk('Düşük'), tk('Kendiliğinden gebelik kaybı (SAB)')],
     [() => <><Triangle /><path d="M13,27L31,9" {...line} /></>, tk('Sonlandırma (TOP)'), tk('İsteğe bağlı gebelik sonlandırma')],
-    [() => <><Triangle /><Letter y={32} size={6}>ECT</Letter></>, tk('Dış gebelik (ECT)'), null],
-    [() => <><Diamond /><path d="M11,29L33,3" {...line} /></>, tk('Ölü doğum (SB)'), null],
+    // ECT slashed like TOP, told apart by "ECT" below (the drawing; 2025 correction, clinician 2026-11-02)
+    [() => <><Triangle y={14} /><path d="M13,23L31,5" {...line} /><Letter y={31} size={6}>ECT</Letter></>, tk('Dış gebelik (ECT)'), tk('Eğik çizgili üçgen; altında “ECT” yazar')],
+    // full size, the slash of a deceased person, "SB" below (the drawing)
+    [() => <><Diamond y={13} /><path d="M11,1L33,25" {...line} /><Letter y={31} size={6}>SB</Letter></>, tk('Ölü doğum (SB)'), tk('Tam boy sembol, vefat çizgisi; altında “SB” ve gebelik haftası')],
   ]],
   [tk('Çizgiler'), [
     [() => <Couple><path d="M17,14H27" {...line} /></Couple>, tk('Eşler'), null],

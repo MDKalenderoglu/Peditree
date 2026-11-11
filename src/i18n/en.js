@@ -1100,6 +1100,8 @@ const EN = {
   'Bitir': 'Finish',
   'İleri': 'Next',
   'Probanda göre akrabalığı': 'Relationship to the proband',
+  'Eğik çizgili üçgen; altında “ECT” yazar': 'A triangle with a slash; “ECT” below',
+  'Tam boy sembol, vefat çizgisi; altında “SB” ve gebelik haftası': 'Full-size symbol with the slash of a deceased person; “SB” and the gestational age below',
 };
 
 export default EN;

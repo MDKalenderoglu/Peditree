@@ -1777,9 +1777,11 @@ describe('the Settings window (clinician request 2026-11-03)', () => {
       expect(document.documentElement.style.getPropertyValue('--ring-alpha')).toBe('1');
       expect(button('Daha az saydam', dialog).disabled).toBe(true);
       const slider = dialog.querySelector('.ring-clear input[type="range"]');
-      await run(() => { const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; set.call(slider, '60'); slider.dispatchEvent(new Event('input', { bubbles: true })); });
-      expect(document.documentElement.style.getPropertyValue('--ring-alpha')).toBe('0.4');
-      expect(JSON.parse(window.localStorage.getItem('peditree.view.v1')).ringClear).toBe(60);
+      await run(() => { const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; set.call(slider, '100'); slider.dispatchEvent(new Event('input', { bubbles: true })); });
+      // up to wholly clear (clinician 2026-11-11: 60 % was the most)
+      expect(document.documentElement.style.getPropertyValue('--ring-alpha')).toBe('0');
+      expect(JSON.parse(window.localStorage.getItem('peditree.view.v1')).ringClear).toBe(100);
+      expect(button('Daha saydam', dialog).disabled).toBe(true);
     } finally {
       await run(() => views.getState().setView({ theme: 'indigo', ringClear: 5 }));
     }
