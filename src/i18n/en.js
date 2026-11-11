@@ -829,7 +829,6 @@ const EN = {
   'Cinsiyeti bilinmeyen bir kişi eş olarak bağlanamaz; ': 'A person of unknown sex cannot be made a partner; ',
   'önce kişinin cinsiyetinin belirlenmesi gerekir.': 'their sex needs to be chosen first.',
   'Aralarında doğrudan ebeveyn–çocuk ilişkisi bulunan kişiler eş yapılamaz.': 'People who are parent and child cannot be made partners.',
-  'Şu anda yalnızca en fazla bir kuşak farkı bulunan iki kişi eş yapılabilir.': 'For now, partners can be at most one generation apart.',
   'Bu iki kişi arasında doğrudan soy bağı bulunduğundan (örneğin dede ile torun) eş yapılamazlar.': 'These two people are in a direct line of descent (such as grandparent and grandchild); they cannot be partners.',
   'Bu iki kişi zaten eştir.': 'These two people are already partners.',
   'Bu iki kişi kardeştir; kardeşler eş yapılamaz.': 'These two people are siblings; siblings cannot be partners.',

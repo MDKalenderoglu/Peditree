@@ -20,7 +20,7 @@ import { solveSeparatedQP } from './qp';
 import { routeConnectors, estimateLevelNeeds, planBands } from './routing';
 import { displayParentage, isSmallSymbol, reproMarkOf } from '../../graph/model';
 import { withArt, artEdges, isArtUnion } from './art';
-import { withGhosts, isGhost } from './crossGeneration';
+import { withGhosts, isGhost, isPass } from './crossGeneration';
 import { textBox, lineNoteWidth, TEXT, textScale } from '../../utils/symbolText';
 
 export const PCL = {
@@ -50,6 +50,13 @@ const W_CENTRE_ONLY = 8;
 // couple's line off its middle (clinician feedback 2026-11-01); this one
 // leaves under 1 px. Tidy keeps the variant only when it is clean.
 const W_CENTRE_EXACT = 128;
+// a cross-generation line runs this far from a neighbour's symbol or text on a row it passes
+const PASS_CLEAR = 22;
+// the line's way down — the stand-in on the lower row and the passes in between — under the
+// upper partner's side, so the line runs straight down (clinician report 2026-11-11: stairs)
+const W_XLINK_ALIGN = 8;
+const XLINK_STUB = 8;          // routing.js STUB
+const XLINK_BRACKET = 9;       // routing.js BRACKET_LINE
 // an only child this far off its side-by-side parents' midpoint is pulled exactly under it
 const ONLY_CHILD_SETTLE = 16;
 const W_SPOUSE = 0.5;
@@ -185,7 +192,17 @@ export function computePclLayout(inputGraph, opts = {}) {
   // larger text (Ayarlar → Yazı boyutu): two neighbours' pedigree numbers, which stand at
   // their upper corners, grow too; the gap grows by as much (nothing changes at the usual size)
   const numberGrowth = Math.max(0, textScale() - 1) * 2 * 36;
+  // a pass kept free for a cross-generation line (crossGeneration.js): beside a neighbour's
+  // symbol and text, with room for the line
+  const passGap = (pass, other, side) => {
+    const T = S.textBox.get(other);
+    const reach = Math.max(isGhost(S.indById.get(other)) ? 0 : 20, T ? T[side] : 0);
+    return Math.ceil(reach + PASS_CLEAR + numberGrowth);
+  };
   const gapBetween = (a, b) => {
+    if (isPass(S.indById.get(a)) && isPass(S.indById.get(b))) return 2 * PASS_CLEAR;
+    if (isPass(S.indById.get(a))) return passGap(a, b, 'left');
+    if (isPass(S.indById.get(b))) return passGap(b, a, 'right');
     const base = S.isPartners(a, b) ? PCL.SPOUSE_GAP : sameAtom(a, b) ? PCL.SIBLING_GAP : PCL.FAMILY_GAP;
     return Math.max(base + numberGrowth, Math.ceil(textGap(a, b)));
   };
@@ -261,8 +278,13 @@ export function computePclLayout(inputGraph, opts = {}) {
     coupleTerm.set(u.id, term);
   }
 
-  for (const { ghost, upper } of S.crossLinks) {
-    if (index.has(ghost) && index.has(upper)) terms.push({ w: W_XLINK, idx: [index.get(ghost), index.get(upper)], c: [1, -1], d: 0 });
+  const xlinkTerms = [];
+  for (const link of S.crossLinks) {
+    const { ghost, upper } = link;
+    if (!index.has(ghost) || !index.has(upper)) continue;
+    const term = { w: W_XLINK, idx: [index.get(ghost), index.get(upper)], c: [1, -1], d: 0 };
+    terms.push(term);
+    xlinkTerms.push({ link, term });
   }
 
   const pinTerms = [];
@@ -448,6 +470,27 @@ export function computePclLayout(inputGraph, opts = {}) {
       changed = true;
     }
     if (!changed) break;
+    solution = solveSeparatedQP(n, layers, terms, solution.x);
+    qpIterations += solution.iterations;
+    qpSolves++;
+    settleFootprint();
+  }
+  // A cross-generation line leaves the upper partner's side — or the bottom of the symbol,
+  // off-centre, when that side carries a partner's line (routing.js) — and runs down onto the
+  // stand-in beside the lower partner: the stand-in, and every pass on the rows in between,
+  // stand right under that point, so the line needs no steps.
+  if (xlinkTerms.length) {
+    const xs0 = solution.x;
+    for (const { link, term } of xlinkTerms) {
+      const up = S.indById.get(link.upper);
+      const dir = xs0[term.idx[0]] >= xs0[term.idx[1]] ? 1 : -1;
+      const row = rows.get(up.generation);
+      const neighbour = row[rowPos.get(link.upper) + dir];
+      const h = isSmallSymbol(up) ? 14 : 20;
+      const sideTaken = neighbour !== undefined && S.isPartners(link.upper, neighbour);
+      term.d = dir * (sideTaken ? h - 4 : h + (S.bracketed && S.bracketed.has(link.upper) ? XLINK_BRACKET : 0) + XLINK_STUB);
+      term.w = W_XLINK_ALIGN;
+    }
     solution = solveSeparatedQP(n, layers, terms, solution.x);
     qpIterations += solution.iterations;
     qpSolves++;

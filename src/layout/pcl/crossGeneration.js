@@ -8,8 +8,14 @@
  * unchanged there: the spouse gap, the couple centred over its children, the
  * line of descent, the divorce slash. routing.js then joins the upper
  * partner to the stand-in with a stepped line; the stand-in is never drawn.
+ * Partners more than one generation apart: every row in between keeps a
+ * place free (an invisible pass) under the upper partner's side, so the line
+ * runs straight down through it, never through a person or their text.
  */
 export const isGhost = (ind) => !!(ind && ind.crossGenerationGhost);
+// a place kept free on a row between the partners' rows, where their line runs down
+// (clinician decision 2026-11-11: partners any number of generations apart)
+export const isPass = (ind) => !!(ind && ind.crossGenerationPass);
 
 export function withGhosts(graph) {
   const byId = new Map((graph.individuals || []).map((i) => [i.id, i]));
@@ -24,6 +30,12 @@ export function withGhosts(graph) {
       crossGenerationGhost: true, ghostFor: upper.id, label: '',
     };
     ghosts.push(ghost);
+    for (let g = upper.generation + 1; g < lower.generation; g++) {
+      ghosts.push({
+        id: `__xg__${u.id}__${g}`, sex: upper.sex, generation: g,
+        crossGenerationGhost: true, crossGenerationPass: true, ghostFor: upper.id, label: '',
+      });
+    }
     return { ...u, partners: u.partners.map((p) => (p === upper.id ? ghost.id : p)) };
   });
   if (!ghosts.length) return graph;
