@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, afterEach } from 'vitest';
 import {
-  LEGEND_SIZES, DRAWING_FONTS, DEFAULT_VIEW, STANDARD_FAMILY, normalizeView, applyViewChange, drawingSpec, exportSpec, STANDARD_SPEC, embeddedFontCss,
+  TEXT_SIZE, DRAWING_FONTS, DEFAULT_VIEW, STANDARD_FAMILY, normalizeView, applyViewChange, drawingSpec, exportSpec, STANDARD_SPEC, embeddedFontCss,
 } from '../utils/drawingStyle';
 import { sketchPath, sketchCircle, MAX_BOW, SHAPE_BOW, MARK_BOW, REGION_BOW, junctionSplitter, pathPieces } from '../utils/drawingStyleSvg';
 
@@ -35,7 +35,7 @@ function samplePath(d, steps = 20) {
 
 describe('drawing style settings', () => {
   it('starts standard, with plain pedigree numbers and exports as on screen; the carrier as NSGC 2022 draws it', () => {
-    expect(DEFAULT_VIEW).toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringClear: 5, panelWidth: 0, tourOffer: true, sameSexPartners: false, touchMode: 'auto' });
+    expect(DEFAULT_VIEW).toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, textSize: 100, paper: 'plain', carrierMark: 'split', theme: 'indigo', mode: 'system', ringClear: 5, panelWidth: 0, tourOffer: true, sameSexPartners: false, touchMode: 'auto' });
     expect(drawingSpec(DEFAULT_VIEW)).toMatchObject({ hand: false, family: STANDARD_FAMILY, k: 1, numberK: 1 });
   });
 
@@ -53,7 +53,7 @@ describe('drawing style settings', () => {
 
   it('keeps only known values from storage', () => {
     expect(normalizeView({ drawStyle: 'crayon', fontId: 'comic', plainNumbers: 'no', exportAs: 'x', openHelp: 'maybe', legendSize: 'huge', paper: 'tartan', carrierMark: 'star', theme: 'neon', ringAlpha: 'glass', panelWidth: 'wide', tourOffer: 'perhaps' }))
-      .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringClear: 5, panelWidth: 0, tourOffer: true, sameSexPartners: false, touchMode: 'auto' });
+      .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, textSize: 100, paper: 'plain', carrierMark: 'split', theme: 'indigo', mode: 'system', ringClear: 5, panelWidth: 0, tourOffer: true, sameSexPartners: false, touchMode: 'auto' });
     // the ring's transparency in steps of 5 % within 0–100 (60 until 2026-11-11); the four words of the first version carried over
     expect(normalizeView({ ringClear: 7 }).ringClear).toBe(5);
     // the tour is offered until it was started or put off (2026-11-09)
@@ -250,11 +250,17 @@ describe('the typeface inside an exported file', () => {
 
 // moved to screen.test.js: "Aç", "Bunu bir daha gösterme", a dropped file
 
-describe('text size of the name, key and notes (clinician request 2026-10-30)', () => {
-  it('four sizes, normal by default; the renderer scales only the legends by it', () => {
-    expect(LEGEND_SIZES.map(z => z.id)).toEqual(['small', 'normal', 'large', 'xlarge']);
+describe('text size of the drawing (clinician requests 2026-10-30, 2026-11-11: a slider in %)', () => {
+  it('80–160 % in steps of 5, 100 by default; the four words of the earlier version carry over', () => {
+    expect(TEXT_SIZE).toEqual({ min: 80, max: 160, step: 5 });
     expect(drawingSpec(DEFAULT_VIEW).legendScale).toBe(1);
-    expect(drawingSpec({ ...DEFAULT_VIEW, legendSize: 'xlarge' }).legendScale).toBeGreaterThan(1.3);
-    // the drawing itself: screen.test.js (the text size setting changes the legends only)
+    expect(drawingSpec({ ...DEFAULT_VIEW, textSize: 140 }).legendScale).toBeCloseTo(1.4, 5);
+    expect(normalizeView({ textSize: 173 }).textSize).toBe(160);
+    expect(normalizeView({ textSize: 52 }).textSize).toBe(80);
+    expect(normalizeView({ textSize: 112 }).textSize).toBe(110);
+    expect([normalizeView({ legendSize: 'small' }), normalizeView({ legendSize: 'large' }), normalizeView({ legendSize: 'xlarge' })].map((v) => v.textSize)).toEqual([85, 120, 145]);
+    // day or night: 'system' unless chosen
+    expect(normalizeView({ mode: 'dark' }).mode).toBe('dark');
+    expect(normalizeView({ mode: 'dusk' }).mode).toBe('system');
   });
 });

@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { X, ChevronLeft, ChevronRight, Globe, Palette, Paintbrush, CircleDot, PanelRight, FolderOpen, Shapes, Keyboard, Info, Minus, Plus } from 'lucide-react';
 import { ProductInfo, CitationInfo, FeedbackInfo, LicenseInfo, KeyHelp } from './AboutParts';
 import { useT, useLang, tk } from '../i18n';
-import { useViewSettings, DRAWING_FONTS, LEGEND_SIZES, THEMES, RING_CLEAR } from '../utils/drawingStyle';
+import { useViewSettings, DRAWING_FONTS, TEXT_SIZE, THEMES, MODES, RING_CLEAR, fontById } from '../utils/drawingStyle';
 import { RingSection, PanelSection, Switch } from './RingSettings';
 import SymbolGuide from './SymbolGuide';
 import { PAPERS } from '../utils/paper';
@@ -89,9 +89,19 @@ function LookSection({ touch = false }) {
   const { view, setView } = useViewSettings();
   return (
     <div className="set-block">
-      <Row title={t('Renk teması')} hint={t('Sıcaktan soğuğa')}>
-        <Segmented label={t('Renk teması')} value={view.theme} onChange={(v) => setView({ theme: v })}
-          options={THEMES.map((x) => [x.id, <><span className="theme-swatch" style={{ background: x.swatch }} aria-hidden="true" />{t(x.label)}</>])} />
+      {/* day or night (clinician 2026-11-11: the screen was too white) */}
+      <Row title={t('Görünüm')} more={t('Gece görünümünde ekran koyulaşır, çizim loş bir kâğıt üzerinde aynı mürekkeple görünür. İndirilen, paylaşılan ve yazdırılan çizim her zaman beyaz kâğıt üzerinde siyahtır.')}>
+        <Segmented label={t('Görünüm')} value={view.mode || 'system'} onChange={(v) => setView({ mode: v })}
+          options={MODES.map((m) => [m.id, t(m.label)])} />
+      </Row>
+      {/* six colours, each named for what it is; the name of the chosen one beside them (clinician 2026-11-11) */}
+      <Row title={t('Renk teması')} hint={t((THEMES.find((x) => x.id === view.theme) || THEMES[3]).label)}>
+        <div className="theme-dots" role="radiogroup" aria-label={t('Renk teması')}>
+          {THEMES.map((x) => (
+            <button key={x.id} role="radio" aria-checked={view.theme === x.id} aria-label={t(x.label)} title={t(x.label)}
+              className={`theme-dot${view.theme === x.id ? ' on' : ''}`} style={{ '--dot': x.swatch }} onClick={() => setView({ theme: x.id })}>{t(x.label)}</button>
+          ))}
+        </div>
       </Row>
       {/* the touch screen (clinician request 2026-11-10): on by itself on a phone; a tablet may choose it */}
       <Row title={t('Dokunmatik görünüm')} hint={t('Büyük, yazılı düğmeler')}
@@ -141,6 +151,31 @@ function RingClear({ value, onChange }) {
   );
 }
 
+/**
+ * The drawing's text size as professional applications set it (clinician 2026-11-11): a small and a
+ * large A at the ends of a slider, the value in %, a line of the drawing's text at that size, and a
+ * way back to 100 %.
+ */
+function TextSize({ value, family, onChange }) {
+  const t = useT();
+  const v = value || 100;
+  return (
+    <div className="text-size">
+      <div className="text-size-row">
+        <button className="text-size-a small" onClick={() => onChange(Math.max(TEXT_SIZE.min, v - TEXT_SIZE.step))}
+          aria-label={t('Yazıyı küçült')} title={t('Yazıyı küçült')}>A</button>
+        <input type="range" min={TEXT_SIZE.min} max={TEXT_SIZE.max} step={TEXT_SIZE.step} value={v}
+          aria-label={t('Yazı boyutu')} aria-valuetext={`%${v}`} onChange={(e) => onChange(Number(e.target.value))} />
+        <button className="text-size-a large" onClick={() => onChange(Math.min(TEXT_SIZE.max, v + TEXT_SIZE.step))}
+          aria-label={t('Yazıyı büyüt')} title={t('Yazıyı büyüt')}>A</button>
+        <output className="text-size-value">%{v}</output>
+      </div>
+      <div className="text-size-sample" style={{ fontFamily: family, fontSize: `${12 * v / 100}px` }} aria-hidden="true">{t('II-3 · 45 y · Ayşe Gül')}</div>
+      {v !== 100 && <button className="ui-btn ui-btn-ghost ui-btn-sm text-size-reset" onClick={() => onChange(100)}>{t('%100’e dön')}</button>}
+    </div>
+  );
+}
+
 function DrawingSection() {
   const t = useT();
   const { view, setView } = useViewSettings();
@@ -163,8 +198,7 @@ function DrawingSection() {
         </Row>
         {/* every text of the drawing (clinician request 2026-11-05) */}
         <Row title={t('Yazı boyutu')} hint={t('Çizimdeki bütün yazılar')} more={t('Sembollerin altındaki yazıları, pedigri numaralarını, hasta adını, açıklamayı ve notları kapsar; indirilen ve yazdırılan çizimde de geçerlidir. Yazı büyüdükçe kişiler arasındaki mesafe biraz artar, semboller aynı boyutta kalır.')}>
-          <Segmented label={t('Yazı boyutu')} value={view.legendSize} onChange={(v) => setView({ legendSize: v })}
-            options={LEGEND_SIZES.map((z) => [z.id, t(z.label)])} />
+          <TextSize value={view.textSize} family={fontById(view.fontId).family} onChange={(v) => setView({ textSize: v })} />
         </Row>
         <Row title={t('İndirilen resmin görünümü')} hint={t('İndirme, paylaşma ve yazdırma')}>
           <Segmented label={t('İndirilen resmin görünümü')} value={view.exportAs} onChange={(v) => setView({ exportAs: v })}
