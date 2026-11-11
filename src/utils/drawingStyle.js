@@ -82,13 +82,18 @@ export const fontById = (id) => DRAWING_FONTS.find(f => f.id === id) || DRAWING_
 // sameSexPartners: same-sex partners may be made (clinician decision 2026-11-10; off unless chosen)
 export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, legendSize: 'normal', paper: 'plain', carrierMark: 'split', theme: 'indigo', ringClear: 5, panelWidth: 0, tourOffer: true, sameSexPartners: false, touchMode: 'auto' };
 
-/** Colour themes, warm to cool; Standart is the indigo palette (ui.css :root[data-theme]). */
+/**
+ * Colour themes, the warm ones first, then the cool ones, each named for the colour it is (clinician
+ * 2026-11-11: "Deniz" looked green; six themes, warm and cool, without saying so on the screen).
+ * Çivit (indigo) is the usual one (ui.css :root[data-theme]).
+ */
 export const THEMES = [
+  { id: 'terracotta', label: tk('Kiremit'), swatch: '#a8471f' },
   { id: 'amber', label: tk('Kehribar'), swatch: '#9a5b13' },
   { id: 'rose', label: tk('Gül'), swatch: '#a8324f' },
-  { id: 'indigo', label: tk('Standart'), swatch: '#4f46a5' },
-  { id: 'teal', label: tk('Deniz'), swatch: '#0f6e6a' },
-  { id: 'ice', label: tk('Buz'), swatch: '#2f5d8c' },
+  { id: 'indigo', label: tk('Çivit'), swatch: '#4f46a5' },
+  { id: 'ice', label: tk('Okyanus'), swatch: '#2f5d8c' },
+  { id: 'teal', label: tk('Yeşim'), swatch: '#0f6e6a' },
 ];
 /**
  * How much of the drawing shows through the ring's parts, in %: 0 (none) to 60, in steps of 5
