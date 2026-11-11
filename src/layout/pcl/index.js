@@ -50,6 +50,8 @@ const W_CENTRE_ONLY = 8;
 // couple's line off its middle (clinician feedback 2026-11-01); this one
 // leaves under 1 px. Tidy keeps the variant only when it is clean.
 const W_CENTRE_EXACT = 128;
+// an only child this far off its side-by-side parents' midpoint is pulled exactly under it
+const ONLY_CHILD_SETTLE = 16;
 const W_SPOUSE = 0.5;
 // an only child (or one twin group) of a couple joined by a lane: under the lane's free gap
 const W_LANE_CHILD = 8;
@@ -450,6 +452,35 @@ export function computePclLayout(inputGraph, opts = {}) {
     qpIterations += solution.iterations;
     qpSolves++;
     settleFootprint();
+  }
+  // A couple standing side by side over an only child (or one group of twins): the line of
+  // descent leaves the middle of their line, at the same distance from both partners, and runs
+  // straight down to the child (clinician report 2026-11-11: a line of descent nearer one partner
+  // reads as lopsided). The solve leaves such a child a few px off; a firm pull settles it. Only
+  // a child already nearly under the couple — one held elsewhere by the pedigree keeps its place.
+  {
+    const xs0 = solution.x;
+    let changed = false;
+    for (const u of S.unions) {
+      const term = coupleTerm.get(u.id);
+      if (!term || term.w >= W_CENTRE_EXACT) continue;
+      const [a, b] = u.partners || [];
+      if (S.indById.get(a).generation !== S.indById.get(b).generation) continue;
+      if (Math.abs(rowPos.get(a) - rowPos.get(b)) !== 1) continue;
+      const kids = (S.childrenOf.get(u.id) || []).filter(c => index.has(c));
+      const m = kids.length > 1 && S.multipleOf && S.multipleOf.get(kids[0]);
+      if (!(kids.length === 1 || (m && kids.every(k => m.members.includes(k))))) continue;
+      const off = term.idx.reduce((s, k, q) => s + term.c[q] * xs0[k], 0);
+      if (Math.abs(off) <= 0.25 || Math.abs(off) > ONLY_CHILD_SETTLE) continue;
+      term.w = W_CENTRE_EXACT * (place && place.freePersons !== null ? COUPLE_SCALE : 1);
+      changed = true;
+    }
+    if (changed) {
+      solution = solveSeparatedQP(n, layers, terms, solution.x);
+      qpIterations += solution.iterations;
+      qpSolves++;
+      settleFootprint();
+    }
   }
   function laneDropFamilies() {
     const out = [];
