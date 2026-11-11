@@ -14,21 +14,29 @@ describe('the paper under the drawing', () => {
     expect(paperBackground('plain', { x: 0, y: 0, scale: 1 })).toBeNull();
   });
 
-  it('grid: a line every 20 drawing units, a heavier one every 80, starting on the drawing’s origin', () => {
+  // the tile's lines, read back from its picture: [[x, ink], …] for the vertical ones
+  const tileLines = (bg) => {
+    const svg = decodeURIComponent(bg.backgroundImage.match(/data:image\/svg\+xml,([^"]+)/)[1]);
+    return [...svg.matchAll(/<path d='M([\d.]+) 0V[\d.]+M0 [\d.]+H[\d.]+' stroke='([^']+)'/g)].map((m) => [Number(m[1]), m[2]]);
+  };
+
+  it('grid: one tile of 80 units with a heavier line on its edge and a light one every 20, starting on the drawing’s origin', () => {
     const bg = paperBackground('grid', { x: 130, y: 45, scale: 1 });
-    expect(px(bg.backgroundSize)).toEqual([[80, 80], [80, 80], [20, 20], [20, 20]]);
-    // the origin (130, 45) on screen lies on a heavy line and on a light one
-    for (const [[ox, oy], [w]] of px(bg.backgroundPosition).map((p, k) => [p, px(bg.backgroundSize)[k]])) {
-      expect(((130 - ox) % w + w) % w).toBeCloseTo(0, 5);
-      expect(((45 - oy) % w + w) % w).toBeCloseTo(0, 5);
-    }
+    expect(px(bg.backgroundSize)).toEqual([[80, 80]]);
+    const [[ox, oy]] = px(bg.backgroundPosition);
+    expect(((130 - ox) % 80 + 80) % 80).toBeCloseTo(0, 5);
+    expect(((45 - oy) % 80 + 80) % 80).toBeCloseTo(0, 5);
+    const lines = tileLines(bg);
+    expect(lines.map(([x]) => x).sort((a, b) => a - b)).toEqual([0.5, 20, 40, 60]);
+    // one picture: the heavy and the light lines can never drift apart into doubled lines (clinician report 2026-11-11)
+    expect(bg.backgroundImage.split('url(')).toHaveLength(2);
   });
 
   it('zoomed in or out, the lines keep to the drawing: twice the zoom, twice the spacing', () => {
-    expect(px(paperBackground('grid', { x: 0, y: 0, scale: 2 }).backgroundSize)[2]).toEqual([40, 40]);
+    expect(px(paperBackground('grid', { x: 0, y: 0, scale: 2 }).backgroundSize)[0]).toEqual([160, 160]);
     // far out (20 units = 2 px) the light lines would run together: they thin to every 4th
-    const far = px(paperBackground('grid', { x: 0, y: 0, scale: 0.1 }).backgroundSize)[2];
-    expect(far[0]).toBeGreaterThanOrEqual(8);
+    const far = tileLines(paperBackground('grid', { x: 0, y: 0, scale: 0.1 })).map(([x]) => x).sort((a, b) => a - b);
+    expect(far[1]).toBeGreaterThanOrEqual(8);
   });
 
   it('dots: one dot on every crossing of the 20-unit grid', () => {
