@@ -20,6 +20,11 @@ const EDGE = 12;    // the card keeps off the window's edge
 const all = (sel) => [...document.querySelectorAll(sel)];
 const one = (sel) => document.querySelector(sel);
 const drawnNode = (id) => all('.node-group').find((el) => el.__data__ && el.__data__.id === id) || null;
+// the line joining two partners, as drawn (its wide, invisible hit line: the part to click)
+const coupleLine = (c, a, b) => {
+  const id = c.unionOf && c.unionOf(a, b);
+  return id ? all('.union-hit').filter((el) => el.getAttribute('data-union') === id) : [];
+};
 const cardTitled = (title) => all('.editor-panel .card').find((c) => {
   const head = c.querySelector('.card-title');
   return head && head.textContent.trim().startsWith(tNow(title));
@@ -87,11 +92,11 @@ export const TOUR_STEPS = [
     text: tk('Kardeşler soldan sağa doğum sırasıyla çizilir. Sırayı değiştirmek için Sola ve Sağa düğmelerini ya da klavyede Shift ile ok tuşlarını kullanabilir, sembolü sürükleyip kardeşinin yanına da bırakabilirsiniz.'),
     target: () => cardTitled('Doğum sırası'), prepare: (c) => c.select(c.ids.proband) },
   { id: 'couple', icon: Link2, title: tk('Eşler arasındaki çizgi'),
-    text: tk('İki eşi birleştiren çizgiye tıklandığında panelde çiftin kartı açılır. İlişkinin sürdüğü ya da sona erdiği, çocuksuzluk (isteğe bağlı ya da infertilite) burada işaretlenir; çifte yeni çocuk da buradan eklenir.'),
-    target: (c) => ({ areas: [[drawnNode(c.ids.father), drawnNode(c.ids.mother)], [cardTitled('Bu çift')]] }), prepare: (c) => c.selectCouple(c.ids.mother, c.ids.father) },
+    text: tk('İki eşi birleştiren yatay çizgi de tıklanabilir: ışıklı çizgiye tıklandığında panelde çiftin kartı açılır. İlişkinin sürdüğü ya da sona erdiği, çocuksuzluk (isteğe bağlı ya da infertilite) burada işaretlenir; çifte yeni çocuk da buradan eklenir.'),
+    target: (c) => ({ areas: [coupleLine(c, c.ids.mother, c.ids.father), [cardTitled('Bu çift')]] }), prepare: (c) => c.selectCouple(c.ids.mother, c.ids.father) },
   { id: 'kinship', icon: Link2, title: tk('Akrabalık ve Aynı köy'),
-    text: tk('Eşler arasında kan bağı varsa Var seçilir ve çizgi çift çizgiye dönüşür. Anne ile babanın akrabalık derecesi seçildiğinde ortak atalar çizime kendiliğinden eklenir ve çocuklar için akrabalık katsayısı (F) hesaplanır. Aynı köy akrabalık sayılmaz; çizgi tek kalır, üzerine yalnızca bir not yazılır.'),
-    target: (c) => ({ areas: [[drawnNode(c.ids.father), drawnNode(c.ids.mother)], [fieldCol('Akrabalık')]] }), prepare: (c) => c.selectCouple(c.ids.mother, c.ids.father) },
+    text: tk('Akraba evliliği bu çizgiden girilir: eşler arasındaki çizgiye tıklayın ve panelde Akrabalık için Var’ı seçin; çizgi çift çizgiye dönüşür. Anne ile babanın akrabalık derecesi seçildiğinde ortak atalar çizime kendiliğinden eklenir ve çocuklar için akrabalık katsayısı (F) hesaplanır. Aynı köy akrabalık sayılmaz; çizgi tek kalır, üzerine yalnızca bir not yazılır.'),
+    target: (c) => ({ areas: [coupleLine(c, c.ids.mother, c.ids.father), [fieldCol('Akrabalık')]] }), prepare: (c) => c.selectCouple(c.ids.mother, c.ids.father) },
   { id: 'patient', icon: CalendarDays, title: tk('Hasta adı ve doğum tarihi'),
     text: tk('Hasta adı çizimin başlığında ve kaydedilen dosyaların adında yer alır. Probandın doğum tarihi kısaltılarak da yazılabilir (3.5.25); yaşı bugünün tarihine göre hesaplanır.'),
     target: () => [one('.toolbar .patient-name'), one('.toolbar .toolbar-field')], prepare: (c) => c.clear() },
@@ -157,8 +162,8 @@ export const TOUCH_STEPS = [
     text: tk('Ayrıntılar’a dokunmak ya da çubuğu yukarı çekmek kişinin bütün bilgilerini açar: ad, yaş, not, genetik test, evlat edinme, doğum sırası. Aşağı çekince çubuğa dönülür, bir kez daha çekince kapanır.'),
     target: () => one('.touch-sheet'), prepare: (c) => { c.select(c.ids.proband); c.openDetails(); } },
   { id: 't-couple', icon: Link2, title: tk('Eşler arasındaki çizgi'),
-    text: tk('İki eşi birleştiren çizgiye dokunduğunuzda çiftin bilgileri açılır: ilişkinin durumu, akrabalık ya da “Aynı köy”, çocuksuzluk; çifte çocuk da buradan eklenir.'),
-    target: () => one('.touch-sheet'), prepare: (c) => c.selectCouple(c.ids.mother, c.ids.father) },
+    text: tk('İki eşi birleştiren ışıklı çizgiye dokunduğunuzda çiftin bilgileri açılır: ilişkinin durumu, akrabalık (Var seçilince çizgi çift çizgiye dönüşür) ya da “Aynı köy”, çocuksuzluk; çifte çocuk da buradan eklenir.'),
+    target: (c) => ({ areas: [coupleLine(c, c.ids.mother, c.ids.father), [one('.touch-sheet')]] }), prepare: (c) => c.selectCouple(c.ids.mother, c.ids.father) },
   { id: 't-menu', icon: ListChecks, title: tk('Menü'),
     text: tk('Geri al, Yinele, Yeni, Aç, Konumlandır, Yazdır, Paylaş, Ayarlar ve bu tur Menü’de yer alır.'),
     target: () => one('.toolbar .more-popover'), prepare: (c) => { c.clear(); c.openMenu(); } },
@@ -190,7 +195,8 @@ function boxOf(els) {
     if (!sc) return r;
     const b = sc.getBoundingClientRect();
     return { left: Math.max(r.left, b.left), top: Math.max(r.top, b.top), right: Math.min(r.right, b.right), bottom: Math.min(r.bottom, b.bottom) };
-  }).filter((r) => r.right > r.left && r.bottom > r.top);
+  // a straight line (the couple's line) has a box of no height: it stays, as a thin lit band
+  }).filter((r) => r.right >= r.left && r.bottom >= r.top && (r.right > r.left || r.bottom > r.top));
   if (!rs.length) return null;
   const left = Math.min(...rs.map((r) => r.left)) - PAD;
   const top = Math.min(...rs.map((r) => r.top)) - PAD;

@@ -287,6 +287,8 @@ describe('the ring, the menus and the windows the steps talk about (clinician 20
   });
 });
 
+const unionOf = (a, b) => (S().doc.graph.unions.find((x) => x.partners.includes(a) && x.partners.includes(b)) || {}).id;
+
 describe('what the clinician saw on 2026-11-10', () => {
   it('the line between partners: the couple is lit in the drawing as well as their card in the panel, two lit areas', async () => {
     await click(buttonNamed('Tanıtım turu'));
@@ -297,6 +299,26 @@ describe('what the clinician saw on 2026-11-10', () => {
     expect(document.querySelectorAll('.tour-spot').length).toBe(2);
     await goTo('patient');
     expect(document.querySelectorAll('.tour-spot').length).toBe(1);
+    await key('Escape');
+  });
+
+  it('the couple and consanguinity steps light the line between the partners itself (clinician 2026-11-11: show where to click)', async () => {
+    // the parents' line stands at 300–380 × 500; everything else at the usual place
+    box.of = (el) => (el.classList && el.classList.contains('union-hit') && el.getAttribute('data-union') === unionOf('mother', 'father')
+      // a browser gives a straight line a box of no height
+      ? { left: 300, top: 500, right: 380, bottom: 500, width: 80, height: 0, x: 300, y: 500 } : null);
+    try {
+      await click(buttonNamed('Tanıtım turu'));
+      for (const step of ['couple', 'kinship']) {
+        await goTo(step);
+        await wait(600); // the light glides there
+        const spots = [...document.querySelectorAll('.tour-spot')];
+        expect(spots.some((sp) => parseFloat(sp.style.left) <= 300 && parseFloat(sp.style.top) <= 500 && parseFloat(sp.style.top) >= 485)).toBe(true);
+      }
+      expect($('.tour-text').textContent).toMatch(/çizgiye tıklayın/);
+    } finally {
+      box.of = () => null;
+    }
     await key('Escape');
   });
 

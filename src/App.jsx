@@ -301,6 +301,7 @@ function App() {
     coarse: coarsePointer(),
     select: (id) => { usePedigreeStore.getState().selectIndividual(id); setRingHidden(false); },
     clear: () => usePedigreeStore.getState().clearSelection(),
+    unionOf: (a, b) => (usePedigreeStore.getState().doc.graph.unions.find((x) => x.partners.includes(a) && x.partners.includes(b)) || {}).id,
     // the couple line: selecting it selects the couple (the pair panel: relationship, consanguinity, children)
     selectCouple: (a, b) => {
       const u = usePedigreeStore.getState().doc.graph.unions.find((x) => x.partners.includes(a) && x.partners.includes(b));
