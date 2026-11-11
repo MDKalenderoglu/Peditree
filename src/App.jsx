@@ -22,7 +22,7 @@ import RelationChooser from './components/RelationChooser';
 import Tour, { TourFamily } from './components/Tour';
 import { withGeneticLine, subjectOf, adoptionOf, ancestorsOf, REPRO_LABEL, EGG_SOURCE, CARRIER_ROLES, ART_DONOR_RELATION, isPregnancy, sameReproductiveSex, ownGameteOf } from './graph/model';
 import { clinicalNamer } from './utils/clinicalNotices';
-import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, ringAlphaOf, PANEL_WIDTH } from './utils/drawingStyle';
+import { useViewSettings, drawingSpec, exportSpec, embeddedFontCss, ringAlphaOf, shownMode, PANEL_WIDTH } from './utils/drawingStyle';
 import { ProductInfo, LicenseInfo, CitationInfo, FeedbackInfo } from './components/AboutParts';
 import { nameCase } from './utils/nameCase';
 import { RELEASE_STAGE } from './utils/appInfo';
@@ -274,6 +274,16 @@ function App() {
     if (view.theme && view.theme !== 'indigo') root.setAttribute('data-theme', view.theme); else root.removeAttribute('data-theme');
     root.style.setProperty('--ring-alpha', String(ringAlphaOf(view)));
   }, [view]);
+  // day or night (clinician 2026-11-11): chosen, or the device's, followed while the page is open
+  React.useEffect(() => {
+    const root = document.documentElement;
+    const mq = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    const apply = () => root.setAttribute('data-mode', shownMode(view, !!(mq && mq.matches)));
+    apply();
+    if (!mq || view.mode !== 'system') return undefined;
+    mq.addEventListener ? mq.addEventListener('change', apply) : mq.addListener(apply);
+    return () => { mq.removeEventListener ? mq.removeEventListener('change', apply) : mq.removeListener(apply); };
+  }, [view.mode]);
   // another text size: the layout gives the text its room again (symbolText.setTextScale; clinician 2026-11-05)
   const textSize = React.useRef(drawing.legendScale);
   React.useEffect(() => {

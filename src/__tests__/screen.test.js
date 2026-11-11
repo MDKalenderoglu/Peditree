@@ -631,7 +631,7 @@ describe('the look of the drawing (Ayarlar), a preference of this device', () =>
     await run(() => S().refreshLayout()); // a fresh layout to compare with
     const normal = sizes(), normalApart = apart(), undoSteps = S()._history.length;
     try {
-      await run(() => useViewSettings.getState().setView({ legendSize: 'xlarge' }));
+      await run(() => useViewSettings.getState().setView({ textSize: 145 }));
       const big = sizes();
       expect(big.head).toBeGreaterThan(normal.head);
       expect(big.under).toBeGreaterThan(normal.under);
@@ -639,7 +639,7 @@ describe('the look of the drawing (Ayarlar), a preference of this device', () =>
       expect(apart()).toBeGreaterThan(normalApart); // the genetic line's room grew with it
       expect(S()._history.length).toBe(undoSteps); // a view change, not an edit: nothing to undo
     } finally {
-      await run(() => useViewSettings.getState().setView({ legendSize: 'normal' }));
+      await run(() => useViewSettings.getState().setView({ textSize: 100 }));
     }
     expect(sizes()).toEqual(normal);
     expect(apart()).toBe(normalApart);
@@ -1760,6 +1760,52 @@ describe('the Settings window (clinician request 2026-11-03)', () => {
     expect(carrier().querySelector('pattern')).toBeNull();
     expect(carrier().querySelector('circle')).not.toBeNull();
     await run(() => views.getState().setView({ carrierMark: 'split' }));
+    await key('Escape');
+  });
+
+  it('Görünüm: day, night or as the device; night darkens the screen, never the copies (clinician 2026-11-11)', async () => {
+    const { useViewSettings: views } = await import('../utils/drawingStyle');
+    await click(button('Ayarlar'));
+    const dialog = document.querySelector('.settings-dialog');
+    await click([...dialog.querySelectorAll('[role="tab"]')].find(b => b.textContent.includes('Görünüm')));
+    const group = (name) => [...dialog.querySelectorAll('[role="radiogroup"]')].find(r => r.getAttribute('aria-label') === name);
+    expect(buttons(group('Görünüm')).map(b => b.textContent)).toEqual(['Cihazla aynı', 'Gündüz', 'Gece']);
+    try {
+      expect(document.documentElement.getAttribute('data-mode')).toBe('light'); // the test browser prefers light
+      await click(button('Gece', group('Görünüm')));
+      expect(document.documentElement.getAttribute('data-mode')).toBe('dark');
+      expect(JSON.parse(window.localStorage.getItem('peditree.view.v1')).mode).toBe('dark');
+      // the copy that goes out keeps the symbols white (night is the screen's only)
+      expect(prepareExportSvg(view.container.querySelector('.canvas-container svg')).outerHTML).toContain('fill="#ffffff"');
+      await click(button('Gündüz', group('Görünüm')));
+      expect(document.documentElement.getAttribute('data-mode')).toBe('light');
+    } finally {
+      await run(() => views.getState().setView({ mode: 'system' }));
+    }
+    await key('Escape');
+  });
+
+  it('Çizim: the text size by a slider in %, A and A at its ends, a sample, a way back to 100 (clinician 2026-11-11)', async () => {
+    const { useViewSettings: views } = await import('../utils/drawingStyle');
+    await click(button('Ayarlar'));
+    const dialog = document.querySelector('.settings-dialog');
+    await click([...dialog.querySelectorAll('[role="tab"]')].find(b => b.textContent.includes('Çizim')));
+    try {
+      expect(dialog.querySelector('.text-size-value').textContent).toBe('%100');
+      expect(dialog.querySelector('.text-size-reset')).toBeNull();
+      await click(button('Yazıyı büyüt', dialog));
+      await click(button('Yazıyı büyüt', dialog));
+      expect(dialog.querySelector('.text-size-value').textContent).toBe('%110');
+      expect(dialog.querySelector('.text-size-sample').style.fontSize).toBe('13.2px');
+      const slider = dialog.querySelector('.text-size input[type="range"]');
+      await run(() => { const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; set.call(slider, '160'); slider.dispatchEvent(new Event('input', { bubbles: true })); });
+      expect(views.getState().view.textSize).toBe(160);
+      expect(button('Yazıyı büyüt', dialog).disabled).toBe(false); // stays usable, stays at the most
+      await click(dialog.querySelector('.text-size-reset'));
+      expect(views.getState().view.textSize).toBe(100);
+    } finally {
+      await run(() => views.getState().setView({ textSize: 100 }));
+    }
     await key('Escape');
   });
 

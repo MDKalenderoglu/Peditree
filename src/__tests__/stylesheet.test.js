@@ -40,8 +40,8 @@ describe('stylesheet rules', () => {
     expect(block('ui.css', '.radial-panel.ring-list-panel, .radial-panel.findings-panel')).toMatch(/background: none; border: none; box-shadow: none/);
     expect(css('ui.css')).toMatch(/\.ring-list-panel \.ring-row > \.ring-choice \{[^}]*border-radius: 999px/);
     expect(css('ui.css')).toMatch(/\.findings-panel \.finding-row \{[^}]*border-radius: 999px/);
-    expect(css('ui.css')).toMatch(/background: rgba\(255, 255, 255, var\(--ring-alpha\)\)/);
-    expect(css('ui.css')).toMatch(/\.radial-sector path \{ fill: rgba\(255, 255, 255, var\(--ring-alpha\)\)/);
+    expect(css("ui.css")).toMatch(/background: rgba\(var\(--ring-rgb\), var\(--ring-alpha\)\)/);
+    expect(css("ui.css")).toMatch(/\.radial-sector path \{ fill: rgba\(var\(--ring-rgb\), var\(--ring-alpha\)\)/);
     for (const theme of ['amber', 'rose', 'teal', 'ice']) expect(css('ui.css')).toMatch(new RegExp(`:root\\[data-theme="${theme}"\\] \\{ --accent: #`));
   });
 
@@ -85,10 +85,19 @@ describe('stylesheet rules', () => {
     expect(css('ui.css').indexOf('/* a phone, third pass')).toBeGreaterThan(css('ui.css').indexOf('.app-shell.touch .touch-sheet {'));
   });
 
+  it('night (clinician 2026-11-11: the screen too white): every token turns dark, the accent lightened as text, the drawing on dimmed paper with the symbols’ white turned to it', () => {
+    const night = block('ui.css', ':root[data-mode="dark"]');
+    for (const tok of ['--ink', '--surface', '--frame', '--panel', '--accent-ink', '--accent-soft', '--bar-base', '--ring-rgb']) expect(night).toContain(`${tok}:`);
+    expect(night).toMatch(/--paper: #[cd]/); // dimmed, still light: the drawing's ink reads as on a print
+    expect(css('ui.css')).toMatch(/:root\[data-mode="dark"\] \.canvas-container svg \[fill="#ffffff"\] \{ fill: var\(--paper\); \}/);
+    // after the colour themes, so it wins over their light tints
+    expect(css('ui.css').indexOf(':root[data-mode="dark"] {')).toBeGreaterThan(css('ui.css').indexOf(':root[data-theme="ice"]'));
+  });
+
   it('the top bar stands apart from the drawing (clinician report 2026-11-09: too pale): theme colour along its top, a tinted ground, its menus over the side panel and the ring', () => {
     const bar = css('ui.css').match(/\n\.toolbar \{[^}]*/)[0]; // the bar's own rule, not '.app-shell > .toolbar'
     expect(bar).toMatch(/border-top: 3px solid var\(--accent\)/);
-    expect(bar).toMatch(/background: color-mix\(in srgb, var\(--accent\) \d+%, #ffffff\)/);
+    expect(bar).toMatch(/background: color-mix\(in srgb, var\(--accent\) \d+%, var\(--bar-base\)\)/);
     expect(bar).toMatch(/border-bottom: 1px solid var\(--accent-line\)/);
     expect(bar).toMatch(/position: relative; z-index: 13;/);
     expect(block('ui.css', '.radial-menu')).toMatch(/z-index: 12;/);
