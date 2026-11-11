@@ -166,6 +166,7 @@ button, input, select, textarea { font-family: inherit; }
 .toolbar .ui-btn:not(.ui-btn-icon) { padding: 0 10px; }
 /* Colour themes (Ayarlar → Görünüm; clinician request 2026-11-07): from warm to cool, Standart is the
    palette above. The accent only: text on it and on its tint keeps 4.5:1 or more; the drawing keeps its own colours. */
+:root[data-theme="terracotta"] { --accent: #a8471f; --accent-ink: #853614; --accent-soft: #fbf0ea; --accent-line: rgba(168, 71, 31, 0.30); --focus: 0 0 0 3px rgba(168, 71, 31, 0.20); --select: #c2531f; }
 :root[data-theme="amber"] { --accent: #9a5b13; --accent-ink: #7a460c; --accent-soft: #fbf3e8; --accent-line: rgba(154, 91, 19, 0.30); --focus: 0 0 0 3px rgba(154, 91, 19, 0.20); --select: #b56a12; }
 :root[data-theme="rose"] { --accent: #a8324f; --accent-ink: #86243e; --accent-soft: #fbeef2; --accent-line: rgba(168, 50, 79, 0.30); --focus: 0 0 0 3px rgba(168, 50, 79, 0.20); --select: #c23b5e; }
 :root[data-theme="teal"] { --accent: #0f6e6a; --accent-ink: #0a5552; --accent-soft: #e7f4f3; --accent-line: rgba(15, 110, 106, 0.30); --focus: 0 0 0 3px rgba(15, 110, 106, 0.20); --select: #12817c; }

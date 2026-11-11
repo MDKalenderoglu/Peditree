@@ -1763,17 +1763,17 @@ describe('the Settings window (clinician request 2026-11-03)', () => {
     await key('Escape');
   });
 
-  it('Görünüm: five colour themes from warm to cool, Standart first chosen; the ring as see-through as chosen; kept on this device (clinician request 2026-11-07)', async () => {
+  it('Görünüm: six colour themes from warm to cool, Çivit first chosen; the ring as see-through as chosen; kept on this device (clinician request 2026-11-07)', async () => {
     const { useViewSettings: views } = await import('../utils/drawingStyle');
     await click(button('Ayarlar'));
     const dialog = document.querySelector('.settings-dialog');
     await click([...dialog.querySelectorAll('[role="tab"]')].find(b => b.textContent.includes('Görünüm')));
     const group = (name) => [...dialog.querySelectorAll('[role="radiogroup"]')].find(r => r.getAttribute('aria-label') === name);
-    expect(buttons(group('Renk teması')).map(b => b.textContent)).toEqual(['Kehribar', 'Gül', 'Standart', 'Deniz', 'Buz']);
-    expect(button('Standart', group('Renk teması')).getAttribute('aria-checked')).toBe('true');
+    expect(buttons(group('Renk teması')).map(b => b.textContent)).toEqual(['Kiremit', 'Kehribar', 'Gül', 'Çivit', 'Okyanus', 'Yeşim']);
+    expect(button('Çivit', group('Renk teması')).getAttribute('aria-checked')).toBe('true');
     expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
     try {
-      await click(button('Deniz', group('Renk teması')));
+      await click(button('Yeşim', group('Renk teması')));
       expect(document.documentElement.getAttribute('data-theme')).toBe('teal');
       expect(JSON.parse(window.localStorage.getItem('peditree.view.v1')).theme).toBe('teal');
       // the transparency one step at a time, no words; the value and a preview show it (clinician 2026-11-07)
