@@ -27,18 +27,19 @@ import { ProductInfo, LicenseInfo, CitationInfo, FeedbackInfo } from './componen
 import { nameCase } from './utils/nameCase';
 import { RELEASE_STAGE } from './utils/appInfo';
 import { watchToolbar, overflowed } from './utils/toolbarFit';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, LayoutGrid, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check, CircleHelp, UserRound, ChevronUp, Menu as MenuIcon, X as XIcon } from 'lucide-react';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check, CircleHelp, UserRound, ChevronUp, Menu as MenuIcon, X as XIcon } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
 // the clinician's logo (docs/brand/peditree-logo.webp): the tree, and the name in its own lettering
 import logoMark from './assets/logo-mark.png';
 import logoWordmark from './assets/logo-wordmark.png';
 import { kinTerm } from './graph/kinTerm';
+import TidyIcon from './components/TidyIcon';
 
 /** The buttons that may wait in "Diğer" (⋯) on a narrow bar: icon and name (App runMore does what they do). */
 const MORE = {
   cite: [Quote, tk('Atıf')], feedback: [MessageSquareText, tk('Geri bildirim')], print: [Printer, tk('Yazdır')],
-  share: [Share2, tk('Paylaş')], multi: [CheckSquare, tk('Çoklu seçim')], relayout: [LayoutGrid, tk('Konumlandır')],
+  share: [Share2, tk('Paylaş')], multi: [CheckSquare, tk('Çoklu seçim')], relayout: [TidyIcon, tk('Konumlandır')],
   new: [FilePlus2, tk('Yeni')], open: [FolderOpen, tk('Aç')],
   // on a phone only (they come last; a tablet keeps them on the bar): clinician 2026-11-10
   tour: [CircleHelp, tk('Tanıtım turu')], redo: [Redo2, tk('Yinele')], settings: [SlidersHorizontal, tk('Ayarlar')],
@@ -1043,7 +1044,7 @@ function App() {
             title={_history && _history.length > 0 ? t('Geri al ({n} adım)', { n: _history.length }) : t('Geri alınacak adım yok')} aria-label={t('Geri al')}><Undo2 size={15} /></button>
           <button className="ui-btn ui-btn-icon" data-overflow="redo" data-overflow-order="11" onClick={handleRedo} disabled={!_future || _future.length === 0}
             title={_future && _future.length > 0 ? t('Yinele ({n} adım)', { n: _future.length }) : t('Yinelenecek adım yok')} aria-label={t('Yinele')}><Redo2 size={15} /></button>
-          <button className="ui-btn" data-overflow="relayout" data-overflow-order="8" onClick={relayout} title={t('Konumlandır, kişileri çizimde yeniden yerleştirir. Akrabalık ilişkileri değişmez ve işlem geri alınabilir.')}><LayoutGrid size={15} /> <span className="btn-label" data-fold-order="4">{t('Konumlandır')}</span></button>
+          <button className="ui-btn" data-overflow="relayout" data-overflow-order="8" onClick={relayout} title={t('Konumlandır, kişileri çizimde yeniden yerleştirir. Akrabalık ilişkileri değişmez ve işlem geri alınabilir.')}><TidyIcon size={15} /> <span className="btn-label" data-fold-order="4">{t('Konumlandır')}</span></button>
         </div>
         {/* the right end: it stays at the right edge, also when the toolbar takes two rows */}
         <div className="toolbar-end">

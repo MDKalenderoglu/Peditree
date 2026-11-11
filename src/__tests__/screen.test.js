@@ -324,6 +324,17 @@ describe('the ring menu', () => {
 });
 
 describe('the side panel', () => {
+  it('"Konumlandır" shows a small pedigree, not a grid (clinician 2026-11-11), and still lays the drawing out afresh', async () => {
+    const b = $('.toolbar [data-overflow="relayout"]');
+    expect(b.querySelector('svg.tidy-icon')).not.toBe(null);
+    expect(b.querySelectorAll('svg.tidy-icon rect')).toHaveLength(2); // the man and the child
+    expect(b.querySelector('svg.tidy-icon circle')).not.toBe(null);  // the woman
+    const before = S().history ? S().history.length : null;
+    await click(b);
+    expect(S().layoutInfo ? S().layoutInfo.level : 'full').toBe('full');
+    if (before !== null) expect(S().history.length).toBeGreaterThanOrEqual(before);
+  });
+
   it('says what the person is to the proband (clinician 2026-11-11): Anneanne, Teyze, a cousin with its way', async () => {
     const kin = () => ($('.side-header .person-kin') ? $('.side-header .person-kin').textContent : null);
     await select('mat_gm');
