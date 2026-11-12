@@ -35,7 +35,7 @@ import { annotationAge, pregnancyLine, lmpLine } from '../utils/annotations';
 import { BRACKET_OUT } from '../layout/pcl/routing';
 import { isSmallSymbol, pregnancyKind, PREGNANCY_LABEL, TESTED_TEXT, isGroup, groupText, subjectOf } from '../graph/model';
 import { packLines } from '../utils/textWrap';
-import { filled, onsetsOf, unsureOf, bornWeek, hasNoteNumber, geneticRows as geneticRowsOf, lineNoteText, LINE_NOTE_SIZE, TEXT, textScale } from '../utils/symbolText';
+import { filled, onsetsOf, unsureOf, bornWeek, hasNoteNumber, geneticRows as geneticRowsOf, lineNoteText, LINE_NOTE_SIZE, TEXT, textScale, ARROW_DROP } from '../utils/symbolText';
 import { keyGrid } from '../utils/keyGrid';
 import { nameCase } from '../utils/nameCase';
 import { chainOf, offsetPolyline } from '../utils/doubleLine';
@@ -673,6 +673,44 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       }
     }
 
+    // The proband's / consultand's arrow points at the symbol from its lower left (NSGC). Where a line stands
+    // there — the couple's line of descent or the bars of no children when the person is the right-hand
+    // partner, a sibship line, a neighbour — it points from the lower right instead (clinician report
+    // 2026-11-12: after the consultand changed, the arrow lay on the infertility bars). Placement only; the
+    // arrow means the same on either side.
+    const arrowRight = new Set();
+    {
+      const segs = [];
+      for (const e of edges) {
+        if ([e.x1, e.y1, e.x2, e.y2].every(Number.isFinite)) segs.push([e.x1, e.y1, e.x2, e.y2]);
+        else if (e.type === 'childless') {
+          const end = e.y + 44; // CL.stem: the bars' stem, the bar(s) under it
+          segs.push([e.x, e.y, e.x, end + 6], [e.x - 16, end, e.x + 16, end], [e.x - 16, end + 6, e.x + 16, end + 6]);
+        }
+      }
+      const inBox = (x, y, b) => x >= b.l && x <= b.r && y >= b.t && y <= b.b;
+      const segHits = ([x1, y1, x2, y2], b) => {
+        if (Math.max(x1, x2) < b.l || Math.min(x1, x2) > b.r || Math.max(y1, y2) < b.t || Math.min(y1, y2) > b.b) return false;
+        for (let k = 0; k <= 24; k++) if (inBox(x1 + (x2 - x1) * k / 24, y1 + (y2 - y1) * k / 24, b)) return true;
+        return false;
+      };
+      for (const n of nodes) {
+        if (!(n.proband || n.consultand)) continue;
+        const sz = isSmallSymbol(n) ? LOSS_SIZE : HALF;
+        const off = adoptedIn.has(n.id) ? sz + BRACKET_OUT + 4 : sz + 6;
+        const reach = n.proband ? 30 : 18; // the arrow, and "P" beyond its tail
+        const side = (dir) => (dir < 0
+          ? { l: n.x - off - reach, r: n.x - off + 3, t: n.y + off - 3, b: n.y + off + (n.proband ? 28 : 18) }
+          : { l: n.x + off - 3, r: n.x + off + reach, t: n.y + off - 3, b: n.y + off + (n.proband ? 28 : 18) });
+        const taken = (b) => segs.some((sg) => segHits(sg, b)) || nodes.some((m) => {
+          if (m === n) return false;
+          const h = (isSmallSymbol(m) ? LOSS_SIZE : HALF) + (adoptedIn.has(m.id) ? BRACKET_OUT : 0) + 2;
+          return m.x + h >= b.l && m.x - h <= b.r && m.y + h >= b.t && m.y - h <= b.b;
+        });
+        if (taken(side(-1)) && !taken(side(1))) arrowRight.add(n.id);
+      }
+    }
+
     const nodeGroups = g.selectAll('.node-group')
       .data(nodes)
       .enter()
@@ -870,7 +908,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         // Diagonal slash for deceased: from the lower left to the upper right, as NSGC and the
         // textbooks draw it (clinician 2026-11-11: no difference from the international standard);
         // it stops at the corner where a proband's or consultand's arrow points
-        const low = d.proband || d.consultand ? 0 : 4;
+        const low = (d.proband || d.consultand) && !arrowRight.has(d.id) ? 0 : 4;
         el.append('line').attr('class', 'deceased-slash')
           .attr('x1', -(sz + low)).attr('y1', sz + low)
           .attr('x2', sz + 4).attr('y2', -(sz + 4))
@@ -881,8 +919,9 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       if (d.proband || d.consultand) {
         // outside an adopted person's brackets (clinician report 2026-11-01)
         const arrOff = adopted ? sz + BRACKET_OUT + 4 : sz + 6;
-        el.append('path').attr('class', 'proband-arrow')
-          .attr('d', `M${-(arrOff + 14)},${arrOff + 14} L${-arrOff},${arrOff} M${-arrOff},${arrOff} L${-(arrOff + 10)},${arrOff} M${-arrOff},${arrOff} L${-arrOff},${arrOff + 10}`)
+        const m = arrowRight.has(d.id) ? -1 : 1; // from the lower right where the lower left is taken
+        el.append('path').attr('class', `proband-arrow${m < 0 ? ' arrow-right' : ''}`)
+          .attr('d', `M${-m * (arrOff + 14)},${arrOff + 14} L${-m * arrOff},${arrOff} M${-m * arrOff},${arrOff} L${-m * (arrOff + 10)},${arrOff} M${-m * arrOff},${arrOff} L${-m * arrOff},${arrOff + 10}`)
           .attr('fill', 'none')
           .attr('stroke', NODE_STROKE)
           .attr('stroke-width', 2);
@@ -890,7 +929,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         // consultand — clinician decisions K10, 2026-10-23 and 2026-11-01
         if (d.proband) el.append('text')
           .attr('class', 'proband-p')
-          .attr('x', -(arrOff + 17)).attr('y', arrOff + 26).attr('text-anchor', 'end')
+          .attr('x', -m * (arrOff + 17)).attr('y', arrOff + 26).attr('text-anchor', m < 0 ? 'start' : 'end')
           .attr('font-size', '12px').attr('font-weight', '700').attr('fill', NODE_STROKE)
           .text('P');
       }
@@ -900,7 +939,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       let lineY = (adopted ? sz + BRACKET_OUT + 2 : sz) + 14 * TS;
       const LINE_H = 13 * TS;
       // the proband's lines stand a little to the right, clear of the arrow at the lower left
-      const ann = el.append('g').attr('class', 'annotations').attr('transform', d.proband || d.consultand ? 'translate(14,0)' : null);
+      const ann = el.append('g').attr('class', 'annotations').attr('transform', d.proband || d.consultand ? `translate(${arrowRight.has(d.id) ? -14 : 14},0)` : null);
 
       // Sex assigned at birth right under the symbol, when stated (NSGC 2022 Box 1, Fig 1)
       if (d.sexAtBirth) {
@@ -979,6 +1018,24 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
             .attr('font-size', px(9)).attr('fill', '#b91c1c') // 6.5:1 on white (WCAG AA; audit 2026-11-02)
             .attr('font-weight', '600')
             .text(`[${noteIdx + 1}]`);
+        }
+      }
+
+      // the first line so wide that, moved aside, it still reaches the arrow (the LMP under a pregnancy, a
+      // long label): the lines start below the arrow — the layout kept the room (symbolText belowArrow)
+      if (d.proband || d.consultand) {
+        const first = ann.select('text').node();
+        if (first && typeof first.getBBox === 'function') {
+          const b = first.getBBox();
+          const tipOff = adopted ? sz + BRACKET_OUT + 4 : sz + 6;
+          const right = arrowRight.has(d.id);
+          const sx = right ? -14 : 14;
+          const reaches = right ? b.x + b.width + sx > tipOff - 3 : b.x + sx < -tipOff + 3;
+          const clear = tipOff + 14 + 4; // below the arrow's tail, with a little air
+          if (b.width && reaches && b.y < clear) {
+            const dy = Math.min(ARROW_DROP * TS, clear - b.y);
+            ann.attr('transform', `translate(${sx},${dy})`);
+          }
         }
       }
     });

@@ -277,6 +277,25 @@ describe('the reason for childlessness, written on the drawing (clinician reques
   });
 });
 
+describe('the arrow never lies on a line (clinician report 2026-11-12: the consultand changed, the arrow on the infertility bars)', () => {
+  const arrowOf = (id) => [...document.querySelectorAll('.node-group')].find((n) => n.__data__ && n.__data__.id === id)?.querySelector('.proband-arrow');
+  it('the right-hand partner points from the lower right, where the left holds the line of descent or the bars', async () => {
+    await run(() => S().newChildlessCouple('infertile'));
+    const partner = g().unions.find((u) => u.partners.includes('proband')).partners.find((p) => p !== 'proband');
+    await run(() => S().setConsultand(partner));
+    expect(arrowOf(partner).classList.contains('arrow-right')).toBe(true);
+    // the left-hand partner keeps the lower left
+    expect(arrowOf('proband').classList.contains('arrow-right')).toBe(false);
+    // nothing at the lower left (a new family: the line of descent stands far enough between the parents):
+    // the arrow stays where NSGC draws it, for every one
+    await run(() => S().resetPedigree());
+    for (const id of ['mother', 'father', 'proband']) {
+      await run(() => S().setConsultand(id));
+      expect(arrowOf(id).classList.contains('arrow-right')).toBe(false);
+    }
+  });
+});
+
 describe('the ring menu', () => {
   it('Çocuk: Erkek, Kız, Cinsiyeti bilinmeyen, Çocuksuz and İnfertil first (clinician 2026-11-12); the bars toggle on a couple without children', async () => {
     await run(() => S().addSpouseTo('proband', 'female'));

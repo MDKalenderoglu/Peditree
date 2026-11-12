@@ -10,6 +10,12 @@ if (import.meta.env.DEV) {
       import('./audit/markCollisions.js'), import('./state/usePedigreeStore.js')])
     return runMarkAudit(usePedigreeStore, opts)
   }
+  // the arrow on every person, as consultand and as proband (runArrowSweep)
+  window.__peditreeArrowSweep = async (opts) => {
+    const [{ runArrowSweep }, { usePedigreeStore }] = await Promise.all([
+      import('./audit/markCollisions.js'), import('./state/usePedigreeStore.js')])
+    return runArrowSweep(usePedigreeStore, opts)
+  }
 }
 
 createRoot(document.getElementById('root')).render(
