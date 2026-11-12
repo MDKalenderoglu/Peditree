@@ -599,7 +599,8 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 /* a box for text on the drawing: the app's own text box (.input), floating like the ring's cards */
 .inline-edit {
   position: absolute; z-index: 20;
-  border-color: var(--accent); box-shadow: var(--focus), var(--shadow-pop);
+  height: 30px; padding: 0 12px; border-radius: 999px;
+  border-color: var(--accent); box-shadow: var(--shadow-pop);
 }
 
 /* ── tablet: finger and pen (clinician request 2026-10-25) ── */

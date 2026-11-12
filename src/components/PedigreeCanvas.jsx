@@ -1251,18 +1251,24 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         style={{ cursor: 'grab' }}
       />
       {anchor && renderQuickBar && !editing && renderQuickBar(anchor, panBy)}
-      {editing && (
+      {editing && (() => {
+        const hint = editing.kind !== 'childlessReason' ? undefined
+          : editing.mark === 'infertile' ? t('Sebep (örn. azospermi)') : t('Sebep (örn. tercih)');
+        // as wide as what it holds (or its hint) needs, the ring's finding box's look (clinician 2026-11-12)
+        const chars = Math.max(String(editing.value || '').length, hint ? hint.length : 0);
+        const boxWidth = Math.min(Math.max(editing.w + 36, chars * 7.2 + 30, 120), 320);
+        return (
         <input className="input inline-edit" autoFocus defaultValue={editing.value}
-          placeholder={editing.kind !== 'childlessReason' ? undefined
-            : editing.mark === 'infertile' ? t('Sebep (örn. azospermi)') : t('Sebep (örn. tercih)')}
+          placeholder={hint}
           aria-label={editing.kind === 'childlessReason' ? t('Çocuksuzluğun sebebi') : undefined}
-          style={{ left: editing.x - 6, top: editing.y + (editing.h - 32) / 2, width: Math.max(editing.w + 60, 230) }}
+          style={{ left: editing.x - 6, top: editing.y + (editing.h - 30) / 2, width: boxWidth }}
           onKeyDown={e => {
             if (e.key === 'Enter') finishEdit(e.currentTarget.value);
             if (e.key === 'Escape') { committed.current = true; setEditing(null); }
           }}
           onBlur={e => finishEdit(e.currentTarget.value)} />
-      )}
+        );
+      })()}
     </div>
   );
 });
