@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest';
 import { starterDocument } from '../state/usePedigreeStore';
 import { computePclLayout } from '../layout/pcl';
 import { affectedPeople } from '../layout/pcl/incremental';
-import { textBox, TEXT, lineNoteWidth } from '../utils/symbolText';
+import { textBox, TEXT, ARROW_DROP, lineNoteWidth } from '../utils/symbolText';
 import * as ops from '../graph/ops';
 
 const ok = (r) => { expect(r.reason).toBeUndefined(); return r.doc; };
@@ -29,9 +29,15 @@ describe('how far the text under a symbol reaches', () => {
     expect(genetic.right).toBe(genetic.left);
     const more = textBox({ id: 'a', sex: 'male', age: '35', displayLabel: 'Ali', geneticTest: 'tested', geneticNote: 'APC:c.1234G>A Het\nBRCA2 neg' });
     expect(more.depth).toBe(TEXT.HALF + TEXT.FIRST + 2 * TEXT.LINE + 2 * TEXT.GENETIC);
-    // the proband's lines stand right of the arrow
+    // the proband's lines stand aside from the arrow — right of it, or left where the arrow takes the lower
+    // right (clinician report 2026-11-12): room on both sides, the shift included
     const p = textBox({ id: 'a', sex: 'male', proband: true, geneticTest: 'tested', geneticNote: 'APC:c.1234G>A Het' });
-    expect(p.right - p.left).toBeCloseTo(2 * TEXT.PROBAND_SHIFT);
+    expect(p.right).toBeCloseTo(genetic.right + TEXT.PROBAND_SHIFT);
+    expect(p.left).toBe(p.right);
+    // a first line wide enough to reach the arrow: room below the arrow for the lines
+    expect(p.depth).toBe(genetic.depth + ARROW_DROP);
+    const short = textBox({ id: 'a', sex: 'male', proband: true, age: '35' });
+    expect(short.depth).toBe(textBox({ id: 'a', sex: 'male', age: '35' }).depth);
   });
 
   it('the same room in both languages of the drawing (the layout does not move when the language changes)', () => {
