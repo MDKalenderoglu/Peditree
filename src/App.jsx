@@ -312,8 +312,23 @@ function App() {
     };
     const shifted = () => (window.scrollY || window.pageYOffset || 0) !== 0 || (window.scrollX || window.pageXOffset || 0) !== 0
       || document.documentElement.scrollTop !== 0 || document.body.scrollTop !== 0;
+    // A phone's browser can also leave the page zoomed in (a pinch on the bar or the sheet, a double tap,
+    // a box it zoomed into): the top bar out of sight, the sheet cut on both sides (clinician report
+    // 2026-11-12, iPhone). The drawing has its own zoom; the page's is put back to 1 once nothing is typed
+    // — a browser takes the zoom back when the page briefly forbids it.
+    const zoomed = () => ((window.visualViewport && window.visualViewport.scale) || 1) > 1.01;
+    const unzoom = () => {
+      const meta = document.querySelector('meta[name="viewport"]');
+      if (!meta || meta.dataset.resetting) return;
+      const was = meta.getAttribute('content');
+      meta.dataset.resetting = '1';
+      meta.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+      setTimeout(() => { meta.setAttribute('content', was); delete meta.dataset.resetting; }, 400);
+    };
     const back = () => {
-      if (typing() || !shifted()) return;
+      if (typing()) return;
+      if (zoomed()) unzoom();
+      if (!shifted()) return;
       try { window.scrollTo(0, 0); } catch { /* not in this browser */ }
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
@@ -323,11 +338,11 @@ function App() {
     window.addEventListener('scroll', back, { passive: true });
     document.addEventListener('focusout', later);
     const vv = window.visualViewport;
-    if (vv) vv.addEventListener('resize', later);
+    if (vv) { vv.addEventListener('resize', later); vv.addEventListener('scroll', later); }
     return () => {
       window.removeEventListener('scroll', back);
       document.removeEventListener('focusout', later);
-      if (vv) vv.removeEventListener('resize', later);
+      if (vv) { vv.removeEventListener('resize', later); vv.removeEventListener('scroll', later); }
     };
   }, []);
   // notices already on screen are worded again in the new language
@@ -400,6 +415,14 @@ function App() {
   const phoneScreen = usePhone();
   const phone = view.touchMode === 'always' || (view.touchMode !== 'off' && phoneScreen); // the touch mode
   const touch = phone;
+  // iPhone: a pinch outside the drawing zooms the whole page (it ignores touch-action there); the drawing's own
+  // pinch works by touches and is untouched (clinician report 2026-11-12)
+  React.useEffect(() => {
+    if (!touch) return undefined;
+    const stop = (e) => { if (!(e.target && e.target.closest && e.target.closest('#pedigree-svg'))) e.preventDefault(); };
+    document.addEventListener('gesturestart', stop, { passive: false });
+    return () => document.removeEventListener('gesturestart', stop);
+  }, [touch]);
   const tourCtx = tourIds && {
     ids: tourIds,
     coarse: coarsePointer(),
