@@ -321,6 +321,9 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
   border-bottom: 1px solid var(--accent-line);
 }
 .side-header > .ui-btn { margin-left: auto; align-self: flex-start; }
+/* at night the header takes only a touch of the theme colour over the cards' own dark, as by day over white
+   (clinician report 2026-11-12: a brown header over slate cards with Kiremit) */
+:root[data-mode="dark"] .side-header { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
 .side-header-text { min-width: 0; }
 .person-glyph { flex: none; display: block; }
 .person-id { font-size: 21px; font-weight: 700; color: var(--ink); letter-spacing: 0.01em; line-height: 1.1; font-variant-numeric: tabular-nums; }
