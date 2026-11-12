@@ -258,6 +258,8 @@ describe('the reason for childlessness, written on the drawing (clinician reques
     await click(hit);
     const box = $('.inline-edit');
     expect(box.getAttribute('aria-label')).toBe('Çocuksuzluğun sebebi');
+    // the app's own text box, not a look of its own (clinician 2026-11-12)
+    expect(box.classList.contains('input')).toBe(true);
     await run(() => { box.value = 'Azospermi'; box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); });
     expect(u().childlessReason).toBe('Azospermi');
     expect($('.childless-mark text').textContent).toBe('Azospermi');
