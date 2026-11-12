@@ -271,6 +271,35 @@ function App() {
   const drawLang = drawingLangOf({ ui: uiLang, drawing: drawingChoice });
   // the page's language, for screen readers and the browser's spelling and hyphenation
   React.useEffect(() => { document.documentElement.lang = uiLang; }, [uiLang]);
+  // The page itself never scrolls: everything lives in one screen. A phone's browser still shifts it up to
+  // show a box being typed in (the patient's name) and could leave it there once the keyboard went away —
+  // the top bar out of sight with no way back (clinician report 2026-11-12, iPhone). Whenever nothing is
+  // being typed, the page is put back at its top.
+  React.useEffect(() => {
+    const typing = () => {
+      const el = document.activeElement;
+      return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+    };
+    const shifted = () => (window.scrollY || window.pageYOffset || 0) !== 0 || (window.scrollX || window.pageXOffset || 0) !== 0
+      || document.documentElement.scrollTop !== 0 || document.body.scrollTop !== 0;
+    const back = () => {
+      if (typing() || !shifted()) return;
+      try { window.scrollTo(0, 0); } catch { /* not in this browser */ }
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+    // after a box loses focus, once the keyboard has gone
+    const later = () => setTimeout(back, 120);
+    window.addEventListener('scroll', back, { passive: true });
+    document.addEventListener('focusout', later);
+    const vv = window.visualViewport;
+    if (vv) vv.addEventListener('resize', later);
+    return () => {
+      window.removeEventListener('scroll', back);
+      document.removeEventListener('focusout', later);
+      if (vv) vv.removeEventListener('resize', later);
+    };
+  }, []);
   // notices already on screen are worded again in the new language
   const shownLang = React.useRef(uiLang);
   React.useEffect(() => {
