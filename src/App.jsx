@@ -843,6 +843,7 @@ function App() {
               onUpdate={updateIndividual} onSetProband={setProband} onClearProband={clearProband} onSetConsultand={setConsultand} onClearConsultand={clearConsultand}
               onAddFinding={addFinding} onSetFindingStatus={setFindingStatus} onSetFindingStyle={setFindingStyle} onSetFindingOnset={setFindingOnset} onRenameFinding={renameFinding}
               onAddChild={(unionId, sex, targetId, extra) => (unionId ? addChildToUnion(unionId, sex, extra) : addChildTo(targetId, sex, extra))}
+              onSetChildlessness={setChildlessness}
               sameSex={!!view.sameSexPartners} />
   );
   const editorEl = (

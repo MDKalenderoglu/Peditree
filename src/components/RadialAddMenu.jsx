@@ -57,6 +57,9 @@ export function Glyph({ kind, label = '' }) {
           <path d={`M${-S},${S} L${S},${-S}`} {...common} />
         </>
       )}
+      {(kind === 'childless' || kind === 'infertile') && (
+        <path d={`M0,${-S} V2 M${-S + 2},2 H${S - 2}${kind === 'infertile' ? ` M${-S + 2},6 H${S - 2}` : ''}`} {...common} />
+      )}
       {kind === 'ongoing' && (
         <>
           <path d={`M0,${-S + 1} L${S - 1},0 L0,${S - 1} L${-S + 1},0 Z`} {...common} />
@@ -159,7 +162,7 @@ function sectorPath(a0, a1, r, R, gapDeg = 3) {
 export default function RadialAddMenu({
   anchor, node, pedigreeData, onAddSibling, onAddChild, onAddSpouse, onAddParents, onAddTwin,
   onUpdate, onSetProband, onClearProband, onSetConsultand, onClearConsultand, onAddFinding, onSetFindingStatus, onSetFindingStyle, onSetFindingOnset, onRenameFinding,
-  onNeedRoom, sameSex = false, dock = false, onDetails, ref,
+  onNeedRoom, sameSex = false, dock = false, onDetails, onSetChildlessness, ref,
 }) {
   const [active, setActive] = useState(null);   // sector under the pointer
   const [panel, setPanel] = useState(null);     // satellite panel (stays open)
@@ -345,7 +348,16 @@ export default function RadialAddMenu({
   const choices = {
     ...(sameSex ? { right: [['male', tk('Erkek')], ['female', tk('Kadın')]].map(([sex, label]) => [`${t('Eş')}: ${t(label)}`, sex, () => onAddSpouse(node.id, sex), 1]) } : {}),
     left: KINDS.map(([g, label, sex, extra, row]) => [`${t('Kardeş')}: ${t(label)}`, g, () => addSiblingHere(sex, extra), row]),
-    bottom: KINDS.map(([g, label, sex, extra, row]) => [`${t('Çocuk')}: ${t(label)}`, g, () => addChildHere(sex, extra), row]),
+    bottom: [
+      ...KINDS.map(([g, label, sex, extra, row]) => [`${t('Çocuk')}: ${t(label)}`, g, () => addChildHere(sex, extra), row]),
+      // a couple without children: by choice or reason unknown (one bar) or infertile (two bars), beside the
+      // three sexes (clinician request 2026-11-12); a second click takes it away. Drawn only while the couple
+      // has no children, so offered only then
+      ...(childUnion && onSetChildlessness && !pcrs.some((r) => r.unionId === childUnion.id && r.children.length)
+        ? [['by_choice', 'childless', tk('Çocuksuz')], ['infertile', 'infertile', tk('İnfertil')]].map(([v, g, label]) =>
+          [`${t('Çocukları yok')}: ${t(label)}`, g, () => onSetChildlessness(childUnion.id, childUnion.childless === v ? null : v), 1, null, childUnion.childless === v])
+        : []),
+    ],
   };
 
   // several people in one symbol, the number inside (NSGC; clinician decisions 2026-11-01)
@@ -627,8 +639,8 @@ export default function RadialAddMenu({
                   : t('İki erkek eşin çocuğu aşağıdan yumurta donörü ya da taşıyıcı anneyle veya evlat edinilmiş olarak eklenir.')}</span>
               ) : (
               <div className="flyout-row">
-                {choices[active].filter((c) => (c[3] || 1) === 1).map(([title, glyph, run]) => (
-                  <button key={title} className="quick-btn" title={title} aria-label={title} onClick={() => { run(); setActive(null); }}><Glyph kind={glyph} />{dock && <span className="dock-word">{title.split(': ').pop()}</span>}</button>
+                {choices[active].filter((c) => (c[3] || 1) === 1).map(([title, glyph, run, , , on]) => (
+                  <button key={title} className={`quick-btn${on ? ' on' : ''}`} title={title} aria-label={title} aria-pressed={on === undefined ? undefined : !!on} onClick={() => { run(); setActive(null); }}><Glyph kind={glyph} />{dock && <span className="dock-word">{title.split(': ').pop()}</span>}</button>
                 ))}
               </div>
               )}
@@ -765,8 +777,8 @@ export default function RadialAddMenu({
                   : t('İki erkek eşin çocuğu aşağıdan yumurta donörü ya da taşıyıcı anneyle veya evlat edinilmiş olarak eklenir.')}</span>
               ) : (
               <div className="flyout-row">
-                {choices[active].filter((c) => (c[3] || 1) === 1).map(([title, glyph, run]) => (
-                  <button key={title} className="quick-btn" title={title} aria-label={title} onClick={() => { run(); setActive(null); }}><Glyph kind={glyph} />{dock && <span className="dock-word">{title.split(': ').pop()}</span>}</button>
+                {choices[active].filter((c) => (c[3] || 1) === 1).map(([title, glyph, run, , , on]) => (
+                  <button key={title} className={`quick-btn${on ? ' on' : ''}`} title={title} aria-label={title} aria-pressed={on === undefined ? undefined : !!on} onClick={() => { run(); setActive(null); }}><Glyph kind={glyph} />{dock && <span className="dock-word">{title.split(': ').pop()}</span>}</button>
                 ))}
               </div>
               )}
