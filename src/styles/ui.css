@@ -1182,8 +1182,10 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
 .dock-word { display: block; font-size: 12px; line-height: 1.2; color: var(--ink-2); }
 .ring-dock .ring-aside { position: static; margin-top: 6px; }
 
-/* the drawing keeps the whole screen; its zoom buttons step aside for the sheet */
-.app-shell.touch.has-editor .zoom-controls { display: none; }
+/* the drawing keeps the whole screen; its zoom buttons and Sığdır stand just above the docked sheet, in reach
+   while people are added (clinician request 2026-11-12); the open sheet covers them */
+.app-shell.touch.has-editor .zoom-controls { position: fixed !important; bottom: calc(var(--touch-sheet-h, 0px) + 10px) !important; }
+.app-shell.touch.has-editor:has(.touch-sheet.sheet-full) .zoom-controls { display: none; }
 .app-shell.touch .panel-resizer { display: none; }
 
 /* landscape: the sheet is a column at the right, the drawing beside it */
@@ -1194,7 +1196,7 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
     border-radius: 0; box-shadow: -10px 0 28px -14px rgba(24, 33, 44, 0.38); animation-name: panel-in;
   }
   .app-shell.touch .sheet-grip { display: none; }
-  .app-shell.touch.has-editor .zoom-controls { display: flex; }
+  .app-shell.touch.has-editor .zoom-controls, .app-shell.touch.has-editor:has(.touch-sheet.sheet-full) .zoom-controls { display: flex; position: absolute !important; bottom: 12px !important; }
   .dock-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @keyframes sheet-in { from { opacity: 0.35; transform: translateY(48px); } to { opacity: 1; transform: none; } }

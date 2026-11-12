@@ -222,8 +222,28 @@ function TouchSheet({ full, canDock, onFull, onClose, title, children }) {
     else if (dy > 40) step(1);
   };
   const cancel = () => { drag.current = null; setPull(0); };
+  // how much of the screen the docked sheet covers, as --touch-sheet-h: the drawing's zoom and Sığdır stand
+  // just above it, in reach while people are added (clinician request 2026-11-12)
+  const sheetRef = React.useRef(null);
+  React.useLayoutEffect(() => {
+    const el = sheetRef.current, shell = el && el.closest('.app-shell');
+    if (!el || !shell) return undefined;
+    const set = () => shell.style.setProperty('--touch-sheet-h', `${Math.max(0, Math.round(window.innerHeight - el.getBoundingClientRect().top))}px`);
+    set();
+    window.addEventListener('resize', set);
+    // the sheet slides in: measured again once it stands still
+    el.addEventListener('animationend', set);
+    el.addEventListener('transitionend', set);
+    const watch = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(set);
+    if (watch) watch.observe(el);
+    return () => {
+      window.removeEventListener('resize', set); el.removeEventListener('animationend', set); el.removeEventListener('transitionend', set);
+      if (watch) watch.disconnect();
+      shell.style.removeProperty('--touch-sheet-h');
+    };
+  }, [full]);
   return (
-    <section className={`touch-sheet${full ? ' sheet-full' : ''}`} aria-label={title || t('Kişi')}
+    <section ref={sheetRef} className={`touch-sheet${full ? ' sheet-full' : ''}`} aria-label={title || t('Kişi')}
       style={pull ? { transform: `translateY(${pull}px)`, transition: 'none' } : undefined}
       onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={cancel}
       onClickCapture={(e) => { if (swallow.current) { swallow.current = false; e.stopPropagation(); e.preventDefault(); } }}>

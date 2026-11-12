@@ -204,3 +204,12 @@ describe('the phone page never zooms (clinician report 2026-11-12)', () => {
     expect(block('ui.css', '.app-shell.touch')).toMatch(/touch-action: pan-x pan-y/);
   });
 });
+
+describe('the phone: the zoom and Sığdır above the docked sheet (clinician request 2026-11-12)', () => {
+  it('stand just above the sheet while it is docked, hidden under the open sheet, at the corner in landscape', () => {
+    const s = css('ui.css');
+    expect(s).toMatch(/\.app-shell\.touch\.has-editor \.zoom-controls \{ position: fixed !important; bottom: calc\(var\(--touch-sheet-h, 0px\) \+ 10px\) !important; \}/);
+    expect(s).toMatch(/\.app-shell\.touch\.has-editor:has\(\.touch-sheet\.sheet-full\) \.zoom-controls \{ display: none; \}/);
+    expect(s).not.toMatch(/\.app-shell\.touch\.has-editor \.zoom-controls \{ display: none; \}/);
+  });
+});
