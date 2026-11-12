@@ -187,7 +187,7 @@ const EN = {
   'Kaydedilmemiş değişiklik var': 'Unsaved changes',
   'Ayrıntıları kapat': 'Close the details',
   'Ayrıntıları aç': 'Open the details',
-  'Ayrıntılar': 'Details',
+  'Ayrıntılar': 'More',
   'Hasta': 'Patient',
   'Menü': 'Menu',
   'Dokunmatik görünüm': 'Touch screen',

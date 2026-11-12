@@ -1064,6 +1064,8 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
 .toolbar.touch-bar .toolbar-end { margin-left: 0; order: -1; }
 .toolbar.touch-bar .toolbar-more { display: flex !important; }
 .toolbar.touch-bar > .keys-wrap[data-popup="patient"] { flex: 1; min-width: 0; }
+.toolbar.touch-bar > .touch-quick { display: flex; gap: 2px; flex: none; }
+.toolbar.touch-bar > .touch-quick > .ui-btn { width: 44px; height: 44px; padding: 0; justify-content: center; color: var(--accent-ink); }
 .touch-menu-btn, .toolbar.touch-bar .patient-btn, .toolbar.touch-bar [data-popup="download"] > button { height: 44px; font-size: 15px; }
 .touch-menu-btn { gap: 6px; padding: 0 12px; }
 .toolbar.touch-bar .patient-btn { width: 100%; justify-content: flex-start; gap: 8px; padding: 0 12px; overflow: hidden; }
@@ -1122,7 +1124,11 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
   box-shadow: 0 -12px 30px -14px rgba(24, 33, 44, 0.45); padding-bottom: env(safe-area-inset-bottom);
   animation: sheet-in var(--t-move) var(--ease); transition: transform var(--t-pop) var(--ease);
 }
-.app-shell.touch .touch-sheet.sheet-full { max-height: none; height: calc(100dvh - 60px); }
+/* open, the sheet keeps clear of the top bar (clinician 2026-11-12: it touched it) */
+.app-shell.touch .touch-sheet.sheet-full { max-height: none; height: auto; top: calc(var(--touch-bar-h, 56px) + 10px); }
+/* where a finger takes the sheet up or down: the page does not scroll there */
+.touch-sheet .sheet-head, .touch-sheet .side-header, .touch-sheet:not(.sheet-full) .dock-tiles, .touch-sheet:not(.sheet-full) .dock-add { touch-action: none; }
+.sheet-head .sheet-title { cursor: pointer; }
 .sheet-grip { display: flex; justify-content: center; align-items: center; height: 18px; flex: none; cursor: grab; touch-action: none; }
 .sheet-grip > span { width: 46px; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--accent) 45%, var(--line)); }
 .sheet-grip:focus-visible { outline: none; box-shadow: inset var(--focus); }
@@ -1171,7 +1177,7 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
 @media (orientation: landscape) {
   .app-shell.touch.has-editor { grid-template-columns: minmax(0, 1fr) 320px; }
   .app-shell.touch .touch-sheet, .app-shell.touch .touch-sheet.sheet-full {
-    top: 60px; left: auto; width: 320px; height: auto; max-height: none; border-top: none; border-left: 1px solid var(--accent-line);
+    top: calc(var(--touch-bar-h, 56px) + 10px); left: auto; width: 320px; height: auto; max-height: none; border-top: none; border-left: 1px solid var(--accent-line);
     border-radius: 0; box-shadow: -10px 0 28px -14px rgba(24, 33, 44, 0.38); animation-name: panel-in;
   }
   .app-shell.touch .sheet-grip { display: none; }
@@ -1194,6 +1200,12 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
 }
 .toolbar.touch-bar [data-popup="download"] > button svg { color: var(--accent); }
 .toolbar.touch-bar .keys-popover { top: 54px; }
+.toolbar.touch-bar > .touch-quick > .ui-btn { width: 40px; height: 40px; border-radius: 10px; }
+/* a narrow phone: the menu by its three lines alone, so the patient's name keeps room beside Konumlandır and Sığdır */
+@media (max-width: 430px) {
+  .touch-menu-btn { padding: 0 10px; }
+  .touch-menu-btn > span { display: none; }
+}
 .save-tip { padding: 2px 2px 2px 10px; font-size: 13px; border-radius: 10px; }
 .save-tip .save-tip-go { height: 30px; padding: 0 10px; font-size: 13px; }
 .save-tip .notice-dismiss { width: 30px; height: 30px; }
@@ -1203,7 +1215,7 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
     border: 1px solid var(--accent-line); border-radius: 18px;
     box-shadow: 0 2px 6px rgba(24, 33, 44, 0.10), 0 16px 36px -10px rgba(24, 33, 44, 0.40);
   }
-  .app-shell.touch .touch-sheet.sheet-full { height: calc(100dvh - 64px); }
+  .app-shell.touch .touch-sheet.sheet-full { height: auto; top: calc(var(--touch-bar-h, 56px) + 10px); }
 }
 .app-shell.touch .sheet-grip { height: 14px; }
 .app-shell.touch .sheet-grip > span { width: 38px; height: 4px; }
