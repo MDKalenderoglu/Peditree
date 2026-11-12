@@ -162,6 +162,8 @@ describe('the tour on a phone', () => {
     await next('t-couple');
     expect($('.touch-sheet')).toBeNull(); // the line itself is shown, no details over it
     await next('t-arrange');
+    await next('t-childless');
+    expect($('.new-popover').textContent).toMatch(/Çocuksuz \/ infertil çift/);
     await next('t-menu');
     expect($('.more-popover')).not.toBeNull();
     await next('t-patient');
@@ -296,7 +298,7 @@ describe('the phone, fourth request (clinician 2026-11-12)', () => {
     await click([...$('.more-popover').querySelectorAll('.download-item')].find((b) => b.textContent.includes('Yeni')));
     const pop = $('.new-popover');
     expect(pop).not.toBeNull();
-    expect([...pop.querySelectorAll('b')].map((b) => b.textContent)).toEqual(['Yeni aile', 'Akraba evliliği']);
+    expect([...pop.querySelectorAll('b')].map((b) => b.textContent)).toEqual(['Yeni aile', 'Çocuksuz / infertil çift', 'Akraba evliliği']);
     const css = readFileSync(join(process.cwd(), 'src/styles/ui.css'), 'utf8');
     expect(css).toMatch(/\.toolbar\.touch-bar \.toolbar-group > \.keys-wrap:not\(\[data-popup="download"\]\), \.toolbar\.touch-bar \.toolbar-end > \.keys-wrap:not\(\.toolbar-more\) \{ display: contents; \}/);
     // the bar (and what it opens) above the person's sheet
@@ -319,6 +321,32 @@ describe('the phone, fourth request (clinician 2026-11-12)', () => {
     await run(() => box.blur());
     expect(S().doc.graph.individuals.find((i) => i.proband).birthDate).toBe('2000-12-12');
     await run(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+  });
+});
+
+describe('a couple without children (clinician request 2026-11-12)', () => {
+  it('Yeni → "Çocuksuz / infertil çift": the proband and a partner, two bars under their line; a child added takes the mark away', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    try {
+      await click(named('Menü', $('.toolbar')));
+      await click([...$('.more-popover').querySelectorAll('.download-item')].find((b) => b.textContent.includes('Yeni')));
+      await click([...$('.new-popover').querySelectorAll('.download-item')].find((b) => b.textContent.includes('Çocuksuz / infertil çift')));
+      expect(confirm).toHaveBeenCalled();
+      const g = S().doc.graph;
+      const u = g.unions.find((x) => x.partners.includes('proband'));
+      const partner = g.individuals.find((i) => i.id === u.partners.find((p) => p !== 'proband'));
+      expect(partner.sex).not.toBe(g.individuals.find((i) => i.id === 'proband').sex);
+      expect(u.childless).toBe('infertile');
+      // the proband's parents stay
+      expect(g.parentChildRelationships.some((r) => r.children.includes('proband'))).toBe(true);
+      // drawn: two bars under the couple
+      expect(S().pedigreeData.edges.some((e) => e.type === 'childless' && e.unionId === u.id && e.kind === 'infertile')).toBe(true);
+      // a child born later: the mark goes by itself
+      await run(() => S().addChildToUnion(u.id, 'female'));
+      expect(S().doc.graph.unions.find((x) => x.id === u.id).childless).toBeUndefined();
+    } finally {
+      confirm.mockRestore();
+    }
   });
 });
 

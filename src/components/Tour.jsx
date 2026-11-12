@@ -57,6 +57,8 @@ const ringAs = ({ sector: want = null, sat: wantSat = null } = {}) => () => {
  * templates, Hakkında before the end). A step: { id, icon, title, text, target(ctx), prepare(ctx),
  * act?() — run until it returns true, after the screen has caught up with prepare (opens a part of the ring) }.
  */
+const CHILDLESS_TEXT = tk('Danışmaya çocuğu olmayan bir çift geldiyse Yeni’deki “Çocuksuz / infertil çift” proband ile eşini, çizgilerinin altında infertilite işaretiyle (çift kısa çizgi) kurar. Var olan bir çift için kişinin Çocuk seçeneklerinde Çocuksuz (tek çizgi) ve İnfertil bulunur; çifte çocuk eklenince işaret kendiliğinden kalkar.');
+
 export const TOUR_STEPS = [
   { id: 'welcome', title: tk('PediTree’ye hoş geldiniz'),
     text: tk('Bu tur, uygulamanın bölümlerini örnek bir aile üzerinde sırayla tanıtır. Turu istediğiniz an kapatabilirsiniz; kendi çiziminiz olduğu gibi korunur.'),
@@ -103,6 +105,10 @@ export const TOUR_STEPS = [
   { id: 'new', icon: FilePlus2, title: tk('Yeni pedigri'),
     text: tk('Yeni, proband ile anne ve babasından oluşan boş bir aileyle başlar. Akraba evliliği seçeneği ise ebeveynleri akraba olan bir aileyi hazır olarak kurar.'),
     target: () => [one('.toolbar [data-overflow="new"]'), one('.toolbar [data-popup="new"] .keys-popover')], prepare: (c) => { c.clear(); c.openNew(); } },
+  // a couple without children (clinician request 2026-11-12: "no children? why — infertile?")
+  { id: 'childless', icon: Link2, title: tk('Çocuğu olmayan çift'),
+    text: CHILDLESS_TEXT,
+    target: () => one('.toolbar [data-popup="new"] .keys-popover'), prepare: (c) => { c.clear(); c.openNew(); } },
   { id: 'relation', icon: FilePlus2, title: tk('Akraba evliliği taslakları'),
     text: tk('Bu pencerede akrabalık adıyla seçilir: birinci, ikinci ve üçüncü derece kuzenler, bir kuşak ayrık kuzenler, çift birinci derece kuzenler ve berdel. Akrabalığın hangi taraftan geldiği (amca, hala, dayı ya da teyze çocukları) belirtilir; aile kurulmadan önce önizlemesi ve akrabalık katsayısı (F) gösterilir.'),
     target: () => one('.relation-dialog'), prepare: (c) => { c.clear(); c.openRelation(); } },
@@ -170,6 +176,9 @@ export const TOUCH_STEPS = [
   { id: 't-arrange', icon: TidyIcon, title: tk('Konumlandır ve tam ekran'),
     text: tk('Üst çubuktaki dört yönlü ok kişileri en okunaklı biçimde yeniden yerleştirir; akrabalıklar değişmez ve işlem geri alınabilir. Yanındaki düğme çizime bütün ekranı verir. Yakınlaştırma ve Sığdır çizimin köşesindedir.'),
     target: () => one('.toolbar .touch-quick'), prepare: (c) => c.clear() },
+  { id: 't-childless', icon: Link2, title: tk('Çocuğu olmayan çift'),
+    text: CHILDLESS_TEXT,
+    target: () => one('.toolbar [data-popup="new"] .keys-popover'), prepare: (c) => { c.clear(); c.openNew(); } },
   { id: 't-menu', icon: ListChecks, title: tk('Menü'),
     text: tk('Geri al, Yinele, Yeni, Aç, Konumlandır, Yazdır, Paylaş, Ayarlar ve bu tur Menü’de yer alır.'),
     target: () => one('.toolbar .more-popover'), prepare: (c) => { c.clear(); c.openMenu(); } },

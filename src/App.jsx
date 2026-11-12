@@ -694,7 +694,8 @@ function App() {
       // resetPedigree() / newFromTemplate() clear selection and the undo
       // stack — see usePedigreeStore.js. Only export-banner state (local to
       // App.jsx) is cleared here.
-      if (spec) newFromTemplate(spec); else resetPedigree();
+      if (spec === 'childless') usePedigreeStore.getState().newChildlessCouple('infertile');
+      else if (spec) newFromTemplate(spec); else resetPedigree();
       setExportError(null);
       setExportNotice(null);
     }
@@ -1100,6 +1101,12 @@ function App() {
                 <button className="download-item" onClick={() => handleNewPedigree(null)}>
                   <svg className="new-icon" viewBox="0 0 40 32" aria-hidden="true"><rect x="3" y="3" width="10" height="10" /><circle cx="32" cy="8" r="5" /><path d="M13 8h14M20 8v13" /><rect x="15" y="21" width="10" height="10" /></svg>
                   <span><b>{t('Yeni aile')}</b><small>{t('Proband, anne ve baba')}</small></span>
+                </button>
+                {/* a couple who came without children: two bars (infertile) under their line, one bar from the
+                    couple's panel or the ring if by choice (clinician request 2026-11-12) */}
+                <button className="download-item" onClick={() => handleNewPedigree('childless')}>
+                  <svg className="new-icon" viewBox="0 0 40 32" aria-hidden="true"><rect x="3" y="3" width="10" height="10" /><circle cx="32" cy="8" r="5" /><path d="M13 8h14M20 8v12M14 20h12M14 25h12" /></svg>
+                  <span><b>{t('Çocuksuz / infertil çift')}</b><small>{t('Proband, eşi; çocukları yok')}</small></span>
                 </button>
                 <button className="download-item" onClick={() => { setNewMenu(false); setRelationOpen(true); }}>
                   <svg className="new-icon" viewBox="0 0 40 32" aria-hidden="true"><rect x="3" y="3" width="10" height="10" /><circle cx="32" cy="8" r="5" /><path d="M13 4.5h14M13 11.5h14M20 11.5v9.5" /><rect x="15" y="21" width="10" height="10" /></svg>
