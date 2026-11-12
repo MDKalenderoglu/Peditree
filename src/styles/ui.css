@@ -1067,14 +1067,19 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
 .toolbar.touch-bar > .keys-wrap[data-popup="about"], .toolbar.touch-bar > .keys-wrap[data-popup="patient"],
 .toolbar.touch-bar > .toolbar-group, .toolbar.touch-bar > .toolbar-end { display: flex; align-items: center; }
 .toolbar.touch-bar .brand-text, .toolbar.touch-bar .beta-badge, .toolbar.touch-bar .toolbar-sep { display: none; }
-.toolbar.touch-bar > .keys-wrap[data-popup="about"] > button { display: none; } /* About is in the menu */
-.toolbar.touch-bar .toolbar-group > :not([data-popup="download"]) { display: none; }
-.toolbar.touch-bar .toolbar-end > :not(.toolbar-more) { display: none; }
+.toolbar.touch-bar > .keys-wrap[data-popup="about"] > button { padding: 0; width: 40px; height: 40px; justify-content: center; } /* the logo at the left (clinician 2026-11-12) */
+.toolbar.touch-bar .brand-mark { width: 36px; height: 36px; }
+.toolbar.touch-bar .toolbar-group > :not([data-popup="download"]):not([data-popup="share"]) { display: none; }
+.toolbar.touch-bar .toolbar-end > :not(.toolbar-more):not(.toolbar-group) { display: none; }
+/* Paylaş on the bar, by its icon, beside Menü (clinician request 2026-11-12); the end's other buttons stay in the menu */
+.toolbar.touch-bar .toolbar-end > .toolbar-group > :not([data-popup="share"]) { display: none; }
+.toolbar.touch-bar .toolbar-end > .toolbar-group:not(:has([data-popup="share"])) { display: none; }
+.toolbar.touch-bar [data-popup="share"] { display: flex; }
 /* what the menu opens (Yeni, Paylaş, Atıf …) lives beside its own hidden button: the window shows, the button
    does not (clinician report 2026-11-12: Menü → Yeni did nothing — its window opened inside a hidden box) */
-.toolbar.touch-bar .toolbar-group > .keys-wrap:not([data-popup="download"]), .toolbar.touch-bar .toolbar-end > .keys-wrap:not(.toolbar-more) { display: contents; }
-.toolbar.touch-bar .toolbar-group > .keys-wrap:not([data-popup="download"]) > button, .toolbar.touch-bar .toolbar-end > .keys-wrap:not(.toolbar-more) > button { display: none; }
-.toolbar.touch-bar .toolbar-end { margin-left: 0; order: -1; }
+.toolbar.touch-bar .toolbar-group > .keys-wrap:not([data-popup="download"]):not([data-popup="share"]), .toolbar.touch-bar .toolbar-end > .keys-wrap:not(.toolbar-more) { display: contents; }
+.toolbar.touch-bar .toolbar-group > .keys-wrap:not([data-popup="download"]):not([data-popup="share"]) > button, .toolbar.touch-bar .toolbar-end > .keys-wrap:not(.toolbar-more) > button { display: none; }
+.toolbar.touch-bar .toolbar-end { margin-left: 0; gap: 2px; } /* Menü at the right (clinician 2026-11-12) */
 .toolbar.touch-bar .toolbar-more { display: flex !important; }
 .toolbar.touch-bar > .keys-wrap[data-popup="patient"] { flex: 1; min-width: 0; }
 .toolbar.touch-bar > .touch-quick { display: flex; gap: 2px; flex: none; }
@@ -1214,6 +1219,10 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
   border: 1px solid var(--accent-line); box-shadow: var(--shadow); font-weight: 700;
 }
 .toolbar.touch-bar [data-popup="download"] > button svg { color: var(--accent); }
+/* Kaydet and Paylaş by their icons alone; the tour names them (clinician request 2026-11-12) */
+.toolbar.touch-bar [data-popup="download"] > button { width: 40px; padding: 0; justify-content: center; }
+.toolbar.touch-bar [data-popup="download"] .save-word, .toolbar.touch-bar [data-popup="download"] .save-chevron { display: none; }
+.toolbar.touch-bar [data-popup="share"] > button { display: flex; width: 40px; height: 40px; padding: 0; justify-content: center; border-radius: 10px; color: var(--accent-ink); }
 .toolbar.touch-bar .keys-popover { top: 54px; }
 .toolbar.touch-bar > .touch-quick > .ui-btn, .toolbar.touch-bar > .touch-quick > .keys-wrap > .ui-btn { width: 40px; height: 40px; border-radius: 10px; }
 /* a narrow phone: the menu by its three lines alone, so the patient's name keeps room beside Konumlandır and Sığdır */
