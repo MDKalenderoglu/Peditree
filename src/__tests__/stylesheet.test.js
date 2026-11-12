@@ -60,6 +60,8 @@ describe('stylesheet rules', () => {
     expect(css('ui.css')).toMatch(/--panel: color-mix\(in srgb, var\(--accent\) \d+%, var\(--sunken\)\)/);
     expect(block('ui.css', '.side-header')).toMatch(/border-top: 3px solid var\(--accent\)/);
     expect(block('ui.css', '.side-header')).toMatch(/var\(--accent-soft\)/);
+    // at night only a touch of the theme colour over the cards' dark (a brown header over slate cards, 2026-11-12)
+    expect(block('ui.css', ':root[data-mode="dark"] .side-header')).toMatch(/background: color-mix\(in srgb, var\(--accent\) 12%, var\(--surface\)\)/);
     expect(css('ui.css')).toMatch(/\.app-shell\.has-editor > \.side-right \{ animation: panel-in /);
     expect(css('ui.css')).toMatch(/prefers-reduced-motion: reduce\) \{ \.app-shell\.has-editor > \.side-right \{ animation: none; \}/);
   });
