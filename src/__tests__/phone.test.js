@@ -274,6 +274,27 @@ describe('the page never stays shifted up (clinician report 2026-11-12, iPhone: 
   });
 });
 
+describe('the page never stays zoomed in (clinician report 2026-11-12, iPhone: the top bar gone, the sheet cut on both sides)', () => {
+  it('zoomed while nothing is typed: the zoom is taken back; the page never zooms into a box; a pinch on the sheet is stopped', async () => {
+    const meta = document.querySelector('meta[name="viewport"]') || document.head.appendChild(Object.assign(document.createElement('meta'), { name: 'viewport' }));
+    meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0');
+    const was = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    Object.defineProperty(window, 'visualViewport', { value: { scale: 2.3, addEventListener() {}, removeEventListener() {} }, configurable: true });
+    try {
+      await run(() => window.dispatchEvent(new Event('scroll')));
+      expect(meta.getAttribute('content')).toMatch(/user-scalable=no/);
+      await new Promise((r) => setTimeout(r, 450));
+      expect(meta.getAttribute('content')).toBe('width=device-width, initial-scale=1.0, maximum-scale=1.0');
+    } finally {
+      if (was) Object.defineProperty(window, 'visualViewport', was); else delete window.visualViewport;
+    }
+    // a pinch outside the drawing is stopped, on the drawing it is the drawing's
+    const pinch = (el) => { const e = new Event('gesturestart', { bubbles: true, cancelable: true }); el.dispatchEvent(e); return e.defaultPrevented; };
+    expect(pinch($('.toolbar'))).toBe(true);
+    expect(pinch($('#pedigree-svg'))).toBe(false);
+  });
+});
+
 describe('the phone, fourth request (clinician 2026-11-12)', () => {
   it('a browser with full screen: the button asks it, and shows the way back', async () => {
     const el = document.documentElement;

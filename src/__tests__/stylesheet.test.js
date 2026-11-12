@@ -198,3 +198,9 @@ describe('stylesheet rules', () => {
     expect(css('ui.css')).toMatch(/prefers-reduced-motion: reduce\) \{\s*\.tour-card, \.tour-offer, \.tour-body, \.tour-spot::after \{ animation: none; transition: none; \}/);
   });
 });
+
+describe('the phone page never zooms (clinician report 2026-11-12)', () => {
+  it('the page takes only panning on the phone; the drawing zooms itself', () => {
+    expect(block('ui.css', '.app-shell.touch')).toMatch(/touch-action: pan-x pan-y/);
+  });
+});
