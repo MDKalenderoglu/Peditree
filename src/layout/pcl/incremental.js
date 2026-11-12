@@ -121,6 +121,61 @@ function problemsOf(graph, layout) {
 const noWorse = (p, base) => p.crossings <= base.crossings && p.offCenter <= base.offCenter && p.longUnions <= base.longUnions;
 
 /**
+ * Where the previous drawing kept the places of a line between partners generations apart
+ * (crossGeneration.js stand-ins, never drawn): read back from the line itself — the stand-in where
+ * the line arrives on the lower partner's row, a kept place where it runs down through a row in
+ * between. Without them an edit nearby laid the line out anew, round the whole family
+ * (clinician report 2026-11-12).
+ */
+export function standInPlaces(graph, prevNodes, prevEdges) {
+  const out = new Map();
+  if (!Array.isArray(prevEdges) || !prevEdges.length) return out;
+  const node = new Map(prevNodes.map((n) => [n.id, n]));
+  const rowY = new Map();
+  for (const n of prevNodes) if (typeof n.generation === 'number' && !rowY.has(n.generation)) rowY.set(n.generation, n.y);
+  for (const u of graph.unions || []) {
+    const [a, b] = (u.partners || []).map((id) => node.get(id));
+    if (!a || !b || a.generation === b.generation || typeof a.generation !== 'number' || typeof b.generation !== 'number') continue;
+    const [upper, lower] = a.generation < b.generation ? [a, b] : [b, a];
+    const legs = prevEdges.filter((e) => e.unionId === u.id && e.crossGeneration);
+    if (!legs.length) continue;
+    const arrive = legs.find((e) => Math.abs(e.y2 - lower.y) < 0.5 && e.x1 === e.x2)
+      || legs.find((e) => Math.abs(e.y1 - lower.y) < 0.5 && e.x1 === e.x2);
+    if (arrive) out.set(`__xg__${u.id}`, { x: arrive.x2, y: lower.y });
+    for (let g = upper.generation + 1; g < lower.generation; g++) {
+      const y = rowY.get(g);
+      if (y === undefined) continue;
+      const down = legs.find((e) => e.x1 === e.x2 && Math.min(e.y1, e.y2) <= y && Math.max(e.y1, e.y2) >= y);
+      if (down) out.set(`__xg__${u.id}__${g}`, { x: down.x1, y });
+    }
+  }
+  return out;
+}
+
+/**
+ * The graph with a couple drawn woman-left kept so, as the previous drawing showed it (union.leftPartner, for this
+ * layout only — never stored): "Konumlandır" may put a woman left of her husband where that keeps a line
+ * straight (tidy.js), and the next edit nearby turned the couple back and redrew the family round it
+ * (clinician report 2026-11-12). A side the clinician chose stays as it is.
+ */
+export function withPreviousSides(graph, prevNodes) {
+  const at = new Map(prevNodes.map((n) => [n.id, n]));
+  let changed = false;
+  const unions = (graph.unions || []).map((u) => {
+    if (u.leftPartner || (u.partners || []).length !== 2) return u;
+    const [a, b] = u.partners.map((id) => at.get(id));
+    if (!a || !b || a.y !== b.y || a.x === b.x) return u;
+    // only a couple drawn against the usual man-left: the usual side needs no reminder, and a reminder
+    // there would hold back a spouse the edit gives a better side (ki2Stability ratchets)
+    const left = a.x < b.x ? a : b, right = left === a ? b : a;
+    if (!(left.sex === 'female' && right.sex === 'male')) return u;
+    changed = true;
+    return { ...u, leftPartner: left.id };
+  });
+  return changed ? { ...graph, unions } : graph;
+}
+
+/**
  * @param {object} graph       the new graph
  * @param {{ prevGraph?: object, prevNodes?: Array<{id,x,y}>, prevEdges?: Array, frozen?: boolean }} previous
  * @returns layout with meta.stability = { level, affected, tried, crossings }
@@ -133,6 +188,9 @@ export function computeStableLayout(graph, previous = {}) {
   }
   const prevX = new Map(prevNodes.map((n) => [n.id, n.x]));
   const prevY = new Map(prevNodes.map((n) => [n.id, n.y]));
+  for (const [id, at] of standInPlaces(graph, prevNodes, previous.prevEdges)) {
+    if (!prevX.has(id)) { prevX.set(id, at.x); prevY.set(id, at.y); }
+  }
   const affected = previous.frozen || !previous.prevGraph ? new Set() : affectedPeople(previous.prevGraph, graph);
   const people = (graph.individuals || []).length || 1;
   const frozen = !!previous.frozen || (previous.prevGraph && affected.size === 0);
@@ -163,9 +221,10 @@ export function computeStableLayout(graph, previous = {}) {
     attempts.push(['wide', { prevX, prevY, freePersons: null }]);
   }
   const cleanStable = []; // clean but with added readability problems: [level, layout, problems]
+  const sided = withPreviousSides(graph, prevNodes);
   for (const [level, stability] of attempts) {
     tried.push(level);
-    const layout = computePclLayout(graph, { stability });
+    const layout = computePclLayout(sided, { stability });
     if (!clean(graph, layout)) continue;
     if (frozen) return done(layout, level === 'local' ? 'frozen' : level);
     const p = problemsOf(graph, layout);

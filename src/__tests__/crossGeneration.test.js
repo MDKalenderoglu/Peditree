@@ -230,3 +230,35 @@ describe('a great-grandfather’s second marriage two generations down (clinicia
     expect(sideways).toEqual([]);
   });
 });
+
+describe('after "Konumlandır", an edit nearby keeps the line where it was (clinician report 2026-11-12)', () => {
+  it('a partner added to the proband: the great-grandfather’s line keeps its way, his wife stays on his left', async () => {
+    const { createDocument } = await import('../graph/document');
+    const { serializeDocument } = await import('../graph/persistenceV2');
+    const P = (id, sex, extra = {}) => ({ id, sex, affected: false, carrier: false, deceased: false, proband: false, notes: '', ...extra });
+    const U = (id, x, y, extra = {}) => ({ id, partners: [x, y], status: 'married', consanguineous: false, ...extra });
+    const R = (unionId, children, extra = {}) => ({ unionId, children, orderPolicy: 'insertion', ...extra });
+    const doc = createDocument({
+      individuals: [P('p1', 'male'), P('p2', 'female'), P('p3', 'male'), P('p4', 'female'), P('p5', 'male'), P('p6', 'female'),
+        P('a', 'male'), P('b', 'female'), P('c', 'male'), P('d', 'female'), P('e', 'female'), P('f', 'male'), P('proband', 'male', { proband: true, affected: true })],
+      unions: [U('U1', 'p1', 'p2'), U('U2', 'p3', 'p4'), U('U3', 'p5', 'p6'), U('U4', 'a', 'b'), U('U5', 'c', 'd'), U('U6', 'f', 'e'), U('U7', 'p5', 'e', { crossGeneration: true })],
+      parentChildRelationships: [R('U1', ['a']), R('U2', ['b', 'c'], { multiples: [{ id: 'M1', children: ['b', 'c'], zygosity: 'dizygotic' }] }),
+        R('U3', ['d']), R('U4', ['e']), R('U5', ['f']), R('U6', ['proband'])],
+      socialParentLinks: [],
+    });
+    expect(S().openProjectFile(serializeDocument(doc)).ok).toBe(true);
+    S().relayout();
+    const legs = () => S().pedigreeData.edges.filter(e => e.unionId === 'U7' && e.crossGeneration).map(e => [e.x1, e.y1, e.x2, e.y2].map(Math.round).join(','));
+    const side = () => node('p6').x < node('p5').x;
+    const before = legs();
+    expect(side()).toBe(true);
+    S().addSpouseTo('proband', 'female');
+    expect(S().layoutInfo.level).toBe('local');
+    expect(side()).toBe(true);
+    // the same way, its vertical legs where they were (a few px of give: the edit-local solve)
+    const xsOf = (l) => l.map(s => s.split(',').map(Number)).filter(([x1, , x2]) => x1 === x2).map(([x]) => x);
+    expect(Math.max(...xsOf(legs()).map((x, k) => Math.abs(x - xsOf(before)[k])))).toBeLessThanOrEqual(8);
+    expect(legs().length).toBe(before.length);
+    expect(S().pedigreeData.edges.filter(e => e.unionId === 'U7').flatMap(e => e.bridges || []).length).toBe(2);
+  });
+});
