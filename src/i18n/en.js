@@ -1116,7 +1116,8 @@ const EN = {
   'Çocuğu olmayan çift': 'A couple without children',
   'Danışmaya çocuğu olmayan bir çift geldiyse Yeni’deki “Çocuksuz / infertil çift” proband ile eşini, çizgilerinin altında infertilite işaretiyle (çift kısa çizgi) kurar. Var olan bir çift için kişinin Çocuk seçeneklerinde Çocuksuz (tek çizgi) ve İnfertil bulunur; çifte çocuk eklenince işaret kendiliğinden kalkar.': 'For a couple who came without children, “Childless / infertile couple” under New draws the proband and partner with the infertility mark (two short bars) under their line. For a couple already drawn, the person’s Child choices hold No children (one bar) and Infertile; adding a child to the couple takes the mark away.',
   'Çocuksuzluğun sebebini yazmak için tıklayın': 'Click to write the reason for childlessness',
-  'Sebep (örn. azospermi, tercih)': 'Reason (e.g. azoospermia, choice)',
+  'Sebep (örn. azospermi)': 'Reason (e.g. azoospermia)',
+  'Sebep (örn. tercih)': 'Reason (e.g. by choice)',
   'Çocuksuzluğun sebebi': 'Reason for childlessness',
 };
 
