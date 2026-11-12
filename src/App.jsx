@@ -27,7 +27,7 @@ import { ProductInfo, LicenseInfo, CitationInfo, FeedbackInfo } from './componen
 import { nameCase } from './utils/nameCase';
 import { RELEASE_STAGE } from './utils/appInfo';
 import { watchToolbar, overflowed } from './utils/toolbarFit';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check, CircleHelp, UserRound, Menu as MenuIcon, X as XIcon } from 'lucide-react';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check, CircleHelp, UserRound, Maximize, Menu as MenuIcon, X as XIcon } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
 // the clinician's logo (docs/brand/peditree-logo.webp): the tree, and the name in its own lettering
@@ -146,36 +146,62 @@ function MoreMenu({ items, multiSelect, onPick }) {
 function TouchSheet({ full, canDock, onFull, onClose, title, children }) {
   const t = useT();
   const drag = React.useRef(null);
+  const swallow = React.useRef(false); // the click a drag ends with is not a tap on what it ended on
   const [pull, setPull] = React.useState(0); // how far the sheet follows the finger, in px (down is +)
   const step = (dir) => {
     if (dir < 0) { if (canDock && !full) onFull(true); }
     else if (full && canDock) onFull(false);
     else onClose();
   };
-  const down = (e) => {
-    drag.current = { y: e.clientY, id: e.pointerId };
-    if (e.currentTarget.setPointerCapture && e.pointerId !== undefined) e.currentTarget.setPointerCapture(e.pointerId);
+  // where a finger may take the sheet up or down (clinician request 2026-11-12: "a tap opens it, drawn up it
+  // opens, drawn down it closes"): its handle and head; docked, also its tiles; never a field being typed in,
+  // nor the details' scrolling list
+  const grabbable = (el) => {
+    if (!el || !el.closest) return false;
+    if (el.closest('input, textarea, select, [contenteditable="true"]')) return false;
+    if (el.closest('.sheet-grip, .sheet-head, .side-header')) return true;
+    return canDock && !full && !!el.closest('.dock-tiles, .dock-add');
   };
-  const move = (e) => { if (drag.current) setPull(Math.max(-120, Math.min(260, e.clientY - drag.current.y))); };
+  const down = (e) => {
+    if (!grabbable(e.target)) return;
+    drag.current = { y: e.clientY, id: e.pointerId, moved: false, head: !e.target.closest('button') || !!e.target.closest('.sheet-grip') };
+    if (e.currentTarget.setPointerCapture && e.pointerId !== undefined) {
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* a synthetic pointer */ }
+    }
+  };
+  const move = (e) => {
+    const d = drag.current;
+    if (!d) return;
+    const dy = e.clientY - d.y;
+    if (Math.abs(dy) > 8) d.moved = true;
+    if (d.moved) setPull(Math.max(-120, Math.min(260, dy)));
+  };
   const up = (e) => {
     const d = drag.current;
     drag.current = null;
     setPull(0);
     if (!d) return;
     const dy = e.clientY - d.y;
-    if (Math.abs(dy) < 8) step(full && canDock ? 1 : -1); // a tap: one step
-    else if (dy < -40) step(-1);
+    if (!d.moved && Math.abs(dy) <= 8) {
+      // a tap on the handle or on the head's words: one step (docked: open; open: back to the tiles)
+      if (d.head) step(full && canDock ? 1 : -1);
+      return;
+    }
+    swallow.current = true;
+    if (dy < -40) step(-1);
     else if (dy > 40) step(1);
   };
+  const cancel = () => { drag.current = null; setPull(0); };
   return (
     <section className={`touch-sheet${full ? ' sheet-full' : ''}`} aria-label={title || t('Kişi')}
-      style={pull ? { transform: `translateY(${pull}px)`, transition: 'none' } : undefined}>
+      style={pull ? { transform: `translateY(${pull}px)`, transition: 'none' } : undefined}
+      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={cancel}
+      onClickCapture={(e) => { if (swallow.current) { swallow.current = false; e.stopPropagation(); e.preventDefault(); } }}>
       <div className="sheet-grip" role="button" tabIndex={0} aria-label={full && canDock ? t('Ayrıntıları kapat') : full ? t('Kapat') : t('Ayrıntıları aç')}
-        onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { drag.current = null; setPull(0); }}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); step(full && canDock ? 1 : -1); } }}>
         <span aria-hidden="true" />
       </div>
-      {/* one slim line: who it is and how to close (the bar below holds the actions) */}
+      {/* one slim line: who it is and how to close (the bar below holds the actions); a tap on it opens the details */}
       {canDock && !full && (
         <div className="sheet-head">
           <b className="sheet-title">{title}</b>
@@ -368,6 +394,18 @@ function App() {
   // the top bar keeps to one row: words fold to icons as the window narrows (toolbarFit.js)
   const toolbarRef = React.useRef(null);
   const shellRef = React.useRef(null); // the page's grid: the side panel's edge is dragged against it
+  // the touch sheet, open, starts a little under the top bar, however tall the bar is (a phone's notch adds to
+  // it; clinician 2026-11-12: the open sheet touched the bar) — the bar's height as --touch-bar-h
+  React.useLayoutEffect(() => {
+    const bar = toolbarRef.current, shell = shellRef.current;
+    if (!touch || !bar || !shell) return undefined;
+    const set = () => shell.style.setProperty('--touch-bar-h', `${Math.round(bar.getBoundingClientRect().bottom)}px`);
+    set();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const watch = new ResizeObserver(set);
+    watch.observe(bar);
+    return () => watch.disconnect();
+  }, [touch]);
   React.useLayoutEffect(() => {
     return watchToolbar(toolbarRef.current);
   }, [uiLang]);
@@ -969,6 +1007,14 @@ function App() {
             aria-label={t('Probandın ya da danışanın doğum tarihi')} onCommit={v => setProbandBirthDate(v.trim() ? (parseTypedDate(v) || v.trim()) : '')} />
         </label>
         </>)}
+        {phone && (
+          // a phone: the two buttons used most while drawing, always in reach (clinician request 2026-11-12)
+          <div className="touch-quick">
+            <button className="ui-btn ui-btn-icon" onClick={relayout} aria-label={t('Konumlandır')} title={t('Konumlandır, kişileri çizimde yeniden yerleştirir. Akrabalık ilişkileri değişmez ve işlem geri alınabilir.')}><TidyIcon size={20} /></button>
+            <button className="ui-btn ui-btn-icon" onClick={() => document.querySelector(`.zoom-controls button[aria-label="${tNow('Sığdır')}"]`)?.click()}
+              aria-label={t('Sığdır')} title={t('Tüm pedigriyi ekrana sığdır (0)')}><Maximize size={20} /></button>
+          </div>
+        )}
         <div className="toolbar-sep" data-fold-order="10" />
         <div className="toolbar-group">
           <div className="keys-wrap" data-popup="new">

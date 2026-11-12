@@ -195,3 +195,51 @@ describe('the stylesheet', () => {
     expect(css).toMatch(/\.radial-menu\.ring-dock \{ position: static; width: auto; height: auto; pointer-events: auto;/);
   });
 });
+
+describe('the phone, third request (clinician 2026-11-12)', () => {
+  const drag = async (el, dy) => {
+    await run(() => el.dispatchEvent(pointerAt('pointerdown', 400)));
+    await run(() => el.dispatchEvent(pointerAt('pointermove', 400 + dy)));
+    await run(() => el.dispatchEvent(pointerAt('pointerup', 400 + dy)));
+  };
+  const full = () => $('.touch-sheet').classList.contains('sheet-full');
+
+  it('Konumlandır and Sığdır stand on the bar right of Hasta, and work', async () => {
+    const bar = [...$('.toolbar').children].filter((el) => getComputedStyle(el).display !== 'none');
+    const at = (sel) => bar.findIndex((el) => el.matches(sel));
+    expect(at('.touch-quick')).toBe(at('[data-popup="patient"]') + 1);
+    const quick = $('.touch-quick');
+    expect(buttons(quick).map((b) => b.getAttribute('aria-label'))).toEqual(['Konumlandır', 'Sığdır']);
+    await click(named('Konumlandır', quick));
+    expect(S().layoutInfo.reason).toMatch(/Konumlandır/);
+    // Sığdır: the drawing's own fit button, also while a person's sheet hides the zoom buttons
+    let fitted = 0;
+    const fit = named('Sığdır', $('.zoom-controls'));
+    fit.addEventListener('click', () => { fitted++; });
+    await click(drawn('mother'));
+    await click(named('Sığdır', quick));
+    expect(fitted).toBe(1);
+  });
+
+  it('the sheet: a tap on its head opens the details; drawn up from the tiles it opens, without pressing a tile; drawn down by the head it goes back', async () => {
+    await click(drawn('mother'));
+    expect(full()).toBe(false);
+    await run(() => $('.touch-sheet .sheet-title').dispatchEvent(pointerAt('pointerdown', 400)));
+    await run(() => $('.touch-sheet .sheet-title').dispatchEvent(pointerAt('pointerup', 400)));
+    expect(full()).toBe(true);
+    await drag($('.touch-sheet .side-header'), 90); // down by the details' head: back to the tiles
+    expect(full()).toBe(false);
+    const status = tile('Durum');
+    await drag(status, -90); // up, starting on a tile
+    await click(status); // the click a drag ends with
+    expect(full()).toBe(true);
+    expect($('.touch-sheet .radial-panel')).toBeNull(); // the tile did not open its list
+    // a field is never a handle
+    await drag($('.touch-sheet').querySelector('input, textarea'), 90);
+    expect(full()).toBe(true);
+    await drag($('.touch-sheet .side-header'), 90);
+    await drag($('.touch-sheet .sheet-head'), 90); // down from the tiles: closed, the person let go
+    expect($('.touch-sheet')).toBeNull();
+  });
+});
+
