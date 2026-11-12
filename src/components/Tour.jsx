@@ -158,12 +158,18 @@ export const TOUCH_STEPS = [
   { id: 't-add', icon: UserPlus, title: tk('Akraba eklemek'),
     text: tk('Ekle’ye dokunduğunuzda Ebeveyn, Kardeş, Eş, Çocuk ve İkiz seçenekleri açılır. Seçtiğiniz akrabanın cinsiyeti ya da gebelik sonucu ardından yazılı düğmelerle sorulur.'),
     target: () => one('.touch-sheet'), prepare: (c) => c.select(c.ids.proband), act: pressTile('Ekle') },
+  // the open details fill the screen: the card points at their head and stands below it (clinician report
+  // 2026-11-12: the card covered what it named)
   { id: 't-details', icon: PanelRight, title: tk('Ayrıntılar'),
-    text: tk('Ayrıntılar’a dokunmak ya da çubuğu yukarı çekmek kişinin bütün bilgilerini açar: ad, yaş, not, genetik test, evlat edinme, doğum sırası. Aşağı çekince çubuğa dönülür, bir kez daha çekince kapanır.'),
-    target: () => one('.touch-sheet'), prepare: (c) => { c.select(c.ids.proband); c.openDetails(); } },
+    text: tk('Çubuğun başlığına dokunmak ya da çubuğu yukarı çekmek kişinin bütün bilgilerini açar: ad, yaş, not, genetik test; seyrek kullanılanlar “Diğer bilgiler” altındadır. Başlıktan aşağı çekince çubuğa dönülür, bir kez daha çekince kapanır.'),
+    target: () => one('.touch-sheet .side-header') || one('.touch-sheet'), prepare: (c) => { c.select(c.ids.proband); c.openDetails(); } },
+  // the line itself, on the drawing (selected, the couple's details covered it)
   { id: 't-couple', icon: Link2, title: tk('Eşler arasındaki çizgi'),
-    text: tk('İki eşi birleştiren ışıklı çizgiye dokunduğunuzda çiftin bilgileri açılır: ilişkinin durumu, akrabalık (Var seçilince çizgi çift çizgiye dönüşür) ya da “Aynı köy”, çocuksuzluk; çifte çocuk da buradan eklenir.'),
-    target: (c) => ({ areas: [coupleLine(c, c.ids.mother, c.ids.father), [one('.touch-sheet')]] }), prepare: (c) => c.selectCouple(c.ids.mother, c.ids.father) },
+    text: tk('İki eşi birleştiren çizgiye dokunduğunuzda çiftin bilgileri açılır: ilişkinin durumu, akrabalık (Var seçilince çizgi çift çizgiye dönüşür) ya da “Aynı köy”, çocuksuzluk; çifte çocuk da buradan eklenir.'),
+    target: (c) => coupleLine(c, c.ids.mother, c.ids.father), prepare: (c) => c.clear() },
+  { id: 't-arrange', icon: TidyIcon, title: tk('Konumlandır ve tam ekran'),
+    text: tk('Üst çubuktaki dört yönlü ok kişileri en okunaklı biçimde yeniden yerleştirir; akrabalıklar değişmez ve işlem geri alınabilir. Yanındaki düğme çizime bütün ekranı verir. Yakınlaştırma ve Sığdır çizimin köşesindedir.'),
+    target: () => one('.toolbar .touch-quick'), prepare: (c) => c.clear() },
   { id: 't-menu', icon: ListChecks, title: tk('Menü'),
     text: tk('Geri al, Yinele, Yeni, Aç, Konumlandır, Yazdır, Paylaş, Ayarlar ve bu tur Menü’de yer alır.'),
     target: () => one('.toolbar .more-popover'), prepare: (c) => { c.clear(); c.openMenu(); } },
