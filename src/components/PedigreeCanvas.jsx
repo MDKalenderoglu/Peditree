@@ -188,7 +188,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     if (!boxRef.current) return;
     const r = el.getBoundingClientRect(), b = boxRef.current.getBoundingClientRect();
     committed.current = false;
-    setEditing({ kind, target, value: value ?? '', x: r.left - b.left, y: r.top - b.top, w: r.width, h: r.height });
+    setEditing({ kind, target, value: value ?? '', mark: el.getAttribute('data-mark') || null, x: r.left - b.left, y: r.top - b.top, w: r.width, h: r.height });
   }, []);
   const finishEdit = (value) => {
     if (!editing || committed.current) return;
@@ -565,13 +565,13 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       const textY = end + (e.kind === 'infertile' ? CL.gap : 0) + 14;
       if (e.reason) {
         editable(m.append('text').attr('x', e.x).attr('y', textY).attr('text-anchor', 'middle')
-          .attr('font-size', px(10)).attr('fill', '#475569').text(e.reason), 'childlessReason', e.unionId, e.reason);
+          .attr('font-size', px(10)).attr('fill', '#475569').attr('data-mark', e.kind).text(e.reason), 'childlessReason', e.unionId, e.reason);
       }
       // a click on the bars (or just under them) opens a box for the reason, where the reason is written
       // (clinician request 2026-11-12); screen only, never in a copy
       const hit = m.append('rect').attr('class', 'ui-only childless-hit')
         .attr('x', e.x - CL.half - 8).attr('y', end - 8).attr('width', 2 * CL.half + 16).attr('height', textY - end + 14)
-        .attr('fill', 'transparent').style('pointer-events', 'all');
+        .attr('fill', 'transparent').attr('data-mark', e.kind).style('pointer-events', 'all');
       hit.append('title').text(t('Çocuksuzluğun sebebini yazmak için tıklayın'));
       editable(hit, 'childlessReason', e.unionId, e.reason || '');
     });
@@ -1253,7 +1253,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       {anchor && renderQuickBar && !editing && renderQuickBar(anchor, panBy)}
       {editing && (
         <input className="input inline-edit" autoFocus defaultValue={editing.value}
-          placeholder={editing.kind === 'childlessReason' ? t('Sebep (örn. azospermi, tercih)') : undefined}
+          placeholder={editing.kind !== 'childlessReason' ? undefined
+            : editing.mark === 'infertile' ? t('Sebep (örn. azospermi)') : t('Sebep (örn. tercih)')}
           aria-label={editing.kind === 'childlessReason' ? t('Çocuksuzluğun sebebi') : undefined}
           style={{ left: editing.x - 6, top: editing.y + (editing.h - 32) / 2, width: Math.max(editing.w + 60, 230) }}
           onKeyDown={e => {

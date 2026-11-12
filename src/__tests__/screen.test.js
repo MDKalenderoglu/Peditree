@@ -260,12 +260,19 @@ describe('the reason for childlessness, written on the drawing (clinician reques
     expect(box.getAttribute('aria-label')).toBe('Çocuksuzluğun sebebi');
     // the app's own text box, not a look of its own (clinician 2026-11-12)
     expect(box.classList.contains('input')).toBe(true);
+    // the hint fits the mark: infertility → azoospermia, never 'by choice' (clinician 2026-11-12)
+    expect(box.getAttribute('placeholder')).toBe('Sebep (örn. azospermi)');
     await run(() => { box.value = 'Azospermi'; box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); });
     expect(u().childlessReason).toBe('Azospermi');
     expect($('.childless-mark text').textContent).toBe('Azospermi');
     // clicked again: the box holds what was written
     await click($('.childless-mark .childless-hit'));
     expect($('.inline-edit').value).toBe('Azospermi');
+    await run(() => $('.inline-edit').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+    // no children by choice: the hint is 'by choice'
+    await run(() => S().setChildlessness(u().id, 'by_choice'));
+    await click($('.childless-mark .childless-hit'));
+    expect($('.inline-edit').getAttribute('placeholder')).toBe('Sebep (örn. tercih)');
     await run(() => $('.inline-edit').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
   });
 });
