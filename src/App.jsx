@@ -312,7 +312,7 @@ function App() {
   };
   const endTour = () => { usePedigreeStore.getState().endTour(); setTourIds(null); };
   const phoneScreen = usePhone();
-  const phone = view.touchMode === 'on' || (view.touchMode !== 'off' && phoneScreen); // the touch mode
+  const phone = view.touchMode === 'always' || (view.touchMode !== 'off' && phoneScreen); // the touch mode
   const touch = phone;
   const tourCtx = tourIds && {
     ids: tourIds,
