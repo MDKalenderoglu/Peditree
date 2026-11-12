@@ -46,7 +46,8 @@ const MORE = {
   undo: [Undo2, tk('Geri al')], about: [Info, tk('PediTree hakkında')],
 };
 /** The touch mode's menu: everything the top bar holds on a computer, with its name, in this order. */
-const TOUCH_MENU = ['undo', 'redo', 'new', 'open', 'relayout', 'multi', 'print', 'share', 'settings', 'tour', 'cite', 'feedback', 'about'];
+// Paylaş stands on the phone's bar itself (clinician request 2026-11-12)
+const TOUCH_MENU = ['undo', 'redo', 'new', 'open', 'relayout', 'multi', 'print', 'settings', 'tour', 'cite', 'feedback', 'about'];
 /**
  * The touch mode (clinician request 2026-11-10: on a phone the desktop screen, made smaller, could not be
  * used — the ring covered the drawing, the panel ate the page, icons said too little). Same pedigree, same
@@ -1186,8 +1187,8 @@ function App() {
               İndir button beside it went unnoticed). Cmd/Ctrl+S still writes the PediTree file. */}
           <div className="keys-wrap" data-popup="download">
             <button className="ui-btn ui-btn-primary" onClick={() => { setPedOpen(false); setDownloadOpen(v => !v); }} aria-expanded={downloadOpen} aria-haspopup="dialog"
-              title={t('Çizimi resim (PNG, PDF, SVG) ya da sonra açıp düzenlemek için PediTree dosyası olarak kaydeder')}>
-              <Save size={15} /> {t('Kaydet')} <ChevronDown size={14} />
+              aria-label={t('Kaydet')} title={t('Çizimi resim (PNG, PDF, SVG) ya da sonra açıp düzenlemek için PediTree dosyası olarak kaydeder')}>
+              <Save size={15} /> <span className="save-word">{t('Kaydet')}</span> <ChevronDown className="save-chevron" size={14} />
             </button>
             {downloadOpen && (
               <div className="keys-popover share-popover download-popover" role="dialog" aria-label={t('Kaydet')}>

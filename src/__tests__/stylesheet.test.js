@@ -213,3 +213,17 @@ describe('the phone: the zoom and Sığdır above the docked sheet (clinician re
     expect(s).not.toMatch(/\.app-shell\.touch\.has-editor \.zoom-controls \{ display: none; \}/);
   });
 });
+
+describe('the phone bar (clinician request 2026-11-12)', () => {
+  it('the logo shows at the left, Menü at the right, Kaydet and Paylaş by their icons alone', () => {
+    const s = css('ui.css');
+    expect(s).not.toMatch(/\.toolbar\.touch-bar > \.keys-wrap\[data-popup="about"\] > button \{ display: none; \}/);
+    expect(s).not.toMatch(/\.toolbar\.touch-bar \.toolbar-end \{[^}]*order: -1/);
+    expect(s).toMatch(/\.toolbar\.touch-bar \[data-popup="download"\] \.save-word, \.toolbar\.touch-bar \[data-popup="download"\] \.save-chevron \{ display: none; \}/);
+    expect(s).toMatch(/\.toolbar\.touch-bar \[data-popup="share"\] > button \{ display: flex;/);
+    // the bar's rules that hide the end's buttons leave Paylaş out (it was hidden by them)
+    expect(s).toMatch(/\.toolbar\.touch-bar \.toolbar-group > :not\(\[data-popup="download"\]\):not\(\[data-popup="share"\]\) \{ display: none; \}/);
+    expect(s).toMatch(/\.toolbar\.touch-bar \.toolbar-group > \.keys-wrap:not\(\[data-popup="download"\]\):not\(\[data-popup="share"\]\) > button/);
+  });
+});
+
