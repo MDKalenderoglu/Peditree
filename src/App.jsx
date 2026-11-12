@@ -64,6 +64,10 @@ function usePhone() {
     const m = window.matchMedia(PHONE);
     const on = () => setPhone(m.matches);
     if (m.addEventListener) m.addEventListener('change', on); else if (m.addListener) m.addListener(on);
+    // the window may have changed between the first look and now (it opened narrow, or in the
+    // background, and grew): look again, or a computer stays on the phone's screen (clinician report
+    // 2026-11-11: "the screen turned into the phone's")
+    on();
     return () => { if (m.removeEventListener) m.removeEventListener('change', on); else if (m.removeListener) m.removeListener(on); };
   }, []);
   return phone;
@@ -273,6 +277,8 @@ function App() {
     const root = document.documentElement;
     if (view.theme && view.theme !== 'indigo') root.setAttribute('data-theme', view.theme); else root.removeAttribute('data-theme');
     root.style.setProperty('--ring-alpha', String(ringAlphaOf(view)));
+    // mostly see-through: at night its words take the drawing's dark ink (ui.css)
+    if (ringAlphaOf(view) < 0.5) root.setAttribute('data-ring-clear', 'high'); else root.removeAttribute('data-ring-clear');
   }, [view]);
   // day or night (clinician 2026-11-11): chosen, or the device's, followed while the page is open
   React.useEffect(() => {

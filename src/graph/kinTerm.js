@@ -17,6 +17,31 @@
  * possessives do not translate word for word).
  */
 import { currentLang } from '../i18n';
+import { indexGraph, REPRO_ROLES } from './model';
+
+// the genetic parents (a donor in the place of the partner they replace; model.js), one index per graph
+const IDX = new WeakMap();
+const geneticOf = (graph, id) => {
+  if (!IDX.has(graph)) IDX.set(graph, indexGraph(graph));
+  return IDX.get(graph).geneticParents(id);
+};
+/**
+ * Two drawn siblings who, through a donor, share one genetic parent or none (Codex audit 2026-11-12: a
+ * donor-conceived brother was named a full brother). 'one' with the shared parent, 'none', or null
+ * when they share both or a genetic parent is not known.
+ */
+function geneticSibship(graph, a, b) {
+  const ga = geneticOf(graph, a), gb = geneticOf(graph, b);
+  if (!ga || !gb || ga.some((x) => !x) || gb.some((x) => !x)) return null;
+  const shared = ga.filter((x) => gb.includes(x));
+  if (shared.length >= 2) return null;
+  return shared.length === 1 ? { kind: 'one', parent: shared[0] } : { kind: 'none' };
+}
+/** A drawn parent who is not the genetic parent (a donor's gamete stood in): true only when known. */
+function notGeneticParent(graph, child, parent) {
+  const g = geneticOf(graph, child);
+  return !!(g && g.every(Boolean) && !g.includes(parent));
+}
 
 function parentage(graph) {
   const unionById = new Map(graph.unions.map((u) => [u.id, u]));
@@ -144,7 +169,7 @@ function bloodTr(graph, r, id) {
   const sideTr = parentSex === 'female' ? 'anne tarafı' : parentSex === 'male' ? 'baba tarafı' : null;
   const halfTag = half ? ' (yarım)' : '';
   if (n === 0) {
-    if (m === 1) return word(sex, 'Baba', 'Anne', 'Ebeveyn');
+    if (m === 1) return word(sex, 'Baba', 'Anne', 'Ebeveyn') + (notGeneticParent(graph, path[0], id) ? ' (genetik bağ yok)' : '');
     if (m === 2) {
       if (parentSex === 'female') return word(sex, 'Dede (anne tarafı)', 'Anneanne', 'Büyük ebeveyn (anne tarafı)');
       if (parentSex === 'male') return word(sex, 'Dede (baba tarafı)', 'Babaanne', 'Büyük ebeveyn (baba tarafı)');
@@ -164,8 +189,10 @@ function bloodTr(graph, r, id) {
     return `Torunu (${n - 1}. kuşak)`;
   }
   if (m === 1 && n === 1) {
-    if (half) {
-      const shared = path[1];
+    const g = !half ? geneticSibship(graph, path[0], id) : null;
+    if (g && g.kind === 'none') return `${word(sex, 'Erkek kardeş', 'Kız kardeş', 'Kardeş')} (genetik bağ yok)`;
+    if (half || g) {
+      const shared = g ? g.parent : path[1];
       const via = sexOf(graph, shared) === 'female' ? 'Anne bir' : sexOf(graph, shared) === 'male' ? 'Baba bir' : 'Yarım';
       return `${via} ${word(sex, 'erkek kardeş', 'kız kardeş', 'kardeş')}`;
     }
@@ -228,7 +255,7 @@ function bloodEn(graph, r, id) {
   const side = parentSex === 'female' ? 'maternal' : parentSex === 'male' ? 'paternal' : null;
   const halfTag = half ? ' (half)' : '';
   if (n === 0) {
-    if (m === 1) return word(sex, 'Father', 'Mother', 'Parent');
+    if (m === 1) return word(sex, 'Father', 'Mother', 'Parent') + (notGeneticParent(graph, path[0], id) ? ' (not genetically related)' : '');
     const greats = 'great-'.repeat(Math.max(0, m - 2));
     return capEn(`${side ? `${side} ` : ''}${greats}${word(sex, 'grandfather', 'grandmother', 'grandparent')}`);
   }
@@ -237,8 +264,10 @@ function bloodEn(graph, r, id) {
     return capEn(`${'great-'.repeat(n - 2)}grandchild`);
   }
   if (m === 1 && n === 1) {
-    if (half) {
-      const shared = sexOf(graph, path[1]);
+    const g = !half ? geneticSibship(graph, path[0], id) : null;
+    if (g && g.kind === 'none') return `${word(sex, 'Brother', 'Sister', 'Sibling')} (not genetically related)`;
+    if (half || g) {
+      const shared = sexOf(graph, g ? g.parent : path[1]);
       return `${word(sex, 'Half-brother', 'Half-sister', 'Half-sibling')}${shared === 'female' ? ' (same mother)' : shared === 'male' ? ' (same father)' : ''}`;
     }
     return word(sex, 'Brother', 'Sister', 'Sibling');
@@ -281,8 +310,20 @@ export function kinAnchor(graph) {
 }
 
 /** What `id` is to the proband, in `lang` (default: the interface's); null when the drawing does not say. */
+const DONOR_TR = { sperm_donor: 'Sperm donörü', egg_donor: 'Yumurta donörü', gestational_carrier: 'Gestasyonel taşıyıcı', surrogate: 'Taşıyıcı anne' };
+const DONOR_EN = { sperm_donor: 'Sperm donor', egg_donor: 'Egg donor', gestational_carrier: 'Gestational carrier', surrogate: 'Surrogate' };
+
 export function kinTerm(graph, id, lang = currentLang()) {
   const anchor = kinAnchor(graph);
+  // a donor or a carrier: named by the role, and for whom (Codex audit 2026-11-12: a sperm donor had no name)
+  const link = (graph.reproductiveLinks || []).find((l) => l.personId === id && REPRO_ROLES.includes(l.role));
+  if (link && id !== anchor) {
+    const role = (lang === 'en' ? DONOR_EN : DONOR_TR)[link.role];
+    if (link.childId === anchor) return role;
+    const r = relationTo(graph, anchor, link.childId);
+    const whose = r ? (lang === 'en' ? termEn(graph, r, link.childId) : termTr(graph, r, link.childId)) : null;
+    return whose ? `${role} (${lang === 'en' ? `for the ${whose.toLowerCase()}` : `${whose.toLocaleLowerCase('tr')} için`})` : role;
+  }
   const r = relationTo(graph, anchor, id);
   if (!r) return null;
   return lang === 'en' ? termEn(graph, r, id) : termTr(graph, r, id);
