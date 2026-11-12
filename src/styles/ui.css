@@ -40,6 +40,7 @@
   --bar-base: #ffffff;       /* what the top bar's tint is mixed into */
   --ring-rgb: 255, 255, 255; /* the ring's parts, as see-through as chosen (--ring-alpha) */
   --ring-hover-rgb: 238, 242, 247;
+  --ring-off-rgb: 246, 247, 248;
   /* the side panel: grey with a touch of the theme colour, so it stands apart from the white drawing (2026-11-09) */
   --panel: color-mix(in srgb, var(--accent) 7%, var(--sunken));
 
@@ -194,6 +195,7 @@ button, input, select, textarea { font-family: inherit; }
   --bar-base: #1b2028;
   --ring-rgb: 34, 41, 52;
   --ring-hover-rgb: 52, 61, 75;
+  --ring-off-rgb: 28, 33, 41;
   --panel: color-mix(in srgb, var(--accent) 8%, #171c24);
   --accent-ink: color-mix(in srgb, var(--accent) 38%, #ffffff);
   --accent-soft: color-mix(in srgb, var(--accent) 32%, #1f2630);
@@ -431,7 +433,13 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .radial-sector text { font: 600 calc(12px * var(--fit, 1))/1 var(--font-ui); fill: var(--ink); pointer-events: none; user-select: none; transition: fill 0.15s; }
 .radial-sector:hover path, .radial-sector.on path { fill: var(--accent-soft); stroke: var(--accent-line); }
 .radial-sector:hover text, .radial-sector.on text { fill: var(--accent-ink); }
-.radial-sector.off path { fill: rgba(246, 247, 248, var(--ring-alpha)); }
+.radial-sector.off path { fill: rgba(var(--ring-off-rgb), var(--ring-alpha)); }
+/* a ring mostly see-through at night: its words stand over the light paper, so they take the drawing's
+   dark ink (Codex audit 2026-11-12: light words on the paper at 100 % could not be read) */
+:root[data-mode="dark"][data-ring-clear="high"] .radial-menu {
+  --ink: #19283d; --ink-2: #2b3442; --muted: #475569; --faint: #5b687a;
+  --accent-ink: color-mix(in srgb, var(--accent) 80%, #000000);
+}
 .radial-sector.off text { fill: #a8afb8; }
 .radial-sector.off:hover path, .radial-sector.off.on path { fill: var(--sunken); stroke: var(--line); }
 .radial-sector.off:hover text, .radial-sector.off.on text { fill: var(--muted); }
@@ -722,6 +730,8 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 
 /* printing (App.jsx handlePrint): only the drawing, fitted to one A4 page */
 #print-root { display: none; }
+/* a print is always black on white, night or day */
+@media print { :root { color-scheme: light; } html, body { background: #ffffff !important; } }
 @media print {
   .app-shell, .tour, .tour-offer { display: none !important; }
   #print-root { display: flex !important; flex-direction: column; width: 100%; height: 100vh; }

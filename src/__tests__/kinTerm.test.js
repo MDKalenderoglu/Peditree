@@ -117,6 +117,27 @@ describe('Turkish names, from the proband', () => {
   });
 });
 
+describe('assisted reproduction (Codex audit 2026-11-12)', () => {
+  it('a brother conceived with a sperm donor is a half brother by the mother; the donor is named; the drawn father is not his genetic father', () => {
+    S().addSiblingOfCategory('male');
+    const brother = S().wizardData.siblings.male[0].id;
+    const [donor] = add(() => S().addReproductiveLink(brother, 'sperm_donor'));
+    expect(term(brother)).toBe('Anne bir erkek kardeş');
+    expect(term(brother, 'en')).toBe('Half-brother (same mother)');
+    expect(term(donor)).toBe('Sperm donörü (anne bir erkek kardeş için)');
+    expect(term(donor, 'en')).toBe('Sperm donor (for the half-brother (same mother))');
+    // the father is still the proband's own father
+    expect(term('father')).toBe('Baba');
+  });
+  it('the proband conceived with a sperm donor: the drawn father is the father, not genetically related', () => {
+    const [donor] = add(() => S().addReproductiveLink('proband', 'sperm_donor'));
+    expect(term('father')).toBe('Baba (genetik bağ yok)');
+    expect(term('father', 'en')).toBe('Father (not genetically related)');
+    expect(term(donor)).toBe('Sperm donörü');
+    expect(term('mother')).toBe('Anne');
+  });
+});
+
 describe('English names', () => {
   it('NSGC terms', () => {
     S().updateRelativeCount('maternalRelatives', 'aunts', 1);

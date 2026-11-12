@@ -156,7 +156,11 @@ export function computeGenerations(graph, anchorId = 'proband', anchorGeneration
   const before = new Map(individuals.map(i => [i.id, i.generation]));
   const side = (x, y) => Math.sign((before.get(x) ?? 0) - (before.get(y) ?? 0)); // +1: x below y
   // how many rows apart they stood (one at least: partners from different generations)
-  const apart = (x, y) => Math.max(1, Math.abs((before.get(x) ?? 0) - (before.get(y) ?? 0)));
+  // (at most 8: a gap carried from a file never exceeds what a family can show; Codex audit 2026-11-12)
+  const apart = (x, y) => {
+    const d = Math.abs((before.get(x) ?? 0) - (before.get(y) ?? 0));
+    return Number.isFinite(d) ? Math.min(8, Math.max(1, d)) : 1;
+  };
   for (let progress = true; progress;) {
     progress = false;
     for (const unionId of crossGen) {
