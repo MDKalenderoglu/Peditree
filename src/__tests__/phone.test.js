@@ -65,7 +65,7 @@ describe('the top bar: Menü with every action named, the patient, Kaydet', () =
   it('Menü lists every action by name; Ayarlar from there opens the settings', async () => {
     await click(named('Menü', $('.toolbar')));
     const items = [...$('.more-popover').querySelectorAll('b')].map((b) => b.textContent);
-    expect(items).toEqual(['Geri al', 'Yinele', 'Yeni', 'Aç', 'Konumlandır', 'Yazdır', 'Paylaş', 'Ayarlar', 'Tanıtım turu', 'Atıf', 'Geri bildirim', 'PediTree hakkında']);
+    expect(items).toEqual(['Geri al', 'Yinele', 'Yeni', 'Aç', 'Konumlandır', 'Yazdır', 'Ayarlar', 'Tanıtım turu', 'Atıf', 'Geri bildirim', 'PediTree hakkında']);
     await click([...$('.more-popover').querySelectorAll('.download-item')].find((b) => b.textContent.includes('Ayarlar')));
     // a phone's Ayarlar: the whole screen, a list of sections in a phone's words, then the one chosen with a way back
     const dialog = $('.settings-dialog.touch');
@@ -169,6 +169,8 @@ describe('the tour on a phone', () => {
     await next('t-patient');
     await next('t-save');
     expect($('.download-popover')).not.toBeNull();
+    await next('t-share');
+    expect($('.download-popover')).toBeNull();
     await click($('.tour-close'));
     expect($('.tour')).toBeNull();
   });
@@ -333,7 +335,7 @@ describe('the phone, fourth request (clinician 2026-11-12)', () => {
     expect(pop).not.toBeNull();
     expect([...pop.querySelectorAll('b')].map((b) => b.textContent)).toEqual(['Yeni aile', 'Çocuksuz / infertil çift', 'Akraba evliliği']);
     const css = readFileSync(join(process.cwd(), 'src/styles/ui.css'), 'utf8');
-    expect(css).toMatch(/\.toolbar\.touch-bar \.toolbar-group > \.keys-wrap:not\(\[data-popup="download"\]\), \.toolbar\.touch-bar \.toolbar-end > \.keys-wrap:not\(\.toolbar-more\) \{ display: contents; \}/);
+    expect(css).toMatch(/\.toolbar\.touch-bar \.toolbar-group > \.keys-wrap:not\(\[data-popup="download"\]\):not\(\[data-popup="share"\]\), \.toolbar\.touch-bar \.toolbar-end > \.keys-wrap:not\(\.toolbar-more\) \{ display: contents; \}/);
     // the bar (and what it opens) above the person's sheet
     const z = (sel) => Number((new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' \\{[^}]*z-index: (\\d+)').exec(css) || [])[1]);
     expect(z('.toolbar.touch-bar')).toBeGreaterThan(z('.app-shell.touch .touch-sheet'));
@@ -380,6 +382,18 @@ describe('a couple without children (clinician request 2026-11-12)', () => {
     } finally {
       confirm.mockRestore();
     }
+  });
+});
+
+describe('the phone bar: the logo at the left, Kaydet and Paylaş by their icons, Menü at the right (clinician request 2026-11-12)', () => {
+  it('Kaydet is named for screen readers; Paylaş on the bar opens the choice of sending with or without the name', async () => {
+    const save = $('.toolbar [data-popup="download"] > button');
+    expect(save.getAttribute('aria-label')).toBe('Kaydet');
+    expect(save.querySelector('.save-word')).not.toBeNull();
+    await run(() => S().setPatientName('Ayşe Yılmaz'));
+    await click($('.toolbar [data-popup="share"] > button'));
+    expect($('.toolbar [data-popup="share"] .keys-popover')).not.toBeNull();
+    await run(() => S().setPatientName(''));
   });
 });
 

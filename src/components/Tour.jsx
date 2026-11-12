@@ -10,7 +10,7 @@
  * prepare(ctx) }. A part of the top bar that went into "Diğer" (⋯) on a narrow screen is shown there.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Shapes, CircleDot, UserPlus, HeartPulse, Stethoscope, Users, ListChecks, PanelRight, IdCard, ArrowLeftRight, Link2, CalendarDays, Save, FolderOpen, FilePlus2, Printer, CheckSquare, SlidersHorizontal, Info, CircleHelp } from 'lucide-react';
+import { Shapes, CircleDot, UserPlus, HeartPulse, Stethoscope, Users, ListChecks, PanelRight, IdCard, ArrowLeftRight, Link2, CalendarDays, Save, FolderOpen, FilePlus2, Printer, CheckSquare, SlidersHorizontal, Info, CircleHelp, Share2 } from 'lucide-react';
 import { useT, tk, t as tNow } from '../i18n';
 import TidyIcon from './TidyIcon';
 
@@ -180,14 +180,17 @@ export const TOUCH_STEPS = [
     text: CHILDLESS_TEXT,
     target: () => one('.toolbar [data-popup="new"] .keys-popover'), prepare: (c) => { c.clear(); c.openNew(); } },
   { id: 't-menu', icon: ListChecks, title: tk('Menü'),
-    text: tk('Geri al, Yinele, Yeni, Aç, Konumlandır, Yazdır, Paylaş, Ayarlar ve bu tur Menü’de yer alır.'),
+    text: tk('Geri al, Yinele, Yeni, Aç, Konumlandır, Yazdır, Ayarlar ve bu tur sağ üstteki Menü’de yer alır.'),
     target: () => one('.toolbar .more-popover'), prepare: (c) => { c.clear(); c.openMenu(); } },
   { id: 't-patient', icon: CalendarDays, title: tk('Hasta adı ve doğum tarihi'),
     text: tk('Hasta adı çizimin başlığında ve kaydedilen dosyaların adında yer alır. Probandın doğum tarihi girildiğinde yaşı bugünün tarihine göre hesaplanır.'),
     target: () => one('.toolbar .patient-btn'), prepare: (c) => c.clear() },
   { id: 't-save', icon: Save, title: tk('Kaydetmek'),
-    text: tk('Çizim yalnızca bu sekmede tutulur ve sekme kapandığında silinir. Kaydet menüsünden çizimi resim olarak alabilir ya da sonra açıp düzenlemek için PediTree dosyası olarak saklayabilirsiniz.'),
+    text: tk('Çizim yalnızca bu sekmede tutulur ve sekme kapandığında silinir. Üst çubuktaki disket simgesi (Kaydet) çizimi resim olarak ya da sonra açıp düzenlemek için PediTree dosyası olarak saklar.'),
     target: () => one('.toolbar .download-popover'), prepare: (c) => { c.clear(); c.openSave(); } },
+  { id: 't-share', icon: Share2, title: tk('Paylaşmak'),
+    text: tk('Yanındaki paylaş simgesi pedigrinin resmini WhatsApp, e-posta gibi telefonunuzdaki bir uygulamayla gönderir; isterseniz hasta adı olmadan.'),
+    target: () => one('.toolbar [data-popup="share"] > button'), prepare: (c) => c.clear() },
   { id: 't-again', icon: CircleHelp, title: tk('Turu yeniden açmak'),
     text: tk('Tura istediğiniz zaman Menü’deki Tanıtım turu ile yeniden ulaşabilirsiniz. İyi çalışmalar dileriz.'),
     target: () => one('.toolbar .touch-menu-btn'), prepare: (c) => c.clear() },
