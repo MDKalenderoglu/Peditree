@@ -95,6 +95,10 @@ button, input, select, textarea { font-family: inherit; }
   height: 100dvh; /* the part of the screen a tablet's browser leaves free */
 }
 .app-shell > .toolbar { grid-column: 1 / -1; }
+/* a computer: the page round the side panel is the drawing's paper (its squares or dots painted on it by
+   paper.js, lined up with the drawing's), so the panel opens and closes on the canvas, not in a strip of
+   its own (clinician request 2026-11-12) */
+.app-shell:not(.touch) { background-color: var(--paper); }
 .app-shell.has-editor { grid-template-columns: minmax(0, 1fr) var(--panel-w, 328px); }
 /* the edge between the drawing and the side panel, dragged to resize the panel (App PanelResizer; 2026-11-07) */
 /* the panel and its edge share the second column of the second row (explicit, or the edge would push the panel away) */
