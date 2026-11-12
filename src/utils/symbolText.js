@@ -89,9 +89,26 @@ export function textBox(d, { bracketed = !!d.adoptedOut } = {}) {
   line([filled(d.condition) ? d.condition.slice(0, CONDITION_MAX) : ''], 10);
   if (hasNoteNumber(d)) line(['[99]'], 9);
   const halfText = widths.length ? Math.max(...widths) / 2 : 0;
-  const shift = d.proband || d.consultand ? TEXT.PROBAND_SHIFT : 0;
+  const arrow = !!(d.proband || d.consultand);
+  const shift = arrow ? TEXT.PROBAND_SHIFT : 0;
   const depth = lines || genetic
-    ? half + (TEXT.FIRST + lines * TEXT.LINE + genetic * TEXT.GENETIC) * SCALE + (bracketed ? TEXT.ADOPTED_EXTRA : 0)
+    ? half + (TEXT.FIRST + lines * TEXT.LINE + genetic * TEXT.GENETIC) * SCALE + (bracketed ? TEXT.ADOPTED_EXTRA : 0) + belowArrow(d, widths.length ? widths[0] / 2 : 0)
     : half;
-  return { left: Math.max(half, halfText - shift), right: Math.max(half, halfText ? halfText + shift : 0), depth };
+  // the arrow stands at the lower left, or at the lower right where a line takes the left (PedigreeCanvas,
+  // clinician report 2026-11-12): the lines move away from it, to either side — room on both
+  const reach = Math.max(half, halfText ? halfText + shift : 0);
+  return { left: arrow ? reach : Math.max(half, halfText - shift), right: reach, depth };
+}
+
+/**
+ * The first line under the proband's / consultand's symbol so wide that, moved aside from the arrow, it may
+ * still reach the arrow's tip (the LMP under a pregnancy, a long label): room is kept for the lines to start
+ * below the arrow — the drawing moves them there only when, measured, they do reach it (PedigreeCanvas;
+ * clinician report 2026-11-12). Returns that room in px (0 for everyone else).
+ */
+export const ARROW_DROP = 22;
+export function belowArrow(d, firstHalf) {
+  if (!(d.proband || d.consultand)) return 0;
+  const half = isSmallSymbol(d) ? TEXT.LOSS : TEXT.HALF;
+  return firstHalf > TEXT.PROBAND_SHIFT + half + 3 ? ARROW_DROP * SCALE : 0;
 }

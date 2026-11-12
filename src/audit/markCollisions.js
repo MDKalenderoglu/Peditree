@@ -18,7 +18,10 @@
  * version replaced the clinician's family with the test family).
  */
 
-const CLEAR = 2; // px a mark keeps from anything else
+const CLEAR = 2; // px a mark keeps from anything else, in the drawing's own units (scaled to the screen below)
+// the drawing's scale on screen while measuring: a tablet or a phone shows the same drawing smaller or larger, and
+// 2 px on a drawing shown at half size are 4 of its own units (2026-11-12: the audit flagged nothing new at 720 px)
+let K = 1;
 const STEP = 2;  // px between sampled points along a line
 
 /** A family with every mark combination, built with the ordinary operations. */
@@ -88,8 +91,8 @@ const boxOf = (el) => {
   const r = el.getBoundingClientRect();
   return { x1: r.left, y1: r.top, x2: r.right, y2: r.bottom };
 };
-const overlaps = (a, b) => Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1) > -CLEAR && Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1) > -CLEAR;
-const inside = (p, b, c = CLEAR) => p.x > b.x1 - c && p.x < b.x2 + c && p.y > b.y1 - c && p.y < b.y2 + c;
+const overlaps = (a, b) => Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1) > -CLEAR * K && Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1) > -CLEAR * K;
+const inside = (p, b, c = CLEAR * K) => p.x > b.x1 - c && p.x < b.x2 + c && p.y > b.y1 - c && p.y < b.y2 + c;
 // a connector as points along it, in screen coordinates (any shape: polylines, line jumps)
 function samples(el) {
   const m = el.getScreenCTM();
@@ -113,6 +116,7 @@ function samples(el) {
  */
 export function findMarkCollisions(svg) {
   const viewport = svg.querySelector('.pedigree-viewport');
+  K = (viewport.getScreenCTM && viewport.getScreenCTM()?.a) || 1;
   const out = [];
   const items = [];
   // connectors: the viewport's own lines (not those inside a person's group)
@@ -151,7 +155,7 @@ export function findMarkCollisions(svg) {
   // a mark against a line
   for (const a of items) {
     // a line may end at a bracket (a relationship line meets it), never run into it
-    if (lines.some((pts) => pts.some((p) => inside(p, a.box, a.kind === 'bracket' ? 0 : CLEAR)))) out.push({ what: a.kind, with: 'line', person: a.person });
+    if (lines.some((pts) => pts.some((p) => inside(p, a.box, a.kind === 'bracket' ? 0 : CLEAR * K)))) out.push({ what: a.kind, with: 'line', person: a.person });
   }
   // a mark against another mark (the parts of one mark kind of one person are laid out together)
   for (let i = 0; i < items.length; i++) {
@@ -181,9 +185,64 @@ export async function runMarkAudit(store, { measure, storage, settle = 400 } = {
   try {
     buildMarkFamily(store);
     if (settle) await new Promise((r) => setTimeout(r, settle));
-    return measure ? measure({ store, findMarkCollisions }) : findMarkCollisions(document.querySelector('.pedigree-viewport').ownerSVGElement);
+    // awaited here: a measure that takes its time (the arrow sweep) runs before the family is put back
+    return await (measure ? measure({ store, findMarkCollisions }) : findMarkCollisions(document.querySelector('.pedigree-viewport').ownerSVGElement));
   } finally {
     store.setState(before, true);
     if (ss) for (const [k, v] of saved) { if (v === null) ss.removeItem(k); else ss.setItem(k, v); }
   }
 }
+
+/**
+ * The arrow on every person (clinician report 2026-11-12: after the consultand changed, the arrow lay on the
+ * infertility bars; "check the other cases too"). On the mark family and on a childless couple with a
+ * married sibling and children, each person in turn is made the consultand, and each the proband; what the
+ * arrow or "P" then touches is listed — [{ family, role, person, what, with }]. The open family is put back.
+ */
+export async function runArrowSweep(store, { storage, settle = 250 } = {}) {
+  const wait = () => new Promise((r) => setTimeout(r, settle));
+  const svg = () => document.querySelector('.pedigree-viewport').ownerSVGElement;
+  const S = () => store.getState();
+  const families = {
+    marks: () => buildMarkFamily(store),
+    childless: () => {
+      S().newChildlessCouple('infertile');
+      S().addSiblingTo('proband', 'female');
+      const sis = S().doc.graph.parentChildRelationships.find((r) => r.children.includes('proband')).children.find((c) => c !== 'proband');
+      S().addSpouseTo(sis, 'male');
+      const u = S().doc.graph.unions.find((x) => x.partners.includes(sis)).id;
+      S().addChildToUnion(u, 'male');
+      S().addChildToUnion(u, 'female');
+      S().clearSelection();
+    },
+  };
+  const out = [];
+  await runMarkAudit(store, {
+    storage,
+    settle: 0,
+    measure: async () => {
+      for (const [family, build] of Object.entries(families)) {
+        build();
+        const people = S().doc.graph.individuals.filter((i) => !i.placeholder).map((i) => i.id);
+        for (const role of ['consultand', 'proband']) {
+          for (const id of people) {
+            const start = S().doc;
+            const r = role === 'consultand' ? S().setConsultand(id) : S().setProband(id);
+            if (!r || !r.ok) continue; // a pregnancy, a group …: no arrow for them
+            await wait();
+            const number = [...document.querySelectorAll('.node-group')].find((n) => n.__data__ && n.__data__.id === id)?.querySelector('.pedigree-number')?.textContent;
+            for (const c of findMarkCollisions(svg())) {
+              const arrowPart = (c.what === 'arrow' || c.what === 'P') ? c.person === number : /^(arrow|P)\b/.test(c.with) && (c.with.includes(`(${number})`) || c.person === number);
+              if (arrowPart) out.push({ family, role, person: number || id, what: c.what, with: c.with });
+            }
+            store.setState({ doc: start }); // back to the family as built, for the next person
+            S().refreshLayout && S().refreshLayout();
+          }
+        }
+      }
+      return out;
+    },
+  });
+  return out;
+}
+
