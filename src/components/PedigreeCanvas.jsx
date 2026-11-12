@@ -1252,10 +1252,10 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       />
       {anchor && renderQuickBar && !editing && renderQuickBar(anchor, panBy)}
       {editing && (
-        <input className="inline-edit" autoFocus defaultValue={editing.value}
+        <input className="input inline-edit" autoFocus defaultValue={editing.value}
           placeholder={editing.kind === 'childlessReason' ? t('Sebep (örn. azospermi, tercih)') : undefined}
           aria-label={editing.kind === 'childlessReason' ? t('Çocuksuzluğun sebebi') : undefined}
-          style={{ left: editing.x - 6, top: editing.y - 5, width: Math.max(editing.w + 60, 160), height: Math.max(editing.h + 10, 28) }}
+          style={{ left: editing.x - 6, top: editing.y + (editing.h - 32) / 2, width: Math.max(editing.w + 60, 230) }}
           onKeyDown={e => {
             if (e.key === 'Enter') finishEdit(e.currentTarget.value);
             if (e.key === 'Escape') { committed.current = true; setEditing(null); }

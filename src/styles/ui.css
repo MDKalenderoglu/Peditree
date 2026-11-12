@@ -596,11 +596,10 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 /* the childless bars' click area stays unseen; the bars and the reason take the accent while it is pointed at */
 #pedigree-svg rect.childless-hit.editable:hover { fill: transparent; }
 #pedigree-svg .childless-mark:hover line { stroke: var(--accent); }
+/* a box for text on the drawing: the app's own text box (.input), floating like the ring's cards */
 .inline-edit {
-  position: absolute; z-index: 20; box-sizing: border-box; padding: 3px 8px;
-  font: 500 13px/1 var(--font-drawing); color: var(--ink);
-  background: var(--surface); border: 1.5px solid var(--accent); border-radius: var(--radius-sm);
-  box-shadow: var(--focus), 0 4px 14px rgba(24, 33, 44, 0.14); outline: none;
+  position: absolute; z-index: 20;
+  border-color: var(--accent); box-shadow: var(--focus), var(--shadow-pop);
 }
 
 /* ── tablet: finger and pen (clinician request 2026-10-25) ── */
