@@ -185,3 +185,48 @@ describe('partners two or three generations apart in busy families: drawn clean 
     expect([...r.codes, ...r.readCodes]).toEqual([]);
   });
 });
+
+describe('a great-grandfather’s second marriage two generations down (clinician report 2026-11-12)', () => {
+  // three founder couples; the twins' sister marries the first couple's son, their brother marries the
+  // third couple's daughter; the two grandchildren (cousins) marry; the third couple's husband also
+  // married the first grandchild. Laid out afresh ("Konumlandır")
+  const P = (id, sex, extra = {}) => ({ id, sex, affected: false, carrier: false, deceased: false, proband: false, notes: '', ...extra });
+  async function family() {
+    const { createDocument } = await import('../graph/document');
+    const { serializeDocument } = await import('../graph/persistenceV2');
+    const U = (id, x, y, extra = {}) => ({ id, partners: [x, y], status: 'married', consanguineous: false, ...extra });
+    const R = (unionId, children, extra = {}) => ({ unionId, children, orderPolicy: 'insertion', ...extra });
+    const doc = createDocument({
+      individuals: [P('p1', 'male'), P('p2', 'female'), P('p3', 'male'), P('p4', 'female'), P('p5', 'male'), P('p6', 'female'),
+        P('a', 'male'), P('b', 'female'), P('c', 'male'), P('d', 'female'), P('e', 'female'), P('f', 'male'), P('proband', 'male', { proband: true, affected: true })],
+      unions: [U('U1', 'p1', 'p2'), U('U2', 'p3', 'p4'), U('U3', 'p5', 'p6'), U('U4', 'a', 'b'), U('U5', 'c', 'd'), U('U6', 'f', 'e'), U('U7', 'p5', 'e', { crossGeneration: true })],
+      parentChildRelationships: [R('U1', ['a']), R('U2', ['b', 'c'], { multiples: [{ id: 'M1', children: ['b', 'c'], zygosity: 'dizygotic' }] }),
+        R('U3', ['d']), R('U4', ['e']), R('U5', ['f']), R('U6', ['proband'])],
+      socialParentLinks: [],
+    });
+    expect(S().openProjectFile(serializeDocument(doc)).ok).toBe(true);
+    S().relayout();
+    return S().pedigreeData;
+  }
+
+  it('every only child stands right under its parents: no needless step in a line of descent', async () => {
+    const data = await family();
+    const drops = new Map(data.edges.filter(e => e.type === 'parentChildDrop').map(e => [e.unionId, e.x1]));
+    const steps = data.edges.filter(e => e.type === 'childStem' && !e.twin && Math.abs(e.x1 - drops.get(e.unionId)) > 0.5)
+      .map(e => `${e.unionId} ${Math.round(e.x1 - drops.get(e.unionId))} px`);
+    expect(steps).toEqual([]);
+    expect(checkAllInvariants(data)).toEqual([]);
+    expect(checkConnectorReadability(data)).toEqual([]);
+  });
+
+  it('the second marriage’s line runs straight down to the lower row and never over the husband’s own children', async () => {
+    const data = await family();
+    const legs = data.edges.filter(e => e.unionId === 'U7' && e.crossGeneration);
+    const ownDrop = data.edges.find(e => e.type === 'parentChildDrop' && e.unionId === 'U3');
+    const bridges = legs.flatMap(e => e.bridges || []);
+    expect(bridges.some(x => Math.abs(x - ownDrop.x1) < 1)).toBe(false);
+    // one way down past the row in between: no sideways step between the kept place and the stand-in
+    const sideways = legs.filter(e => e.y1 === e.y2 && e.y1 > data.nodes.find(n => n.id === 'a').y);
+    expect(sideways).toEqual([]);
+  });
+});

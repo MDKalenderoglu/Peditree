@@ -489,19 +489,41 @@ export function computePclLayout(inputGraph, opts = {}) {
       const h = isSmallSymbol(up) ? 14 : 20;
       const sideTaken = neighbour !== undefined && S.isPartners(link.upper, neighbour);
       term.d = dir * (sideTaken ? h - 4 : h + (S.bracketed && S.bracketed.has(link.upper) ? XLINK_BRACKET : 0) + XLINK_STUB);
-      term.w = W_XLINK_ALIGN;
+      // a place that cannot get there — someone stands between it and the point under the upper
+      // partner — is not pulled at all: pulled, it pressed on the people in the way and bent their
+      // lines of descent (clinician report 2026-11-12: a needless step under a couple far off)
+      const own = rows.get(S.indById.get(link.ghost).generation);
+      const k = rowPos.get(link.ghost);
+      const target = xs0[term.idx[1]] + term.d;
+      const left = own[k - 1], right = own[k + 1];
+      const blocked = (left !== undefined && index.has(left) && target < xs0[index.get(left)])
+        || (right !== undefined && index.has(right) && target > xs0[index.get(right)]);
+      term.w = blocked ? 0 : W_XLINK_ALIGN;
     }
-    // the kept places on the rows in between stand one under another, so the line runs straight
+    // the kept places on the rows in between, and the stand-in below the last of them, stand one
+    // under another, so the line runs straight down — where nobody stands in the way (pulled through
+    // someone, a place pressed on them; clinician report 2026-11-12: a line in many steps)
     const byUnion = new Map();
     for (const { link, term } of xlinkTerms) {
-      if (!link.pass) continue;
       const key = link.ghost.replace(/__\d+$/, '').replace(/__-?\d+$/, '');
       if (!byUnion.has(key)) byUnion.set(key, []);
       byUnion.get(key).push(term.idx[0]);
     }
+    const reachable = (i, target) => {
+      const id = ids[i];
+      const own = rows.get(S.indById.get(id).generation);
+      const k = rowPos.get(id);
+      const left = own[k - 1], right = own[k + 1];
+      return !((left !== undefined && index.has(left) && target < xs0[index.get(left)])
+        || (right !== undefined && index.has(right) && target > xs0[index.get(right)]));
+    };
     for (const list of byUnion.values()) {
+      if (list.length < 2) continue;
       list.sort((p, q) => S.indById.get(ids[p]).generation - S.indById.get(ids[q]).generation);
-      for (let k = 1; k < list.length; k++) terms.push({ w: W_CENTRE_EXACT, idx: [list[k], list[k - 1]], c: [1, -1], d: 0 });
+      for (let k = 1; k < list.length; k++) {
+        if (!reachable(list[k], xs0[list[k - 1]])) continue;
+        terms.push({ w: W_CENTRE_EXACT, idx: [list[k], list[k - 1]], c: [1, -1], d: 0 });
+      }
     }
     solution = solveSeparatedQP(n, layers, terms, solution.x);
     qpIterations += solution.iterations;

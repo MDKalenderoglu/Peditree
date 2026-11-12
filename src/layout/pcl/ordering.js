@@ -20,6 +20,8 @@
 // who has parents (a descent stem) adds a bridged crossing; a founder or
 // married-in spouse (no stem) adds only length.
 const W_CROSS = 10;
+const W_XCROSS = 4;         // a cross-generation line over a line of descent: less than two lines of
+                           // descent crossing (children drawn away from their parents read worse)
 const W_ALIGN = 0.5;       // per slot of horizontal descent offset (sibship
                            // centre vs. its parents' union midpoint)
 const W_LANE = 8;          // partners not adjacent at all
@@ -72,9 +74,45 @@ function unionMid(S, uid, pos) {
   return (pos.get(a) + pos.get(b)) / 2;
 }
 
+/**
+ * The legs of every cross-generation relationship line, one per pair of neighbouring rows:
+ * [upper partner, kept place on each row in between …, stand-in beside the lower partner], as
+ * { top, bottom, gen } (gen = the lower row of the leg). A leg that crosses a line of descent between
+ * the same two rows is a crossing like any other (clinician report 2026-11-12: a great-grandfather's
+ * second marriage drawn round the whole family, over his own children's line).
+ */
+function crossLegs(S, has) {
+  const chains = new Map();
+  for (const { ghost, upper } of S.crossLinks || []) {
+    if (!has(ghost) || !has(upper)) continue;
+    const ind = S.indById.get(ghost);
+    const key = ind.crossGenerationPass ? ghost.slice(0, ghost.lastIndexOf('__')) : ghost;
+    if (!chains.has(key)) chains.set(key, [upper]);
+    chains.get(key).push(ghost);
+  }
+  const legs = [];
+  for (const chain of chains.values()) {
+    const rows = chain.slice().sort((a, b) => S.indById.get(a).generation - S.indById.get(b).generation);
+    for (let k = 1; k < rows.length; k++) legs.push({ top: rows[k - 1], bottom: rows[k], gen: S.indById.get(rows[k]).generation });
+  }
+  return legs;
+}
+
+/** Crossings of the cross-generation legs into `gen` with the descent edges [top, bottom] into it. */
+function legCrossings(legs, gen, edges, pos) {
+  let n = 0;
+  for (const l of legs) {
+    if (l.gen !== gen) continue;
+    const t = pos.get(l.top), b = pos.get(l.bottom);
+    for (const [top, bottom] of edges) if ((t - top) * (b - bottom) < 0) n++;
+  }
+  return n;
+}
+
 /** Ordering cost (lower is better). */
 export function orderingCost(S, order) {
   const pos = positionsFor(S, order);
+  const legs = crossLegs(S, (id) => pos.has(id));
   let cost = 0;
   for (const gen of S.gens) {
     const edges = [];
@@ -91,6 +129,7 @@ export function orderingCost(S, order) {
         if ((edges[i][0] - edges[j][0]) * (edges[i][1] - edges[j][1]) < 0) cost += W_CROSS;
       }
     }
+    cost += W_XCROSS * legCrossings(legs, gen, edges, pos);
   }
   const seqs = new Map(S.gens.map(g => [g, rowSequence(S, order, g)]));
   const idxIn = new Map();
@@ -174,6 +213,7 @@ class CostModel {
     // cross-generation partner ↔ stand-in pairs (they span two rows)
     this.xlinks = (S.crossLinks || []).filter(l => inComp.has(l.ghost) && inComp.has(l.upper))
       .map(l => ({ ...l, gGhost: S.indById.get(l.ghost).generation, gUpper: S.indById.get(l.upper).generation }));
+    this.legs = crossLegs(S, (id) => inComp.has(id));
     for (const g of gens) this.layoutRow(g);
   }
 
@@ -224,6 +264,7 @@ class CostModel {
         if ((tops[i] - tops[j]) * (bottoms[i] - bottoms[j]) < 0) cost += W_CROSS;
       }
     }
+    if (this.legs.length) cost += W_XCROSS * legCrossings(this.legs, childGen, tops.map((t, i) => [t, bottoms[i]]), pos);
     return cost;
   }
 
