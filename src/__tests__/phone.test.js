@@ -160,6 +160,8 @@ describe('the tour on a phone', () => {
     await next('t-details');
     expect($('.touch-sheet').classList.contains('sheet-full')).toBe(true);
     await next('t-couple');
+    expect($('.touch-sheet')).toBeNull(); // the line itself is shown, no details over it
+    await next('t-arrange');
     await next('t-menu');
     expect($('.more-popover')).not.toBeNull();
     await next('t-patient');
@@ -204,21 +206,20 @@ describe('the phone, third request (clinician 2026-11-12)', () => {
   };
   const full = () => $('.touch-sheet').classList.contains('sheet-full');
 
-  it('Konumlandır and Sığdır stand on the bar right of Hasta, and work', async () => {
-    const bar = [...$('.toolbar').children].filter((el) => getComputedStyle(el).display !== 'none');
+  it('Konumlandır and the full-screen button stand on the bar right of Hasta (Sığdır stays on the drawing, 2026-11-12)', async () => {
+    const bar = [...$('.toolbar').children];
     const at = (sel) => bar.findIndex((el) => el.matches(sel));
     expect(at('.touch-quick')).toBe(at('[data-popup="patient"]') + 1);
     const quick = $('.touch-quick');
-    expect(buttons(quick).map((b) => b.getAttribute('aria-label'))).toEqual(['Konumlandır', 'Sığdır']);
+    expect(buttons(quick).map((b) => b.getAttribute('aria-label'))).toEqual(['Konumlandır', 'Tam ekran']);
+    expect(named('Sığdır', $('.zoom-controls'))).toBeTruthy();
     await click(named('Konumlandır', quick));
     expect(S().layoutInfo.reason).toMatch(/Konumlandır/);
-    // Sığdır: the drawing's own fit button, also while a person's sheet hides the zoom buttons
-    let fitted = 0;
-    const fit = named('Sığdır', $('.zoom-controls'));
-    fit.addEventListener('click', () => { fitted++; });
-    await click(drawn('mother'));
-    await click(named('Sığdır', quick));
-    expect(fitted).toBe(1);
+    // a browser without full screen for pages (an iPhone): the button says how to get it
+    await click(named('Tam ekran', quick));
+    expect($('[data-popup="fullscreen"] .keys-popover').textContent).toMatch(/Ana Ekrana Ekle/);
+    await run(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+    expect($('[data-popup="fullscreen"] .keys-popover')).toBeNull();
   });
 
   it('the sheet: a tap on its head opens the details; drawn up from the tiles it opens, without pressing a tile; drawn down by the head it goes back', async () => {
@@ -270,3 +271,54 @@ describe('the page never stays shifted up (clinician report 2026-11-12, iPhone: 
     }
   });
 });
+
+describe('the phone, fourth request (clinician 2026-11-12)', () => {
+  it('a browser with full screen: the button asks it, and shows the way back', async () => {
+    const el = document.documentElement;
+    let asked = 0;
+    Object.defineProperty(document, 'fullscreenEnabled', { value: true, configurable: true });
+    el.requestFullscreen = () => { asked++; Object.defineProperty(document, 'fullscreenElement', { value: el, configurable: true }); document.dispatchEvent(new Event('fullscreenchange')); return Promise.resolve(); };
+    try {
+      // the hook reads the browser when the bar is drawn: draw it again
+      await run(() => useViewSettings.getState().setView({ touchMode: 'off' }));
+      await run(() => useViewSettings.getState().setView({ touchMode: 'auto' }));
+      await click(named('Tam ekran', $('.touch-quick')));
+      expect(asked).toBe(1);
+      expect(named('Tam ekrandan çık', $('.touch-quick'))).toBeTruthy();
+    } finally {
+      delete document.fullscreenEnabled; delete document.fullscreenElement; delete el.requestFullscreen;
+      document.dispatchEvent(new Event('fullscreenchange'));
+    }
+  });
+
+  it('Menü → Yeni opens its two choices (its window stood inside a hidden box); Menü opens over a person’s sheet', async () => {
+    await click(named('Menü', $('.toolbar')));
+    await click([...$('.more-popover').querySelectorAll('.download-item')].find((b) => b.textContent.includes('Yeni')));
+    const pop = $('.new-popover');
+    expect(pop).not.toBeNull();
+    expect([...pop.querySelectorAll('b')].map((b) => b.textContent)).toEqual(['Yeni aile', 'Akraba evliliği']);
+    const css = readFileSync(join(process.cwd(), 'src/styles/ui.css'), 'utf8');
+    expect(css).toMatch(/\.toolbar\.touch-bar \.toolbar-group > \.keys-wrap:not\(\[data-popup="download"\]\), \.toolbar\.touch-bar \.toolbar-end > \.keys-wrap:not\(\.toolbar-more\) \{ display: contents; \}/);
+    // the bar (and what it opens) above the person's sheet
+    const z = (sel) => Number((new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' \\{[^}]*z-index: (\\d+)').exec(css) || [])[1]);
+    expect(z('.toolbar.touch-bar')).toBeGreaterThan(z('.app-shell.touch .touch-sheet'));
+    await run(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+  });
+
+  it('the birth date typed as digits alone gets its dots, and is kept as a date', async () => {
+    await click(named('Hasta bilgileri'));
+    const box = $('.patient-popover .birth-date');
+    const typeKey = (ch) => run(() => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      setter.call(box, box.value + ch);
+      box.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    box.focus();
+    for (const ch of '12122000') await typeKey(ch);
+    expect(box.value).toBe('12.12.2000');
+    await run(() => box.blur());
+    expect(S().doc.graph.individuals.find((i) => i.proband).birthDate).toBe('2000-12-12');
+    await run(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+  });
+});
+

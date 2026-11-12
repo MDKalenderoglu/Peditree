@@ -11,7 +11,7 @@ import PedigreeCanvas from './components/PedigreeCanvas';
 import IndividualEditor from './components/IndividualEditor';
 import RadialAddMenu from './components/RadialAddMenu';
 import { flushDrafts } from './utils/drafts';
-import { parseTypedDate, formatDate } from './utils/age';
+import { parseTypedDate, formatDate, typeDate } from './utils/age';
 import DraftField from './components/DraftField';
 import { nextPerson, ringKeysFor } from './utils/keyboardNav';
 import { useT, useLang, t as tNow, tk, currentLang, drawingLangOf } from './i18n';
@@ -27,7 +27,7 @@ import { ProductInfo, LicenseInfo, CitationInfo, FeedbackInfo } from './componen
 import { nameCase } from './utils/nameCase';
 import { RELEASE_STAGE } from './utils/appInfo';
 import { watchToolbar, overflowed } from './utils/toolbarFit';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check, CircleHelp, UserRound, Maximize, Menu as MenuIcon, X as XIcon } from 'lucide-react';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check, CircleHelp, UserRound, Maximize, Minimize, Menu as MenuIcon, X as XIcon } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
 // the clinician's logo (docs/brand/peditree-logo.webp): the tree, and the name in its own lettering
@@ -136,6 +136,36 @@ function MoreMenu({ items, multiSelect, onPick }) {
       })}
     </div>
   );
+}
+
+/**
+ * The whole screen for the drawing, as F11 does on a computer (clinician request 2026-11-12): the browser's
+ * own full screen where it allows one (Android, a tablet, a computer). An iPhone's browser allows it to no
+ * page; there the app opened from the home screen ("Ana Ekrana Ekle", manifest display: standalone) has no
+ * browser bars — `standalone` then, and nothing to offer.
+ */
+function useFullScreen() {
+  const doc = typeof document !== 'undefined' ? document : null;
+  const el = doc && doc.documentElement;
+  const can = !!(doc && el && ((doc.fullscreenEnabled && el.requestFullscreen) || (doc.webkitFullscreenEnabled && el.webkitRequestFullscreen)));
+  const current = () => !!(doc && (doc.fullscreenElement || doc.webkitFullscreenElement));
+  const [on, setOn] = React.useState(current);
+  React.useEffect(() => {
+    if (!doc) return undefined;
+    const sync = () => setOn(current());
+    doc.addEventListener('fullscreenchange', sync);
+    doc.addEventListener('webkitfullscreenchange', sync);
+    return () => { doc.removeEventListener('fullscreenchange', sync); doc.removeEventListener('webkitfullscreenchange', sync); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const standalone = typeof window !== 'undefined' && (window.navigator.standalone === true
+    || (!!window.matchMedia && window.matchMedia('(display-mode: standalone)').matches));
+  const toggle = () => {
+    try {
+      if (current()) (doc.exitFullscreen || doc.webkitExitFullscreen).call(doc);
+      else (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+    } catch { /* refused: the page stays as it is */ }
+  };
+  return { can, on, standalone, toggle };
 }
 
 /**
@@ -397,6 +427,8 @@ function App() {
   const [aboutOpen, setAboutOpen] = React.useState(false);
   // a phone: the patient's name and date of birth in a small window of their own (the bar has no room)
   const [patientOpen, setPatientOpen] = React.useState(false);
+  const fullScreen = useFullScreen();
+  const [fullHelp, setFullHelp] = React.useState(false);
   // a phone: the side panel's sheet at half height, or drawn up to the whole screen
   const [sheetFull, setSheetFull] = React.useState(false);
   // a phone's browser closes a tab left in the background more readily: unsaved work is easier to lose
@@ -670,7 +702,7 @@ function App() {
 
   // the toolbar's pop-up windows (Yeni, Paylaş, Diğer, keyboard help) close
   // on a click anywhere outside them, or Escape (clinician request 2026-10-27)
-  const popupOpen = !!infoOpen || newMenu || relationOpen || downloadOpen || !!share || settingsOpen || aboutOpen || openHelp || !!moreItems || patientOpen;
+  const popupOpen = !!infoOpen || newMenu || relationOpen || downloadOpen || !!share || settingsOpen || aboutOpen || openHelp || !!moreItems || patientOpen || fullHelp;
   const popupClosedAt = React.useRef(-Infinity);
   // The tap that closes a pop-up window does only that (clinician request
   // 2026-10-27): the click that ends that same tap is stopped before it
@@ -701,6 +733,7 @@ function App() {
       if (except !== 'about') setAboutOpen(false);
       if (except !== 'patient') setPatientOpen(false);
       if (except !== 'more') setMoreItems(null);
+      if (except !== 'fullscreen') setFullHelp(false);
     };
     const onDown = (e) => {
       const inside = e.target.closest && e.target.closest('[data-popup]');
@@ -1015,7 +1048,7 @@ function App() {
                   {/* the last thing to give way on a narrow tablet: the box keeps its name for screen readers and its tooltip */}
                   <span data-overflow-order="9">{t('Doğum')}</span>
                   {/* typed the quick way: 3.5.25, 3/05/2025, 030525 … (clinician request 2026-10-25) */}
-                  <DraftField key={probandNode ? probandNode.id : 'none'} type="text" inputMode="numeric" className="input birth-date"
+                  <DraftField key={probandNode ? probandNode.id : 'none'} type="text" inputMode="numeric" className="input birth-date" format={typeDate}
                     value={formatDate(probandNode && probandNode.birthDate)} placeholder={t('gg.aa.yyyy')} disabled={!probandNode}
                     aria-label={t('Probandın ya da danışanın doğum tarihi')} onCommit={v => setProbandBirthDate(v.trim() ? (parseTypedDate(v) || v.trim()) : '')} />
                 </label>
@@ -1031,17 +1064,30 @@ function App() {
           {/* the last thing to give way on a narrow tablet: the box keeps its name for screen readers and its tooltip */}
           <span data-overflow-order="9">{t('Doğum')}</span>
           {/* typed the quick way: 3.5.25, 3/05/2025, 030525 … (clinician request 2026-10-25) */}
-          <DraftField key={probandNode ? probandNode.id : 'none'} type="text" inputMode="numeric" className="input birth-date"
+          <DraftField key={probandNode ? probandNode.id : 'none'} type="text" inputMode="numeric" className="input birth-date" format={typeDate}
             value={formatDate(probandNode && probandNode.birthDate)} placeholder={t('gg.aa.yyyy')} disabled={!probandNode}
             aria-label={t('Probandın ya da danışanın doğum tarihi')} onCommit={v => setProbandBirthDate(v.trim() ? (parseTypedDate(v) || v.trim()) : '')} />
         </label>
         </>)}
         {phone && (
           // a phone: the two buttons used most while drawing, always in reach (clinician request 2026-11-12)
+          // (Sığdır and the zoom stay on the drawing, clinician 2026-11-12); and the whole screen for the drawing
           <div className="touch-quick">
             <button className="ui-btn ui-btn-icon" onClick={relayout} aria-label={t('Konumlandır')} title={t('Konumlandır, kişileri çizimde yeniden yerleştirir. Akrabalık ilişkileri değişmez ve işlem geri alınabilir.')}><TidyIcon size={20} /></button>
-            <button className="ui-btn ui-btn-icon" onClick={() => document.querySelector(`.zoom-controls button[aria-label="${tNow('Sığdır')}"]`)?.click()}
-              aria-label={t('Sığdır')} title={t('Tüm pedigriyi ekrana sığdır (0)')}><Maximize size={20} /></button>
+            {!fullScreen.standalone && (
+              <div className="keys-wrap" data-popup="fullscreen">
+                <button className="ui-btn ui-btn-icon" aria-pressed={fullScreen.on}
+                  onClick={() => (fullScreen.can ? fullScreen.toggle() : setFullHelp((v) => !v))}
+                  aria-label={fullScreen.on ? t('Tam ekrandan çık') : t('Tam ekran')} title={fullScreen.on ? t('Tam ekrandan çık') : t('Tam ekran')}>
+                  {fullScreen.on ? <Minimize size={20} /> : <Maximize size={20} />}</button>
+                {fullHelp && (
+                  <div className="keys-popover share-popover" role="dialog" aria-label={t('Tam ekran')}>
+                    <div className="keys-title">{t('Tam ekran')}</div>
+                    <p className="field-hint">{t('Bu telefonun tarayıcısı bir sayfanın tam ekran açılmasına izin vermiyor. Tarayıcının Paylaş düğmesinden “Ana Ekrana Ekle” seçildiğinde PediTree ana ekrandan tarayıcı çubukları olmadan, tam ekran açılır. Çizimler yine yalnız bu cihazda kalır.')}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
         <div className="toolbar-sep" data-fold-order="10" />
