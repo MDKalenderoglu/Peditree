@@ -82,6 +82,9 @@ body { font-family: var(--font-ui); font-size: 14px; line-height: 1.45; color: v
    its size when the tablet turns, and a quick double tap never zooms the page */
 html, body { height: 100%; overflow: hidden; overscroll-behavior: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .app-shell, .side, .settings-backdrop, .relation-backdrop, .keys-popover { touch-action: manipulation; }
+/* any touch screen (a tablet too — clinician report 2026-11-12: the page there also went zoomed all at once):
+   the page takes only panning; the drawing zooms itself */
+@media (pointer: coarse) { .app-shell:where(*) { touch-action: pan-x pan-y; } }
 /* on the phone the page never zooms (a pinch or double tap on the bar or the sheet left it zoomed, the top bar gone —
    clinician report 2026-11-12); the drawing zooms itself, panels still scroll */
 .app-shell.touch { touch-action: pan-x pan-y; }
@@ -397,8 +400,12 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .chip:hover { background: var(--sunken); }
 .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .chip.chip-carrier { border-color: var(--accent); border-style: dashed; color: var(--accent-ink); }
-.add-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
-.add-grid .ui-btn { padding: 0 6px; }
+/* the add buttons never run out of the panel (clinician report 2026-11-12, tablet: "Bilinmiyor", "Gebelik"
+   cut at the right edge of a narrowed panel): as many columns as fit, a word that still does not fit breaks,
+   and in a narrow panel the words are smaller */
+.add-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 96px), 1fr)); gap: 6px; container-type: inline-size; }
+.add-grid .ui-btn { min-width: 0; padding: 4px 6px; height: auto; min-height: 32px; white-space: normal; overflow-wrap: anywhere; text-align: center; justify-content: center; line-height: 1.2; }
+@container (max-width: 250px) { .add-grid .ui-btn { font-size: 12px; padding: 4px; } }
 .muted { color: var(--muted); }
 .small { font-size: 12.5px; }
 
@@ -617,6 +624,7 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
   .mouse-only { display: none; }
   .ui-btn { height: 44px; padding: 0 14px; }
   .ui-btn-sm { height: 40px; }
+  .add-grid .ui-btn { height: auto; min-height: 40px; }
   .ui-btn-icon { width: 44px; }
   .radial-sat { height: 44px; border-radius: 22px; transform: translate(-22px, -50%); padding: 0 14px 0 13px; font-size: 13.5px; }
   .radial-sat.sat-left { transform: translate(calc(-100% + 22px), -50%); padding: 0 13px 0 14px; }

@@ -173,24 +173,24 @@ export const TOUCH_STEPS = [
   { id: 't-couple', icon: Link2, title: tk('Eşler arasındaki çizgi'),
     text: tk('İki eşi birleştiren çizgiye dokunduğunuzda çiftin bilgileri açılır: ilişkinin durumu, akrabalık (Var seçilince çizgi çift çizgiye dönüşür) ya da “Aynı köy”, çocuksuzluk; çifte çocuk da buradan eklenir.'),
     target: (c) => coupleLine(c, c.ids.mother, c.ids.father), prepare: (c) => c.clear() },
-  { id: 't-arrange', icon: TidyIcon, title: tk('Konumlandır ve tam ekran'),
-    text: tk('Üst çubuktaki dört yönlü ok kişileri en okunaklı biçimde yeniden yerleştirir; akrabalıklar değişmez ve işlem geri alınabilir. Yanındaki düğme çizime bütün ekranı verir. Yakınlaştırma ve Sığdır çizimin köşesindedir.'),
-    target: () => one('.toolbar .touch-quick'), prepare: (c) => c.clear() },
-  { id: 't-childless', icon: Link2, title: tk('Çocuğu olmayan çift'),
-    text: CHILDLESS_TEXT,
-    target: () => one('.toolbar [data-popup="new"] .keys-popover'), prepare: (c) => { c.clear(); c.openNew(); } },
-  { id: 't-menu', icon: ListChecks, title: tk('Menü'),
-    text: tk('Geri al, Yinele, Yeni, Aç, Konumlandır, Yazdır, Ayarlar ve bu tur sağ üstteki Menü’de yer alır.'),
-    target: () => one('.toolbar .more-popover'), prepare: (c) => { c.clear(); c.openMenu(); } },
   { id: 't-patient', icon: CalendarDays, title: tk('Hasta adı ve doğum tarihi'),
     text: tk('Hasta adı çizimin başlığında ve kaydedilen dosyaların adında yer alır. Probandın doğum tarihi girildiğinde yaşı bugünün tarihine göre hesaplanır.'),
     target: () => one('.toolbar .patient-btn'), prepare: (c) => c.clear() },
+  { id: 't-arrange', icon: TidyIcon, title: tk('Konumlandır ve tam ekran'),
+    text: tk('Üst çubuktaki dört yönlü ok kişileri en okunaklı biçimde yeniden yerleştirir; akrabalıklar değişmez ve işlem geri alınabilir. Yanındaki düğme çizime bütün ekranı verir. Yakınlaştırma ve Sığdır çizimin köşesindedir.'),
+    target: () => one('.toolbar .touch-quick'), prepare: (c) => c.clear() },
   { id: 't-save', icon: Save, title: tk('Kaydetmek'),
     text: tk('Çizim yalnızca bu sekmede tutulur ve sekme kapandığında silinir. Üst çubuktaki disket simgesi (Kaydet) çizimi resim olarak ya da sonra açıp düzenlemek için PediTree dosyası olarak saklar.'),
     target: () => one('.toolbar .download-popover'), prepare: (c) => { c.clear(); c.openSave(); } },
   { id: 't-share', icon: Share2, title: tk('Paylaşmak'),
-    text: tk('Yanındaki paylaş simgesi pedigrinin resmini WhatsApp, e-posta gibi telefonunuzdaki bir uygulamayla gönderir; isterseniz hasta adı olmadan.'),
+    text: tk('Kaydet’in yanındaki paylaş simgesi pedigrinin resmini WhatsApp, e-posta gibi telefonunuzdaki bir uygulamayla gönderir; isterseniz hasta adı olmadan.'),
     target: () => one('.toolbar [data-popup="share"] > button'), prepare: (c) => c.clear() },
+  { id: 't-menu', icon: ListChecks, title: tk('Menü'),
+    text: tk('Geri al, Yinele, Yeni, Aç, Konumlandır, Yazdır, Ayarlar ve bu tur sağ üstteki Menü’de yer alır.'),
+    target: () => one('.toolbar .more-popover'), prepare: (c) => { c.clear(); c.openMenu(); } },
+  { id: 't-childless', icon: Link2, title: tk('Çocuğu olmayan çift'),
+    text: CHILDLESS_TEXT,
+    target: () => one('.toolbar [data-popup="new"] .keys-popover'), prepare: (c) => { c.clear(); c.openNew(); } },
   { id: 't-again', icon: CircleHelp, title: tk('Turu yeniden açmak'),
     text: tk('Tura istediğiniz zaman Menü’deki Tanıtım turu ile yeniden ulaşabilirsiniz. İyi çalışmalar dileriz.'),
     target: () => one('.toolbar .touch-menu-btn'), prepare: (c) => c.clear() },
@@ -223,18 +223,32 @@ function boxOf(els) {
   return { left, top, right, bottom, width: right - left, height: bottom - top };
 }
 
-/** The lit areas for a step; a part that went into "Diğer" is shown there. */
+/**
+ * The lit areas for a step. A button that went into "Diğer" (⋯) on a narrow screen (a tablet) is shown by
+ * its line in that menu, which the tour opens (`needMore`) — not by ⋯ alone, whose light read as if ⋯ were
+ * the button named on the card (clinician report 2026-11-12). A window the folded button opened (Yeni's,
+ * Kaydet's) is shown as it is.
+ */
 function aim(step, ctx) {
   let folded = false;
-  const rects = areasOf(step.target(ctx)).map((list) => {
-    let shown = list.filter(visible);
-    if (shown.length < list.length) {
-      const more = one('.toolbar .toolbar-more > button');
-      if (visible(more)) { shown = [...shown, more]; folded = true; }
+  let needMore = false;
+  const rects = areasOf(step.target(ctx)).flatMap((list) => {
+    const shown = list.filter(visible);
+    const hidden = list.filter((el) => el && el.closest && el.closest('.toolbar .overflowed'));
+    let lines = [];
+    if (hidden.length) {
+      folded = true;
+      // its window open: the window says enough
+      if (!shown.some((el) => el.closest && el.closest('.keys-popover'))) {
+        const names = hidden.map((el) => el.closest('[data-overflow]').getAttribute('data-overflow'));
+        lines = names.map((n) => one(`.toolbar .more-popover [data-more="${n}"]`)).filter(visible);
+        if (lines.length < names.length) needMore = true;
+      }
     }
-    return shown.length ? boxOf(shown) : null;
+    // the bar's buttons and the menu's lines: two areas, not one box across both
+    return [shown.length ? boxOf(shown) : null, lines.length ? boxOf(lines) : null];
   }).filter(Boolean);
-  return { rects, folded };
+  return { rects, folded, needMore };
 }
 
 /** A part further down a scrolling box (the side panel, a settings section) is brought into view, smoothly. */
@@ -390,11 +404,15 @@ export default function Tour({ ctx, onClose }) {
     let done = '';
     let scrolled = false;
     let acted = !step.act;
+    let askedMore = false;
     const tick = () => {
       if (!acted) acted = step.act();
       if (acted && !scrolled) scrolled = bringIntoView(step, ctxRef.current);
       const a = aim(step, ctxRef.current);
       const key = JSON.stringify(a);
+      // ⋯ is opened once the step's own screen stands still (a window it opens comes a moment later and
+      // then needs no ⋯)
+      if (a.needMore && !askedMore && acted && key === seen && ctxRef.current.openFolded) { askedMore = true; ctxRef.current.openFolded(); return; }
       const settled = acted && key === seen;
       seen = key;
       if (settled && key !== done) { done = key; setShown({ at, ...a }); }
@@ -499,7 +517,7 @@ export default function Tour({ ctx, onClose }) {
           {welcome ? <div className="tour-hero"><TourFamily /></div> : Icon && <span className="tour-icon" aria-hidden="true"><Icon size={18} strokeWidth={2} /></span>}
           <h3 id={titleId} className="tour-title">{t(card.title)}</h3>
           <p className="tour-text">{t(card.text)}</p>
-          {shown.folded && <p className="tour-note">{t('Ekran dar olduğundan bu düğme ⋯ Diğer menüsünde yer alıyor.')}</p>}
+          {shown.folded && <p className="tour-note">{t('Ekran dar olduğundan bu düğme sağ üstteki ⋯ menüsünde yer alıyor.')}</p>}
         </div>
         {/* after the words, so it is painted over them and always takes its click (clinician 2026-11-10:
             the tour could not be left halfway — the words' box lay over the ×) */}

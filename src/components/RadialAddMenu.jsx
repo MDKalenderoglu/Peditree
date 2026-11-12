@@ -194,6 +194,10 @@ export default function RadialAddMenu({
   const showMore = !!node && moreFor === node.id;
   const setShowMore = () => node && setMoreFor((v) => (v === node.id ? null : node.id));
   const menuRef = useRef(null);
+  // The drawing slides for an opened list or panel once, not again and again: slid, the popup could stand
+  // on the ring's other side and ask to slide back — forever, the page frozen and then blank (clinician
+  // report 2026-11-12, a tablet: the page went all at once; reproduced with Bulgu open at 720 px)
+  const slid = useRef(null);
   useLayoutEffect(() => {
     const el = popRef.current;
     if (!el || dock) { setNudge({ x: 0, y: 0 }); return; }
@@ -211,8 +215,14 @@ export default function RadialAddMenu({
       const u = ringEl ? spanOf([r, ringEl.getBoundingClientRect()]) : r;
       const px = u.right - u.left <= h.width - 16 ? shiftInto(u.left, u.right, h.left, h.right) : 0;
       const py = u.bottom - u.top <= h.height - 16 ? shiftInto(u.top, u.bottom, h.top, h.bottom) : 0;
-      if (onNeedRoom && (Math.abs(px) > 1 || Math.abs(py) > 1)) onNeedRoom(px, py);
-      const dx = shiftInto(r.left + px, r.right + px, h.left, h.right), dy = shiftInto(r.top + py, r.bottom + py, h.top, h.bottom);
+      const opened = `${node && node.id}|${active}|${panel}|${infoFor ? infoFor.part : ''}`;
+      let sx = 0, sy = 0; // what the drawing slides now (once per opening); the popup itself makes up the rest
+      if (onNeedRoom && (Math.abs(px) > 1 || Math.abs(py) > 1) && slid.current !== opened) {
+        slid.current = opened;
+        sx = px; sy = py;
+        onNeedRoom(px, py);
+      }
+      const dx = shiftInto(r.left + sx, r.right + sx, h.left, h.right), dy = shiftInto(r.top + sy, r.bottom + sy, h.top, h.bottom);
       el.style.translate = `${dx}px ${dy}px`;
       setNudge((old) => (old.x === dx && old.y === dy ? old : { x: dx, y: dy }));
     };
