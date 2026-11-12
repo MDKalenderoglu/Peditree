@@ -172,7 +172,9 @@ export function normalizeView(v) {
     panelWidth: panelWidthOf(o),
     tourOffer: o.tourOffer !== false,
     sameSexPartners: o.sameSexPartners === true,
-    touchMode: ['on', 'off'].includes(o.touchMode) ? o.touchMode : 'auto',
+    // 'always' since 2026-11-12: an 'on' stored before was chosen under the word "Açık", read as "light" beside day
+    // and night, and kept computers on the phone screen (clinician report 2026-11-12) — it opens as 'auto'
+    touchMode: ['always', 'off'].includes(o.touchMode) ? o.touchMode : 'auto',
   };
 }
 
