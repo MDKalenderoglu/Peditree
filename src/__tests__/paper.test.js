@@ -5,7 +5,7 @@
  * turning grey; plain is no background at all.
  */
 import { describe, it, expect } from 'vitest';
-import { paperBackground } from '../utils/paper';
+import { paperBackground, paintPaper } from '../utils/paper';
 
 const px = (s) => s.split(',').map((p) => p.trim().split(' ').map(parseFloat));
 
@@ -46,5 +46,24 @@ describe('the paper under the drawing', () => {
     // the tile's centre (where the dot is) falls on a multiple of 20 from the origin
     expect(((100 - (ox + 10)) % 20 + 20) % 20).toBeCloseTo(0, 5);
     expect(((60 - (oy + 10)) % 20 + 20) % 20).toBeCloseTo(0, 5);
+  });
+
+  it('the page round the side panel gets the same paper, its lines on the same places of the screen (2026-11-12)', () => {
+    const el = (rect, extra = {}) => ({ style: {}, attrs: {}, getBoundingClientRect: () => rect, setAttribute(k, v) { this.attrs[k] = v; }, removeAttribute(k) { delete this.attrs[k]; }, ...extra });
+    const shell = el({ left: 0, top: 0 });
+    const g = { getScreenCTM: () => ({ a: 1, e: 150, f: 200 }) };
+    const svg = el({ left: 0, top: 64 }, { querySelector: () => g, closest: (sel) => (sel === '.app-shell' ? shell : null) });
+    paintPaper(svg, 'grid');
+    expect(shell.style.backgroundImage).toBe(svg.style.backgroundImage);
+    expect(shell.style.backgroundSize).toBe(svg.style.backgroundSize);
+    // a heavy line of each, in screen pixels: the same place modulo one tile (80 px at this zoom)
+    const [[sx, sy]] = px(svg.style.backgroundPosition);
+    const [[hx, hy]] = px(shell.style.backgroundPosition);
+    expect((((sx + 0) - (hx + 0)) % 80 + 80) % 80).toBeCloseTo(0, 5);
+    expect((((sy + 64) - (hy + 0)) % 80 + 80) % 80).toBeCloseTo(0, 5);
+    // plain paper: nothing on either
+    paintPaper(svg, 'plain');
+    expect(shell.style.backgroundImage).toBe('');
+    expect(svg.style.backgroundImage).toBe('');
   });
 });
