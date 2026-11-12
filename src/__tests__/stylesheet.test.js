@@ -57,6 +57,8 @@ describe('stylesheet rules', () => {
     expect(edge).toMatch(/border-left: 1px solid var\(--accent-line\)/);
     expect(edge).toMatch(/box-shadow: -\d+px 0 \d+px/);
     expect(block('ui.css', '.editor-panel')).toMatch(/background: var\(--panel\)/);
+    // a computer: the page round the floating panel is the drawing's paper (2026-11-12)
+    expect(block('ui.css', '.app-shell:not(.touch)')).toMatch(/background-color: var\(--paper\)/);
     expect(css('ui.css')).toMatch(/--panel: color-mix\(in srgb, var\(--accent\) \d+%, var\(--sunken\)\)/);
     expect(block('ui.css', '.side-header')).toMatch(/border-top: 3px solid var\(--accent\)/);
     expect(block('ui.css', '.side-header')).toMatch(/var\(--accent-soft\)/);

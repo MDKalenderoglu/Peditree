@@ -57,15 +57,28 @@ export function paperBackground(kind, { x, y, scale }) {
   };
 }
 
-/** Paints the paper on the <svg> for its zoom group's current place. */
+const paint = (el, bg) => {
+  el.style.backgroundImage = bg ? bg.backgroundImage : '';
+  el.style.backgroundSize = bg ? bg.backgroundSize : '';
+  el.style.backgroundPosition = bg ? bg.backgroundPosition : '';
+};
+
+/**
+ * Paints the paper on the <svg> for its zoom group's current place, and on the page round it
+ * (.app-shell), lined up with it: the side panel floats on the same paper as the drawing
+ * (clinician request 2026-11-12: the panel opens and closes on the canvas, not in a strip of its own).
+ */
 export function paintPaper(svgEl, kind) {
   if (!svgEl) return;
   const g = svgEl.querySelector('.pedigree-viewport');
   const m = g && typeof g.getScreenCTM === 'function' ? g.getScreenCTM() : null;
-  const box = svgEl.getBoundingClientRect();
-  const bg = m && m.a ? paperBackground(kind, { x: m.e - box.left, y: m.f - box.top, scale: m.a }) : null;
-  svgEl.style.backgroundImage = bg ? bg.backgroundImage : '';
-  svgEl.style.backgroundSize = bg ? bg.backgroundSize : '';
-  svgEl.style.backgroundPosition = bg ? bg.backgroundPosition : '';
+  const at = (el) => {
+    const box = el.getBoundingClientRect();
+    return m && m.a ? paperBackground(kind, { x: m.e - box.left, y: m.f - box.top, scale: m.a }) : null;
+  };
+  const bg = at(svgEl);
+  paint(svgEl, bg);
   if (bg) svgEl.setAttribute('data-paper', kind); else svgEl.removeAttribute('data-paper');
+  const shell = svgEl.closest && svgEl.closest('.app-shell');
+  if (shell) paint(shell, bg && at(shell));
 }
