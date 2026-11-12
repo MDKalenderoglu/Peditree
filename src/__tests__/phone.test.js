@@ -274,6 +274,18 @@ describe('the page never stays shifted up (clinician report 2026-11-12, iPhone: 
   });
 });
 
+describe('the zoom and Sığdır in reach while a person’s sheet is docked (clinician request 2026-11-12)', () => {
+  it('the sheet tells the page how much of the screen it covers; the variable goes with the sheet', async () => {
+    const shell = $('.app-shell');
+    await run(() => S().selectIndividual('proband'));
+    expect($('.touch-sheet')).not.toBeNull();
+    expect(shell.style.getPropertyValue('--touch-sheet-h')).toMatch(/^\d+px$/);
+    expect($('.zoom-controls')).not.toBeNull();
+    await run(() => S().clearSelection());
+    expect(shell.style.getPropertyValue('--touch-sheet-h')).toBe('');
+  });
+});
+
 describe('the page never stays zoomed in (clinician report 2026-11-12, iPhone: the top bar gone, the sheet cut on both sides)', () => {
   it('zoomed while nothing is typed: the zoom is taken back; the page never zooms into a box; a pinch on the sheet is stopped', async () => {
     const meta = document.querySelector('meta[name="viewport"]') || document.head.appendChild(Object.assign(document.createElement('meta'), { name: 'viewport' }));
