@@ -562,10 +562,18 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       m.append('line').attr('x1', e.x).attr('y1', belowDouble(e.x, e.y, e.unionId)).attr('x2', e.x).attr('y2', end).attr('stroke', EDGE_COLOR).attr('stroke-width', 1.5);
       bar(end);
       if (e.kind === 'infertile') bar(end + CL.gap);
+      const textY = end + (e.kind === 'infertile' ? CL.gap : 0) + 14;
       if (e.reason) {
-        editable(m.append('text').attr('x', e.x).attr('y', end + (e.kind === 'infertile' ? CL.gap : 0) + 14).attr('text-anchor', 'middle')
+        editable(m.append('text').attr('x', e.x).attr('y', textY).attr('text-anchor', 'middle')
           .attr('font-size', px(10)).attr('fill', '#475569').text(e.reason), 'childlessReason', e.unionId, e.reason);
       }
+      // a click on the bars (or just under them) opens a box for the reason, where the reason is written
+      // (clinician request 2026-11-12); screen only, never in a copy
+      const hit = m.append('rect').attr('class', 'ui-only childless-hit')
+        .attr('x', e.x - CL.half - 8).attr('y', end - 8).attr('width', 2 * CL.half + 16).attr('height', textY - end + 14)
+        .attr('fill', 'transparent').style('pointer-events', 'all');
+      hit.append('title').text(t('Çocuksuzluğun sebebini yazmak için tıklayın'));
+      editable(hit, 'childlessReason', e.unionId, e.reason || '');
     });
 
     // "Aynı köy" on a couple's line, or the clinician's own words (clinician request 2026-11-05):
@@ -1245,6 +1253,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       {anchor && renderQuickBar && !editing && renderQuickBar(anchor, panBy)}
       {editing && (
         <input className="inline-edit" autoFocus defaultValue={editing.value}
+          placeholder={editing.kind === 'childlessReason' ? t('Sebep (örn. azospermi, tercih)') : undefined}
+          aria-label={editing.kind === 'childlessReason' ? t('Çocuksuzluğun sebebi') : undefined}
           style={{ left: editing.x - 6, top: editing.y - 5, width: Math.max(editing.w + 60, 160), height: Math.max(editing.h + 10, 28) }}
           onKeyDown={e => {
             if (e.key === 'Enter') finishEdit(e.currentTarget.value);

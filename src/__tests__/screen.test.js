@@ -247,6 +247,27 @@ const choiceRows = () => $$('.radial-panel .ring-choice');
 const choiceLabels = () => $$('.radial-panel .ring-sex button, .radial-panel .ring-choice').map(b => b.getAttribute('aria-label'));
 const panelText = () => ($('.editor-body') ? $('.editor-body').textContent.replace(/\s+/g, ' ') : '');
 
+describe('the reason for childlessness, written on the drawing (clinician request 2026-11-12)', () => {
+  it('a click on the bars opens a box; what is typed is kept and drawn under them; a copy leaves the click area out', async () => {
+    await run(() => S().addSpouseTo('proband', 'female'));
+    const u = () => g().unions.find(x => x.partners.includes('proband'));
+    await run(() => S().setChildlessness(u().id, 'infertile'));
+    const hit = $('.childless-mark .childless-hit');
+    expect(hit).not.toBeNull();
+    expect(hit.classList.contains('ui-only')).toBe(true);
+    await click(hit);
+    const box = $('.inline-edit');
+    expect(box.getAttribute('aria-label')).toBe('Çocuksuzluğun sebebi');
+    await run(() => { box.value = 'Azospermi'; box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); });
+    expect(u().childlessReason).toBe('Azospermi');
+    expect($('.childless-mark text').textContent).toBe('Azospermi');
+    // clicked again: the box holds what was written
+    await click($('.childless-mark .childless-hit'));
+    expect($('.inline-edit').value).toBe('Azospermi');
+    await run(() => $('.inline-edit').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+  });
+});
+
 describe('the ring menu', () => {
   it('Çocuk: Erkek, Kız, Cinsiyeti bilinmeyen, Çocuksuz and İnfertil first (clinician 2026-11-12); the bars toggle on a couple without children', async () => {
     await run(() => S().addSpouseTo('proband', 'female'));

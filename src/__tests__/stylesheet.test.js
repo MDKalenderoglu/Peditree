@@ -59,6 +59,8 @@ describe('stylesheet rules', () => {
     expect(block('ui.css', '.editor-panel')).toMatch(/background: var\(--panel\)/);
     // a computer: the page round the floating panel is the drawing's paper (2026-11-12)
     expect(block('ui.css', '.app-shell:not(.touch)')).toMatch(/background-color: var\(--paper\)/);
+    // the childless bars' click area is never painted, even pointed at (2026-11-12)
+    expect(block('ui.css', '#pedigree-svg rect.childless-hit.editable:hover')).toMatch(/fill: transparent/);
     // the open sheet keeps clear of the phone's top bar (2026-11-12)
     expect(block('ui.css', '.app-shell.touch .touch-sheet.sheet-full')).toMatch(/top: calc\(var\(--touch-bar-h, 56px\) \+ 10px\)/);
     expect(css('ui.css')).not.toMatch(/sheet-full \{ height: calc\(100dvh/);
