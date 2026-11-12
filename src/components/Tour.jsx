@@ -30,7 +30,6 @@ const cardTitled = (title) => all('.editor-panel .card').find((c) => {
   const head = c.querySelector('.card-title');
   return head && head.textContent.trim().startsWith(tNow(title));
 }) || null;
-const cardWithField = (label) => all('.editor-panel .card').find((c) => [...c.querySelectorAll('.field-label')].some((l) => l.textContent.trim() === tNow(label))) || null;
 
 // the ring's parts, by the names they show (the sectors add a relative, the buttons on the diagonals edit the person)
 const sector = (name) => one(`.radial-menu .radial-sector[aria-label="${tNow(name)}"]`);

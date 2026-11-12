@@ -27,7 +27,7 @@ import { ProductInfo, LicenseInfo, CitationInfo, FeedbackInfo } from './componen
 import { nameCase } from './utils/nameCase';
 import { RELEASE_STAGE } from './utils/appInfo';
 import { watchToolbar, overflowed } from './utils/toolbarFit';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check, CircleHelp, UserRound, ChevronUp, Menu as MenuIcon, X as XIcon } from 'lucide-react';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check, CircleHelp, UserRound, Menu as MenuIcon, X as XIcon } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
 // the clinician's logo (docs/brand/peditree-logo.webp): the tree, and the name in its own lettering
@@ -281,15 +281,16 @@ function App() {
     if (ringAlphaOf(view) < 0.5) root.setAttribute('data-ring-clear', 'high'); else root.removeAttribute('data-ring-clear');
   }, [view]);
   // day or night (clinician 2026-11-11): chosen, or the device's, followed while the page is open
+  const colourMode = view.mode;
   React.useEffect(() => {
     const root = document.documentElement;
     const mq = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
-    const apply = () => root.setAttribute('data-mode', shownMode(view, !!(mq && mq.matches)));
+    const apply = () => root.setAttribute('data-mode', shownMode({ mode: colourMode }, !!(mq && mq.matches)));
     apply();
-    if (!mq || view.mode !== 'system') return undefined;
+    if (!mq || colourMode !== 'system') return undefined;
     mq.addEventListener ? mq.addEventListener('change', apply) : mq.addListener(apply);
     return () => { mq.removeEventListener ? mq.removeEventListener('change', apply) : mq.removeListener(apply); };
-  }, [view.mode]);
+  }, [colourMode]);
   // another text size: the layout gives the text its room again (symbolText.setTextScale; clinician 2026-11-05)
   const textSize = React.useRef(drawing.legendScale);
   React.useEffect(() => {
