@@ -25,6 +25,8 @@ describe('published site', () => {
     expect(headers).toMatch(/X-Robots-Tag: noindex, nofollow/);
     expect(read('public/robots.txt')).toMatch(/Disallow: \//);
     expect(read('index.html')).toMatch(/<meta name="robots" content="noindex, nofollow" \/>/);
+    // a phone's browser never zooms the page into a box being typed in (clinician report 2026-11-12)
+    expect(read('index.html')).toMatch(/<meta name="viewport" content="[^"]*maximum-scale=1\.0/);
   });
 
   it('can be added to a tablet home screen', () => {

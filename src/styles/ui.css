@@ -82,6 +82,9 @@ body { font-family: var(--font-ui); font-size: 14px; line-height: 1.45; color: v
    its size when the tablet turns, and a quick double tap never zooms the page */
 html, body { height: 100%; overflow: hidden; overscroll-behavior: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .app-shell, .side, .settings-backdrop, .relation-backdrop, .keys-popover { touch-action: manipulation; }
+/* on the phone the page never zooms (a pinch or double tap on the bar or the sheet left it zoomed, the top bar gone —
+   clinician report 2026-11-12); the drawing zooms itself, panels still scroll */
+.app-shell.touch { touch-action: pan-x pan-y; }
 .side, .keys-popover, .canvas-notices { overscroll-behavior: contain; }
 button, input, select, textarea { font-family: inherit; }
 
