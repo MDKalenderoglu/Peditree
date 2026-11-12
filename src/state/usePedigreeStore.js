@@ -552,6 +552,30 @@ export const usePedigreeStore = create((zSet, get) => {
 
     // a new pedigree from a ready-made template (graph/templates.js): like
     // "Yeni", nothing to undo; drawn with the fewest bends
+    // a couple without children (clinician request 2026-11-12: "do they have no children? why — infertile?"):
+    // the proband, a partner, and under their line infertility (two bars) or no children (one bar) —
+    // the proband's parents stay, as in a new family
+    newChildlessCouple: (kind = 'infertile') => {
+      const start = starterDocument();
+      const me = start.graph.individuals.find((i) => i.id === start.wizardAnchorId);
+      const r1 = ops.addPartner(start, me.id, { sex: me.sex === 'female' ? 'male' : 'female' });
+      if (!r1.ok) return apply(r1);
+      const u = r1.doc.graph.unions.find((x) => x.partners.includes(me.id) && !r1.doc.graph.parentChildRelationships.some((r) => r.unionId === x.id && r.children.length));
+      const r2 = ops.setChildlessness(r1.doc, u.id, kind);
+      if (!r2.ok) return apply(r2);
+      zSet(() => {
+        clearAllSessions();
+        const ui = { gen4Pending: [] };
+        return {
+          doc: r2.doc, ui,
+          _history: [], _future: [], _viewHistory: [], _viewFuture: [],
+          ...sel([]),
+          dismissedWarningIds: [], openSectionId: 'proband', actionNotice: null,
+          ...deriveAll(r2.doc, ui, { straightStart: true }),
+        };
+      });
+      return { ok: true };
+    },
     newFromTemplate: (spec) => {
       const r = buildTemplate(starterDocument(), spec);
       if (!r.ok) return apply({ ok: false, reason: t('Şablon oluşturulamadı: {reason}', { reason: r.reason }) });
