@@ -243,3 +243,30 @@ describe('the phone, third request (clinician 2026-11-12)', () => {
   });
 });
 
+
+describe('the page never stays shifted up (clinician report 2026-11-12, iPhone: the top bar gone, no way back)', () => {
+  it('scrolled away while nothing is typed: back to the top; while the name is typed: left alone until the box is left', async () => {
+    const calls = [];
+    const real = window.scrollTo;
+    window.scrollTo = (x, y) => { calls.push([x, y]); document.documentElement.scrollTop = 0; };
+    try {
+      document.documentElement.scrollTop = 140;
+      await run(() => window.dispatchEvent(new Event('scroll')));
+      expect(calls).toEqual([[0, 0]]);
+      // the patient's name being typed: the browser may shift the page to show the box
+      await click(named('Hasta bilgileri'));
+      const box = $('.patient-popover input');
+      await run(() => box.focus());
+      document.documentElement.scrollTop = 140;
+      await run(() => window.dispatchEvent(new Event('scroll')));
+      expect(calls.length).toBe(1);
+      // the box left (the keyboard goes): the page comes back
+      await run(() => box.blur());
+      await new Promise((r) => setTimeout(r, 200));
+      expect(calls.length).toBe(2);
+    } finally {
+      window.scrollTo = real;
+      document.documentElement.scrollTop = 0;
+    }
+  });
+});
