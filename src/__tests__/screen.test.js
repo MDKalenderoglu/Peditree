@@ -1770,6 +1770,10 @@ describe('the Settings window (clinician request 2026-11-03)', () => {
     await click([...dialog.querySelectorAll('[role="tab"]')].find(b => b.textContent.includes('Görünüm')));
     const group = (name) => [...dialog.querySelectorAll('[role="radiogroup"]')].find(r => r.getAttribute('aria-label') === name);
     expect(buttons(group('Görünüm')).map(b => b.textContent)).toEqual(['Cihazla aynı', 'Gündüz', 'Gece']);
+    // the touch screen's choice never says "Açık" — beside day and night it read as "light" (clinician report 2026-11-11)
+    expect(buttons(group('Dokunmatik görünüm')).map(b => b.textContent)).toEqual(['Otomatik', 'Her zaman', 'Hiçbir zaman']);
+    const titles = [...dialog.querySelectorAll('.set-row-title')].map(x => x.textContent);
+    expect(titles.indexOf('Dokunmatik görünüm')).toBeGreaterThan(titles.indexOf('Simidin saydamlığı'));
     try {
       expect(document.documentElement.getAttribute('data-mode')).toBe('light'); // the test browser prefers light
       await click(button('Gece', group('Görünüm')));

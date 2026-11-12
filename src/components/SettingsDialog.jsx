@@ -103,12 +103,6 @@ function LookSection({ touch = false }) {
           ))}
         </div>
       </Row>
-      {/* the touch screen (clinician request 2026-11-10): on by itself on a phone; a tablet may choose it */}
-      <Row title={t('Dokunmatik görünüm')} hint={t('Büyük, yazılı düğmeler')}
-        more={t('Dokunmatik görünümde çizim bütün ekranı kaplar; bir kişiye dokunulduğunda alttan yazılı düğmeler açılır ve ayrıntılar bu paneli yukarı çekerek görülür. Otomatik seçildiğinde telefonda kendiliğinden açılır.')}>
-        <Segmented label={t('Dokunmatik görünüm')} value={view.touchMode || 'auto'} onChange={(v) => setView({ touchMode: v })}
-          options={[['auto', t('Otomatik')], ['on', t('Açık')], ['off', t('Kapalı')]]} />
-      </Row>
       {/* the ring is not on a phone's screen: its transparency is not asked there */}
       {!touch && (<>
       <Row title={t('Simidin saydamlığı')} hint={t('Arkadaki çizim ne kadar görünsün')}>
@@ -130,6 +124,14 @@ function LookSection({ touch = false }) {
         <span className="ring-preview-pill">{t('Durum')}</span>
       </div>
       </>)}
+      {/* the touch screen (clinician request 2026-11-10): on by itself on a phone; a tablet may choose it. Last, and
+          never "Açık": beside day and night that read as "light" and turned a computer into the phone screen
+          (clinician report 2026-11-11) */}
+      <Row title={t('Dokunmatik görünüm')} hint={t('Büyük, yazılı düğmeler')}
+        more={t('Dokunmatik görünümde çizim bütün ekranı kaplar; bir kişiye dokunulduğunda alttan yazılı düğmeler açılır ve ayrıntılar bu paneli yukarı çekerek görülür. Otomatik seçildiğinde telefonda kendiliğinden açılır.')}>
+        <Segmented label={t('Dokunmatik görünüm')} value={view.touchMode || 'auto'} onChange={(v) => setView({ touchMode: v })}
+          options={[['auto', t('Otomatik')], ['on', t('Her zaman')], ['off', t('Hiçbir zaman')]]} />
+      </Row>
     </div>
   );
 }
