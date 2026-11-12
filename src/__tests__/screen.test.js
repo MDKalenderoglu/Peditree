@@ -248,6 +248,27 @@ const choiceLabels = () => $$('.radial-panel .ring-sex button, .radial-panel .ri
 const panelText = () => ($('.editor-body') ? $('.editor-body').textContent.replace(/\s+/g, ' ') : '');
 
 describe('the ring menu', () => {
+  it('Çocuk: Erkek, Kız, Cinsiyeti bilinmeyen, Çocuksuz and İnfertil first (clinician 2026-11-12); the bars toggle on a couple without children', async () => {
+    await run(() => S().addSpouseTo('proband', 'female'));
+    const u = () => g().unions.find(x => x.partners.includes('proband'));
+    await select('proband');
+    await key('c');
+    const first = () => $$('.radial-flyout .flyout-row')[0];
+    const firstRow = () => [...first().querySelectorAll('button.quick-btn')].map(b => b.getAttribute('aria-label'));
+    expect(firstRow()).toEqual(['Çocuk: Erkek', 'Çocuk: Kız', 'Çocuk: Cinsiyeti bilinmeyen', 'Çocukları yok: Çocuksuz', 'Çocukları yok: İnfertil']);
+    await click(button('Çocukları yok: İnfertil', first()));
+    expect(u().childless).toBe('infertile');
+    await key('c');
+    expect(button('Çocukları yok: İnfertil', first()).getAttribute('aria-pressed')).toBe('true');
+    await click(button('Çocukları yok: İnfertil', first()));
+    expect(u().childless).toBeUndefined();
+    // a couple with children: only the children are offered
+    await select('mother');
+    await key('c');
+    expect(firstRow()).toEqual(['Çocuk: Erkek', 'Çocuk: Kız', 'Çocuk: Cinsiyeti bilinmeyen']);
+    await key('Escape');
+  });
+
   it('a click on a person selects them and shows the ring; letters open its parts', async () => {
     await select('proband');
     expect(S().selectedIds).toEqual(['proband']);
@@ -1645,6 +1666,27 @@ describe('NSGC 2022 additions (clinician decisions 2026-11-02) and the trimmed s
     // put back
     const { usePanelPrefs, DEFAULT_PANEL } = await import('../utils/panelPrefs');
     await run(() => usePanelPrefs.getState().setPanel(DEFAULT_PANEL));
+  });
+
+  it('Evlat edinme waits under "Diğer bilgiler…" (clinician 2026-11-12), also on a device that kept the panel before; an adopted person shows it', async () => {
+    const { usePanelPrefs, DEFAULT_PANEL, normalizePanel } = await import('../utils/panelPrefs');
+    // a preference stored before 2026-11-12, with every part on
+    await run(() => usePanelPrefs.getState().setPanel({ hidden: [], seen: ['genetic', 'adoption', 'birthOrder', 'lmp', 'repro', 'sexAtBirth', 'recordsReviewed'] }));
+    expect(usePanelPrefs.getState().panel.hidden).toContain('adoption');
+    // once moved, the clinician's own choice stands
+    expect(normalizePanel({ ...usePanelPrefs.getState().panel, hidden: [] }).hidden).not.toContain('adoption');
+    await run(() => usePanelPrefs.getState().setPanel(DEFAULT_PANEL));
+    await select('mother');
+    const titles = () => $$('.editor-body .card-title').map(el => el.textContent.trim());
+    expect(titles()).not.toContain('Evlat edinme');
+    await click(buttons().find(b => b.textContent.startsWith('Diğer bilgiler')));
+    expect(titles()).toContain('Evlat edinme');
+    // a person already adopted out: shown without asking
+    await run(() => S().setAdoption('mother', 'out'));
+    await select('proband');
+    await select('mother');
+    expect(titles()).toContain('Evlat edinme');
+    await run(() => S().setAdoption('mother', null));
   });
 });
 

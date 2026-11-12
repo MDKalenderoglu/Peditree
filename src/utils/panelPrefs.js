@@ -23,18 +23,24 @@ export const PANEL_PARTS = [
 ];
 /** rare in the clinic: hidden until the clinician brings them forward — also for a preference stored before they existed */
 const HIDDEN_AT_FIRST = ['repro', 'sexAtBirth', 'recordsReviewed'];
+/** shown at first once, then put under "Diğer bilgiler…" on every device, once (adoption: clinician 2026-11-12,
+    "it should not open by itself; the clinician opens it when needed") — after that the clinician's choice stands */
+const MOVED_AWAY = ['adoption'];
 const KNOWN = new Set(PANEL_PARTS.map((p) => p.id));
 const PANEL_KEY = 'peditree.panel.v1';
 
-export const DEFAULT_PANEL = { hidden: [...HIDDEN_AT_FIRST], seen: PANEL_PARTS.map((p) => p.id) };
+export const DEFAULT_PANEL = { hidden: [...HIDDEN_AT_FIRST, ...MOVED_AWAY], seen: PANEL_PARTS.map((p) => p.id), moved: [...MOVED_AWAY] };
 
 export function normalizePanel(v) {
   const o = v && typeof v === 'object' ? v : {};
   const seen = Array.isArray(o.seen) ? o.seen : [];
+  const moved = Array.isArray(o.moved) ? o.moved : [];
   const unseen = HIDDEN_AT_FIRST.filter((id) => !seen.includes(id));
+  const away = MOVED_AWAY.filter((id) => !moved.includes(id));
   return {
-    hidden: [...new Set([...(Array.isArray(o.hidden) ? o.hidden : []), ...unseen].filter((id) => KNOWN.has(id)))],
+    hidden: [...new Set([...(Array.isArray(o.hidden) ? o.hidden : []), ...unseen, ...away].filter((id) => KNOWN.has(id)))],
     seen: PANEL_PARTS.map((p) => p.id),
+    moved: [...MOVED_AWAY],
   };
 }
 
