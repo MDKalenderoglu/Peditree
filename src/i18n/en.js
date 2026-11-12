@@ -531,6 +531,8 @@ const EN = {
   'Gece': 'Night',
   'Gece görünümünde ekran koyulaşır, çizim loş bir kâğıt üzerinde aynı mürekkeple görünür. İndirilen, paylaşılan ve yazdırılan çizim her zaman beyaz kâğıt üzerinde siyahtır.': 'At night the screen turns dark and the drawing shows on dimmed paper in the same ink. A downloaded, shared or printed drawing is always black on white.',
   'Yazıyı küçült': 'Smaller text',
+  'Her zaman': 'Always',
+  'Hiçbir zaman': 'Never',
   'Yazıyı büyüt': 'Larger text',
   '%100’e dön': 'Back to 100%',
   'Çivit': 'Indigo',

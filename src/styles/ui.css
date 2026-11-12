@@ -39,6 +39,7 @@
   --paper: #ffffff;
   --bar-base: #ffffff;       /* what the top bar's tint is mixed into */
   --ring-rgb: 255, 255, 255; /* the ring's parts, as see-through as chosen (--ring-alpha) */
+  --ring-hover-rgb: 238, 242, 247;
   /* the side panel: grey with a touch of the theme colour, so it stands apart from the white drawing (2026-11-09) */
   --panel: color-mix(in srgb, var(--accent) 7%, var(--sunken));
 
@@ -180,37 +181,44 @@ button, input, select, textarea { font-family: inherit; }
    files, pictures and prints are always black on white. */
 :root[data-mode="dark"] {
   color-scheme: dark;
-  --ink: #e6ebf2;
-  --ink-2: #c6cfdb;
-  --muted: #9ba7b7;
-  --faint: #7d8899;
-  --line: #333c49;
-  --line-2: #29313c;
-  --surface: #1c222b;
-  --sunken: #252c37;
-  --frame: #12161c;
-  --paper: #d6d3cb;
-  --bar-base: #1a1f27;
-  --ring-rgb: 32, 38, 48;
-  --panel: color-mix(in srgb, var(--accent) 9%, #161b22);
-  --accent-ink: color-mix(in srgb, var(--accent) 42%, #ffffff);
-  --accent-soft: color-mix(in srgb, var(--accent) 26%, #1c222b);
-  --accent-line: color-mix(in srgb, var(--accent) 60%, transparent);
-  --focus: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent);
-  --danger: #ff8a7f;
-  --danger-soft: #3a1d1d;
-  --danger-line: #7a3530;
-  --warn: #f5c26b;
-  --warn-soft: #34290f;
-  --warn-line: #7a5a1c;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-pop: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.5);
+  --ink: #f0f3f8;
+  --ink-2: #d5dce6;
+  --muted: #adb8c7;
+  --faint: #8f9aab;
+  --line: #3f4958;
+  --line-2: #343d4a;
+  --surface: #1f2630;
+  --sunken: #2a323e;
+  --frame: #14181e;
+  --paper: #e3e0d9;
+  --bar-base: #1b2028;
+  --ring-rgb: 34, 41, 52;
+  --ring-hover-rgb: 52, 61, 75;
+  --panel: color-mix(in srgb, var(--accent) 8%, #171c24);
+  --accent-ink: color-mix(in srgb, var(--accent) 38%, #ffffff);
+  --accent-soft: color-mix(in srgb, var(--accent) 32%, #1f2630);
+  --accent-line: color-mix(in srgb, var(--accent) 45%, #c9d1dc);
+  --focus: 0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent);
+  --danger: #ff9b91;
+  --danger-soft: #3b1f1f;
+  --danger-line: #8a3c36;
+  --warn: #f7c978;
+  --warn-soft: #362a10;
+  --warn-line: #84621f;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-pop: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.55);
 }
 /* the symbols' white is the paper's colour at night (the drawing itself; never in a copy) */
 :root[data-mode="dark"] .canvas-container svg [fill="#ffffff"] { fill: var(--paper); }
 :root[data-mode="dark"] .canvas-container svg [stroke="#ffffff"] { stroke: var(--paper); }
 /* the logo's purple tree on a light tile, seen on the dark bar */
-:root[data-mode="dark"] .brand-mark { background: #ebe8f6; border-radius: 10px; padding: 3px; box-sizing: border-box; }
+/* the logo's purple tree on a light tile, its name in light letters, seen on the dark bar and in About */
+:root[data-mode="dark"] .brand-mark, :root[data-mode="dark"] .about-head img { background: #ebe8f6; border-radius: 10px; padding: 3px; box-sizing: border-box; }
+:root[data-mode="dark"] .brand-wordmark { filter: brightness(0) invert(0.94); }
+/* an informing notice's heading in the accent's light ink */
+:root[data-mode="dark"] .warning-panel[data-tone="info"] { --tone: var(--accent-ink); }
+/* the drawing's lines a shade firmer on the dimmed paper (screen only) */
+:root[data-mode="dark"] .canvas-container svg [stroke="#64748b"] { stroke: #3e4a5c; }
 /* Ayarlar → Görünüm: the ring's transparency, − / slider / +, and how it looks at once */
 .ring-clear { display: flex; align-items: center; gap: 6px; }
 .ring-clear input[type="range"] { width: 140px; accent-color: var(--accent); }
@@ -536,7 +544,7 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .ring-list-panel > .ring-sex { padding: 3px; border-radius: 999px; }
 .ring-list-panel > .ring-sex > button { border-radius: 999px; padding: 4px 10px; }
 .ring-list-panel .ring-row > .ring-choice { min-height: 34px; padding: 0 16px 0 10px; border-radius: 999px; }
-.ring-list-panel .ring-row > .ring-choice:hover { background: rgba(238, 242, 247, var(--ring-alpha)); }
+.ring-list-panel .ring-row > .ring-choice:hover { background: rgba(var(--ring-hover-rgb), var(--ring-alpha)); }
 .ring-list-panel .ring-row > .ring-choice.on { border-color: var(--accent-line); }
 .ring-aside { border-radius: 20px; padding: 12px 14px 14px; }
 .radial-flyout { border-radius: 18px; }

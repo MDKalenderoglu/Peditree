@@ -88,8 +88,14 @@ describe('stylesheet rules', () => {
   it('night (clinician 2026-11-11: the screen too white): every token turns dark, the accent lightened as text, the drawing on dimmed paper with the symbols’ white turned to it', () => {
     const night = block('ui.css', ':root[data-mode="dark"]');
     for (const tok of ['--ink', '--surface', '--frame', '--panel', '--accent-ink', '--accent-soft', '--bar-base', '--ring-rgb']) expect(night).toContain(`${tok}:`);
-    expect(night).toMatch(/--paper: #[cd]/); // dimmed, still light: the drawing's ink reads as on a print
+    expect(night).toMatch(/--paper: #[c-e]/); // dimmed, still light: the drawing's ink reads as on a print
     expect(css('ui.css')).toMatch(/:root\[data-mode="dark"\] \.canvas-container svg \[fill="#ffffff"\] \{ fill: var\(--paper\); \}/);
+    // nothing left light at night (clinician report 2026-11-11: a white row in the ring, an unseen logo)
+    expect(css('ui.css')).toMatch(/\.ring-choice:hover \{ background: rgba\(var\(--ring-hover-rgb\), var\(--ring-alpha\)\); \}/);
+    expect(night).toContain('--ring-hover-rgb:');
+    expect(css('ui.css')).toMatch(/:root\[data-mode="dark"\] \.brand-wordmark \{ filter: brightness\(0\) invert/);
+    expect(css('ui.css')).toMatch(/:root\[data-mode="dark"\] \.brand-mark, :root\[data-mode="dark"\] \.about-head img \{ background: #/);
+    expect(css('ui.css')).toMatch(/:root\[data-mode="dark"\] \.warning-panel\[data-tone="info"\] \{ --tone: var\(--accent-ink\); \}/);
     // after the colour themes, so it wins over their light tints
     expect(css('ui.css').indexOf(':root[data-mode="dark"] {')).toBeGreaterThan(css('ui.css').indexOf(':root[data-theme="ice"]'));
   });
