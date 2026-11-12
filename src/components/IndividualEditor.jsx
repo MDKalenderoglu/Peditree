@@ -18,7 +18,7 @@ import { parseGroupCount } from '../graph/ops';
 import DraftField from './DraftField';
 import { NameField, AgeField, NoteField, GeneticField } from './InfoFields';
 import { usePanelPrefs, usePanelTip, PANEL_PARTS } from '../utils/panelPrefs';
-import { formatDate } from '../utils/age';
+import { formatDate, typeDate } from '../utils/age';
 import { t, tk, currentLang, shownLabel } from '../i18n';
 import { useViewSettings } from '../utils/drawingStyle';
 import { kinTerm } from '../graph/kinTerm';
@@ -654,7 +654,7 @@ export default function IndividualEditor({
             {shows('lmp') && (
               <label className="field">
                 <span className="field-label">{t('Son adet tarihi')}</span>
-                <DraftField key={`${node.id}-lmp`} type="text" inputMode="numeric" className="input birth-date" value={formatDate(node.lmp)} placeholder={t('gg.aa.yyyy')}
+                <DraftField key={`${node.id}-lmp`} type="text" inputMode="numeric" className="input birth-date" format={typeDate} value={formatDate(node.lmp)} placeholder={t('gg.aa.yyyy')}
                   title={t('Süren gebelikte son adet tarihi; çizimde P harfinin altında gösterilir. Tarih kısaltılarak da yazılabilir (3.5.26).')}
                   onCommit={v => set({ lmp: v.trim() })} />
               </label>

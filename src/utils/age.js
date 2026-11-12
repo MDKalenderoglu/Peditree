@@ -106,6 +106,37 @@ export function parseTypedDate(raw, today = new Date()) {
   return date.getFullYear() === year && date.getMonth() === Number(m) - 1 && date.getDate() === Number(d) ? iso : null;
 }
 
+/**
+ * A date as it is typed (clinician request 2026-11-12): a phone's number keyboard has no dot, and many people
+ * type the digits alone anyway — "12122024" shows as "12.12.2024" while it is typed. A separator the
+ * clinician types (. , / - or a space) is kept as a dot and ends that part: "3.5.25", "1.12.2024" and a
+ * mix ("12.122024") work too. Day and month take two digits each, the year up to four; a dot follows a
+ * full day or month while typing forward (never while deleting). Whether the date exists is decided by
+ * parseTypedDate when the box is left — a few digits that cannot be a whole date ("6812") are not guessed.
+ */
+export function typeDate(raw, prev = '') {
+  const s = String(raw ?? '');
+  if (!/^[\d.,/\-\s]*$/.test(s)) return s; // something else (a letter): left as typed, judged on leaving
+  const parts = s.split(/[.,/\-\s]+/);
+  const endsWithSep = /[.,/\-\s]$/.test(s);
+  const widths = [2, 2, 4];
+  const fields = [];
+  parts.forEach((part, i) => {
+    let p = part;
+    const closed = i < parts.length - 1; // a separator follows: this part is complete as typed
+    while (p && fields.length < 3) {
+      const w = widths[fields.length];
+      if (closed && p.length <= w) { fields.push(p); p = ''; }
+      else { fields.push(p.slice(0, w)); p = p.slice(w); }
+    }
+  });
+  let out = fields.join('.');
+  const growing = s.length > String(prev ?? '').length;
+  const last = fields[fields.length - 1] || '';
+  if (fields.length && fields.length < 3 && (endsWithSep || (growing && last.length === widths[fields.length - 1]))) out += '.';
+  return out;
+}
+
 /** 'YYYY-MM-DD' → '03.05.2025' (how the clinician writes it). */
 export function formatDate(iso) {
   const k = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));

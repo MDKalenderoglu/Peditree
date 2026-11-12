@@ -11,7 +11,7 @@ import { pendingDrafts as pending } from '../utils/drafts';
 
 const IDLE_MS = 700;
 
-export default function DraftField({ value, onCommit, as = 'input', ...rest }) {
+export default function DraftField({ value, onCommit, as = 'input', format, ...rest }) {
   const shown = value ?? '';
   const [draft, setDraft] = useState(shown);
   const [focused, setFocused] = useState(false);
@@ -58,7 +58,8 @@ export default function DraftField({ value, onCommit, as = 'input', ...rest }) {
   return (
     <Tag {...rest} ref={boxRef} value={draft}
       onFocus={() => setFocused(true)}
-      onChange={(e) => { setDraft(e.target.value); schedule(e.target.value); }}
+      // format: the text as it is typed (a date's dots: age.typeDate)
+      onChange={(e) => { const next = format ? format(e.target.value, draft) : e.target.value; setDraft(next); schedule(next); }}
       onBlur={() => { commitNow(); setFocused(false); }}
       // Enter saves and leaves the box (clinician request 2026-10-25); in a
       // note, Shift+Enter starts a new line

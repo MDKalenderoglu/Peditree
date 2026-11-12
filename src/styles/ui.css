@@ -1054,6 +1054,9 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
 
 /* the top bar: Menü, the patient, Kaydet; everything else is in the menu */
 .toolbar.touch-bar { gap: 8px; padding: 8px 10px; flex-wrap: nowrap; }
+/* above the person's sheet (15): the menu and the patient's window open over it, not under it (clinician report
+   2026-11-12: with a person's panel open, Menü seemed to do nothing) */
+.toolbar.touch-bar { z-index: 16; }
 .toolbar.touch-bar > * { display: none; }
 .toolbar.touch-bar > .keys-wrap[data-popup="about"], .toolbar.touch-bar > .keys-wrap[data-popup="patient"],
 .toolbar.touch-bar > .toolbar-group, .toolbar.touch-bar > .toolbar-end { display: flex; align-items: center; }
@@ -1061,11 +1064,15 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
 .toolbar.touch-bar > .keys-wrap[data-popup="about"] > button { display: none; } /* About is in the menu */
 .toolbar.touch-bar .toolbar-group > :not([data-popup="download"]) { display: none; }
 .toolbar.touch-bar .toolbar-end > :not(.toolbar-more) { display: none; }
+/* what the menu opens (Yeni, Paylaş, Atıf …) lives beside its own hidden button: the window shows, the button
+   does not (clinician report 2026-11-12: Menü → Yeni did nothing — its window opened inside a hidden box) */
+.toolbar.touch-bar .toolbar-group > .keys-wrap:not([data-popup="download"]), .toolbar.touch-bar .toolbar-end > .keys-wrap:not(.toolbar-more) { display: contents; }
+.toolbar.touch-bar .toolbar-group > .keys-wrap:not([data-popup="download"]) > button, .toolbar.touch-bar .toolbar-end > .keys-wrap:not(.toolbar-more) > button { display: none; }
 .toolbar.touch-bar .toolbar-end { margin-left: 0; order: -1; }
 .toolbar.touch-bar .toolbar-more { display: flex !important; }
 .toolbar.touch-bar > .keys-wrap[data-popup="patient"] { flex: 1; min-width: 0; }
 .toolbar.touch-bar > .touch-quick { display: flex; gap: 2px; flex: none; }
-.toolbar.touch-bar > .touch-quick > .ui-btn { width: 44px; height: 44px; padding: 0; justify-content: center; color: var(--accent-ink); }
+.toolbar.touch-bar > .touch-quick > .ui-btn, .toolbar.touch-bar > .touch-quick > .keys-wrap > .ui-btn { width: 44px; height: 44px; padding: 0; justify-content: center; color: var(--accent-ink); }
 .touch-menu-btn, .toolbar.touch-bar .patient-btn, .toolbar.touch-bar [data-popup="download"] > button { height: 44px; font-size: 15px; }
 .touch-menu-btn { gap: 6px; padding: 0 12px; }
 .toolbar.touch-bar .patient-btn { width: 100%; justify-content: flex-start; gap: 8px; padding: 0 12px; overflow: hidden; }
@@ -1200,7 +1207,7 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
 }
 .toolbar.touch-bar [data-popup="download"] > button svg { color: var(--accent); }
 .toolbar.touch-bar .keys-popover { top: 54px; }
-.toolbar.touch-bar > .touch-quick > .ui-btn { width: 40px; height: 40px; border-radius: 10px; }
+.toolbar.touch-bar > .touch-quick > .ui-btn, .toolbar.touch-bar > .touch-quick > .keys-wrap > .ui-btn { width: 40px; height: 40px; border-radius: 10px; }
 /* a narrow phone: the menu by its three lines alone, so the patient's name keeps room beside Konumlandır and Sığdır */
 @media (max-width: 430px) {
   .touch-menu-btn { padding: 0 10px; }
