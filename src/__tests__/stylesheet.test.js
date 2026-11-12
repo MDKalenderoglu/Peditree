@@ -59,6 +59,9 @@ describe('stylesheet rules', () => {
     expect(block('ui.css', '.editor-panel')).toMatch(/background: var\(--panel\)/);
     // a computer: the page round the floating panel is the drawing's paper (2026-11-12)
     expect(block('ui.css', '.app-shell:not(.touch)')).toMatch(/background-color: var\(--paper\)/);
+    // the open sheet keeps clear of the phone's top bar (2026-11-12)
+    expect(block('ui.css', '.app-shell.touch .touch-sheet.sheet-full')).toMatch(/top: calc\(var\(--touch-bar-h, 56px\) \+ 10px\)/);
+    expect(css('ui.css')).not.toMatch(/sheet-full \{ height: calc\(100dvh/);
     expect(css('ui.css')).toMatch(/--panel: color-mix\(in srgb, var\(--accent\) \d+%, var\(--sunken\)\)/);
     expect(block('ui.css', '.side-header')).toMatch(/border-top: 3px solid var\(--accent\)/);
     expect(block('ui.css', '.side-header')).toMatch(/var\(--accent-soft\)/);
