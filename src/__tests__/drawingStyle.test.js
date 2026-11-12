@@ -56,6 +56,10 @@ describe('drawing style settings', () => {
       .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, textSize: 100, paper: 'plain', carrierMark: 'split', theme: 'indigo', mode: 'system', ringClear: 5, panelWidth: 0, tourOffer: true, sameSexPartners: false, touchMode: 'auto' });
     // the ring's transparency in steps of 5 % within 0–100 (60 until 2026-11-11); the four words of the first version carried over
     expect(normalizeView({ ringClear: 7 }).ringClear).toBe(5);
+    // touch screen: 'always' kept; an 'on' saved under the old word "Açık" (read as "light") opens as 'auto' (2026-11-12)
+    expect(normalizeView({ touchMode: 'always' }).touchMode).toBe('always');
+    expect(normalizeView({ touchMode: 'on' }).touchMode).toBe('auto');
+    expect(normalizeView({ touchMode: 'off' }).touchMode).toBe('off');
     // the tour is offered until it was started or put off (2026-11-09)
     expect(normalizeView({ tourOffer: false }).tourOffer).toBe(false);
     expect(normalizeView({ ringClear: 99 }).ringClear).toBe(100);

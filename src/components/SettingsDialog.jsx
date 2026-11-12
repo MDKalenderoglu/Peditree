@@ -130,7 +130,7 @@ function LookSection({ touch = false }) {
       <Row title={t('Dokunmatik görünüm')} hint={t('Büyük, yazılı düğmeler')}
         more={t('Dokunmatik görünümde çizim bütün ekranı kaplar; bir kişiye dokunulduğunda alttan yazılı düğmeler açılır ve ayrıntılar bu paneli yukarı çekerek görülür. Otomatik seçildiğinde telefonda kendiliğinden açılır.')}>
         <Segmented label={t('Dokunmatik görünüm')} value={view.touchMode || 'auto'} onChange={(v) => setView({ touchMode: v })}
-          options={[['auto', t('Otomatik')], ['on', t('Her zaman')], ['off', t('Hiçbir zaman')]]} />
+          options={[['auto', t('Otomatik')], ['always', t('Her zaman')], ['off', t('Hiçbir zaman')]]} />
       </Row>
     </div>
   );
