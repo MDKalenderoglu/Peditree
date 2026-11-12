@@ -96,6 +96,11 @@ describe('stylesheet rules', () => {
     expect(css('ui.css')).toMatch(/:root\[data-mode="dark"\] \.brand-wordmark \{ filter: brightness\(0\) invert/);
     expect(css('ui.css')).toMatch(/:root\[data-mode="dark"\] \.brand-mark, :root\[data-mode="dark"\] \.about-head img \{ background: #/);
     expect(css('ui.css')).toMatch(/:root\[data-mode="dark"\] \.warning-panel\[data-tone="info"\] \{ --tone: var\(--accent-ink\); \}/);
+    // a see-through ring at night: its words in the drawing's dark ink; its off parts dark (Codex audit 2026-11-12)
+    expect(css('ui.css')).toMatch(/:root\[data-mode="dark"\]\[data-ring-clear="high"\] \.radial-menu \{\s*--ink: #19283d/);
+    expect(css('ui.css')).toMatch(/\.radial-sector\.off path \{ fill: rgba\(var\(--ring-off-rgb\), var\(--ring-alpha\)\); \}/);
+    expect(night).toContain('--ring-off-rgb:');
+    expect(css('ui.css')).toMatch(/@media print \{ :root \{ color-scheme: light; \} html, body \{ background: #ffffff !important; \} \}/);
     // after the colour themes, so it wins over their light tints
     expect(css('ui.css').indexOf(':root[data-mode="dark"] {')).toBeGreaterThan(css('ui.css').indexOf(':root[data-theme="ice"]'));
   });

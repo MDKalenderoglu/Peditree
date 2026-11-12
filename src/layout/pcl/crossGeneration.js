@@ -16,6 +16,7 @@ export const isGhost = (ind) => !!(ind && ind.crossGenerationGhost);
 // a place kept free on a row between the partners' rows, where their line runs down
 // (clinician decision 2026-11-11: partners any number of generations apart)
 export const isPass = (ind) => !!(ind && ind.crossGenerationPass);
+export const MAX_PASSES = 8;
 
 export function withGhosts(graph) {
   const byId = new Map((graph.individuals || []).map((i) => [i.id, i]));
@@ -30,7 +31,10 @@ export function withGhosts(graph) {
       crossGenerationGhost: true, ghostFor: upper.id, label: '',
     };
     ghosts.push(ghost);
-    for (let g = upper.generation + 1; g < lower.generation; g++) {
+    // at most MAX_PASSES rows in between (Codex audit 2026-11-12: a file with a gap of a thousand generations
+    // made a thousand stand-ins); further apart than any family, the line is drawn without kept places
+    const between = lower.generation - upper.generation - 1;
+    for (let g = upper.generation + 1; between <= MAX_PASSES && g < lower.generation; g++) {
       ghosts.push({
         id: `__xg__${u.id}__${g}`, sex: upper.sex, generation: g,
         crossGenerationGhost: true, crossGenerationPass: true, ghostFor: upper.id, label: '',

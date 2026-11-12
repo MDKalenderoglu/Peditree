@@ -160,3 +160,28 @@ describe('stability (KI-2) of a cross-generation edit', () => {
 });
 
 function union(id) { return S().doc.graph.unions.find(x => x.id === id); }
+
+describe('a crafted file with an enormous generation gap (Codex audit 2026-11-12)', () => {
+  it('lays out without making a stand-in per generation', async () => {
+    const { withGhosts, MAX_PASSES } = await import('../layout/pcl/crossGeneration');
+    const g = {
+      individuals: [{ id: 'a', sex: 'male', generation: 0 }, { id: 'b', sex: 'female', generation: 1000 }],
+      unions: [{ id: 'U', partners: ['a', 'b'], crossGeneration: true }], parentChildRelationships: [],
+    };
+    const out = withGhosts(g);
+    expect(out.individuals.length).toBeLessThanOrEqual(2 + 1 + MAX_PASSES);
+    const near = withGhosts({ ...g, individuals: [{ id: 'a', sex: 'male', generation: 0 }, { id: 'b', sex: 'female', generation: 3 }] });
+    expect(near.individuals.filter((i) => i.crossGenerationPass)).toHaveLength(2);
+  });
+});
+
+describe('partners two or three generations apart in busy families: drawn clean (fuzz cases, 2026-11-12)', () => {
+  // each a sequence of real operations the layout fuzz found drawn with a line through a person, two
+  // lines along each other, or a false bus alarm, after partners could stand more than a generation apart
+  const CASES = [[{"op": "deleteIndividual", "id": "father"}, {"op": "addChild", "target": "mother", "sex": "male"}, {"op": "addSiblingCat", "category": "male"}, {"op": "createUnion", "a": "pat_gm", "b": "sib_m_0"}, {"op": "addChildToUnion", "unionId": "U_DE_LINK_1", "sex": "unknown"}, {"op": "addChild", "target": "pat_gm", "sex": "female"}], [{"op": "addRelativeBranch", "side": "paternalRelatives", "type": "uncles", "male": 3, "female": 3}, {"op": "addSibling", "target": "pat_uncle_0", "sex": "female"}, {"op": "addSibling", "target": "pat_uncle_0_cm_2", "sex": "male"}, {"op": "createUnion", "a": "mat_gf", "b": "pat_uncle_0_cf_2"}, {"op": "createUnion", "a": "pat_uncle_0_cf_0", "b": "proband"}, {"op": "addGreatGrandparents", "gpKey": "pat_gm"}, {"op": "addRelativeBranch", "side": "paternalRelatives", "type": "aunts", "male": 2, "female": 1}], [{"op": "addSibling", "target": "mother", "sex": "female"}, {"op": "addRelativeBranch", "side": "maternalRelatives", "type": "uncles", "male": 3, "female": 0}, {"op": "addSpouse", "target": "pat_gf", "sex": "male"}, {"op": "makeSiblings", "a": "mat_gf", "b": "de_ch_0"}, {"op": "addRelativeBranch", "side": "maternalRelatives", "type": "aunts", "male": 2, "female": 0}, {"op": "createUnion", "a": "mat_aunt_0_cm_0", "b": "pat_gm"}, {"op": "addChild", "target": "proband", "sex": "unknown"}], [{"op": "addParents", "target": "mat_gf"}, {"op": "addSibling", "target": "mat_gf", "sex": "female"}, {"op": "addRelativeBranch", "side": "paternalRelatives", "type": "uncles", "male": 0, "female": 3}, {"op": "addChildToUnion", "unionId": "U_MAT_GP", "sex": "unknown"}, {"op": "createUnion", "a": "mat_gf", "b": "pat_uncle_0_cf_0"}, {"op": "addSpouse", "target": "father", "sex": "female"}, {"op": "addSpouse", "target": "pat_gm", "sex": "male"}, {"op": "addGreatGrandparents", "gpKey": "mat_gf"}, {"op": "addGen4", "targetPath": "proband", "male": 1, "female": 0}, {"op": "addSibling", "target": "pat_gf", "sex": "male"}, {"op": "createUnion", "a": "pat_gf", "b": "proband_sp"}], [{"op": "addRelativeBranch", "side": "paternalRelatives", "type": "uncles", "male": 3, "female": 0}, {"op": "addGreatGrandparents", "gpKey": "mat_gf"}, {"op": "addSpouse", "target": "pat_uncle_0_cm_1", "sex": "male"}, {"op": "addSpouse", "target": "pat_uncle_0_cm_1", "sex": "female"}, {"op": "addRelativeBranch", "side": "maternalRelatives", "type": "aunts", "male": 2, "female": 3}, {"op": "createUnion", "a": "gg_mat_gf_m", "b": "pat_uncle_0_cm_1"}, {"op": "addGen4", "targetPath": "proband", "male": 2, "female": 1}, {"op": "addChild", "target": "gen4_0_cm_1", "sex": "unknown"}, {"op": "addSibling", "target": "father", "sex": "unknown"}, {"op": "addSiblingCat", "category": "pregnancyLoss"}, {"op": "addRelativeBranch", "side": "paternalRelatives", "type": "uncles", "male": 3, "female": 0}, {"op": "addGreatGrandparents", "gpKey": "pat_gf"}], [{"op": "addRelativeBranch", "side": "paternalRelatives", "type": "uncles", "male": 3, "female": 0}, {"op": "addGreatGrandparents", "gpKey": "mat_gf"}, {"op": "addRelativeBranch", "side": "maternalRelatives", "type": "aunts", "male": 2, "female": 3}, {"op": "createUnion", "a": "gg_mat_gf_m", "b": "pat_uncle_0_cm_1"}, {"op": "addRelativeBranch", "side": "paternalRelatives", "type": "uncles", "male": 3, "female": 0}, {"op": "addGreatGrandparents", "gpKey": "pat_gf"}]];
+  it.each(CASES.map((q, k) => [k + 1, q]))('case %i: no invariant or readability violation', async (_, q) => {
+    const { replayOps } = await import('../audit/fuzzRunner');
+    const r = replayOps(q);
+    expect([...r.codes, ...r.readCodes]).toEqual([]);
+  });
+});

@@ -347,6 +347,7 @@ describe('the side panel', () => {
     await run(() => S().addChildToUnion(u.id, 'male'));
     await select(g().parentChildRelationships.find(r => r.unionId === u.id).children[0]);
     expect(kin()).toBe('1. derece kuzen (teyze oğlu)');
+    expect($('.side-header .person-kin').getAttribute('title')).toBe('Probanda göre akrabalığı');
     await select('proband');
     expect(kin()).toBe(null);
   });
@@ -1842,6 +1843,8 @@ describe('the Settings window (clinician request 2026-11-03)', () => {
       expect(document.documentElement.style.getPropertyValue('--ring-alpha')).toBe('0');
       expect(JSON.parse(window.localStorage.getItem('peditree.view.v1')).ringClear).toBe(100);
       expect(button('Daha saydam', dialog).disabled).toBe(true);
+      // mostly see-through: marked, so at night the ring's words take the drawing's dark ink (Codex audit 2026-11-12)
+      expect(document.documentElement.getAttribute('data-ring-clear')).toBe('high');
     } finally {
       await run(() => views.getState().setView({ theme: 'indigo', ringClear: 5 }));
     }

@@ -301,7 +301,9 @@ function unionRails({ parentChildRelationships, unions, nodeById }) {
     const union = unions.find(u => u.id === rel.unionId);
     const partners = union ? union.partners.map(p => nodeById.get(p)).filter(Boolean) : [];
     if (partners.length === 0) continue;
-    const unionY = partners[0].y;
+    // the line of descent leaves the couple's own line; partners from different generations (a
+    // cross-generation union) have it on the lower partner's row, not the upper's
+    const unionY = Math.max(...partners.map(p => p.y).filter(finite));
     const childYs = kids.map(k => k.y).filter(finite);
     const childXs = kids.map(k => k.x).filter(finite);
     if (childYs.length === 0 || childXs.length === 0) continue;

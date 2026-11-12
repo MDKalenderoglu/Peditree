@@ -491,6 +491,18 @@ export function computePclLayout(inputGraph, opts = {}) {
       term.d = dir * (sideTaken ? h - 4 : h + (S.bracketed && S.bracketed.has(link.upper) ? XLINK_BRACKET : 0) + XLINK_STUB);
       term.w = W_XLINK_ALIGN;
     }
+    // the kept places on the rows in between stand one under another, so the line runs straight
+    const byUnion = new Map();
+    for (const { link, term } of xlinkTerms) {
+      if (!link.pass) continue;
+      const key = link.ghost.replace(/__\d+$/, '').replace(/__-?\d+$/, '');
+      if (!byUnion.has(key)) byUnion.set(key, []);
+      byUnion.get(key).push(term.idx[0]);
+    }
+    for (const list of byUnion.values()) {
+      list.sort((p, q) => S.indById.get(ids[p]).generation - S.indById.get(ids[q]).generation);
+      for (let k = 1; k < list.length; k++) terms.push({ w: W_CENTRE_EXACT, idx: [list[k], list[k - 1]], c: [1, -1], d: 0 });
+    }
     solution = solveSeparatedQP(n, layers, terms, solution.x);
     qpIterations += solution.iterations;
     qpSolves++;

@@ -60,6 +60,8 @@ export const BRACKET_OUT = 7;
 // lines stop this far outside the bracket's own stroke (2 px wide)
 const BRACKET_LINE = BRACKET_OUT + 2;
 const XGEN_DROP_CLEAR = 14; // the couple's line of descent keeps off the stand-in's vertical
+const XGEN_JOG_STEP = 8;
+const XGEN_JOG = 32; // px under the upper partner's row: where a cross-generation line steps over to its kept place
 
 /** How far above its centre a symbol's outline is, `dx` off the centre. */
 function outlineAbove(ind, h, dx) {
@@ -328,6 +330,7 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
   // down onto the stand-in beside the lower partner — where the couple's own
   // line continues. Each partner stays on their own generation row.
   const crossLines = [];
+  const jogSpans = new Map(); // upper row y → the steps over already placed there
   for (const { ghost, upper } of S.crossLinks || []) {
     if (xPos[ghost] === undefined || xPos[upper] === undefined) continue;
     const u = S.unions.find(x => x.partners.includes(ghost));
@@ -354,9 +357,36 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
       sx = ux + dir * (h - 4 - k * TOP_RISER_STEP);
       sy = uy + h;
     }
-    const line = { common, u, ghost, gx, gy, sx, sy, upperY: uy, upper };
+    // partners more than a generation apart: the line goes down through the place kept free on each
+    // row in between (crossGeneration.js passes). Where it must move sideways to the next kept place, it
+    // steps over just under the row above — a band where only lines of descent run down, never a
+    // sibship line — on a level of its own, so two such lines never run along each other.
+    const passes = (S.crossLinks || []).filter((l) => l.pass && l.ghost.startsWith(`__xg__${u.id}__`) && xPos[l.ghost] !== undefined)
+      .map((l) => ({ x: xPos[l.ghost], y: yPos[l.ghost] })).sort((p, q) => p.y - q.y);
+    const path = [[sx, sy]];
+    let cx = sx, rowY = uy;
+    for (const p of passes) {
+      if (Math.abs(p.x - cx) > 0.5) {
+        const lo = Math.min(cx, p.x) - CLEAR, hi = Math.max(cx, p.x) + CLEAR;
+        const taken = jogSpans.get(rowY) || [];
+        let k = 0;
+        while (taken.some((t) => t.k === k && t.lo < hi && lo < t.hi)) k++;
+        taken.push({ k, lo, hi });
+        jogSpans.set(rowY, taken);
+        const jy = rowY + XGEN_JOG + k * XGEN_JOG_STEP;
+        path.push([cx, jy], [p.x, jy]);
+        cx = p.x;
+      }
+      rowY = p.y;
+    }
+    const line = { common, u, ghost, gx, gy, sx, sy, upperY: uy, upper, passes, path, downX: cx };
     crossLines.push(line);
-    verticals.push({ owner: u.id, x: sx, y1: sy, y2: gy - BAND.BUS_DEFAULT });
+    for (let k = 0; k + 1 < path.length; k++) {
+      const [x1, y1] = path[k], [x2, y2] = path[k + 1];
+      if (x1 === x2) verticals.push({ owner: u.id, x: x1, y1, y2 });
+    }
+    const [lx, ly] = path[path.length - 1];
+    verticals.push({ owner: u.id, x: lx, y1: ly, y2: gy - BAND.BUS_DEFAULT });
   }
 
   // Ended relationship marker on the relationship line.
@@ -410,7 +440,9 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
   }
   for (const line of crossLines) {
     // a bus-like item on the lower row: its level is the band height
-    buses.push({ xline: line, u: line.u, kids: [line.ghost], childY: line.gy, kidMin: Math.min(line.sx, line.gx), kidMax: Math.max(line.sx, line.gx), dropX: line.sx, pref: line.sx });
+    // its run along the lower row's bus level starts where it comes down: the last kept place, if any
+    const down = line.downX;
+    buses.push({ xline: line, u: line.u, kids: [line.ghost], childY: line.gy, kidMin: Math.min(down, line.gx), kidMax: Math.max(down, line.gx), dropX: down, pref: down });
   }
   const layoutBuses = () => {
     const byRow = new Map();
@@ -479,8 +511,14 @@ export function routeConnectors(S, rows, xPos, yPos, plans) {
       continue;
     }
     if (b.xline) {
-      const { common, gx, gy, sx, sy } = b.xline;
-      edges.push({ ...common, x1: sx, y1: sy, x2: sx, y2: b.busY });
+      const { common, gx, gy, path, downX } = b.xline;
+      for (let k = 0; k + 1 < path.length; k++) {
+        const [x1, y1] = path[k], [x2, y2] = path[k + 1];
+        edges.push({ ...common, x1, y1, x2, y2 });
+      }
+      const [, ly] = path[path.length - 1];
+      const sx = downX;
+      edges.push({ ...common, x1: sx, y1: ly, x2: sx, y2: b.busY });
       if (Math.abs(gx - sx) > 0.5) edges.push({ ...common, x1: sx, y1: b.busY, x2: gx, y2: b.busY });
       edges.push({ ...common, x1: gx, y1: b.busY, x2: gx, y2: gy });
       continue;
