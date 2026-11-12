@@ -129,7 +129,7 @@ function MoreMenu({ items, multiSelect, onPick }) {
       {items.filter((id) => MORE[id] && (id !== 'multi' || coarsePointer())).map((id) => {
         const [Icon, label] = MORE[id];
         return (
-          <button key={id} className="download-item" role="menuitem" onClick={() => onPick(id)}>
+          <button key={id} className="download-item" role="menuitem" data-more={id} onClick={() => onPick(id)}>
             <Icon size={18} /><span><b>{t(label)}</b></span>
             {id === 'multi' && multiSelect && <Check size={16} className="more-on" aria-label={t('açık')} />}
           </button>
@@ -436,10 +436,11 @@ function App() {
   const phoneScreen = usePhone();
   const phone = view.touchMode === 'always' || (view.touchMode !== 'off' && phoneScreen); // the touch mode
   const touch = phone;
-  // iPhone: a pinch outside the drawing zooms the whole page (it ignores touch-action there); the drawing's own
+  // iPhone, iPad: a pinch outside the drawing zooms the whole page (it ignores touch-action there); the drawing's own
   // pinch works by touches and is untouched (clinician report 2026-11-12)
+  // (a tablet too, whose screen is the computer's: clinician report 2026-11-12, the page went zoomed there as well)
   React.useEffect(() => {
-    if (!touch) return undefined;
+    if (!touch && !coarsePointer()) return undefined;
     const stop = (e) => { if (!(e.target && e.target.closest && e.target.closest('#pedigree-svg'))) e.preventDefault(); };
     document.addEventListener('gesturestart', stop, { passive: false });
     return () => document.removeEventListener('gesturestart', stop);
@@ -465,6 +466,8 @@ function App() {
     touch,
     openDetails: () => setSheetFull(true),
     openMenu: () => setMoreItems(TOUCH_MENU),
+    // a narrow screen: the buttons that went into "Diğer" (⋯), shown there by the tour
+    openFolded: () => setMoreItems(overflowed(toolbarRef.current)),
   };
   const [openHelp, setOpenHelp] = React.useState(false); // "Aç"'s window: which files it opens
   // the logo: what PediTree is, its version and licence (the rest: Ayarlar → Hakkında)
@@ -1234,7 +1237,7 @@ function App() {
             title={_history && _history.length > 0 ? t('Geri al ({n} adım)', { n: _history.length }) : t('Geri alınacak adım yok')} aria-label={t('Geri al')}><Undo2 size={15} /></button>
           <button className="ui-btn ui-btn-icon" data-overflow="redo" data-overflow-order="11" onClick={handleRedo} disabled={!_future || _future.length === 0}
             title={_future && _future.length > 0 ? t('Yinele ({n} adım)', { n: _future.length }) : t('Yinelenecek adım yok')} aria-label={t('Yinele')}><Redo2 size={15} /></button>
-          <button className="ui-btn" data-overflow="relayout" data-overflow-order="8" onClick={relayout} title={t('Konumlandır, kişileri çizimde yeniden yerleştirir. Akrabalık ilişkileri değişmez ve işlem geri alınabilir.')}><TidyIcon size={15} /> <span className="btn-label" data-fold-order="4">{t('Konumlandır')}</span></button>
+          <button className="ui-btn" data-overflow="relayout" data-overflow-order="13" onClick={relayout} title={t('Konumlandır, kişileri çizimde yeniden yerleştirir. Akrabalık ilişkileri değişmez ve işlem geri alınabilir.')}><TidyIcon size={15} /> <span className="btn-label" data-fold-order="4">{t('Konumlandır')}</span></button>
         </div>
         {/* the right end: it stays at the right edge, also when the toolbar takes two rows */}
         <div className="toolbar-end">

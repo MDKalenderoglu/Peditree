@@ -227,3 +227,13 @@ describe('the phone bar (clinician request 2026-11-12)', () => {
   });
 });
 
+describe('a tablet: the page never zooms, the add buttons fit (clinician report 2026-11-12)', () => {
+  it('any touch screen takes only panning; the add buttons wrap into the columns that fit, smaller in a narrow panel', () => {
+    const s = css('ui.css');
+    expect(s).toMatch(/@media \(pointer: coarse\) \{ \.app-shell:where\(\*\) \{ touch-action: pan-x pan-y; \} \}/);
+    expect(block('ui.css', '.add-grid')).toMatch(/repeat\(auto-fill, minmax\(min\(100%, 96px\), 1fr\)\)/);
+    expect(block('ui.css', '.add-grid .ui-btn')).toMatch(/white-space: normal; overflow-wrap: anywhere;/);
+    expect(s).toMatch(/@container \(max-width: 250px\) \{ \.add-grid \.ui-btn \{ font-size: 12px;/);
+  });
+});
+

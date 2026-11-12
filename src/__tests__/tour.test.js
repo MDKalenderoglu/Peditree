@@ -207,6 +207,14 @@ describe('each step sets the screen up as it talks about it', () => {
       await click(buttonNamed('Tanıtım turu'));
       await goTo('open');
       expect($('.tour-note')).not.toBeNull();
+      // shown by its line in ⋯, which the tour opened — not by ⋯ alone (clinician report 2026-11-12, a tablet)
+      for (let i = 0; i < 20 && !$('.more-popover [data-more="open"]'); i++) await wait(60);
+      expect($('.more-popover [data-more="open"]')).not.toBeNull();
+      // a step whose folded button opens a window: the window, not ⋯ over it
+      await goTo('new');
+      await wait(300);
+      expect($('.new-popover')).not.toBeNull();
+      expect($('.more-popover')).toBeNull();
       await goTo('save'); // Kaydet never goes there
       expect($('.tour-note')).toBeNull();
     } finally {
@@ -398,6 +406,42 @@ describe('the look (clinician 2026-11-10: "çok kaba ve düz")', () => {
     expect($('.tour-card-welcome')).toBeNull();
     expect($('.tour-card .tour-icon svg')).not.toBeNull();
     await key('Escape');
+  });
+});
+
+describe('the ring never slides the drawing back and forth (clinician report 2026-11-12, a tablet: the page went blank)', () => {
+  it('a panel that never fits: the drawing slides once, the page stays', async () => {
+    // the drawing 0–700 wide; the ring's panel always sticking out at the right, however far the drawing slides
+    const svgX = () => { const svg = $('#pedigree-svg'); return svg && svg.__zoom ? svg.__zoom.x : 0; };
+    box.of = (el) => {
+      if (el.classList && el.classList.contains('canvas-stage')) return { left: 0, top: 0, right: 700, bottom: 900, width: 700, height: 900, x: 0, y: 0 };
+      if (el.classList && (el.classList.contains('radial-panel') || el.classList.contains('radial-flyout'))) {
+        return { left: 600, top: 300, right: 760, bottom: 400, width: 160, height: 100, x: 600, y: 300 };
+      }
+      // the person moves with the drawing (so the ring's place changes each time the drawing slides)
+      if (el.classList && el.classList.contains('pedigree-shape') && el.closest('.node-selected')) {
+        const left = 300 + svgX(); return { left, top: 300, right: left + 40, bottom: 340, width: 40, height: 40, x: left, y: 300 };
+      }
+      return null;
+    };
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await run(() => S().selectIndividual('proband'));
+      const before = svgX();
+      const sat = $('.radial-menu .radial-sat[aria-label="Bulgu"]');
+      expect(sat).not.toBeNull();
+      await click(sat);
+      await wait(200);
+      expect($('.app-shell')).not.toBeNull();
+      expect($('.radial-menu .radial-panel')).not.toBeNull();
+      expect(errors.mock.calls.some((c) => String(c[0]).includes('Maximum update depth'))).toBe(false);
+      // slid once, by what the panel stuck out (692 − 760); the popup makes up the rest itself
+      expect(svgX() - before).toBe(-68);
+    } finally {
+      errors.mockRestore();
+      box.of = () => null;
+      await run(() => S().clearSelection());
+    }
   });
 });
 

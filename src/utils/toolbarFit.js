@@ -13,8 +13,8 @@
  * When even the icons do not fit (a tablet, whose buttons are larger for a finger;
  * clinician report 2026-11-09: two rows on a tablet), the least used buttons
  * go, one at a time, into "Diğer" (⋯), which then shows (`data-overflow-order`:
- * Atıf, Geri bildirim, Yazdır, Paylaş, Yeni, Aç, Çoklu seçim, Konumlandır).
- * Kaydet, Geri al, Yinele and Ayarlar always stay on the bar; last of all
+ * Atıf, Geri bildirim, Yazdır, Paylaş, Yeni, Aç, Çoklu seçim, the tour, Yinele, Ayarlar, and Konumlandır last of all —
+ * clinician report 2026-11-12, a tablet: Konumlandır is wanted on the bar). Kaydet and Geri al always stay on the bar; last of all
  * the word "Doğum" before the birth date box gives way (an upright small tablet).
  */
 

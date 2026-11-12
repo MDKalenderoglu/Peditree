@@ -161,16 +161,17 @@ describe('the tour on a phone', () => {
     expect($('.touch-sheet').classList.contains('sheet-full')).toBe(true);
     await next('t-couple');
     expect($('.touch-sheet')).toBeNull(); // the line itself is shown, no details over it
-    await next('t-arrange');
-    await next('t-childless');
-    expect($('.new-popover').textContent).toMatch(/Çocuksuz \/ infertil çift/);
-    await next('t-menu');
-    expect($('.more-popover')).not.toBeNull();
+    // then the bar from left to right (clinician report 2026-11-12: the order did not follow the screen)
     await next('t-patient');
+    await next('t-arrange');
     await next('t-save');
     expect($('.download-popover')).not.toBeNull();
     await next('t-share');
     expect($('.download-popover')).toBeNull();
+    await next('t-menu');
+    expect($('.more-popover')).not.toBeNull();
+    await next('t-childless');
+    expect($('.new-popover').textContent).toMatch(/Çocuksuz \/ infertil çift/);
     await click($('.tour-close'));
     expect($('.tour')).toBeNull();
   });
