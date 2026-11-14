@@ -236,6 +236,20 @@ describe('the phone bar (clinician request 2026-11-12)', () => {
     expect(s).toMatch(/\.toolbar\.touch-bar \.toolbar-group > :not\(\[data-popup="download"\]\):not\(\[data-popup="share"\]\) \{ display: none; \}/);
     expect(s).toMatch(/\.toolbar\.touch-bar \.toolbar-group > \.keys-wrap:not\(\[data-popup="download"\]\):not\(\[data-popup="share"\]\) > button/);
   });
+
+  it('fourth pass (clinician report 2026-11-15: home-made look): a floating rounded bar like the person\'s sheet, one icon colour, Kaydet filled, the patient a chip, windows under the bar', () => {
+    const bar = block('ui.css', '.app-shell.touch > .toolbar.touch-bar');
+    expect(bar).toMatch(/margin: max\(8px, env\(safe-area-inset-top\)\) 8px 0;/);
+    expect(bar).toMatch(/border-radius: 18px;/);
+    expect(bar).toMatch(/box-shadow:/);
+    const icons = block('ui.css', '.app-shell.touch .toolbar.touch-bar .touch-quick > .ui-btn, .app-shell.touch .toolbar.touch-bar .touch-quick > .keys-wrap > .ui-btn,\n.app-shell.touch .toolbar.touch-bar [data-popup="share"] > button, .app-shell.touch .toolbar.touch-bar .touch-menu-btn');
+    expect(icons).toMatch(/color: var\(--accent-ink\);/);
+    const save = block('ui.css', '.app-shell.touch .toolbar.touch-bar [data-popup="download"] > button');
+    expect(save).toMatch(/background: var\(--accent\);/);
+    expect(save).toMatch(/color: #fff;/);
+    expect(block('ui.css', '.app-shell.touch .toolbar.touch-bar .patient-btn')).toMatch(/border-radius: 999px;/);
+    expect(block('ui.css', '.app-shell.touch .toolbar.touch-bar .keys-popover')).toMatch(/top: calc\(var\(--touch-bar-h, 62px\) \+ 8px\);/);
+  });
 });
 
 describe('a tablet: the page never zooms, the add buttons fit (clinician report 2026-11-12)', () => {
