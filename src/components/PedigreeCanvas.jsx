@@ -35,7 +35,7 @@ import { annotationAge, pregnancyLine, lmpLine } from '../utils/annotations';
 import { BRACKET_OUT } from '../layout/pcl/routing';
 import { isSmallSymbol, pregnancyKind, PREGNANCY_LABEL, TESTED_TEXT, isGroup, groupText, subjectOf } from '../graph/model';
 import { packLines } from '../utils/textWrap';
-import { filled, onsetsOf, unsureOf, bornWeek, hasNoteNumber, geneticRows as geneticRowsOf, lineNoteText, LINE_NOTE_SIZE, TEXT, textScale, ARROW_DROP } from '../utils/symbolText';
+import { filled, onsetsOf, unsureOf, bornWeek, hasNoteNumber, geneticRows as geneticRowsOf, lineNoteText, LINE_NOTE_SIZE, TEXT, textScale, ARROW_DROP, textBox } from '../utils/symbolText';
 import { keyGrid } from '../utils/keyGrid';
 import { nameCase } from '../utils/nameCase';
 import { chainOf, offsetPolyline } from '../utils/doubleLine';
@@ -48,6 +48,8 @@ const NODE_FILL = '#ffffff';
 const NODE_SIZE = 40;
 const HALF = NODE_SIZE / 2;
 const LOSS_SIZE = 14; // smaller triangle for pregnancy loss
+const DECEASED_REACH = 4; // how far each end of the deceased slash reaches past the symbol's corner
+const DECEASED_REACH_OVER_TEXT = 0; // its lower end, where text stands under the symbol: at the corner, as at an arrow
 const GENETIC_ROW = 11; // one line of a genetic test result under a symbol
 
 const JUMP_R = 5;
@@ -912,12 +914,23 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       if (d.deceased && !isSmall && !d.ongoingPregnancy) {
         // Diagonal slash for deceased: from the lower left to the upper right, as NSGC and the
         // textbooks draw it (clinician 2026-11-11: no difference from the international standard);
-        // it stops at the corner where a proband's or consultand's arrow points
-        const low = (d.proband || d.consultand) && !arrowRight.has(d.id) ? 0 : 4;
+        // it stops at the corner where a proband's or consultand's arrow points, and short of the text
+        // below the symbol (clinician 2026-11-14: it touched "ölüm 2 y")
+        const low = (d.proband || d.consultand) && !arrowRight.has(d.id) ? 0
+          : textBox(d).depth > sz ? DECEASED_REACH_OVER_TEXT : DECEASED_REACH;
         el.append('line').attr('class', 'deceased-slash')
           .attr('x1', -(sz + low)).attr('y1', sz + low)
-          .attr('x2', sz + 4).attr('y2', -(sz + 4))
+          .attr('x2', sz + DECEASED_REACH).attr('y2', -(sz + DECEASED_REACH))
           .attr('stroke', NODE_STROKE).attr('stroke-width', 2);
+        // On a wholly filled (affected) symbol the slash is light inside the symbol, dark outside: one
+        // line that is seen (clinician 2026-11-14; notation mockup 09 B — the meaning is the same).
+        // A partly filled symbol keeps the dark slash, which shows on its open part.
+        if (filling.mode === 'full') {
+          const inner = sz * (d.sex === 'female' ? Math.SQRT1_2 : d.sex === 'male' ? 1 : 0.5) - 2; // clear of the outline
+          el.append('line').attr('class', 'deceased-slash-inner')
+            .attr('x1', -inner).attr('y1', inner).attr('x2', inner).attr('y2', -inner)
+            .attr('stroke', '#ffffff').attr('stroke-width', 2);
+        }
       }
 
       // Proband / consultand arrow (lower-left); "P" only for the proband
