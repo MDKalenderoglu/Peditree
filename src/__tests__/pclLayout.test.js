@@ -12,6 +12,7 @@ import { makeLargePedigree, LARGE_PEDIGREE_CASES } from '../audit/largePedigrees
 import { checkAllInvariants } from '../audit/layoutInvariants';
 import { checkConnectorReadability } from '../audit/connectorReadability';
 import { auditPedigreeGraph } from '../utils/graphIntegrity';
+import { budget as ciBudget } from './support/timeBudget';
 
 const xOf = (layout) => new Map(layout.nodes.map(n => [n.id, n.x]));
 
@@ -156,7 +157,7 @@ describe('PCL — realistic large pedigrees (synthetic)', () => {
       computePclLayout(g); // warm-up (JIT)
       const t0 = performance.now();
       computePclLayout(g);
-      expect(performance.now() - t0, c.name).toBeLessThan(budget[c.name]);
+      expect(performance.now() - t0, c.name).toBeLessThan(ciBudget(budget[c.name]));
     }
   }, 60000);
 });
