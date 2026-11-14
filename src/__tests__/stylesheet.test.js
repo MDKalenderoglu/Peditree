@@ -123,6 +123,17 @@ describe('stylesheet rules', () => {
     expect(block('ui.css', '.radial-menu')).toMatch(/z-index: 12;/);
   });
 
+  it('on a computer the top bar floats on the paper like the side panel: apart from the edges, rounded, shadowed (clinician 2026-11-14); a touch screen keeps its own bar', () => {
+    const bar = block('ui.css', '.app-shell:not(.touch) > .toolbar');
+    const panel = block('ui.css', '.app-shell:not(.touch) > .side-right.editor-panel');
+    expect(bar).toMatch(/margin: 10px 10px 0;/);
+    for (const rule of ['border: 1px solid var(--accent-line)', 'border-radius: 16px']) {
+      expect(bar).toContain(rule);
+      expect(panel).toContain(rule);
+    }
+    expect(bar.match(/box-shadow:[^;]*/)[0]).toBe(panel.match(/box-shadow:[^;]*/)[0]);
+  });
+
   it('the patient name is a white field of its own on the tinted top bar, its hint readable (clinician report 2026-11-09: could not be seen)', () => {
     const name = block('ui.css', '.toolbar .patient-name');
     expect(name).toMatch(/background: var\(--surface\); border: 1px solid var\(--accent-line\)/);
