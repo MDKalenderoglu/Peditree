@@ -30,6 +30,7 @@ import { addChild, addChildToPerson, addPartner, addSibling, updatePerson } from
 import { checkAllInvariants } from '../audit/layoutInvariants';
 import { checkConnectorReadability, readabilityMetrics } from '../audit/connectorReadability';
 import { displayParentage } from '../graph/model';
+import { budget } from './support/timeBudget';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
 
@@ -277,7 +278,7 @@ describe('KI-2 large families (KI-3 fixtures)', () => {
           expect(checkAllInvariants(drawn).map(v => v.code)).toEqual([]);
           expect(checkConnectorReadability(drawn).map(v => v.code)).toEqual([]);
           expect(L.nodes.length).toBe(r.doc.graph.individuals.length);
-          expect(ms).toBeLessThan(c.budgetMs);
+          expect(ms).toBeLessThan(budget(c.budgetMs));
           // the guarantee: no more crossings, off-centre couples or long
           // partner lines than the previous drawing — or, when the edit adds
           // problems in every layout, no more in total than a fresh layout

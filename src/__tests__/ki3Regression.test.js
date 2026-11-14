@@ -30,6 +30,7 @@ import { auditPedigreeGraph } from '../utils/graphIntegrity';
 import { validateGraphStructure } from '../graph/validate';
 import { createDocument } from '../graph/document';
 import { validateDocument, errorsOf } from '../graph/validate';
+import { budget } from './support/timeBudget';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
 
@@ -125,7 +126,7 @@ for (const c of CASES) {
         ts.push(performance.now() - t0);
       }
       ts.sort((a, b) => a - b);
-      expect(ts[1]).toBeLessThan(c.budgetMs);
+      expect(ts[1]).toBeLessThan(budget(c.budgetMs));
     }, 60000);
   });
 }
