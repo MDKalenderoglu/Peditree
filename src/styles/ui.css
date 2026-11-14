@@ -1258,6 +1258,36 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
   .app-shell.touch .touch-sheet.sheet-full { height: auto; top: calc(var(--touch-bar-h, 56px) + 10px); }
 }
 .app-shell.touch .sheet-grip { height: 14px; }
+
+/* a phone, fourth pass (clinician report 2026-11-15: the bar looked home-made): the bar floats like the
+   person's sheet and the computer's bar — a rounded sheet off the screen's edges; every icon in one quiet
+   colour, Kaydet the one filled button, the patient a soft chip, the logo a rounded tile */
+.app-shell.touch { background-color: var(--paper); }
+.app-shell.touch > .toolbar.touch-bar {
+  margin: max(8px, env(safe-area-inset-top)) 8px 0; padding: 5px; gap: 2px;
+  border: 1px solid var(--accent-line); border-radius: 18px;
+  background: color-mix(in srgb, var(--accent) 7%, var(--bar-base));
+  box-shadow: 0 2px 6px rgba(24, 33, 44, 0.08), 0 14px 36px -12px rgba(24, 33, 44, 0.32);
+}
+.app-shell.touch .toolbar.touch-bar > .keys-wrap[data-popup="about"] > button { width: 40px; height: 40px; border-radius: 12px; }
+.app-shell.touch .toolbar.touch-bar .brand-mark { width: 36px; height: 36px; border-radius: 10px; }
+.app-shell.touch .toolbar.touch-bar .patient-btn {
+  height: 40px; margin: 0 3px; padding: 0 12px 0 10px; gap: 6px; border-radius: 999px; font-size: 14.5px;
+  background: var(--surface); border: 1px solid var(--line); color: var(--ink); font-weight: 600;
+}
+.app-shell.touch .toolbar.touch-bar .patient-btn svg { flex: none; color: var(--accent); }
+.app-shell.touch .toolbar.touch-bar .touch-quick > .ui-btn, .app-shell.touch .toolbar.touch-bar .touch-quick > .keys-wrap > .ui-btn,
+.app-shell.touch .toolbar.touch-bar [data-popup="share"] > button, .app-shell.touch .toolbar.touch-bar .touch-menu-btn {
+  width: 38px; height: 40px; padding: 0; justify-content: center; border-radius: 12px; color: var(--accent-ink);
+}
+.app-shell.touch .toolbar.touch-bar .touch-menu-btn > span { display: none; }
+.app-shell.touch .toolbar.touch-bar [data-popup="download"] > button {
+  border-radius: 12px; background: var(--accent); border-color: var(--accent); color: #fff;
+  box-shadow: 0 3px 10px -4px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.app-shell.touch .toolbar.touch-bar [data-popup="download"] > button svg { color: #fff; }
+/* the bar's windows open a little under the floating bar, however tall it is */
+.app-shell.touch .toolbar.touch-bar .keys-popover { top: calc(var(--touch-bar-h, 62px) + 8px); }
 .app-shell.touch .sheet-grip > span { width: 38px; height: 4px; }
 .sheet-head { padding: 0 4px 0 14px; }
 .sheet-title { font: 700 14.5px/1.3 var(--font-ui); color: var(--accent-ink); }
