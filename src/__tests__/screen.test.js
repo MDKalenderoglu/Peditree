@@ -1559,6 +1559,39 @@ describe('notation per the literature (NSGC 2022 and its 2025 correction)', () =
     expect(Number(p.getAttribute('y1'))).toBeLessThan(Number(f.getAttribute('y1')));
   });
 
+  it('the deceased slash is seen on a filled (affected) symbol: light inside the symbol, dark outside — one line (clinician 2026-11-14)', async () => {
+    await run(() => {
+      S().updateIndividual('father', { deceased: true, affected: true });
+      S().updateIndividual('mother', { deceased: true, affected: true });
+      S().updateIndividual('pat_gf', { deceased: true });
+    });
+    for (const id of ['father', 'mother']) {
+      const node = drawn(id);
+      const inner = node.querySelector('.deceased-slash-inner'), slash = node.querySelector('.deceased-slash');
+      expect(inner, id).not.toBeNull();
+      expect(inner.getAttribute('stroke')).toBe('#ffffff');
+      // on top of the dark slash, as wide: a single line, never a "//"
+      expect(slash.compareDocumentPosition(inner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(inner.getAttribute('stroke-width')).toBe(slash.getAttribute('stroke-width'));
+      expect(Number(inner.getAttribute('x2')) > 0 && Number(inner.getAttribute('y2')) < 0).toBe(true);
+      // inside the symbol: within the square, within the circle — the ends outside stay dark
+      const x = Number(inner.getAttribute('x2')), y = Number(inner.getAttribute('y2'));
+      const half = id === 'father' ? Number(node.querySelector('rect').getAttribute('width')) / 2 : Number(node.querySelector('circle').getAttribute('r'));
+      expect(id === 'father' ? Math.max(Math.abs(x), Math.abs(y)) : Math.hypot(x, y)).toBeLessThan(half - 1);
+    }
+    // an open symbol keeps the dark slash all the way
+    expect(drawn('pat_gf').querySelector('.deceased-slash-inner')).toBeNull();
+  });
+
+  it('the deceased slash stops short of the text under the symbol ("ölüm 2 y"; clinician 2026-11-14)', async () => {
+    await run(() => {
+      S().updateIndividual('father', { deceased: true, ageAtDeath: '2' });
+      S().updateIndividual('mother', { deceased: true });
+    });
+    const lowEnd = (id) => Number(drawn(id).querySelector('.deceased-slash').getAttribute('y1'));
+    expect(lowEnd('father')).toBeLessThan(lowEnd('mother')); // the mother has no text below: the usual reach
+  });
+
   it('ectopic pregnancy: the triangle with a slash and "ECT" below, like a termination but named', async () => {
     await run(() => { S().addChildTo('proband', 'unknown', { ectopic: true }); S().addChildTo('proband', 'unknown', { termination: true }); });
     const ect = g().individuals.find(i => i.ectopic).id, top = g().individuals.find(i => i.termination).id;

@@ -88,8 +88,8 @@ Her başlıkta: (1) standart kuralı, (2) mevcut davranış, (3) uygunluk, (4) e
    işinin bekletildiğini söylüyor); çoklu fenotip eksik.
 4. **Eksik/hatalı:** yarım dolgu, bazı kaynaklarda presemptomatik taşıyıcıya ayrılmış bir görünümdür; kaynaklar arasında
    çelişki var (repo notu yarım dolgu, NSGC 2008 bilgisi dikey çizgi) — doğrulanmadan seçilemez. Etkilenmiş ve vefat
-   etmiş bireyde koyu çizgi koyu dolgunun üstünde yalnız köşelerde görünüyor
-   (`reports/notation-audit/CB-05-II-3-affected-deceased.svg`).
+   etmiş bireyde koyu çizgi koyu dolgunun üstünde yalnız köşelerde görünüyordu
+   (`reports/notation-audit/CB-05-II-3-affected-deceased.svg`) — 2026-11-14'te düzeltildi (aşağıda karar kaydı).
 5. **Öneri:** 2022 yayını doğrulanınca taşıyıcı / presemptomatik / çoklu fenotip gösterimini birlikte belirleyin
    (taslak: `docs/notation/mockups/03-carrier-phenotypes.svg`); vefat çizgisinin dolgu üstünde görünürlüğü için
    `09-deceased-affected.svg`.
@@ -302,6 +302,7 @@ Onay sonrası her kural için:
 | 2026-10-24 | farklı kuşaklar arası eşlik | izin verilecek; herkes kendi kuşak satırında kalır, ilişki çizgisi üstteki kişiden alttakine **basamaklı** iner, çocuklar alttaki kuşağın bir altına çizilir (uygulandı 2026-10-24: bir kuşak farka kadar; dede–torun gibi doğrudan soy bağı engelli) | kullanıcı (klinisyen) |
 | 2026-11-11 | daha geniş kuşak farkıyla eşlik; daha az basamak | kuşak farkı sınırı kalktı (ör. büyük amca ile yeğenin kızı); öz kardeşler ve doğrudan soy bağı engelli kalır. Çizgi üstteki eşin yanından çıkar, aradaki her satırda boş tutulan yerden düz iner (basamak yok, mümkünse iki kırılma) | kullanıcı (klinisyen) |
 | 2026-11-11 | vefat çizgisinin yönü | uluslararası gösterimle aynı: sol alttan sağ üste ("/"), TOP / ECT çizgisiyle aynı yön; proband ya da danışan okunun bulunduğu köşede taşmaz; sembol rehberi çizimle aynı (uygulandı) | kullanıcı (klinisyen): "hangi taraf diyorsa ona göre" |
+| 2026-11-14 | vefat çizgisi dolu sembolde | tamamen dolu (etkilenmiş) sembolde çizgi sembolün içinde beyaz, dışında koyu: tek çizgi (taslak 09 B; anlam aynı, "//" gibi görünmez); kısmen dolu ya da boş sembolde koyu çizgi değişmez; altında yazı olan kişide alt uç köşede biter ("ölüm 2 y" yazısına değiyordu) (uygulandı) | kullanıcı (klinisyen): "vefat da göster … kullanıcı ne biçim gözüküyor dememeli" |
 | 2026-10-24 | K12 — ikizler / çoğul gebelik | kardeşlik çizgisinde tek noktadan ayrılan çizgiler; tek yumurta = çizgiler arasında çubuk, zigosite bilinmiyor = "?", dizigotik / trizigotik = işaret yok; üçüz ve daha fazlası (uygulandı, `graph/multiples.js`; referans: klinik pedigri sembol sayfası, Ayaz & Çitli) | kullanıcı (klinisyen) isteği |
 | | referans sayfasında farklı görülenler | ölü doğum: normal boy sembol + eğik çizgi + "SB hf" (bizde küçük sembol + X); devam eden gebelik: sembol içinde P (bizde yok); TOP / ektopik (bizde yok); taşıyıcı: ortada nokta (bizde yarım dolgu, K5 kararı); presemptomatik taşıyıcı: dikey çizgi; değerlendirme: yıldız + E notu | karar gerekli |
 | 2026-10-24 | bulgu imzası ve açıklama yeri | her bulgu bir **imza** taşır: çeyrek (sol üst / sağ üst / sağ alt / sol alt) + dolgu (siyah / tarama / noktalı / gri); yeni bulguya sıradaki boş imza önerilir, klinisyen değiştirebilir; aynı bulgu herkeste aynı imza; tek bulgu da kendi çeyreğini boyar (bulgu belirtilmeden "etkilenmiş" = tam dolgu); açıklama **sağ üstte** (uygulandı). Üst/alt yarı seçeneği çeyreklerle çakıştığı için kullanılmadı | kullanıcı (klinisyen) |
