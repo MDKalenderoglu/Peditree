@@ -59,6 +59,7 @@ const ringAs = ({ sector: want = null, sat: wantSat = null } = {}) => () => {
  */
 const CHILDLESS_TEXT = tk('Danışmaya çocuğu olmayan bir çift geldiyse Yeni’deki “Çocuksuz / infertil çift” proband ile eşini, çizgilerinin altında infertilite işaretiyle (çift kısa çizgi) kurar. Var olan bir çift için kişinin Çocuk seçeneklerinde Çocuksuz (tek çizgi) ve İnfertil bulunur; çifte çocuk eklenince işaret kendiliğinden kalkar.');
 
+// eslint-disable-next-line react-refresh/only-export-components -- read by the tour's tests; changes only the editor's hot reload
 export const TOUR_STEPS = [
   { id: 'welcome', title: tk('PediTree’ye hoş geldiniz'),
     text: tk('Bu tur, uygulamanın bölümlerini örnek bir aile üzerinde sırayla tanıtır. Turu istediğiniz an kapatabilirsiniz; kendi çiziminiz olduğu gibi korunur.'),
@@ -153,7 +154,7 @@ const pressTile = (name) => () => {
   if (b.getAttribute('aria-expanded') !== 'true') b.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   return true;
 };
-export const TOUCH_STEPS = [
+const TOUCH_STEPS = [
   TOUR_STEPS[0],
   { id: 't-drawing', icon: Shapes, title: tk('Çizim alanı'),
     text: tk('Kare erkeği, daire kadını, içi dolu sembol etkilenmiş bireyi gösterir; ok ve P harfi probandı belirtir. Bir kişiyle çalışmak için sembolüne dokunun; iki parmakla yakınlaştırıp uzaklaştırabilirsiniz.'),
@@ -328,7 +329,7 @@ export function TourFamily({ className = '' }) {
  * screen and covers none of the other lit areas (the couple's card in the panel, say).
  */
 /** A phone: the card across the screen, at the top or the bottom, whichever covers less of what it shows. */
-export function touchPlace(rects, card, view) {
+function touchPlace(rects, card, view) {
   const top = 72;
   const bottom = view.h - card.h - 12;
   if (!rects.length) return { left: 8, top: Math.max(top, (view.h - card.h) / 2), side: null, arrow: 0 };
@@ -337,6 +338,7 @@ export function touchPlace(rects, card, view) {
   return { left: 8, top: cover(top) <= cover(bottom) ? top : bottom, side: null, arrow: 0 };
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- read by the tour's tests; changes only the editor's hot reload
 export function placeCard(rect, card, view, others = []) {
   const { w, h } = card;
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -376,7 +378,8 @@ export default function Tour({ ctx, onClose }) {
   const cardRef = useRef(null);
   const nextRef = useRef(null);
   const ctxRef = useRef(ctx);
-  ctxRef.current = ctx;
+  // the latest screen controls, kept up to date before the step's own effects below read them
+  useLayoutEffect(() => { ctxRef.current = ctx; });
   const step = STEPS[at];
   const card = STEPS[shown.at];
   const last = shown.at === STEPS.length - 1;

@@ -8,7 +8,7 @@
  * file never changes. Short words on the screen, the longer explanation in a
  * row's tooltip (clinician 2026-11-05: "minimal, premium, clear").
  */
-import { useEffect, useRef, useState } from 'react';
+import { createElement, useEffect, useRef, useState } from 'react';
 import { X, ChevronLeft, ChevronRight, Globe, Palette, Paintbrush, CircleDot, PanelRight, FolderOpen, Shapes, Keyboard, Info, Minus, Plus } from 'lucide-react';
 import { ProductInfo, CitationInfo, FeedbackInfo, LicenseInfo, KeyHelp } from './AboutParts';
 import { useT, useLang, tk } from '../i18n';
@@ -305,7 +305,7 @@ export default function SettingsDialog({ onClose, initial = 'language', touch = 
           <section className="settings-pane" id="set-panel" aria-label={t(cur.label)}>
             <h3>{t(cur.label)}</h3>
             {cur.intro && <p className="set-intro">{t(cur.intro)}</p>}
-            <TouchBody touch />
+            {createElement(TouchBody, { touch: true })}
           </section>
         ) : (
           <nav className="settings-list" aria-label={t('Ayarlar')}>
