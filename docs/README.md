@@ -13,7 +13,6 @@ Güncel durum için bu klasördeki PEDITREE_* dokümanları esas alınır. [`arc
 | [PEDITREE_UX_REVIEW.md](PEDITREE_UX_REVIEW.md) | Kalıcı UX gereksinimleri (akıllı ilişki görselleştirmesi, düzenleme kararlılığı) ve kabul kriterleri |
 | [PEDITREE_DATA_MODEL_V2.md](PEDITREE_DATA_MODEL_V2.md) | Faz 2b: mevcut veri modelinin değerlendirmesi, graph-first şema v2, göç ve kalıcı kimlikler |
 | [PEDITREE_COMPARISON_NOTES.md](PEDITREE_COMPARISON_NOTES.md) | Diğer pedigri araçları: tablet desteği ve makaledeki karşılaştırma tablosu için notlar (2026-11-03) |
-| [paper/PEDITREE_PAPER_OUTLINE.md](paper/PEDITREE_PAPER_OUTLINE.md) | Makale taslak planı: dergi seçenekleri, bölümler ve kanıtları, kullanılabilirlik çalışması tasarımı, karşılaştırma tablosu (2026-11-14) |
 | [release-audit/](release-audit/RELEASE_AUDIT.md) | Yayın öncesi denetim (2026-11-02): bulgular, NSGC uyum matrisi, güvenlik ve gizlilik, test matrisi, yayın listesi; karar NO-GO (kanıt ve onay eksikleri) |
 
 Ölçüm komutları:

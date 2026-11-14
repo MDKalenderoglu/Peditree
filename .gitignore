@@ -37,3 +37,6 @@ lerna-debug.log*
 # Misc build caches
 .vite/
 coverage/
+
+# the paper in preparation: kept on this computer only (clinician decision 2026-11-14)
+docs/paper/
