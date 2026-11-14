@@ -337,6 +337,27 @@ describe('the ring menu', () => {
     await key('Escape');
   });
 
+  it('the ring\'s four sectors have soft, rounded corners and an even gap between them (clinician 2026-11-14)', async () => {
+    await select('proband');
+    const paths = $$('.radial-sector > path').map((p) => p.getAttribute('d'));
+    expect(paths).toHaveLength(4);
+    for (const d of paths) {
+      // two rims and four rounded corners: six arcs, no corner a sharp point
+      expect(d.match(/A/g)).toHaveLength(6);
+      // the straight edges: each keeps the same distance from the diagonal between the sectors at
+      // its inner and outer end — the gap does not narrow to a point at the centre
+      const xy = (m) => [Number(m[1]), Number(m[2])];
+      const lines = [...d.matchAll(/[ML](-?[\d.]+),(-?[\d.]+)/g)].map(xy);              // inner a0, outer a0, inner a1
+      const arcEnds = [...d.matchAll(/A[\d.]+,[\d.]+ 0 0 [01] (-?[\d.]+),(-?[\d.]+)/g)].map(xy);
+      const offDiagonal = ([x, y]) => Math.min(Math.abs(x - y), Math.abs(x + y)) / Math.SQRT2;
+      const edges = [[lines[0], lines[1]], [arcEnds[2], lines[2]]];
+      for (const [a, b] of edges) {
+        expect(offDiagonal(a)).toBeGreaterThan(1);
+        expect(offDiagonal(a)).toBeCloseTo(offDiagonal(b), 1);
+      }
+    }
+  });
+
   it('a click on a person selects them and shows the ring; letters open its parts', async () => {
     await select('proband');
     expect(S().selectedIds).toEqual(['proband']);
