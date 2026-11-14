@@ -923,6 +923,8 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .keys-popover, .radial-flyout, .radial-panel, .ring-aside { animation: soft-in var(--t-pop) var(--ease); }
 .relation-dialog { animation: soft-in var(--t-move) var(--ease); }
 .keys-popover { transform-origin: top right; }
+/* a window that hangs from its button's left grows from its left corner (it stays aligned with the bar) */
+.about-popover, .new-popover, .open-popover, .patient-popover { transform-origin: top left; }
 .relation-backdrop { animation: soft-fade var(--t-move) var(--ease); }
 @media (prefers-reduced-motion: reduce) { .keys-popover, .radial-flyout, .radial-panel, .ring-aside, .relation-dialog, .relation-backdrop { animation: none; } }
 
