@@ -153,6 +153,12 @@ button, input, select, textarea { font-family: inherit; }
   border-bottom: 1px solid var(--accent-line);
   box-shadow: 0 2px 10px -4px rgba(24, 33, 44, 0.22);
 }
+/* a computer: the bar floats on the drawing's paper like the side panel, a rounded sheet a little apart
+   from the window's edges, always there (clinician request 2026-11-14) */
+.app-shell:not(.touch) > .toolbar {
+  margin: 10px 10px 0; border: 1px solid var(--accent-line); border-radius: 16px;
+  box-shadow: 0 2px 6px rgba(24, 33, 44, 0.08), 0 14px 36px -12px rgba(24, 33, 44, 0.32);
+}
 .toolbar-brand { margin-right: 6px; }
 .toolbar-group { display: flex; align-items: center; gap: 2px; }
 .toolbar-sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; flex: none; }
