@@ -152,11 +152,34 @@ function ChoiceList({ items, label }) {
   );
 }
 
-function sectorPath(a0, a1, r, R, gapDeg = 3) {
-  const p = (a, rad) => [rad * Math.cos((a * Math.PI) / 180), rad * Math.sin((a * Math.PI) / 180)];
-  const [b0, b1] = [a0 + gapDeg, a1 - gapDeg]; // degrees between sectors
-  const [x0, y0] = p(b0, R), [x1, y1] = p(b1, R), [x2, y2] = p(b1, r), [x3, y3] = p(b0, r);
-  return `M${x0},${y0} A${R},${R} 0 0 1 ${x1},${y1} L${x2},${y2} A${r},${r} 0 0 0 ${x3},${y3} Z`;
+/**
+ * One sector of the ring with soft, rounded corners (clinician request 2026-11-14: softer, oval
+ * sectors instead of sharp points). Neighbouring sectors are kept apart by a gap of the same width
+ * from the inner to the outer edge (no wedge narrowing to a point), and each of the four corners is
+ * a quarter-round fillet tangent to both its edges: `cOut` at the outer rim, `cIn` at the inner.
+ */
+function sectorPath(a0, a1, r, R, gap = 6, cOut = 12, cIn = 7) {
+  const h = gap / 2;
+  const f = (n) => Math.round(n * 100) / 100;
+  const pt = ([x, y]) => `${f(x)},${f(y)}`;
+  // a corner on edge `a` (deg) where the edge meets the circle `rho`; `side` +1 = the a0 edge, −1 = the a1 edge
+  const corner = (a, rho, c, outer, side) => {
+    const rad = (a * Math.PI) / 180;
+    const u = [Math.cos(rad), Math.sin(rad)];
+    const n = [-Math.sin(rad) * side, Math.cos(rad) * side]; // into the sector
+    const rc = outer ? rho - c : rho + c;                       // fillet centre's distance from the hub
+    const t = Math.sqrt(Math.max(rc * rc - (h + c) * (h + c), 0));
+    const C = [t * u[0] + (h + c) * n[0], t * u[1] + (h + c) * n[1]];
+    const onEdge = [t * u[0] + h * n[0], t * u[1] + h * n[1]];
+    const k = rho / rc;
+    return { onEdge, onArc: [C[0] * k, C[1] * k] };
+  };
+  const o0 = corner(a0, R, cOut, true, 1), o1 = corner(a1, R, cOut, true, -1);
+  const i1 = corner(a1, r, cIn, false, -1), i0 = corner(a0, r, cIn, false, 1);
+  return `M${pt(i0.onEdge)} L${pt(o0.onEdge)} A${cOut},${cOut} 0 0 1 ${pt(o0.onArc)}`
+    + ` A${R},${R} 0 0 1 ${pt(o1.onArc)} A${cOut},${cOut} 0 0 1 ${pt(o1.onEdge)}`
+    + ` L${pt(i1.onEdge)} A${cIn},${cIn} 0 0 1 ${pt(i1.onArc)}`
+    + ` A${r},${r} 0 0 0 ${pt(i0.onArc)} A${cIn},${cIn} 0 0 1 ${pt(i0.onEdge)} Z`;
 }
 
 export default function RadialAddMenu({
