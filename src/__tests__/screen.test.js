@@ -72,6 +72,25 @@ describe('a pen on a tablet (clinician report 2026-11-10: the ring did not open 
   });
 });
 
+describe('a new family stands in the middle of the screen (clinician report 2026-11-14: phone and tablet)', () => {
+  // the picture is at least 600 wide; a narrower family stood at its left, so on a phone or a tablet the
+  // first drawing stood left of the screen's middle
+  const frame = () => $('#pedigree-svg').getAttribute('viewBox').split(' ').map(Number);
+  const xs = () => $$('.node-group').map(el => el.__data__.x);
+  it('the starter family: the middle of the picture is the middle of the family', async () => {
+    const [vx, , vw] = frame();
+    expect(Math.max(...xs()) - Math.min(...xs())).toBeLessThan(vw - 200); // narrower than the picture
+    expect(vx + vw / 2).toBeCloseTo((Math.min(...xs()) + Math.max(...xs())) / 2, 0);
+  });
+  it('a family wider than the least picture keeps its margins on both sides', async () => {
+    await run(() => { for (let i = 0; i < 6; i += 1) S().addSiblingTo('proband', 'female'); });
+    const [vx, , vw] = frame();
+    expect(Math.max(...xs()) - Math.min(...xs())).toBeGreaterThan(400);
+    expect(vx).toBeCloseTo(Math.min(...xs()) - 100, 0);
+    expect(vx + vw).toBeCloseTo(Math.max(...xs()) + 100, 0);
+  });
+});
+
 describe('marks around a person', () => {
   it('the proband: an arrow with "P"; the consultand: an arrow without "P"; the same person: one arrow with "P"', async () => {
     await run(() => S().setConsultand('mother'));

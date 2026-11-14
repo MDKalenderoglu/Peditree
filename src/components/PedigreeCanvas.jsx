@@ -340,6 +340,10 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const pad = 100;
     const minX = d3.min(nodes, d => d.x) - pad;
     const maxX = d3.max(nodes, d => d.x) + pad;
+    // the picture is at least 600 wide: a narrower family stands in its middle, not at its left
+    // (clinician report 2026-11-14: a new family on a phone or tablet stood at the left of the screen)
+    const vw = Math.max(600, maxX - minX);
+    const frameX = minX - (vw - (maxX - minX)) / 2;
     // v0.3a.3 — pedigree-standard visible IDs (I-1, II-3, ...). Purely
     // derived from the already-computed generation + x-position of every
     // node; recomputes automatically on every render, so a birth-order
@@ -397,8 +401,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const entryW = keyLines.map(lines => 2 * KS + 12 * LK + textW(lines, 12.5 * LK));
     const headTextW = headBlock ? textW(headLines, 13 * LK) : 0;
     probe.remove();
-    const keyRight = minX + Math.max(600, maxX - minX) - 10 * LK; // the picture's right edge (vw below)
-    const grid = keyGrid(entryW, keyRowH, keyRight - minX - 10 * LK - nameW, KEY_GAP);
+    const keyRight = frameX + vw - 10 * LK; // the picture's right edge
+    const grid = keyGrid(entryW, keyRowH, keyRight - frameX - 10 * LK - nameW, KEY_GAP);
     const keyBlock = shownKey.length ? grid.height + 14 * LK : 0;
     const minY = d3.min(nodes, d => d.y) - pad - headBlock - keyBlock;
     // how far the lines under a symbol reach (age, pregnancy, E, wrapped
@@ -417,9 +421,10 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const lowest = d3.max(nodes, d => d.y + annotationBottom(d));
     const legendTop = Math.max(d3.max(nodes, d => d.y) + 70, lowest + 18); // clear of the age / label lines
     const maxY = Math.max(d3.max(nodes, d => d.y) + pad, lowest + 20, legendTop + notesBlock + 10);
-    const vw = Math.max(600, maxX - minX);
+    // likewise a short family stands in the middle of the picture's least height
     const vh = Math.max(400, maxY - minY);
-    svg.attr('viewBox', `${minX} ${minY} ${vw} ${vh}`)
+    const frameY = minY - (vh - (maxY - minY)) / 2;
+    svg.attr('viewBox', `${frameX} ${frameY} ${vw} ${vh}`)
        .attr('preserveAspectRatio', 'xMidYMid meet');
 
     // --- Defs ---
@@ -1048,7 +1053,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       // the findings start under the proband's symbol (clinician request 2026-10-25)
       const headW = headBlock ? 2 * s + 12 * LK + headTextW : 0;
       const width = nameW + Math.max(headW, grid.width);
-      const kx = Math.max(minX + 10, keyRight - width);
+      const kx = Math.max(frameX + 10, keyRight - width);
       const symX = kx + nameW;              // symbol column
       const textX = symX + 2 * s + 12 * LK; // text column
       let ky = minY + 10 * LK;
@@ -1109,7 +1114,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         });
       });
     }
-    const legendX = minX + 10;
+    const legendX = frameX + 10;
     let legendY = legendTop;
 
     // --- Notes legend (each part editable where it stands) ---
