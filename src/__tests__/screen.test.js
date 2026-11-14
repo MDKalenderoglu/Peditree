@@ -1451,6 +1451,29 @@ describe('the top bar (clinician request 2026-11-04: one row, no wasted room)', 
 });
 
 describe('the About window (the logo), Atıf and Geri bildirim (clinician request 2026-11-04)', () => {
+  it('on a computer the bar\'s windows open 10 px below the floating bar, never over it; the About window lines up with the bar\'s left edge (clinician 2026-11-14)', async () => {
+    // the floating bar at 10 px from the window's edges, 54 px tall; its windows hang from buttons inside it
+    const box = (left, top, width, height) => ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON() {} });
+    const rects = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function rect() {
+      if (this.classList.contains('toolbar')) return box(10, 10, 1004, 54);
+      if (this.dataset?.popup === 'about') return box(23, 17, 200, 40);
+      if (this.dataset?.popup === 'cite') return box(700, 21, 70, 32);
+      return box(0, 0, 0, 0);
+    });
+    try {
+      await click(button('PediTree hakkında'));
+      const about = $('[data-popup="about"] > .keys-popover');
+      expect(about.style.top).toBe(`${64 - 17 + 10}px`); // the bar's lower edge (64) + 10, from the button's top (17)
+      expect(about.style.left).toBe(`${10 - 23}px`);     // the bar's left edge
+      await click(button('PediTree hakkında'));
+      await click($('[data-popup="cite"] > button'));
+      const cite = $('[data-popup="cite"] > .keys-popover');
+      expect(cite.style.top).toBe(`${64 - 21 + 10}px`);
+      expect(cite.style.left).toBe('');                  // under its own button
+      await click($('[data-popup="cite"] > button'));
+    } finally { rects.mockRestore(); }
+  });
+
   it('the logo: what PediTree is, that patient data goes nowhere, its licence and copyright — no trademark line; the rest in Ayarlar', async () => {
     const { REPOSITORY_URL } = await import('../utils/appInfo');
     await click(button('PediTree hakkında'));

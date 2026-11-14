@@ -27,6 +27,7 @@ import { ProductInfo, LicenseInfo, CitationInfo, FeedbackInfo } from './componen
 import { nameCase } from './utils/nameCase';
 import { RELEASE_STAGE } from './utils/appInfo';
 import { watchToolbar, overflowed } from './utils/toolbarFit';
+import { placeBarPopovers } from './utils/barPopovers';
 import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check, CircleHelp, UserRound, Maximize, Minimize, Menu as MenuIcon, X as XIcon } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
@@ -517,6 +518,10 @@ function App() {
   React.useLayoutEffect(() => {
     return watchToolbar(toolbarRef.current);
   }, [uiLang]);
+  // on a computer the bar's windows open a little below it, never over it (barPopovers.js)
+  React.useLayoutEffect(() => {
+    if (!touch) placeBarPopovers(toolbarRef.current);
+  });
 
   const selectedNode = pedigreeData.individuals.find(i => i.id === selectedId);
   const selectedNode2 = pedigreeData.individuals.find(i => i.id === selectedId2);
