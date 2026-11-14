@@ -132,6 +132,38 @@ describe('a person tapped: the sheet with the ring’s choices as named tiles', 
     expect(S().selectedIds || []).toEqual([]);
   });
 
+  it('the details open: "Geri" at their top goes back to the tiles (clinician report 2026-11-15: drawing down did not occur to a user)', async () => {
+    await click(drawn('mother'));
+    expect(named('Geri', $('.touch-sheet'))).toBeUndefined(); // the tiles: nothing to go back to
+    await click(named('Ayrıntılar', $('.touch-sheet')));
+    expect($('.touch-sheet').classList.contains('sheet-full')).toBe(true);
+    await click(named('Geri', $('.touch-sheet')));
+    expect($('.touch-sheet').classList.contains('sheet-full')).toBe(false);
+    expect($('.touch-sheet .dock-tile')).not.toBeNull();
+    expect(S().selectedIds).toEqual(['mother']); // the person stays chosen
+  });
+
+  it('a tap on a button in the sheet leaves the finger to the button; only a real drag is taken by the sheet', async () => {
+    // taken at the touch, the tap ended on the sheet and a browser sending the click there ignored the button
+    const had = Element.prototype.setPointerCapture;
+    const capture = vi.fn();
+    Element.prototype.setPointerCapture = capture;
+    try {
+      await click(drawn('mother'));
+      const ekle = tile('Ekle') || $$('.touch-sheet .dock-tile')[0];
+      await run(() => ekle.dispatchEvent(pointerAt('pointerdown', 400)));
+      await run(() => ekle.dispatchEvent(pointerAt('pointerup', 401)));
+      expect(capture).not.toHaveBeenCalled();
+      await run(() => ekle.dispatchEvent(pointerAt('pointerdown', 400)));
+      await run(() => ekle.dispatchEvent(pointerAt('pointermove', 330)));
+      expect(capture).toHaveBeenCalledTimes(1);
+      await run(() => ekle.dispatchEvent(pointerAt('pointerup', 330)));
+      expect($('.touch-sheet').classList.contains('sheet-full')).toBe(true); // drawn up: the details
+    } finally {
+      if (had) Element.prototype.setPointerCapture = had; else delete Element.prototype.setPointerCapture;
+    }
+  });
+
   it('a couple (the line between them) goes straight to the details: no tiles for two people', async () => {
     await run(() => S().selectIndividual('father'));
     await run(() => S().selectIndividual('mother', { additive: true }));

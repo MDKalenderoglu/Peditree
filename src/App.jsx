@@ -28,7 +28,7 @@ import { nameCase } from './utils/nameCase';
 import { RELEASE_STAGE } from './utils/appInfo';
 import { watchToolbar, overflowed } from './utils/toolbarFit';
 import { placeBarPopovers } from './utils/barPopovers';
-import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check, CircleHelp, UserRound, Maximize, Minimize, Menu as MenuIcon, X as XIcon } from 'lucide-react';
+import { Download, Image as ImageIcon, AlertTriangle, FilePlus2, Undo2, Redo2, Save, FolderOpen, Info, Quote, MessageSquareText, CheckSquare, Share2, Printer, SlidersHorizontal, ChevronDown, FileCode2, FileText, Table2, MoreHorizontal, Check, CircleHelp, UserRound, Maximize, Minimize, Menu as MenuIcon, X as XIcon, ChevronLeft } from 'lucide-react';
 import './styles/app.css';
 import './styles/ui.css';
 // the clinician's logo (docs/brand/peditree-logo.webp): the tree, and the name in its own lettering
@@ -197,15 +197,19 @@ function TouchSheet({ full, canDock, onFull, onClose, title, children }) {
   const down = (e) => {
     if (!grabbable(e.target)) return;
     drag.current = { y: e.clientY, id: e.pointerId, moved: false, head: !e.target.closest('button') || !!e.target.closest('.sheet-grip') };
-    if (e.currentTarget.setPointerCapture && e.pointerId !== undefined) {
-      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* a synthetic pointer */ }
-    }
   };
   const move = (e) => {
     const d = drag.current;
     if (!d) return;
     const dy = e.clientY - d.y;
-    if (Math.abs(dy) > 8) d.moved = true;
+    if (Math.abs(dy) > 8 && !d.moved) {
+      d.moved = true;
+      // the sheet takes the finger only once it really moves: taken at the touch, a tap on a button in the
+      // sheet (Geri, Kapat, a tile) ended on the sheet, and a browser that sends the click there ignored it
+      if (e.currentTarget.setPointerCapture && e.pointerId !== undefined) {
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* a synthetic pointer */ }
+      }
+    }
     if (d.moved) setPull(Math.max(-120, Math.min(260, dy)));
   };
   const up = (e) => {
@@ -258,6 +262,13 @@ function TouchSheet({ full, canDock, onFull, onClose, title, children }) {
         <div className="sheet-head">
           <b className="sheet-title">{title}</b>
           <button className="ui-btn ui-btn-icon sheet-close" onClick={onClose} aria-label={t('Kapat')}><XIcon size={18} /></button>
+        </div>
+      )}
+      {/* the details open: a plain way back to the person's bar, seen at once (clinician report 2026-11-15: drawing
+          the sheet down did not occur to a user, and sideways the handle is not there at all) */}
+      {canDock && full && (
+        <div className="sheet-head sheet-head-back">
+          <button className="ui-btn sheet-back" onClick={() => onFull(false)}><ChevronLeft size={18} aria-hidden="true" />{t('Geri')}</button>
         </div>
       )}
       <div className="sheet-body">{children}</div>

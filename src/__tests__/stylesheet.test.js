@@ -258,6 +258,17 @@ describe('the phone bar (clinician request 2026-11-12)', () => {
     expect(landscape).toMatch(/\.app-shell\.touch \.touch-sheet, \.app-shell\.touch \.touch-sheet\.sheet-full \{[^}]*right: max\(8px, env\(safe-area-inset-right\)\); bottom: max\(8px, env\(safe-area-inset-bottom\)\);/);
     expect(landscape).toMatch(/border-radius: 18px; overflow: hidden;/);
     expect(landscape).toMatch(/\.app-shell\.touch\.has-editor \{ grid-template-columns: minmax\(0, 1fr\) 336px; \}/);
+    // the narrow column (clinician report 2026-11-15: the choices overlapped): five tiles in a row, relatives in threes,
+    // docked as tall as its content
+    expect(landscape).toMatch(/\.app-shell\.touch \.ring-dock \.dock-tiles \{ grid-template-columns: repeat\(5, minmax\(0, 1fr\)\); \}/);
+    expect(landscape).toMatch(/\.app-shell\.touch \.ring-dock \.dock-add \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\); \}/);
+    expect(landscape).toMatch(/\.app-shell\.touch \.touch-sheet:not\(\.sheet-full\) \{ bottom: auto;/);
+  });
+
+  it('the sheet\'s choices lie flat on it: "İkiz" without the ring\'s satellite offset, no floating shadows (clinician report 2026-11-15)', () => {
+    expect(block('ui.css', '.ring-dock .dock-chip')).toMatch(/^[^]*position: static/);
+    expect(css('ui.css')).toMatch(/\.ring-dock \.dock-chip \{ transform: none; translate: none; height: auto; box-shadow: none;/);
+    expect(css('ui.css')).toMatch(/\.ring-dock \.radial-flyout, \.ring-dock \.radial-panel:not\(\.ring-list-panel\):not\(\.findings-panel\) \{\n {2}background: var\(--surface\); border: 1px solid var\(--line\); box-shadow: none;/);
   });
 });
 

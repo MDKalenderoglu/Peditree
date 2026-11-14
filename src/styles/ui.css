@@ -1300,7 +1300,24 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
   }
   .app-shell.touch > .toolbar.touch-bar { margin-left: max(8px, env(safe-area-inset-left)); margin-right: max(8px, env(safe-area-inset-right)); }
   .app-shell.touch .toolbar.touch-bar > .keys-wrap[data-popup="patient"] { flex: 0 1 300px; margin-right: auto; }
+  /* the column is narrow (clinician report 2026-11-15: the choices overlapped): the five tiles in one row at the
+     foot, as upright; "Ekle"'s relatives in rows of three */
+  /* docked, the column is as tall as what it shows (no empty card down to the bottom); opened, it reaches it */
+  .app-shell.touch .touch-sheet:not(.sheet-full) { bottom: auto; max-height: calc(100dvh - var(--touch-bar-h, 56px) - 16px); }
+  .app-shell.touch .ring-dock .dock-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .app-shell.touch .ring-dock .dock-add { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+/* the sheet's choices lie on the sheet: flat, in line, never floating over each other — the ring's satellite
+   offset and its floating shadow are for the ring, not for "İkiz" and the lists in the sheet (clinician report
+   2026-11-15: "İkiz" stood over "Çocuk") */
+.ring-dock .dock-chip { transform: none; translate: none; height: auto; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.ring-dock .ring-list-panel > .ring-sex, .ring-dock .ring-list-panel .ring-row > .ring-choice, .ring-dock .ring-aside, .ring-dock .ring-hint-panel,
+.ring-dock .findings-panel .finding-row, .ring-dock .findings-panel .finding-new, .ring-dock .findings-panel .finding-limit,
+.ring-dock .radial-flyout, .ring-dock .radial-panel:not(.ring-list-panel):not(.findings-panel) {
+  background: var(--surface); border: 1px solid var(--line); box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.sheet-head-back { padding: 4px 6px 0; }
+.sheet-head .sheet-back { height: 36px; gap: 2px; padding: 0 12px 0 4px; background: transparent; border-color: transparent; box-shadow: none; color: var(--accent-ink); font-weight: 600; font-size: 14.5px; }
 .app-shell.touch .sheet-grip > span { width: 38px; height: 4px; }
 .sheet-head { padding: 0 4px 0 14px; }
 .sheet-title { font: 700 14.5px/1.3 var(--font-ui); color: var(--accent-ink); }
