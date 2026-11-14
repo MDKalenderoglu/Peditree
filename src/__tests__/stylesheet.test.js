@@ -250,6 +250,15 @@ describe('the phone bar (clinician request 2026-11-12)', () => {
     expect(block('ui.css', '.app-shell.touch .toolbar.touch-bar .patient-btn')).toMatch(/border-radius: 999px;/);
     expect(block('ui.css', '.app-shell.touch .toolbar.touch-bar .keys-popover')).toMatch(/top: calc\(var\(--touch-bar-h, 62px\) \+ 8px\);/);
   });
+
+  it('turned sideways (clinician report 2026-11-15): the person\'s column floats like the bar — off the edges, rounded, its corners kept', () => {
+    const s = css('ui.css');
+    const last = s.lastIndexOf('@media (orientation: landscape) {');
+    const landscape = s.slice(last, s.indexOf('\n}\n', last));
+    expect(landscape).toMatch(/\.app-shell\.touch \.touch-sheet, \.app-shell\.touch \.touch-sheet\.sheet-full \{[^}]*right: max\(8px, env\(safe-area-inset-right\)\); bottom: max\(8px, env\(safe-area-inset-bottom\)\);/);
+    expect(landscape).toMatch(/border-radius: 18px; overflow: hidden;/);
+    expect(landscape).toMatch(/\.app-shell\.touch\.has-editor \{ grid-template-columns: minmax\(0, 1fr\) 336px; \}/);
+  });
 });
 
 describe('a tablet: the page never zooms, the add buttons fit (clinician report 2026-11-12)', () => {
