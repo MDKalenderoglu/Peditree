@@ -39,6 +39,7 @@ export const TEXT = {
   FIRST: 14, LINE: 13, GENETIC: 11,
   PROBAND_SHIFT: 14,            // the proband's lines stand right of the arrow
   ADOPTED_EXTRA: 9,             // below an adopted person's brackets
+  DECEASED_EXTRA: 5,            // below the end of a deceased person's slash (clinician 2026-11-14)
   // a character's width in font sizes, generous: measured up to 0.635 with the
   // drawing's typefaces at their own scale (Patrick Hand, Caveat ×1.15), 2026-11-05
   EM: 0.68,
@@ -92,7 +93,7 @@ export function textBox(d, { bracketed = !!d.adoptedOut } = {}) {
   const arrow = !!(d.proband || d.consultand);
   const shift = arrow ? TEXT.PROBAND_SHIFT : 0;
   const depth = lines || genetic
-    ? half + (TEXT.FIRST + lines * TEXT.LINE + genetic * TEXT.GENETIC) * SCALE + (bracketed ? TEXT.ADOPTED_EXTRA : 0) + belowArrow(d, widths.length ? widths[0] / 2 : 0)
+    ? half + (TEXT.FIRST + lines * TEXT.LINE + genetic * TEXT.GENETIC) * SCALE + (bracketed ? TEXT.ADOPTED_EXTRA : 0) + (hasDeceasedSlash(d) ? TEXT.DECEASED_EXTRA : 0) + belowArrow(d, widths.length ? widths[0] / 2 : 0)
     : half;
   // the arrow stands at the lower left, or at the lower right where a line takes the left (PedigreeCanvas,
   // clinician report 2026-11-12): the lines move away from it, to either side — room on both
@@ -107,6 +108,9 @@ export function textBox(d, { bracketed = !!d.adoptedOut } = {}) {
  * clinician report 2026-11-12). Returns that room in px (0 for everyone else).
  */
 export const ARROW_DROP = 22;
+
+/** A deceased person's slash is drawn (PedigreeCanvas): not on a small triangle, not on an ongoing pregnancy. */
+export const hasDeceasedSlash = (d) => !!d.deceased && !isSmallSymbol(d) && !d.ongoingPregnancy;
 export function belowArrow(d, firstHalf) {
   if (!(d.proband || d.consultand)) return 0;
   const half = isSmallSymbol(d) ? TEXT.LOSS : TEXT.HALF;

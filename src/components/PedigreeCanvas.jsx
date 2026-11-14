@@ -35,7 +35,7 @@ import { annotationAge, pregnancyLine, lmpLine } from '../utils/annotations';
 import { BRACKET_OUT } from '../layout/pcl/routing';
 import { isSmallSymbol, pregnancyKind, PREGNANCY_LABEL, TESTED_TEXT, isGroup, groupText, subjectOf } from '../graph/model';
 import { packLines } from '../utils/textWrap';
-import { filled, onsetsOf, unsureOf, bornWeek, hasNoteNumber, geneticRows as geneticRowsOf, lineNoteText, LINE_NOTE_SIZE, TEXT, textScale, ARROW_DROP, textBox } from '../utils/symbolText';
+import { filled, onsetsOf, unsureOf, bornWeek, hasNoteNumber, geneticRows as geneticRowsOf, lineNoteText, LINE_NOTE_SIZE, TEXT, textScale, ARROW_DROP, hasDeceasedSlash } from '../utils/symbolText';
 import { keyGrid } from '../utils/keyGrid';
 import { nameCase } from '../utils/nameCase';
 import { chainOf, offsetPolyline } from '../utils/doubleLine';
@@ -49,7 +49,6 @@ const NODE_SIZE = 40;
 const HALF = NODE_SIZE / 2;
 const LOSS_SIZE = 14; // smaller triangle for pregnancy loss
 const DECEASED_REACH = 4; // how far each end of the deceased slash reaches past the symbol's corner
-const DECEASED_REACH_OVER_TEXT = 0; // its lower end, where text stands under the symbol: at the corner, as at an arrow
 const GENETIC_ROW = 11; // one line of a genetic test result under a symbol
 
 const JUMP_R = 5;
@@ -911,13 +910,12 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       }
       // A stillbirth is drawn at full size with the slash of a deceased person
       // and "SB" below (NSGC; clinician decision 2026-10-25)
-      if (d.deceased && !isSmall && !d.ongoingPregnancy) {
+      if (hasDeceasedSlash(d)) {
         // Diagonal slash for deceased: from the lower left to the upper right, as NSGC and the
         // textbooks draw it (clinician 2026-11-11: no difference from the international standard);
-        // it stops at the corner where a proband's or consultand's arrow points, and short of the text
-        // below the symbol (clinician 2026-11-14: it touched "ölüm 2 y")
-        const low = (d.proband || d.consultand) && !arrowRight.has(d.id) ? 0
-          : textBox(d).depth > sz ? DECEASED_REACH_OVER_TEXT : DECEASED_REACH;
+        // it stops at the corner where a proband's or consultand's arrow points; the text below starts
+        // lower to leave its end free (TEXT.DECEASED_EXTRA; clinician 2026-11-14: it touched "ölüm 2 y")
+        const low = (d.proband || d.consultand) && !arrowRight.has(d.id) ? 0 : DECEASED_REACH;
         el.append('line').attr('class', 'deceased-slash')
           .attr('x1', -(sz + low)).attr('y1', sz + low)
           .attr('x2', sz + DECEASED_REACH).attr('y2', -(sz + DECEASED_REACH))
@@ -954,7 +952,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
 
       // --- Annotations below node ---
       // below an adopted person's brackets
-      let lineY = (adopted ? sz + BRACKET_OUT + 2 : sz) + 14 * TS;
+      let lineY = (adopted ? sz + BRACKET_OUT + 2 : sz) + 14 * TS + (hasDeceasedSlash(d) ? TEXT.DECEASED_EXTRA : 0); // clear of the slash's end
       const LINE_H = 13 * TS;
       // the proband's lines stand a little to the right, clear of the arrow at the lower left
       const ann = el.append('g').attr('class', 'annotations').attr('transform', d.proband || d.consultand ? `translate(${arrowRight.has(d.id) ? -14 : 14},0)` : null);

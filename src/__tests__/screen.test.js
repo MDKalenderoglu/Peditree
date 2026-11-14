@@ -1349,7 +1349,9 @@ describe('lines carry their meaning in every case', () => {
       const texts = [...drawn(id).querySelectorAll('.annotations text')];
       const genetic = texts.filter(t => t.getAttribute('font-size') === '9px' && !/^\[\d+\]$/.test(t.textContent)).length;
       const lines = texts.length - genetic;
-      const drawnDepth = lines + genetic ? TEXT.HALF + TEXT.FIRST + lines * TEXT.LINE + genetic * TEXT.GENETIC : TEXT.HALF;
+      // where the drawing starts the first line (lower under a deceased person's slash) — read, not assumed
+      const start = texts.length ? Number(texts[0].getAttribute('y')) : TEXT.HALF + TEXT.FIRST;
+      const drawnDepth = lines + genetic ? start + lines * TEXT.LINE + genetic * TEXT.GENETIC : TEXT.HALF;
       expect(textBox(g().individuals.find(i => i.id === id)).depth, id).toBe(drawnDepth);
     }
     // the widest line is no wider than the layout thinks (a character at most 0.68 of the font size)
@@ -1583,13 +1585,23 @@ describe('notation per the literature (NSGC 2022 and its 2025 correction)', () =
     expect(drawn('pat_gf').querySelector('.deceased-slash-inner')).toBeNull();
   });
 
-  it('the deceased slash stops short of the text under the symbol ("ölüm 2 y"; clinician 2026-11-14)', async () => {
+  it('the deceased slash runs out at both ends, and the text under the symbol starts below its end ("ölüm 2 y"; clinician 2026-11-14)', async () => {
     await run(() => {
       S().updateIndividual('father', { deceased: true, ageAtDeath: '2' });
       S().updateIndividual('mother', { deceased: true });
+      S().updateIndividual('pat_gf', { age: '70' });
     });
-    const lowEnd = (id) => Number(drawn(id).querySelector('.deceased-slash').getAttribute('y1'));
-    expect(lowEnd('father')).toBeLessThan(lowEnd('mother')); // the mother has no text below: the usual reach
+    const slash = (id) => drawn(id).querySelector('.deceased-slash');
+    const half = Number(drawn('father').querySelector('rect').getAttribute('width')) / 2;
+    // the lower end reaches past the corner as far as the upper one, with text below or without
+    for (const id of ['father', 'mother']) {
+      expect(Number(slash(id).getAttribute('y1'))).toBe(-Number(slash(id).getAttribute('y2')));
+      expect(Number(slash(id).getAttribute('y1'))).toBeGreaterThan(half);
+    }
+    // the first line under a deceased person stands lower than under a living one, below the slash's end
+    const firstY = (id) => Number([...drawn(id).querySelectorAll('text')].find(t => /\d/.test(t.textContent) && !/^[IVX]+-/.test(t.textContent)).getAttribute('y'));
+    expect(firstY('father')).toBeGreaterThan(firstY('pat_gf'));
+    expect(firstY('father') - 10).toBeGreaterThan(Number(slash('father').getAttribute('y1')));
   });
 
   it('ectopic pregnancy: the triangle with a slash and "ECT" below, like a termination but named', async () => {
