@@ -116,7 +116,7 @@ for (const c of CASES) {
       const again = computePclLayout(graph);
       expect(again.nodes.map(n => [n.id, n.x, n.y])).toEqual(layout.nodes.map(n => [n.id, n.x, n.y]));
       expect(again.edges).toEqual(layout.edges);
-    });
+    }, 60000); // one layout of up to 474 people: longer than vitest's 5 s default on a slow machine
 
     it(`time budget: median of 3 runs ≤ ${c.budgetMs} ms`, () => {
       const ts = [];
