@@ -3,22 +3,20 @@
 Date: 2026-11-02 · Branch `stabilization/clinical-layout` · audited from `dad57bf`, fixes in `83ad967` and after ·
 Auditor: Claude (Opus 5.5) working alone in the repository, with no clinician present during the run.
 Companion files: [CLINICAL_NOMENCLATURE_AUDIT.md](CLINICAL_NOMENCLATURE_AUDIT.md),
-[SECURITY_PRIVACY_AUDIT.md](SECURITY_PRIVACY_AUDIT.md), [TEST_MATRIX.md](TEST_MATRIX.md),
-[RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
+[SECURITY_PRIVACY_AUDIT.md](SECURITY_PRIVACY_AUDIT.md), [TEST_MATRIX.md](TEST_MATRIX.md).
 
 ## Decision
 
 **NO-GO: release blocked, on missing evidence and sign-off rather than on a known defect.**
 No P0 or P1 defect was found. The production build, all 1046 automated tests, the layout gates
-and the twelve clinical acceptance scenarios pass. The block comes from three items:
+and the twelve clinical acceptance scenarios pass. The block came from these items:
 
 1. Safari / iPad and Firefox were never run (only Chromium); the clinician uses tablets.
 2. Three NSGC 2022 coverage gaps need the clinician's decision, or need to be stated on the page:
    gender identity, same-sex couples, presymptomatic carrier.
-3. (Removed 2026-11-02: no institutional or KVKK review applies — PediTree is the clinician's personal tool.)
-4. The security headers have never been checked on a live preview deployment.
+3. The security headers have never been checked on a live preview deployment.
 
-The steps are in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md). A GO after them would not mean
+A GO would not mean
 regulatory certification, an independent security certification or formal clinical validation.
 
 ## Architecture (as found)
