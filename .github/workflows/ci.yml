@@ -1,5 +1,5 @@
 # Every push and pull request: lint, unit tests, the generation snapshot and
-# the production build (the same checks as before a commit, docs/ and CLAUDE.md).
+# the production build (the same checks as before a commit).
 name: CI
 
 on:

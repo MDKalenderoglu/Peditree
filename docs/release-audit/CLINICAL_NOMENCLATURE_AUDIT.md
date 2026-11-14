@@ -10,8 +10,7 @@
 - [C2025] Steinhaus French S et al. Correction to [B2022]. J Genet Couns 2025, doi
   10.1002/jgc4.2020. It corrects the ECT slash and the assisted-reproduction Figure 5.
 - Application decisions are logged in `docs/PEDITREE_CLINICAL_NOTATION_SPEC_V1.md` §8, each with
-  its date. On 2026-11-02 the clinician set the principle: *follow the literature, so the paper
-  need not justify deviations.*
+  its date. On 2026-11-02 the clinician set the principle: *follow the literature.*
 
 ## Status words
 

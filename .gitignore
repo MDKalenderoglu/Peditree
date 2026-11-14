@@ -40,3 +40,14 @@ coverage/
 
 # the paper in preparation: kept on this computer only (clinician decision 2026-11-14)
 docs/paper/
+
+# working notes and plans: kept on this computer only (clinician decision 2026-11-14)
+/CLAUDE.md
+/docs/PEDITREE_COMPARISON_NOTES.md
+/docs/PEDITREE_TOUR_CLINICAL_TIPS_DRAFT.md
+/docs/release-audit/RELEASE_CHECKLIST.md
+/docs/archive/PEDIGREE_4_WEEK_ROADMAP.md
+/docs/archive/PEDIGREE_NEXT_IMPLEMENTATION_PLAN.md
+/docs/archive/PEDIGREE_LAYOUT_ENGINE_REDESIGN_PLAN.md
+/docs/archive/PEDIGREE_V0_3A_1_DEFERRED_NOTES.md
+/docs/archive/PEDIGREE_V0_3A_4_DEFERRED_NOTES.md
