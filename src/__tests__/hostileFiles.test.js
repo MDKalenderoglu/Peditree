@@ -88,6 +88,47 @@ describe('a hostile project file', () => {
     expect(parseProjectFile(JSON.stringify(none)).ok).toBe(true);
   });
 
+  it('a person, finding or couple field of the wrong type is refused — the age at onset, the week of birth, the reason a couple is childless … (security audit run 2, 2026-11-15)', () => {
+    // each passed every check and the drawing, then threw while being drawn; the session kept it
+    S().resetPedigree();
+    const bad = { toString: 1 };
+    const cases = [
+      (f) => { f.graph.individuals[0].conditions = [{ label: 'X', status: 'affected', onsetAge: bad }]; },
+      (f) => { f.graph.individuals[0].gestationWeeks = bad; },
+      (f) => { const u = f.graph.unions[0]; u.childless = 'by_choice'; u.childlessReason = bad; },
+      (f) => { f.graph.unions[0].lineNote = ['x']; },
+      (f) => { f.graph.unions[0].status = {}; },
+      (f) => { f.graph.individuals[0].count = {}; },
+    ];
+    for (const [k, mutate] of cases.entries()) {
+      const f = fileOf();
+      mutate(f);
+      expect(parseProjectFile(JSON.stringify(f)).ok, `case ${k}`).toBe(false);
+    }
+    // the usual values still open
+    const ok = fileOf();
+    ok.graph.individuals[0].conditions = [{ label: 'X', status: 'affected', onsetAge: '3' }];
+    ok.graph.individuals[0].gestationWeeks = 38;
+    expect(parseProjectFile(JSON.stringify(ok)).ok).toBe(true);
+  });
+
+  it('an old (v1) file whose counts would draw a vast family is refused before anything is built (security audit run 2)', () => {
+    // a count of a billion in a few bytes drove the builder's loops one person at a time
+    const t0 = Date.now();
+    for (const siblings of [{ deceased: 1e9 }, { pregnancyLoss: '1e9' }, { deceased: 101 }]) {
+      expect(parseProjectFile(JSON.stringify({ proband: { sex: 'male' }, parents: {}, siblings })).ok).toBe(false);
+    }
+    expect(Date.now() - t0).toBeLessThan(2000);
+    expect(parseProjectFile(JSON.stringify({ proband: { sex: 'male' }, parents: {}, siblings: { deceased: 2 } })).ok).toBe(true);
+  });
+
+  it('an old (v1) file goes through the same checks as a new one: a finding text that is not text is refused (security audit run 2)', () => {
+    const v1 = { proband: { sex: 'male' }, parents: {}, manualEdits: { proband: { condition: { length: 16 } } } };
+    expect(parseProjectFile(JSON.stringify(v1)).ok).toBe(false);
+    const fine = { proband: { sex: 'male' }, parents: {}, manualEdits: { proband: { condition: 'Kistik fibrozis' } } };
+    expect(parseProjectFile(JSON.stringify(fine)).ok).toBe(true);
+  });
+
   it('script-like text stays text: names and notes are drawn with .text(), never as HTML', () => {
     S().resetPedigree();
     const f = fileOf();

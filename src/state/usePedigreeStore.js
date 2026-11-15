@@ -84,6 +84,8 @@ function withName(doc, current) {
   // another document (a file opened, a PED imported, "Yeni"): its own name
   // comes back with it (second audit 2026-10-25)
   if (!current || doc.docId !== current.docId) return doc;
+  // a name that is not text is never carried back (it is what broke the drawing: CrashScreen)
+  if (current.patientName != null && typeof current.patientName !== 'string') return doc;
   const name = current && current.patientName;
   if ((doc.patientName || '') === (name || '')) return doc;
   const out = { ...doc };

@@ -142,6 +142,8 @@ export const MAX_PROJECT_FILE_CHARS = 20 * 1024 * 1024;
 
 const isObj = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
 const isId = (x) => typeof x === 'string' && x.length > 0;
+const textOrNumber = (v) => v === undefined || v === null || typeof v === 'string' || typeof v === 'number';
+const UNION_TEXT_FIELDS = ['status', 'childless', 'childlessReason', 'lineNote', 'relationshipBackground', 'consanguinityStatus', 'leftPartner'];
 const TEXT_FIELDS = ['label', 'displayLabel', 'notes', 'condition', 'causeOfDeath', 'age', 'ageAtDeath', 'relation', 'sex', 'geneticTest', 'geneticNote', 'birthDate', 'sexAtBirth', 'lmp'];
 
 /**
@@ -157,12 +159,26 @@ export function shapeProblem(doc) {
       const v = p[f];
       if (v !== undefined && v !== null && typeof v !== 'string' && typeof v !== 'number') return t('"{id}" kişisinin "{f}" alanı metin değil', { id: p.id, f });
     }
-    if (p.conditions !== undefined && (!Array.isArray(p.conditions) || p.conditions.some((c) => !isObj(c) || typeof c.label !== 'string'))) return t('"{id}" kişisinin bulguları bozuk', { id: p.id });
+    // the week of birth, a group's count (security audit run 2, 2026-11-15: an object here passed every
+    // check and threw while being drawn)
+    for (const f of ['gestationWeeks', 'count']) {
+      const v = p[f];
+      if (v !== undefined && v !== null && typeof v !== 'string' && typeof v !== 'number') return t('"{id}" kişisinin "{f}" alanı metin değil', { id: p.id, f });
+    }
+    if (p.conditions !== undefined && (!Array.isArray(p.conditions) || p.conditions.some((c) => !isObj(c) || typeof c.label !== 'string'
+      || !textOrNumber(c.onsetAge) || !(c.status === undefined || c.status === null || typeof c.status === 'string')))) return t('"{id}" kişisinin bulguları bozuk', { id: p.id });
   }
   for (const u of g.unions) {
     if (!isObj(u) || !isId(u.id) || !Array.isArray(u.partners) || u.partners.length !== 2 || !u.partners.every(isId) || u.partners[0] === u.partners[1]) {
       return `${t('bir çift kaydı tam olarak iki farklı kişiyi içermiyor')}${isObj(u) && u.id ? ` (${u.id})` : ''}`;
     }
+    // the couple's words and marks the drawing writes out (security audit run 2: a reason for being
+    // childless that was not text threw while being drawn)
+    for (const f of UNION_TEXT_FIELDS) {
+      const v = u[f];
+      if (v !== undefined && v !== null && typeof v !== 'string') return t('"{id}" çiftinin "{f}" alanı metin değil', { id: u.id, f });
+    }
+    if (!textOrNumber(u.consanguinityDegree)) return t('"{id}" çiftinin "{f}" alanı metin değil', { id: u.id, f: 'consanguinityDegree' });
   }
   for (const r of g.parentChildRelationships) {
     if (!isObj(r) || !isId(r.unionId) || !Array.isArray(r.children) || !r.children.every(isId)) return t('bir ebeveyn–çocuk kaydı bozuk');
@@ -203,6 +219,33 @@ export function documentProblem(doc) {
 }
 
 /**
+ * The counts in an old (v1) file — how many brothers, sisters, children, losses … — drive the
+ * builder's loops one person at a time, before any other check (security audit run 2, 2026-11-15:
+ * a count of a billion in a few bytes would hang the tab). A clinical family is far smaller: any one
+ * count above V1_MAX_COUNT, or all of them together above MAX_V1_PEOPLE, is refused.
+ */
+const V1_COUNT_KEYS = new Set(['male', 'female', 'unknown', 'deceased', 'pregnancyLoss', 'stillbirth']);
+const V1_MAX_COUNT = 100;
+const MAX_V1_PEOPLE = 3000;
+export function v1CountProblem(wizardData) {
+  let total = 0, bad = false;
+  const walk = (x, depth) => {
+    if (bad || depth > 12 || !x || typeof x !== 'object') return;
+    for (const [k, v] of Object.entries(x)) {
+      if (V1_COUNT_KEYS.has(k) && (typeof v === 'number' || typeof v === 'string')) {
+        const n = Number(v);
+        if (Number.isFinite(n) && n > 0) {
+          if (n > V1_MAX_COUNT) { bad = true; return; }
+          total += n;
+        }
+      } else if (typeof v === 'object') walk(v, depth + 1);
+    }
+  };
+  walk(wizardData, 0);
+  return bad || total > MAX_V1_PEOPLE ? t('Dosyadaki aile, çizilebilecek boyuttan büyük olduğundan açılmadı.') : null;
+}
+
+/**
  * Parse a project file. Returns `{ ok, doc, migrated, reason }`; a document
  * with structural errors is refused rather than opened in a broken state.
  * It never throws: whatever goes wrong comes back as a reason.
@@ -238,9 +281,15 @@ function parseChecked(text) {
     const wizardData = parsed && parsed.schemaVersion === 1 && parsed.wizardData ? parsed.wizardData
       : (parsed && parsed.proband && parsed.parents ? parsed : null);
     if (!wizardData) return { ok: false, reason: t('Dosya bir PediTree pedigrisi olarak tanınmadı.') };
+    const many = v1CountProblem(wizardData);
+    if (many) return { ok: false, reason: many };
     const r = migrateV1ToV2(wizardData);
     if (!r.ok) return { ok: false, reason: r.reason };
     doc = r.doc; migrated = true; normalizations = r.normalizations;
+    // an old file's people go through the same checks as a new file's (security audit run 2, 2026-11-15:
+    // a finding text that was not text came in through the old format and threw while being drawn)
+    const problem = shapeProblem(doc) || documentProblem(doc);
+    if (problem) return { ok: false, reason: t('Dosyadaki pedigri bozuk olduğundan açılmadı: {problem}.', { problem }) };
   }
   const cleared = doc.graph.unions.filter((u) => u.childless).length;
   clearChildlessWithChildren(doc.graph);

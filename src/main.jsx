@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
+import CrashScreen from './components/CrashScreen.jsx'
 
 // development only: draw a family with every mark and list overlaps; the open
 // family is put back afterwards (src/audit/markCollisions.js runMarkAudit)
@@ -20,6 +21,8 @@ if (import.meta.env.DEV) {
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <CrashScreen>
+      <App />
+    </CrashScreen>
   </StrictMode>,
 )

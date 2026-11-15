@@ -1019,7 +1019,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       }
 
       // Condition
-      if (d.condition) {
+      if (filled(d.condition)) { // text only, as the layout measures it (security audit run 2)
         editable(ann.append('text')
           .attr('y', lineY).attr('text-anchor', 'middle')
           .attr('font-size', px(10)).attr('fill', '#4f46e5')

@@ -1352,3 +1352,9 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
 .app-shell.touch .zoom-controls { padding: 2px; }
 .app-shell.touch .zoom-controls > button { height: 36px; min-width: 36px; }
 
+
+/* the drawing could not be shown (components/CrashScreen.jsx): a short notice with the ways out */
+.crash-screen { min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; background: var(--paper, var(--bg)); }
+.crash-card { max-width: 480px; display: flex; flex-direction: column; gap: 10px; }
+.crash-card .notice-title { font-size: 17px; }
+.crash-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
