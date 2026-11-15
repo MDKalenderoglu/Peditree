@@ -275,6 +275,11 @@ describe('the phone bar (clinician request 2026-11-12)', () => {
     expect(css('ui.css')).not.toMatch(/\.touch-sheet[^{]*\.input[^{]*\{[^}]*font-size: 1[0-5]px/);
   });
 
+  it('notices stand a little below the floating bar, never against it; on a phone in line with its edges (clinician report 2026-11-15: the save reminder lay under the bar)', () => {
+    expect(block('app.css', '.canvas-notices')).toMatch(/padding: 10px 14px 0;/);
+    expect(block('ui.css', '.app-shell.touch .canvas-notices')).toMatch(/padding: 8px max\(8px, env\(safe-area-inset-right\)\) 0 max\(8px, env\(safe-area-inset-left\)\);/);
+  });
+
   it('the sheet\'s choices lie flat on it: "İkiz" without the ring\'s satellite offset, no floating shadows (clinician report 2026-11-15)', () => {
     expect(block('ui.css', '.ring-dock .dock-chip')).toMatch(/^[^]*position: static/);
     expect(css('ui.css')).toMatch(/\.ring-dock \.dock-chip \{ transform: none; translate: none; height: auto; box-shadow: none;/);
