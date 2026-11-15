@@ -339,6 +339,7 @@ function App() {
   // the top bar out of sight with no way back (clinician report 2026-11-12, iPhone). Whenever nothing is
   // being typed, the page is put back at its top.
   React.useEffect(() => {
+    const timers = new Set();
     const typing = () => {
       const el = document.activeElement;
       return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
@@ -356,7 +357,7 @@ function App() {
       const was = meta.getAttribute('content');
       meta.dataset.resetting = '1';
       meta.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
-      setTimeout(() => { meta.setAttribute('content', was); delete meta.dataset.resetting; }, 400);
+      timers.add(setTimeout(() => { meta.setAttribute('content', was); delete meta.dataset.resetting; }, 400));
     };
     const back = () => {
       if (typing()) return;
@@ -366,8 +367,12 @@ function App() {
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
     };
-    // after a box loses focus, once the keyboard has gone
-    const later = () => setTimeout(back, 120);
+    // after a box loses focus, once the keyboard has gone (cleared when the app goes: CI 2026-11-15, a
+    // timer ran after the page was taken down)
+    const later = () => {
+      const id = setTimeout(() => { timers.delete(id); back(); }, 120);
+      timers.add(id);
+    };
     window.addEventListener('scroll', back, { passive: true });
     document.addEventListener('focusout', later);
     const vv = window.visualViewport;
@@ -376,6 +381,7 @@ function App() {
       window.removeEventListener('scroll', back);
       document.removeEventListener('focusout', later);
       if (vv) { vv.removeEventListener('resize', later); vv.removeEventListener('scroll', later); }
+      for (const id of timers) clearTimeout(id);
     };
   }, []);
   // notices already on screen are worded again in the new language
