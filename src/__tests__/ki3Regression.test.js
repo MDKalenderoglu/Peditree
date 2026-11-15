@@ -45,14 +45,15 @@ const CASES = [
     // nested married-in partner now stands beside his partner instead of at
     // the row end — a 17 770 px partnership line is gone — but their only
     // child's sibship is not placed below them: KI-1, not changed in KI-8)
-    ceilings: { offCenter: 19, maxCentreOffset: 4455, longUnions: 3, bridgedCrossings: 43 },
+    // 2026-11-15 (founder couples over their only child, near-straight lines drawn straight): offCenter 19 → 18
+    ceilings: { offCenter: 18, maxCentreOffset: 4455, longUnions: 3, bridgedCrossings: 43 },
   },
   {
     id: 'ki3-p4-387',
     signature: { individuals: 387, unions: 74, crossFamilyUnions: 9, generations: 7 },
     // measured 1713 ms median (KI-10: footprint rounds); regression ceiling, not a product target
     budgetMs: 3500,
-    ceilings: { offCenter: 31, maxCentreOffset: 12890, longUnions: 4, bridgedCrossings: 123 }, // KI-8: all lower
+    ceilings: { offCenter: 30, maxCentreOffset: 12890, longUnions: 4, bridgedCrossings: 123 }, // KI-8: all lower; 2026-11-15: offCenter 31 → 30
   },
   {
     id: 'ki3-p5-474',
@@ -61,7 +62,10 @@ const CASES = [
     budgetMs: 5000,
     // KI-8: offCenter 35 → 30, longUnions 9 → 8, bridgedCrossings 387 → 326;
     // maxCentreOffset RAISED 17881 → 17966 (+0.5 %, the same KI-1 couple)
-    ceilings: { offCenter: 30, maxCentreOffset: 17966, longUnions: 8, bridgedCrossings: 326 },
+    // 2026-11-15 (founder couples settled over their only child, clinician report: steps at the
+    // outer ends of the top row): offCenter 30 → 28; maxCentreOffset RAISED 17966 → 17978 (+12 px,
+    // +0.07 %, the same KI-1 couple, pushed by a settled founder couple beside it)
+    ceilings: { offCenter: 28, maxCentreOffset: 17978, longUnions: 8, bridgedCrossings: 326 },
   },
 ];
 
