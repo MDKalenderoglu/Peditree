@@ -919,6 +919,7 @@ const EN = {
   'bir sosyal ebeveynlik kaydı bozuk': 'a social parent record is damaged',
   'bir yardımcı üreme kaydı bozuk': 'an assisted reproduction record is damaged',
   'bulgu açıklaması bozuk': 'the key to findings is damaged',
+  '"{f}" alanı bozuk': 'the "{f}" field is damaged',
   'Dosya okunamadı.': 'The file could not be read.',
   'Dosya çok büyük (20 MB üzeri) ve bir PediTree pedigrisi olarak tanınmadığı için açılmadı.': 'The file is too large (over 20 MB); it does not look like a PediTree pedigree and was not opened.',
   'Dosyanın içeriği bozuk olduğundan dosya açılamadı.': 'The file could not be read: its content is damaged; not opened.',

@@ -169,6 +169,11 @@ export function fromPed(text) {
       else if (parent.sex !== sex) return { ok: false, reason: t('“{pid}” {v1} olarak girilmiş, ancak cinsiyeti {v2}.', { pid, v1: sex === 'male' ? t('baba') : t('anne'), v2: parent.sex === 'male' ? t('erkek') : t('kadın') }) };
     }
   }
+  // the limit counts everyone who will be drawn: the parents named without a row of their own, and an
+  // unspecified parent for each couple with one parent named (security audit 2026-11-15: 3000 rows could
+  // become 9000 people)
+  const unspecified = new Set(recs.filter((r) => !!r.father !== !!r.mother).map((r) => `${r.father || '?'}|${r.mother || '?'}`)).size;
+  if (recs.length + unspecified > MAX_PED_PEOPLE) return { ok: false, reason: t('PED dosyasındaki aile {MAX_PED_PEOPLE} kişiden büyük olduğundan ({length}) bu boyutta bir pedigri çizilemez.', { MAX_PED_PEOPLE, length: recs.length + unspecified }) };
   // nobody may be their own ancestor (iterative: a very deep ancestry must
   // not exhaust the call stack)
   const state = new Map(); // 1 on the path, 2 done
