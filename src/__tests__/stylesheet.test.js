@@ -265,6 +265,16 @@ describe('the phone bar (clinician request 2026-11-12)', () => {
     expect(landscape).toMatch(/\.app-shell\.touch \.touch-sheet:not\(\.sheet-full\) \{ bottom: auto;/);
   });
 
+  it('a phone\'s details are calm and compact (clinician report 2026-11-15: coarse, big letters): one head, smaller type, slimmer fields — still 16px text so iOS does not zoom', () => {
+    expect(block('ui.css', '.touch-sheet .side-header')).toMatch(/border-top: 0;/);
+    expect(block('ui.css', '.touch-sheet .person-id')).toMatch(/font-size: 16px;/);
+    expect(block('ui.css', '.touch-sheet .person-glyph')).toMatch(/width: 26px; height: 26px;/);
+    expect(block('ui.css', '.touch-sheet .input, .touch-sheet .select')).toMatch(/height: 38px;/);
+    expect(block('ui.css', '.touch-sheet .side-header > .ui-btn')).toMatch(/padding: 0;/); // the close icon keeps its size
+    expect(css('ui.css')).toMatch(/\.input, \.inline-edit, textarea, select \{ font-size: 16px; \}/);
+    expect(css('ui.css')).not.toMatch(/\.touch-sheet[^{]*\.input[^{]*\{[^}]*font-size: 1[0-5]px/);
+  });
+
   it('the sheet\'s choices lie flat on it: "İkiz" without the ring\'s satellite offset, no floating shadows (clinician report 2026-11-15)', () => {
     expect(block('ui.css', '.ring-dock .dock-chip')).toMatch(/^[^]*position: static/);
     expect(css('ui.css')).toMatch(/\.ring-dock \.dock-chip \{ transform: none; translate: none; height: auto; box-shadow: none;/);
