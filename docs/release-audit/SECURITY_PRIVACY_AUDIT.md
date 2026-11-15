@@ -4,7 +4,7 @@ Scope:
 
 - The repository at `83ad967`.
 - The production build (`npm run build`).
-- The Cloudflare Pages configuration in `public/_headers`.
+- The site's response headers in `public/_headers`.
 
 Method:
 
