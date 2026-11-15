@@ -68,7 +68,7 @@ export const lineNoteWidth = (note) => Math.max(...LANGS.map((l) => lineNoteText
  * centre and `depth` below it, in px. The longer of the two languages, so
  * the layout does not move when the drawing's language changes.
  */
-export function textBox(d, { bracketed = !!d.adoptedOut } = {}) {
+export function textBox(d, { bracketed = !!d.adoptedOut, rowStart = null } = {}) {
   const small = isSmallSymbol(d);
   const half = small ? TEXT.LOSS : TEXT.HALF;
   const widths = [];
@@ -92,8 +92,10 @@ export function textBox(d, { bracketed = !!d.adoptedOut } = {}) {
   const halfText = widths.length ? Math.max(...widths) / 2 : 0;
   const arrow = !!(d.proband || d.consultand);
   const shift = arrow ? TEXT.PROBAND_SHIFT : 0;
+  // the first line starts where the row's text starts (rowTextStarts), never above this symbol's own start
+  const start = Math.max(textStart(d, { bracketed }), rowStart || 0);
   const depth = lines || genetic
-    ? half + (TEXT.FIRST + lines * TEXT.LINE + genetic * TEXT.GENETIC) * SCALE + (bracketed ? TEXT.ADOPTED_EXTRA : 0) + (hasDeceasedSlash(d) ? TEXT.DECEASED_EXTRA : 0) + belowArrow(d, widths.length ? widths[0] / 2 : 0)
+    ? start + (TEXT.FIRST + lines * TEXT.LINE + genetic * TEXT.GENETIC) * SCALE + belowArrow(d, widths.length ? widths[0] / 2 : 0)
     : half;
   // the arrow stands at the lower left, or at the lower right where a line takes the left (PedigreeCanvas,
   // clinician report 2026-11-12): the lines move away from it, to either side — room on both
@@ -108,6 +110,35 @@ export function textBox(d, { bracketed = !!d.adoptedOut } = {}) {
  * clinician report 2026-11-12). Returns that room in px (0 for everyone else).
  */
 export const ARROW_DROP = 22;
+
+/**
+ * Where the text under a symbol may start, below the symbol's centre: under the symbol itself (a small
+ * triangle is smaller), under an adopted person's brackets, below the end of a deceased person's slash.
+ */
+export function textStart(d, { bracketed = !!d.adoptedOut } = {}) {
+  return (isSmallSymbol(d) ? TEXT.LOSS : TEXT.HALF) + (bracketed ? TEXT.ADOPTED_EXTRA : 0) + (hasDeceasedSlash(d) ? TEXT.DECEASED_EXTRA : 0);
+}
+
+/** Whether any text stands under the symbol (textBox's depth goes past the symbol). */
+export const hasTextBelow = (d, opts) => textBox(d, opts).depth > (isSmallSymbol(d) ? TEXT.LOSS : TEXT.HALF);
+
+/**
+ * The text under the symbols of one row starts at one height, so the ages, results and notes of a row read
+ * as one line (clinician report 2026-11-15: the texts of a row stood at different heights — a miscarriage's
+ * under its smaller triangle, a deceased person's below the slash). The lowest start among the row's people
+ * with text; `rowOf(d)` names the row, `bracketedOf(d)` whether the person is drawn in brackets.
+ * Returns a Map row → start (px below the symbols' centres). The layout and the drawing both use it.
+ */
+export function rowTextStarts(people, rowOf, bracketedOf = (d) => !!d.adoptedOut) {
+  const starts = new Map();
+  for (const d of people) {
+    const bracketed = bracketedOf(d);
+    if (!hasTextBelow(d, { bracketed })) continue;
+    const row = rowOf(d);
+    starts.set(row, Math.max(starts.get(row) || 0, textStart(d, { bracketed })));
+  }
+  return starts;
+}
 
 /** A deceased person's slash is drawn (PedigreeCanvas): not on a small triangle, not on an ongoing pregnancy. */
 export const hasDeceasedSlash = (d) => !!d.deceased && !isSmallSymbol(d) && !d.ongoingPregnancy;
