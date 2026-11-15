@@ -1288,6 +1288,8 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
 .app-shell.touch .toolbar.touch-bar [data-popup="download"] > button svg { color: #fff; }
 /* the bar's windows open a little under the floating bar, however tall it is */
 .app-shell.touch .toolbar.touch-bar .keys-popover { top: calc(var(--touch-bar-h, 62px) + 8px); }
+/* a phone's notices (the save reminder …) line up with the floating bar's edges, a little below it */
+.app-shell.touch .canvas-notices { padding: 8px max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left)); }
 /* a phone turned sideways (clinician report 2026-11-15: the person's column stood flat against the edge): the
    column floats like the bar, a rounded sheet off the screen's edges; the bar keeps clear of a side notch, and
    the patient's chip keeps a sensible width with the buttons at the right */
