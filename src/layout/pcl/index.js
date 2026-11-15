@@ -21,7 +21,7 @@ import { routeConnectors, estimateLevelNeeds, planBands } from './routing';
 import { displayParentage, isSmallSymbol, reproMarkOf } from '../../graph/model';
 import { withArt, artEdges, isArtUnion } from './art';
 import { withGhosts, isGhost, isPass } from './crossGeneration';
-import { textBox, lineNoteWidth, TEXT, textScale } from '../../utils/symbolText';
+import { textBox, rowTextStarts, lineNoteWidth, TEXT, textScale } from '../../utils/symbolText';
 
 export const PCL = {
   GEN_Y_SPACING: 160,
@@ -134,7 +134,10 @@ export function computePclLayout(inputGraph, opts = {}) {
     ...individuals.filter((i) => i.adoptedOut).map((i) => i.id),
     ...(inputGraph.socialParentLinks || []).filter((l) => l.kind === 'adoptive').map((l) => l.childId),
   ]);
-  S.textBox = new Map(individuals.map((i) => [i.id, isGhost(i) ? null : textBox(i, { bracketed: S.bracketed.has(i.id) })]));
+  // the text of a row starts at one height (symbolText.rowTextStarts; the drawing does the same)
+  const textRowStart = rowTextStarts(individuals.filter((i) => !isGhost(i)), (i) => S.indById.get(i.id)?.generation ?? i.generation, (i) => S.bracketed.has(i.id));
+  S.textBox = new Map(individuals.map((i) => [i.id, isGhost(i) ? null
+    : textBox(i, { bracketed: S.bracketed.has(i.id), rowStart: textRowStart.get(i.generation) })]));
   const stability = opts.stability || null;
   const { order } = stability ? orderLayersStable(S, stability) : orderLayers(S);
   // orderOnly (after a removal): keep the previous left-to-right order,

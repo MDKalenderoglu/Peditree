@@ -1363,9 +1363,12 @@ describe('lines carry their meaning in every case', () => {
   };
 
   it('the room the layout keeps under a symbol is the room the drawing\'s lines take (symbolText.js; clinician report 2026-11-05)', async () => {
-    const { textBox, TEXT } = await import('../utils/symbolText');
+    const { textBox, TEXT, rowTextStarts } = await import('../utils/symbolText');
     await run(() => S().updateIndividual('mother', { age: '52', sexAtBirth: 'AFAB', displayLabel: 'Ayşe', geneticTest: 'tested', geneticNote: 'APC:c.1234G>A Het\nBRCA2 VUS', notes: 'öykü' }));
     await run(() => S().updateIndividual('father', { deceased: true, ageAtDeath: '61' }));
+    // the layout's room starts where the row's text starts (as index.js computes it)
+    const rowStart = rowTextStarts(g().individuals, (i) => i.generation);
+    const box = (id) => { const p = g().individuals.find(i => i.id === id); return textBox(p, { rowStart: rowStart.get(p.generation) }); };
     for (const id of ['mother', 'father', 'proband']) {
       const texts = [...drawn(id).querySelectorAll('.annotations text')];
       const genetic = texts.filter(t => t.getAttribute('font-size') === '9px' && !/^\[\d+\]$/.test(t.textContent)).length;
@@ -1373,11 +1376,32 @@ describe('lines carry their meaning in every case', () => {
       // where the drawing starts the first line (lower under a deceased person's slash) — read, not assumed
       const start = texts.length ? Number(texts[0].getAttribute('y')) : TEXT.HALF + TEXT.FIRST;
       const drawnDepth = lines + genetic ? start + lines * TEXT.LINE + genetic * TEXT.GENETIC : TEXT.HALF;
-      expect(textBox(g().individuals.find(i => i.id === id)).depth, id).toBe(drawnDepth);
+      expect(box(id).depth, id).toBe(drawnDepth);
     }
     // the widest line is no wider than the layout thinks (a character at most 0.68 of the font size)
     const widest = Math.max(...[...drawn('mother').querySelectorAll('.annotations text')].map(t => t.textContent.length * parseFloat(t.getAttribute('font-size')) * TEXT.EM));
-    expect(2 * textBox(g().individuals.find(i => i.id === 'mother')).left).toBeGreaterThanOrEqual(widest - 0.01);
+    expect(2 * box('mother').left).toBeGreaterThanOrEqual(widest - 0.01);
+    await run(() => S().resetPedigree());
+  });
+
+  it('the text under the symbols of one row starts at one height: a deceased person, a miscarriage, an adopted child (clinician report 2026-11-15)', async () => {
+    const u = g().parentChildRelationships.find(r => r.children.includes('proband')).unionId;
+    await run(() => S().updateIndividual('proband', { age: '7' }));
+    await run(() => S().addChildToUnion(u, 'male'));
+    const dead = g().individuals.at(-1).id;
+    await run(() => S().updateIndividual(dead, { deceased: true, ageAtDeath: '2' }));
+    await run(() => S().addChildToUnion(u, 'unknown', { pregnancyLoss: true }));
+    const loss = g().individuals.at(-1).id;
+    await run(() => S().setGestationWeeks(loss, 10));
+    await run(() => S().addChildToUnion(u, 'female', { adopted: true }));
+    const adopted = g().individuals.at(-1).id;
+    await run(() => S().updateIndividual(adopted, { age: '4' }));
+    const firstLineY = (id) => {
+      const t = drawn(id).querySelector('.annotations text');
+      return drawn(id).__data__.y + Number(t.getAttribute('y'));
+    };
+    const ys = ['proband', dead, loss, adopted].map(firstLineY);
+    expect(new Set(ys).size, JSON.stringify(ys)).toBe(1);
     await run(() => S().resetPedigree());
   });
 

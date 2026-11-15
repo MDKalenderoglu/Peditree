@@ -35,7 +35,7 @@ import { annotationAge, pregnancyLine, lmpLine } from '../utils/annotations';
 import { BRACKET_OUT } from '../layout/pcl/routing';
 import { isSmallSymbol, pregnancyKind, PREGNANCY_LABEL, TESTED_TEXT, isGroup, groupText, subjectOf } from '../graph/model';
 import { packLines } from '../utils/textWrap';
-import { filled, onsetsOf, unsureOf, bornWeek, hasNoteNumber, geneticRows as geneticRowsOf, lineNoteText, LINE_NOTE_SIZE, TEXT, textScale, ARROW_DROP, hasDeceasedSlash } from '../utils/symbolText';
+import { filled, onsetsOf, unsureOf, bornWeek, hasNoteNumber, geneticRows as geneticRowsOf, lineNoteText, LINE_NOTE_SIZE, TEXT, textScale, ARROW_DROP, hasDeceasedSlash, textStart, rowTextStarts } from '../utils/symbolText';
 import { keyGrid } from '../utils/keyGrid';
 import { nameCase } from '../utils/nameCase';
 import { chainOf, offsetPolyline } from '../utils/doubleLine';
@@ -794,6 +794,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         }));
     }
 
+    // the text under the symbols of a row starts at one height (symbolText.rowTextStarts; the layout keeps the room)
+    const textRowStart = rowTextStarts(nodes, (n) => Math.round(n.y), (n) => adoptedIn.has(n.id));
     nodeGroups.each(function (d, nodeIndex) {
       const el = d3.select(this);
       const isSmall = isSmallSymbol(d);
@@ -952,7 +954,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
 
       // --- Annotations below node ---
       // below an adopted person's brackets
-      let lineY = (adopted ? sz + BRACKET_OUT + 2 : sz) + 14 * TS + (hasDeceasedSlash(d) ? TEXT.DECEASED_EXTRA : 0); // clear of the slash's end
+      // below the symbol, its brackets and the end of its slash — at the height where the row's text starts
+      let lineY = Math.max(textStart(d, { bracketed: adopted }), textRowStart.get(Math.round(d.y)) || 0) + 14 * TS;
       const LINE_H = 13 * TS;
       // the proband's lines stand a little to the right, clear of the arrow at the lower left
       const ann = el.append('g').attr('class', 'annotations').attr('transform', d.proband || d.consultand ? `translate(${arrowRight.has(d.id) ? -14 : 14},0)` : null);
