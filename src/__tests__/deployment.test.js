@@ -1,5 +1,5 @@
 /**
- * deployment.test.js — the published site (Cloudflare Pages, docs/PEDITREE_DEPLOYMENT.md)
+ * deployment.test.js — the published site (Netlify, docs/PEDITREE_DEPLOYMENT.md)
  * loads only its own files, sends nothing anywhere and stays out of search engines.
  */
 import { describe, it, expect } from 'vitest';
