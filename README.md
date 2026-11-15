@@ -51,6 +51,30 @@ download what they want to keep.
 PediTree is a drawing tool, not a medical device. Clinical decisions rest on
 clinical assessment, not on the drawing.
 
+## How PediTree was built
+
+PediTree was designed and directed by Muhammed Doğukan Kalenderoğlu, a
+paediatrician and paediatric genetics research fellow at Ankara University
+Faculty of Medicine. The code was written with an AI coding assistant
+(Anthropic's Claude), working under the author's direction.
+
+- **The author** decided what PediTree must do and how a pedigree must read
+  in the clinic. Every clinical and design decision is the author's: the
+  notation, the layout rules, the wording on screen. The author tried each
+  version in use, reported what was wrong, and reviewed every change before
+  it was kept.
+- **The AI assistant** wrote and revised the code, the tests and the
+  documentation from these decisions.
+- **Every change is checked automatically** on GitHub: more than 1,200
+  tests, graph-integrity audits, layout benchmarks and randomised family
+  tests.
+- **The record is open.** Clinical decisions are dated in [`docs/`](docs/)
+  and in the commit history. Commits written with the assistant are marked
+  `Co-Authored-By: Claude`.
+
+Responsibility for the clinical content and for the software rests with the
+author.
+
 ## Features
 
 - **Fast start:**
@@ -204,6 +228,17 @@ gözetir.
   - PED dosyası alma ve verme;
   - proje dosyası.
 - **Örnek aile üzerinde rehberli tur:** hastanın çizimine dokunulmaz.
+
+**Nasıl geliştirildi:** PediTree'yi Ankara Üniversitesi Tıp Fakültesi'nde
+çocuk sağlığı ve hastalıkları uzmanı ve çocuk genetik hastalıkları araştırma
+görevlisi Muhammed Doğukan Kalenderoğlu tasarladı ve yönetti. Kod, onun yönlendirmesiyle bir yapay zekâ
+kodlama asistanı (Anthropic'in Claude'u) ile yazıldı. Ne yapılacağına, klinik
+gösterime, çizim kurallarına ve ekrandaki her ifadeye geliştirici karar verdi;
+her sürümü kullanarak denedi ve her değişikliği gözden geçirdi. Her değişiklik
+1.200'ü aşkın otomatik testle denetlenir. Kararlar tarihleriyle `docs/`
+klasöründe ve commit geçmişinde durur; asistanla yazılan commit'ler
+`Co-Authored-By: Claude` ile işaretlidir. Klinik içerikten ve yazılımdan
+geliştirici sorumludur.
 
 **Hasta bilgisi hiçbir sunucuya gönderilmez.** Çizim yalnızca açık sekmede
 tutulur; sekme kapanınca silinir. Saklamak istediğiniz pedigriyi "Kaydet"
