@@ -78,13 +78,20 @@ describe('KI-2 store level — random edit populations', () => {
     // movedFraction 0.3912 → 0.381, 0.3857 → 0.3749); recorded costs: random
     // meanShiftRawPx 32.9 → 33.3, ki2 22.2 → 22.6, random edits more
     // off-centre than fresh 10 → 11.
+    // 2026-11-15 (clinician report: steps at the outer ends of a full ancestry): a founder couple
+    // (no parents drawn, no other partner) is settled over its only child however far off it stood,
+    // and an only child within 4 px of the couple's midpoint gets a straight line. Lower (better):
+    // random parentFlips 8 → 6, movedFraction 0.381 → 0.3704, neighbourGapChanged 0.2047 → 0.1985,
+    // meanShiftRawPx 33.3 → 31.9, edits more off-centre than fresh 11 → 5, sideHangDrawn 742 → 184;
+    // ki2 movedFraction 0.3749 → 0.3697, neighbourGapChanged 0.2016 → 0.1972, sideHangDrawn 107 → 22.
+    // RAISED (recorded): ki2 meanShiftRawPx 22.6 → 22.8 (founder couples moving over their child).
     'random-200x12': {
-      prefix: 'stab', sequences: 200, ops: 12, parentFlips: 8, movedFraction: 0.381, neighbourGapChanged: 0.2047, meanShiftRawPx: 33.3,
-      editsWorseThanFresh: { offCenter: 11, crossings: 3, longUnions: 2 }, sideHangDrawn: 742,
+      prefix: 'stab', sequences: 200, ops: 12, parentFlips: 6, movedFraction: 0.3704, neighbourGapChanged: 0.1985, meanShiftRawPx: 31.9,
+      editsWorseThanFresh: { offCenter: 5, crossings: 3, longUnions: 2 }, sideHangDrawn: 184,
     },
     'ki2-40x10': {
-      prefix: 'ki2-', sequences: 40, ops: 10, parentFlips: 1, movedFraction: 0.3749, neighbourGapChanged: 0.2016, meanShiftRawPx: 22.6,
-      editsWorseThanFresh: { offCenter: 0, crossings: 0, longUnions: 0 }, sideHangDrawn: 107,
+      prefix: 'ki2-', sequences: 40, ops: 10, parentFlips: 1, movedFraction: 0.3697, neighbourGapChanged: 0.1972, meanShiftRawPx: 22.8,
+      editsWorseThanFresh: { offCenter: 0, crossings: 0, longUnions: 0 }, sideHangDrawn: 22,
     },
   };
   for (const [name, c] of Object.entries(CEILINGS)) {

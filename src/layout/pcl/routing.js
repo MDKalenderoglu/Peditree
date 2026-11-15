@@ -41,7 +41,10 @@ const TOP_RISER_STEP = 7;
 //   −38 … −28  pedigree id label above the symbol; −20 symbol top
 // When a row needs more levels than fit in the default 160 px row spacing,
 // planBands() makes that gap taller instead of letting lines collide.
-const SNAP_ONLY_CHILD = 1;    // px
+// an only child this close to the couple's midpoint gets a straight line: a jog of a few px is a
+// step the eye sees, an offset of a few px from the middle of the couple's line is not (clinician
+// report 2026-11-15: steps at the edges of a full ancestry; the straightest layout left 1-3 px)
+const SNAP_ONLY_CHILD = 4;    // px
 
 export const BAND = {
   LANE_FIRST: 46, LANE_STEP: 12,

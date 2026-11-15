@@ -548,7 +548,15 @@ export function computePclLayout(inputGraph, opts = {}) {
       const m = kids.length > 1 && S.multipleOf && S.multipleOf.get(kids[0]);
       if (!(kids.length === 1 || (m && kids.every(k => m.members.includes(k))))) continue;
       const off = term.idx.reduce((s, k, q) => s + term.c[q] * xs0[k], 0);
-      if (Math.abs(off) <= 0.25 || Math.abs(off) > ONLY_CHILD_SETTLE) continue;
+      // a founder couple (no parents drawn) is held by nothing above it: it moves over its only
+      // child however far off it stood (clinician report 2026-11-15: steps at the outer ends of the
+      // top row, where nothing stands in the way)
+      // (and neither partner has another partner, whose line holds them too)
+      // (a cross-generation partner's stand-in counts as a partner too: structure.js crossLinks)
+      const onlyThisUnion = (p) => S.unions.filter((v) => (v.partners || []).includes(p)).length === 1
+        && !S.crossLinks.some((l) => l.upper === p);
+      const founders = !S.parentUnion.has(a) && !S.parentUnion.has(b) && onlyThisUnion(a) && onlyThisUnion(b);
+      if (Math.abs(off) <= 0.25 || (Math.abs(off) > ONLY_CHILD_SETTLE && !founders)) continue;
       term.w = W_CENTRE_EXACT * (place && place.freePersons !== null ? COUPLE_SCALE : 1);
       changed = true;
     }
