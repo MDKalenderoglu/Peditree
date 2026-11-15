@@ -20,8 +20,8 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/example-pedigree.png" alt="A sample pedigree drawn in PediTree: deceased great-grandparents; parents who are first cousins (double line), both carriers, each with a sibling; an affected proband, an affected brother who died at age 2, a sister and a miscarriage" width="460">
-  <br><sub>A sample family (no patient data): first-cousin parents, both carriers, with two affected sons, one deceased.</sub>
+  <img src="docs/images/example-pedigree.png" alt="A sample pedigree drawn in PediTree: deceased great-grandparents; parents who are first cousins (double line), both carriers with their genetic test result, the mother as consultand; an affected proband, an affected brother who died at age 2 with records reviewed, a sister, a stillbirth and a miscarriage; an uncle and his wife as an infertile couple; an aunt divorced from her first partner, with a daughter, and an adopted son with her second partner" width="680">
+  <br><sub>A sample family (no patient data): first-cousin carrier parents with their genetic test results; an affected proband and an affected brother who died at 2, a stillbirth and a miscarriage; an infertile couple; a divorce, a second partner and an adopted son.</sub>
 </p>
 
 ---
