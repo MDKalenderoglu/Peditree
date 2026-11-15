@@ -60,8 +60,32 @@ describe('a hostile project file', () => {
     expect(parseProjectFile(JSON.stringify(twoParents)).ok).toBe(false);
   });
 
-  it('a file over 20 MB is refused before it is read', () => {
+  it('a file over 20 MB is refused before it is parsed', () => {
     expect(parseProjectFile(' '.repeat(20 * 1024 * 1024 + 1)).ok).toBe(false);
+  });
+
+  it('a document-level field of the wrong type (a patient name that is not text …) is refused; the open pedigree and the session stay as they were (security audit 2026-11-15)', () => {
+    // such a name made the drawing throw while being shown, with no way back, and the session kept it, so a reload broke again
+    S().resetPedigree();
+    S().updateIndividual('proband', { age: '7' });
+    const before = S().doc;
+    for (const [field, value] of [['patientName', { toString: 1 }], ['patientName', {}], ['patientName', 42], ['patientName', ['x']],
+      ['wizardAnchorId', 5], ['ids', 'x'], ['ids', { counters: [], retired: [] }], ['ids', { counters: {}, retired: 'x' }],
+      ['wizardMeta', 'x'], ['provenance', 7]]) {
+      const f = fileOf();
+      f[field] = value;
+      const r = S().openProjectFile(JSON.stringify(f));
+      expect(r.ok, `${field} = ${JSON.stringify(value)}`).toBe(false);
+      expect(typeof r.reason).toBe('string');
+      expect(S().doc).toBe(before);
+    }
+    // the usual values still open
+    const ok = fileOf();
+    ok.patientName = 'Ayşe Yılmaz';
+    expect(S().openProjectFile(JSON.stringify(ok)).ok).toBe(true);
+    const none = fileOf();
+    delete none.patientName;
+    expect(parseProjectFile(JSON.stringify(none)).ok).toBe(true);
   });
 
   it('script-like text stays text: names and notes are drawn with .text(), never as HTML', () => {
@@ -87,6 +111,18 @@ describe('a hostile PED file', () => {
       expect(typeof r.ok).toBe('boolean');
       if (!r.ok) expect(typeof r.reason).toBe('string');
     }
+  });
+
+  it('the people limit counts the parents a file names without listing them, and the unspecified ones (security audit 2026-11-15)', () => {
+    // 3000 listed people, each with two parents named but not listed: 9000 people, which the limit let through
+    const rows = Array.from({ length: 3000 }, (_, i) => `F c${i} f${i} m${i} 1 1`).join('\n');
+    expect(fromPed(rows)).toMatchObject({ ok: false, reason: expect.stringMatching(/3000/) });
+    // one named father each, the mother unspecified: the placeholders count too
+    const half = Array.from({ length: 1600 }, (_, i) => `F c${i} f${i} 0 1 1`).join('\n');
+    expect(fromPed(half).ok).toBe(false);
+    // a family within the limit, parents included, still opens
+    const fine = Array.from({ length: 900 }, (_, i) => `F c${i} f${i} m${i} 1 1`).join('\n');
+    expect(fromPed(fine).ok).toBe(true);
   });
 
   it('a person who is their own ancestor is refused', () => {

@@ -181,6 +181,28 @@ export function shapeProblem(doc) {
 }
 
 /**
+ * The document's own fields — the patient's name, the anchor, the id counters, the wizard's and the
+ * file's notes — of the type the program reads (security audit 2026-11-15: a patient name that was
+ * not text made the drawing throw while being shown, and the session kept it, so the tab broke again
+ * on every reload). Returns the first problem, or null.
+ */
+export function documentProblem(doc) {
+  const textOrNone = (v) => v === undefined || v === null || typeof v === 'string';
+  const objOrNone = (v) => v === undefined || v === null || isObj(v);
+  if (!textOrNone(doc.patientName)) return t('"{f}" alanı bozuk', { f: 'patientName' });
+  if (!textOrNone(doc.wizardAnchorId)) return t('"{f}" alanı bozuk', { f: 'wizardAnchorId' });
+  if (doc.ids !== undefined && doc.ids !== null) {
+    const { counters, retired } = isObj(doc.ids) ? doc.ids : {};
+    if (!isObj(doc.ids) || !objOrNone(counters) || !(retired === undefined || (Array.isArray(retired) && retired.every((x) => typeof x === 'string')))) {
+      return t('"{f}" alanı bozuk', { f: 'ids' });
+    }
+  }
+  if (!objOrNone(doc.wizardMeta)) return t('"{f}" alanı bozuk', { f: 'wizardMeta' });
+  if (!objOrNone(doc.provenance)) return t('"{f}" alanı bozuk', { f: 'provenance' });
+  return null;
+}
+
+/**
  * Parse a project file. Returns `{ ok, doc, migrated, reason }`; a document
  * with structural errors is refused rather than opened in a broken state.
  * It never throws: whatever goes wrong comes back as a reason.
@@ -204,7 +226,7 @@ function parseChecked(text) {
   let doc, migrated = false, normalizations = [];
   if (isDocumentV2(parsed)) {
     doc = parsed;
-    const problem = shapeProblem(doc);
+    const problem = shapeProblem(doc) || documentProblem(doc);
     if (problem) return { ok: false, reason: t('Dosyadaki pedigri bozuk olduğundan açılmadı: {problem}.', { problem }) };
     if (!Array.isArray(doc.graph.socialParentLinks)) doc.graph.socialParentLinks = [];
     if (!Array.isArray(doc.graph.reproductiveLinks)) doc.graph.reproductiveLinks = [];
