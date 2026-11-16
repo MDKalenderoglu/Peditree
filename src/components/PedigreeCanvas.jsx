@@ -26,7 +26,7 @@
 
 import { useEffect, useRef, useState, useCallback, forwardRef } from 'react';
 import * as d3 from 'd3';
-import { fillFor, REGION_ANGLES, CARRIER_FILL } from '../graph/conditionKey';
+import { fillFor, classicHalfFree, REGION_ANGLES, CARRIER_FILL } from '../graph/conditionKey';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { applyDrawingStyle } from '../utils/drawingStyleSvg';
 import { paintPaper } from '../utils/paper';
@@ -312,13 +312,16 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // a carrier without a named finding: its own pattern (NSGC 2022 §4.5) or the dot the
     // viewer chose (Ayarlar), explained in the key
     const carrierMark = (drawing && drawing.carrierMark) || 'split';
-    const plainCarrier = nodes.some(n => {
-      const f = n.carrier ? fillFor(n, conditionKey, carrierMark) : {};
-      return f.dot || f.parts?.some(p => p.fill === CARRIER_FILL);
-    });
+    // the classic solid half only where nothing else in the pedigree is drawn that way (conditionKey.js)
+    const halfFree = classicHalfFree(nodes, conditionKey);
+    const carrierFills = nodes.map(n => (n.carrier ? fillFor(n, conditionKey, carrierMark, halfFree) : {}));
+    const plainCarrier = carrierFills.some(f => f.dot || f.parts?.some(p => p.fill === CARRIER_FILL));
+    // with 'half', a carrier beside "affected" keeps the hatching: the key then explains both
+    const solidCarrier = carrierFills.some(f => f.parts?.some(p => p.plain));
     const shownKey = [
       ...conditionKey.filter(e => has('affected', e)).map(e => ({ ...e, carrier: false, text: e.label })),
       ...conditionKey.filter(e => has('carrier', e)).map(e => ({ ...e, carrier: true, text: td('{label} taşıyıcısı', { label: e.label }) })),
+      ...(solidCarrier ? [{ label: null, region: 'q1', fill: 'solid', carrier: true, text: td('Taşıyıcı') }] : []),
       ...(plainCarrier ? [{ label: null, region: 'q1', fill: CARRIER_FILL, carrier: true, dot: carrierMark === 'dot', text: td('Taşıyıcı') }] : []),
       // the vertical line is explained in the key too (NSGC 2022 Fig 2)
       ...(nodes.some(n => n.presymptomatic && !isSmallSymbol(n)) ? [{ label: null, presymptomatic: true, text: td('Presemptomatik (henüz belirti yok)') }] : []),
@@ -853,7 +856,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       // `affected` boolean; carrier rendering is untouched.
       // Several conditions in the pedigree: each condition fills its own
       // region of the symbol, defined in the legend (graph/conditionKey.js).
-      const filling = fillFor(d, conditionKey, carrierMark);
+      const filling = fillFor(d, conditionKey, carrierMark, halfFree);
       const dotBelow = filling.dot && !isSmall && (d.ongoingPregnancy || d.reproMark); // a letter inside moves up for it
       let fill = NODE_FILL;
       if (filling.mode === 'full') fill = NODE_STROKE;
@@ -1086,7 +1089,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           : sex === 'female'
             ? cell.append('circle').attr('r', s)
             : cell.append('path').attr('d', `M0,${-s} L${s},0 L0,${s} L${-s},0 Z`);
-        const f = fillFor(probandNode, conditionKey, carrierMark);
+        const f = fillFor(probandNode, conditionKey, carrierMark, halfFree);
         shape.attr('stroke', NODE_STROKE).attr('stroke-width', 1.5)
           .attr('fill', f.mode === 'full' ? NODE_STROKE : NODE_FILL);
         if (f.mode === 'regions') drawRegions(cell, defs, 'legend-proband-regions', shape, f.parts, s);

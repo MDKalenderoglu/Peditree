@@ -886,7 +886,9 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
    hairline rows, smaller and lighter choices, the chosen one marked by the accent's text and a fine edge
    instead of a heavy pill, short hints; the colour themes as six dots */
 .settings-dialog .set-block { border: 0; box-shadow: 0 0 0 1px var(--line-2); padding: 0 18px; }
-.settings-dialog .set-row { padding: 13px 0; gap: 20px; }
+.settings-dialog .set-row { padding: 13px 0; gap: 10px 20px; flex-wrap: wrap; }
+/* the title keeps room to be read; a control too wide beside it goes under it (three carrier choices, 2026-11-16) */
+.settings-dialog .set-row-text { flex: 1 1 150px; }
 .settings-dialog .set-row-title { font-size: 14px; font-weight: 500; }
 .settings-dialog .set-row-hint { font-size: 12px; }
 .settings-dialog .set-block-title { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--faint); }
@@ -933,13 +935,15 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .paper-swatch[data-paper="grid"] { background-image: linear-gradient(to right, rgba(100, 116, 139, 0.35) 1px, transparent 1px), linear-gradient(to bottom, rgba(100, 116, 139, 0.35) 1px, transparent 1px); background-size: 4px 4px; background-position: 1px 1px; }
 .paper-swatch[data-paper="dots"] { background-image: radial-gradient(circle, rgba(100, 116, 139, 0.6) 0.8px, transparent 1.2px); background-size: 4px 4px; }
 /* the two carrier marks in miniature (Ayarlar → Çizim → Taşıyıcı gösterimi) */
-.carrier-swatch { display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px; box-sizing: border-box; border: 1.5px solid var(--ink); border-radius: 50%; background-color: var(--paper); background-repeat: no-repeat; }
+/* a picture of the drawing: its dark ink on its paper, night or day */
+.carrier-swatch { --ink: #19283d; display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px; box-sizing: border-box; border: 1.5px solid var(--ink); border-radius: 50%; background-color: var(--paper); background-repeat: no-repeat; }
 .carrier-swatch[data-mark="split"] {
   background-image: linear-gradient(to right, transparent calc(50% - 0.5px), var(--ink) calc(50% - 0.5px), var(--ink) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
     repeating-linear-gradient(45deg, var(--ink) 0 1px, transparent 1px 3px), repeating-linear-gradient(-45deg, var(--ink) 0 1px, transparent 1px 3px);
   background-size: 100% 100%, 50% 100%, 50% 100%;
 }
 .carrier-swatch[data-mark="dot"] { background-image: radial-gradient(circle, var(--ink) 2px, transparent 2.5px); }
+.carrier-swatch[data-mark="half"] { background-image: linear-gradient(to right, var(--ink) 50%, transparent 50%); }
 
 /* ── the guided tour (Tour.jsx; clinician request 2026-11-09; redesigned 2026-11-10: "çok kaba ve düz") ──
    the page dims in the app's navy round one lit part with soft corners; the lit area glides from part to

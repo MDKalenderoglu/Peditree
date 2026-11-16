@@ -31,15 +31,30 @@ export const FILL_LABEL = { solid: tk('Siyah'), hatch: tk('Tarama'), dots: tk('N
 export const CARRIER_FILL = 'cross';
 /**
  * How the viewer wants that carrier drawn (Ayarlar → Çizim, a device
- * preference — the file never changes; clinician decision 2026-11-04):
- * 'split' the NSGC 2022 left half above, or 'dot' the classic dot in the
- * middle (NSGC 2008, many textbooks), also explained in the key. A carried
- * finding with a name keeps its own pattern in both: a dot cannot say which.
+ * preference — the file never changes; clinician decisions 2026-11-04 and
+ * 2026-11-16): 'split' the NSGC 2022 left half above, 'dot' the classic dot
+ * in the middle (NSGC 2008, many textbooks), or 'half' the left half solid as
+ * many publications draw a recessive carrier — each explained in the key. A
+ * carried finding with a name keeps its own pattern in all: a dot cannot say
+ * which. The solid half is drawn only where it cannot be read as something
+ * else (classicHalfFree): never beside "affected" (the whole symbol would be
+ * solid), never where a named carried finding is itself drawn solid.
  */
 export const CARRIER_MARKS = [
   { id: 'split', label: tk('Bölünmüş (NSGC 2022)') },
   { id: 'dot', label: tk('Ortada nokta') },
+  { id: 'half', label: tk('Yarısı siyah (klasik)') },
 ];
+
+/**
+ * May a plain carrier's left half be drawn solid ('half') in this pedigree?
+ * Not when someone carries a named finding whose fill is solid: that carrier's
+ * left half is solid too, and the two could not be told apart.
+ */
+export function classicHalfFree(people = [], key = []) {
+  return !people.some((p) => (Array.isArray(p.conditions) ? p.conditions : [])
+    .some((c) => c && c.status === 'carrier' && c.label && keyEntry(key, c.label)?.fill === 'solid'));
+}
 // angles (degrees, screen: 0 = east, clockwise)
 export const REGION_ANGLES = { q1: [180, 270], q2: [270, 360], q3: [0, 90], q4: [90, 180] };
 
@@ -212,9 +227,17 @@ export function keyIndex(key, label) {
  * finding's region"). A carrier without a named finding has the left half in
  * CARRIER_FILL, also alone and also beside "affected" (NSGC 2022: no dot);
  * with carrierMark 'dot' it is drawn as the rest of the symbol plus
- * { dot: true } — a dot in the middle (CARRIER_MARKS).
+ * { dot: true } — a dot in the middle; with 'half' (and halfFree, from
+ * classicHalfFree) a carrier with nothing else on the symbol has its left
+ * half solid, marked plain (CARRIER_MARKS).
  */
-export function fillFor(person, key = [], carrierMark = 'split') {
+export function fillFor(person, key = [], carrierMark = 'split', halfFree = true) {
+  if (carrierMark === 'half' && person.carrier) {
+    // the classic solid half: only for a carrier with nothing else on the symbol
+    const f = regionsFor(person, key);
+    const only = f.mode === 'regions' && f.parts.length === 1 && f.parts[0].fill === CARRIER_FILL;
+    return only && halfFree ? { ...f, parts: [{ ...f.parts[0], fill: 'solid', plain: true }] } : f;
+  }
   if (carrierMark !== 'dot' || !person.carrier) return regionsFor(person, key);
   // the dot: the rest of the symbol as for a non-carrier; a carried finding with a name keeps its half
   const f = regionsFor(person, key, false);

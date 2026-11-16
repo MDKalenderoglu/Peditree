@@ -1733,6 +1733,41 @@ describe('notation per the literature (NSGC 2022 and its 2025 correction)', () =
     expect(drawn('mother').querySelector('.condition-carrier')).toBeTruthy();
   });
 
+  it('Ayarlar → "Yarısı siyah (klasik)": the plain carrier\'s left half solid, in the drawing, the key and a download; never where it would read as something else; the file is untouched (clinician 2026-11-16)', async () => {
+    await run(() => { S().updateIndividual('mother', { carrier: true }); S().updateIndividual('father', { carrier: true, affected: true }); });
+    const doc = S().doc;
+    const half = (id) => drawn(id).querySelector('.condition-carrier');
+    try {
+      await run(() => useViewSettings.getState().setView({ carrierMark: 'half' }));
+      expect(S().doc).toBe(doc);
+      // the mother: the left half solid, the right half empty, no dot
+      expect(half('mother').getAttribute('fill')).toBe('#1e293b');
+      expect(drawn('mother').querySelectorAll('.condition-region')).toHaveLength(0);
+      expect(drawn('mother').querySelector('.carrier-dot')).toBeNull();
+      // the father, affected too: both halves solid would read as "affected" alone, so his carrier half stays hatched
+      expect(half('father').getAttribute('fill')).toBe('url(#fill-cross)');
+      // the key: a solid half for the mother's "Taşıyıcı", the hatched one for the father's
+      const rows = $$('.condition-legend text').filter(t => t.textContent === 'Taşıyıcı');
+      expect(rows).toHaveLength(2);
+      const keyHalves = $$('.condition-legend .condition-carrier').map(p => p.getAttribute('fill'));
+      expect(keyHalves).toEqual(expect.arrayContaining(['#1e293b', 'url(#fill-cross)']));
+      // a download "always standard" keeps the solid half
+      await run(() => useViewSettings.getState().setView({ exportAs: 'standard' }));
+      const copy = prepareExportSvg($('.pedigree-viewport').ownerSVGElement);
+      expect([...copy.querySelectorAll('.condition-carrier')].some(p => p.getAttribute('fill') === '#1e293b')).toBe(true);
+      await run(() => useViewSettings.getState().setView({ exportAs: 'screen' }));
+      // a carrier of a named finding drawn solid: a solid half could mean either, so plain carriers go back to the hatching
+      await run(() => S().addFinding('pat_gf', 'Ailesel Akdeniz ateşi'));
+      await run(() => S().setFindingStatus('pat_gf', 'Ailesel Akdeniz ateşi', 'carrier'));
+      await run(() => S().setFindingStyle('Ailesel Akdeniz ateşi', { region: 'q4', fill: 'solid' }));
+      expect(drawn('pat_gf').querySelector('.condition-carrier').getAttribute('fill')).toBe('#1e293b');
+      expect(half('mother').getAttribute('fill')).toBe('url(#fill-cross)');
+    } finally {
+      await run(() => useViewSettings.getState().setView({ carrierMark: 'split', exportAs: 'screen' }));
+    }
+    expect(half('mother').getAttribute('fill')).toBe('url(#fill-cross)');
+  });
+
   it('a carrier of a named finding keeps that finding\'s pattern with the dot chosen: a dot cannot say which', async () => {
     await run(() => S().addFinding('mother', 'FMF'));
     await run(() => { S().setFindingStatus('mother', 'FMF', 'carrier'); S().updateIndividual('mother', { carrier: true }); });
@@ -1983,6 +2018,10 @@ describe('the Settings window (clinician request 2026-11-03)', () => {
     await run(() => views.getState().setView({ carrierMark: 'dot' }));
     expect(carrier().querySelector('pattern')).toBeNull();
     expect(carrier().querySelector('circle')).not.toBeNull();
+    await run(() => views.getState().setView({ carrierMark: 'half' }));
+    expect(carrier().querySelector('pattern')).toBeNull();
+    expect(carrier().querySelector('circle')).toBeNull();
+    expect(carrier().querySelector('path[d="M13,7h9v18h-9z"]').getAttribute('fill')).not.toMatch(/url/);
     await run(() => views.getState().setView({ carrierMark: 'split' }));
     await key('Escape');
   });

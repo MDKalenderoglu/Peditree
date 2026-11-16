@@ -71,6 +71,7 @@ describe('drawing style settings', () => {
     expect(normalizeView({ panelWidth: 300.4 }).panelWidth).toBe(300);
     expect(normalizeView({ paper: 'dots' }).paper).toBe('dots');
     expect(normalizeView({ carrierMark: 'dot' }).carrierMark).toBe('dot');
+    expect(normalizeView({ carrierMark: 'half' }).carrierMark).toBe('half');
     // "Bir daha gösterme" (Aç) is kept
     expect(normalizeView({ openHelp: false }).openHelp).toBe(false);
     expect(normalizeView(null)).toEqual(DEFAULT_VIEW);

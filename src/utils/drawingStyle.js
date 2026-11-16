@@ -74,7 +74,8 @@ export const fontById = (id) => DRAWING_FONTS.find(f => f.id === id) || DRAWING_
 // professional applications, formerly four words, legendSize) — under the symbols, the pedigree numbers, the patient's
 // name, the key and the notes (clinician requests 2026-10-30, 2026-11-05); the layout gives larger text more room
 // paper: the page under the drawing on screen (paper.js; clinician request 2026-11-03)
-// carrierMark: a carrier without a named finding, half (NSGC 2022) or dot (conditionKey.js CARRIER_MARKS; 2026-11-04)
+// carrierMark: a carrier without a named finding, divided (NSGC 2022), dot, or half solid (conditionKey.js CARRIER_MARKS;
+// 2026-11-04, 2026-11-16)
 // theme: the screens' accent colour, warm to cool (THEMES); ringClear: how see-through the ring's parts are, in %
 // (RING_CLEAR); panelWidth: the side panel's width in px, dragged at its edge, 0 = the usual width (PANEL_WIDTH)
 // (clinician requests 2026-11-07) — the look of the screen only, never the drawing or a file;

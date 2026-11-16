@@ -35,6 +35,8 @@ const GROUPS = [
     [() => <Square fill={INK} />, tk('Etkilenmiş'), tk('Etkilenmiş birey; birden çok bulgu sembolde ayrı bölgelerle gösterilir ve açıklamada belirtilir')],
     [(carrier) => (carrier === 'dot'
       ? <><Square /><circle cx={22} cy={16} r={2.4} fill={INK} /></>
+      : carrier === 'half'
+        ? <><Square /><path d="M13,7h9v18h-9z" fill={INK} stroke="none" /><Square fill="none" /></>
       : <><defs><pattern id="sg-hatch" patternUnits="userSpaceOnUse" width="3" height="3" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="3" stroke={INK} strokeWidth="1.1" /></pattern></defs>
         <Square /><path d="M13,7h9v18h-9z" fill="url(#sg-hatch)" stroke="none" /><path d="M22,7v18" {...line} /><Square fill="none" /></>), tk('Taşıyıcı'), tk('Hastalığa yol açan varyantı taşıyan, ancak etkilenmemiş birey (gösterimi Ayarlar → Çizim’den seçilir)')],
     [() => <><Square /><path d="M22,7v18" {...line} /></>, tk('Presemptomatik'), tk('Şu an belirtisi yok, ileride çıkabilir')],

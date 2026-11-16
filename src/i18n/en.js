@@ -273,6 +273,7 @@ const EN = {
   'Adı girilmemiş taşıyıcılık için geçerlidir. NSGC 2022 nokta gösterimini artık önermemektedir; seçilen gösterim çizimin açıklamasında belirtilir.': 'For a carrier with no condition named. NSGC 2022 no longer recommends the dot. The key explains the one chosen.',
   'Bölünmüş (NSGC 2022)': 'Divided (NSGC 2022)',
   'Ortada nokta': 'Dot in the middle',
+  'Yarısı siyah (klasik)': 'Half filled (classic)',
   'Yalnızca ekranda görünür ve çizimle birlikte kayıp büyür; indirilen ve yazdırılan çizimin zemini düz kalır.': 'On the screen only: it moves and zooms with the drawing. Downloads and prints stay plain.',
   'Düz': 'Plain',
   'Kareli': 'Grid',
