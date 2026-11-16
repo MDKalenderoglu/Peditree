@@ -524,7 +524,7 @@ export default function IndividualEditor({
   };
   const parentsCons = wizardParents && onSetParentsField ? { parents: wizardParents, onSet: onSetParentsField, nameOf: nameOfId } : null;
   const bulk = onUpdateMany && selectedNodes.length >= 2 ? (
-    <BulkEditor nodes={selectedNodes} conditionKey={pedigreeData?.conditionKey || []}
+    <BulkEditor nodes={selectedNodes} conditionKey={pedigreeData?.conditionKey || []} people={pedigreeData?.individuals}
       onUpdateMany={onUpdateMany} onSetFindingStatusMany={onSetFindingStatusMany} onAddFindingMany={onAddFindingMany} />
   ) : null;
   // the merge card only for children of the same parents

@@ -610,7 +610,7 @@ export default function RadialAddMenu({
 
   const panels = {
     findings: (
-      <FindingsPalette node={node} conditionKey={pedigreeData.conditionKey || []} compact
+      <FindingsPalette node={node} conditionKey={pedigreeData.conditionKey || []} people={pedigreeData.individuals} compact
         onSetStatus={onSetFindingStatus} onAdd={onAddFinding} onSetStyle={onSetFindingStyle} onSetOnset={onSetFindingOnset} onRename={onRenameFinding} />
     ),
     twins: (

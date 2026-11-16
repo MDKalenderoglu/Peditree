@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { t } from '../i18n';
 import { FindingGlyph, StylePicker } from './FindingsPalette';
+import { useShownKey, shownEntry } from '../utils/shownKey';
 import { normLabel, suggestStyle, styleTaken, KEY_FULL_MESSAGE } from '../graph/conditionKey';
 import { isPregnancy } from '../graph/model';
 
@@ -15,7 +16,8 @@ const findingState = (p, label) => {
   return !c ? 'none' : ['affected', 'carrier', 'unknown'].includes(c.status) ? c.status : 'none';
 };
 
-export default function BulkEditor({ nodes, conditionKey = [], onUpdateMany, onSetFindingStatusMany, onAddFindingMany }) {
+export default function BulkEditor({ nodes, conditionKey = [], people, onUpdateMany, onSetFindingStatusMany, onAddFindingMany }) {
+  const shownKey = useShownKey(conditionKey, people);
   const [draft, setDraft] = useState('');
   const [style, setStyle] = useState(null);
   const ids = nodes.map(n => n.id);
@@ -56,7 +58,7 @@ export default function BulkEditor({ nodes, conditionKey = [], onUpdateMany, onS
             const st = states.size === 1 ? [...states][0] : null;
             return (
               <div key={e.id} className="finding-row">
-                <span className="finding-glyph"><FindingGlyph region={e.region} fill={e.fill} /></span>
+                <span className="finding-glyph"><FindingGlyph region={shownEntry(shownKey, e).region} fill={shownEntry(shownKey, e).fill} /></span>
                 <span className="finding-name" title={e.label}>{e.label}{st === null ? t(' · karışık') : ''}</span>
                 <div className="segmented finding-state" role="radiogroup" aria-label={e.label}>
                   {[['none', t('Yok')], ['affected', t('Var')], ['carrier', t('Taşıyıcı')], ['unknown', '?']].map(([v, label]) => (

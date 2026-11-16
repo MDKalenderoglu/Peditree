@@ -1093,6 +1093,38 @@ describe('more of what the clinician sees', () => {
     expect(g().individuals.find(i => i.id === 'mother').notes).toBe('birinci satır');
   });
 
+  it('Bulgu with "Yarısı siyah (klasik)": the finding\'s mark in the list and in its picker is the one the drawing shows; black, kept for the carriers, cannot be chosen for it (clinician 2026-11-16)', async () => {
+    await run(() => { S().addFinding('pat_gf', 'Miyop', null); S().setFindingStatus('pat_gf', 'Miyop', 'carrier'); });
+    await run(() => S().setFindingStyle('Miyop', { region: 'q1', fill: 'solid' }));
+    const paint = () => {
+      const row = $$('.findings-panel .finding-row').find(r => r.textContent.includes('Miyop'));
+      return [...row.querySelectorAll('.finding-glyph path')].map(p => p.getAttribute('fill')).find(f => f && f !== 'none' && f !== '#fff');
+    };
+    try {
+      await select('pat_gf');
+      await key('b');
+      expect(paint()).toBe('#1e293b'); // NSGC 2022: as stored
+      await run(() => useViewSettings.getState().setView({ carrierMark: 'half' }));
+      const drawnFill = drawn('pat_gf').querySelector('.condition-carrier').getAttribute('fill');
+      expect(drawnFill).not.toBe('#1e293b');
+      expect(paint()).not.toBe('#1e293b');
+      expect(paint()).toMatch(/^url\(#|#9ca3af/);
+      // its picker: the drawn mark chosen, black not offered, and why
+      $$('.findings-panel .finding-row').find(r => r.textContent.includes('Miyop')).querySelector('button.finding-glyph').click();
+      await settle();
+      const picker = $('.findings-panel .style-picker');
+      const black = [...picker.querySelectorAll('.style-row')][1].querySelector('button[aria-label="Siyah"]');
+      expect(black.disabled).toBe(true);
+      expect(black.classList.contains('on')).toBe(false);
+      expect(picker.textContent).toMatch(/taşıyıcılara ayrıldı/);
+      // the stored choice is untouched
+      expect(S().doc.graph.conditionKey.find(e => e.label === 'Miyop').fill).toBe('solid');
+    } finally {
+      await run(() => useViewSettings.getState().setView({ carrierMark: 'split' }));
+      await key('Escape');
+    }
+  });
+
   it('Bulgu: the age at diagnosis is written right beside the finding once it is "Var", free text too (clinician request 2026-11-07)', async () => {
     await run(() => S().addFinding('mother', 'Miyop', null));
     await select('mother');

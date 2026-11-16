@@ -274,6 +274,7 @@ const EN = {
   'Bölünmüş (NSGC 2022)': 'Divided (NSGC 2022)',
   'Ortada nokta': 'Dot in the middle',
   'Yarısı siyah (klasik)': 'Half filled (classic)',
+  'Yarısı siyah gösteriminde siyah dolgu taşıyıcılara ayrıldı; bu bulgu çizimde bu desenle gösteriliyor.': 'With the half-filled carrier view, black is kept for carriers; this finding is drawn in this pattern.',
   'Yalnızca ekranda görünür ve çizimle birlikte kayıp büyür; indirilen ve yazdırılan çizimin zemini düz kalır.': 'On the screen only: it moves and zooms with the drawing. Downloads and prints stay plain.',
   'Düz': 'Plain',
   'Kareli': 'Grid',

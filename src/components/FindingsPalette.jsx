@@ -11,6 +11,7 @@ import { Pencil } from 'lucide-react';
 import { t } from '../i18n';
 import DraftField from './DraftField';
 import { REGIONS, REGION_LABEL, FILLS, FILL_LABEL, REGION_ANGLES, suggestStyle, styleTaken, normLabel, KEY_FULL_MESSAGE } from '../graph/conditionKey';
+import { useShownKey, shownEntry, movedOffBlack } from '../utils/shownKey';
 
 const INK = '#1e293b';
 
@@ -47,9 +48,10 @@ export function FindingGlyph({ region = 'q1', fill = 'solid', carrier = false, s
   );
 }
 
-export function StylePicker({ value, onChange, isTaken }) {
+export function StylePicker({ value, onChange, isTaken, note }) {
   return (
     <div className="style-picker">
+      {note && <div className="field-hint style-picker-note">{note}</div>}
       <div className="style-row">
         {REGIONS.map(r => (
           <button key={r} className={`style-opt${value.region === r ? ' on' : ''}`} title={t(REGION_LABEL[r])} aria-label={t(REGION_LABEL[r])}
@@ -103,7 +105,8 @@ function FindingName({ label, onRename }) {
   );
 }
 
-export default function FindingsPalette({ node, conditionKey = [], onSetStatus, onAdd, onSetStyle, onSetOnset, onRename, compact = false }) {
+export default function FindingsPalette({ node, conditionKey = [], people, onSetStatus, onAdd, onSetStyle, onSetOnset, onRename, compact = false }) {
+  const shownKey = useShownKey(conditionKey, people);
   const [draft, setDraft] = useState('');
   const [style, setStyle] = useState(null);
   const [editing, setEditing] = useState(null);
@@ -126,11 +129,13 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
         <div className="findings-list">
           {conditionKey.map(e => {
             const st = stateOf(e.label);
+            const shown = shownEntry(shownKey, e);
+            const reserved = movedOffBlack(e, shown);
             return (
               <div key={e.id} className="finding-row">
                 <button className="finding-glyph" title={t('Bulgunun sembolde gösterildiği bölgeyi ve deseni değiştirir; değişiklik bu bulguya sahip herkese uygulanır')}
                   onClick={() => setEditing(editing === e.id ? null : e.id)}>
-                  <FindingGlyph region={e.region} fill={e.fill} shape={shape} carrier={st === 'carrier'} />
+                  <FindingGlyph region={shown.region} fill={shown.fill} shape={shape} carrier={st === 'carrier'} />
                 </button>
                 <FindingName key={e.label} label={e.label} onRename={onRename} />
                 <div className="segmented finding-state" role="radiogroup" aria-label={e.label}>
@@ -150,8 +155,9 @@ export default function FindingsPalette({ node, conditionKey = [], onSetStatus, 
                   </label>
                 )}
                 {editing === e.id && (
-                  <StylePicker value={{ region: e.region, fill: e.fill }}
-                    isTaken={(st2) => styleTaken(conditionKey, st2, e.label)}
+                  <StylePicker value={{ region: shown.region, fill: shown.fill }}
+                    isTaken={(st2) => styleTaken(conditionKey, st2, e.label) || (reserved && st2.fill === 'solid')}
+                    note={reserved ? t('Yarısı siyah gösteriminde siyah dolgu taşıyıcılara ayrıldı; bu bulgu çizimde bu desenle gösteriliyor.') : null}
                     onChange={(st2) => onSetStyle(e.label, st2)} />
                 )}
               </div>
