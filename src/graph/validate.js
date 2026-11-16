@@ -13,7 +13,6 @@ import { SOCIAL_LINK_KINDS, SEX_AT_BIRTH, indexGraph, isGroup, validGroupCount, 
 const FLAG_FIELDS = ['affected', 'carrier', 'presymptomatic', 'recordsReviewed', 'deceased', 'proband', 'consultand', 'adoptedOut', 'placeholder', ...PREGNANCY_FIELDS];
 const FINDING_STATUSES = ['affected', 'carrier', 'unknown'];
 import { multiplesWarnings } from './multiples';
-import { carrierFindingIssues } from './conditionKey';
 import { t } from '../i18n';
 
 export function validateGraphStructure(graph, { retired = [] } = {}) {
@@ -217,7 +216,6 @@ export function validateDocument(doc) {
     ...validateGraphStructure(g, { retired: doc.ids?.retired || [] }),
     ...auditPedigreeGraph(g),
     ...multiplesWarnings(g),
-    ...carrierFindingIssues(g),
   ];
 }
 

@@ -1093,12 +1093,13 @@ describe('more of what the clinician sees', () => {
     expect(g().individuals.find(i => i.id === 'mother').notes).toBe('birinci satır');
   });
 
-  it('Bulgu with "Yarısı siyah (klasik)": the finding\'s mark in the list and in its picker is the one the drawing shows; black, kept for the carriers, cannot be chosen for it (clinician 2026-11-16)', async () => {
-    await run(() => { S().addFinding('pat_gf', 'Miyop', null); S().setFindingStatus('pat_gf', 'Miyop', 'carrier'); });
-    await run(() => S().setFindingStyle('Miyop', { region: 'q1', fill: 'solid' }));
+  it('Bulgu with "Yarısı siyah (klasik)": the finding\'s mark in the list and in its picker is the one the drawing shows; black, kept for the carrier without a name, cannot be chosen for it (clinician 2026-11-16)', async () => {
+    // someone carries Miyop (its half solid) and the mother is a carrier without a name: with "Yarısı siyah" her half is solid too
+    await run(() => { S().addFinding('pat_gf', 'Miyop', null); S().setFindingStatus('pat_gf', 'Miyop', 'carrier'); S().updateIndividual('mother', { carrier: true }); });
+    await run(() => S().setFindingStyle('Miyop', { fill: 'solid' }));
     const paint = () => {
       const row = $$('.findings-panel .finding-row').find(r => r.textContent.includes('Miyop'));
-      return [...row.querySelectorAll('.finding-glyph path')].map(p => p.getAttribute('fill')).find(f => f && f !== 'none' && f !== '#fff');
+      return row.querySelector('.finding-glyph g[clip-path] rect').getAttribute('fill');
     };
     try {
       await select('pat_gf');
@@ -1113,10 +1114,11 @@ describe('more of what the clinician sees', () => {
       $$('.findings-panel .finding-row').find(r => r.textContent.includes('Miyop')).querySelector('button.finding-glyph').click();
       await settle();
       const picker = $('.findings-panel .style-picker');
-      const black = [...picker.querySelectorAll('.style-row')][1].querySelector('button[aria-label="Siyah"]');
+      const black = picker.querySelector('button[aria-label="Siyah"]');
       expect(black.disabled).toBe(true);
       expect(black.classList.contains('on')).toBe(false);
-      expect(picker.textContent).toMatch(/taşıyıcılara ayrıldı/);
+      expect(picker.querySelector('.style-opt.on').getAttribute('aria-label')).not.toBe('Siyah');
+      expect(picker.textContent).toMatch(/adı girilmemiş taşıyıcılık/);
       // the stored choice is untouched
       expect(S().doc.graph.conditionKey.find(e => e.label === 'Miyop').fill).toBe('solid');
     } finally {
@@ -1726,15 +1728,17 @@ describe('notation per the literature (NSGC 2022 and its 2025 correction)', () =
     expect($$('.condition-legend text').some(t => t.textContent === 'Taşıyıcı')).toBe(false);
   });
 
-  it('a symbol in halves has no line across its empty half (clinician report 2026-11-04); quarters keep both lines', async () => {
+  it('a symbol in halves: one line between the halves, top to bottom, none across (clinician report 2026-11-04); one finding alone fills the symbol with no line (NSGC 2022, 2026-11-16)', async () => {
     await run(() => { S().updateIndividual('mother', { carrier: true }); S().updateIndividual('father', { carrier: true, affected: true }); });
-    const across = (id) => [...drawn(id).querySelectorAll('.region-divider')].filter(l => l.getAttribute('y1') === l.getAttribute('y2'));
-    expect(across('mother')).toHaveLength(0);
-    expect(across('father')).toHaveLength(0);
-    expect(drawn('mother').querySelectorAll('.region-divider')).toHaveLength(1); // the line between the halves
-    // a finding in a quarter: the symbol keeps both lines
+    const ends = (id) => [...drawn(id).querySelectorAll('.region-divider')].map(l => [Math.round(Number(l.getAttribute('x2'))), Math.sign(Math.round(Number(l.getAttribute('y2'))))]);
+    for (const id of ['mother', 'father']) {
+      const e = ends(id);
+      expect(e.every(([x]) => x === 0)).toBe(true); // vertical only
+      expect(e.map(([, y]) => y).sort()).toEqual([-1, 1]); // from the middle up and down: the whole height
+    }
     await run(() => { S().updateIndividual('mother', { carrier: false }); S().addFinding('mother', 'Miyop'); });
-    expect(across('mother')).toHaveLength(1);
+    expect(ends('mother')).toEqual([]);
+    expect(drawn('mother').querySelectorAll('.condition-region')).toHaveLength(1);
   });
 
   it('Ayarlar → "Ortada nokta": the carrier as a dot, in the drawing, the key and a download; the file is untouched', async () => {
@@ -1802,28 +1806,13 @@ describe('notation per the literature (NSGC 2022 and its 2025 correction)', () =
     } finally {
       await run(() => useViewSettings.getState().setView({ carrierMark: 'split', exportAs: 'screen' }));
     }
-    // back to the NSGC 2022 drawing: the carriers hatched, "affected" solid again, the finding as stored
+    // back to the NSGC 2022 drawing: the carriers hatched, "affected" without a name solid again; the finding stays off
+    // black while the father's "affected" has no name (black is his), and returns to it once he has none
     expect(half('mother').getAttribute('fill')).toBe('url(#fill-cross)');
     expect(right('father')).toEqual(['#1e293b']);
+    expect(half('pat_gf').getAttribute('fill')).not.toBe('#1e293b');
+    await run(() => S().updateIndividual('father', { affected: false }));
     expect(half('pat_gf').getAttribute('fill')).toBe('#1e293b');
-  });
-
-  it('a carrier\'s half is one even width, with a finding in only one quarter beside it: the white edge runs along the whole half (clinician 2026-11-16)', async () => {
-    await run(() => { S().updateIndividual('mother', { carrier: true }); S().addFinding('mother', 'Miyop'); });
-    await run(() => S().setFindingStyle('Miyop', { region: 'q2', fill: 'hatch' }));
-    for (const mark of ['split', 'half']) {
-      try {
-        await run(() => useViewSettings.getState().setView({ carrierMark: mark }));
-        // a vertical white edge above the middle and one below it, the same width
-        const gaps = [...drawn('mother').querySelectorAll('.region-gap')]
-          .filter(l => Math.abs(Number(l.getAttribute('x2'))) < 0.01)
-          .map(l => [Math.sign(Number(l.getAttribute('y2'))), l.getAttribute('stroke-width')]);
-        expect(gaps.map(g => g[0]).sort()).toEqual([-1, 1]);
-        expect(gaps[0][1]).toBe(gaps[1][1]);
-      } finally {
-        await run(() => useViewSettings.getState().setView({ carrierMark: 'split' }));
-      }
-    }
   });
 
   it('a carrier of a named finding keeps that finding\'s pattern with the dot chosen: a dot cannot say which', async () => {

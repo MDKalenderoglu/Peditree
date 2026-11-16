@@ -17,4 +17,4 @@ export function useShownKey(conditionKey = [], people) {
 export const shownEntry = (shownKey, e) => shownKey.find((x) => x.id === e.id) || e;
 
 /** Moved off black for the carriers: black cannot be chosen for it while that view is on. */
-export const movedOffBlack = (stored, shown) => stored.fill === 'solid' && (shown.fill !== stored.fill || shown.region !== stored.region);
+export const movedOffBlack = (stored, shown) => stored.fill === 'solid' && shown.fill !== stored.fill;

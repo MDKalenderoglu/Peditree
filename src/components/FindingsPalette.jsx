@@ -1,47 +1,52 @@
 /**
  * FindingsPalette.jsx — a person's findings, quick enough to use while taking
  * the history (clinician request 2026-10-24): every finding of the pedigree
- * with its mark (region + fill, as in the legend) and one click for
+ * with its mark (its fill, as in the legend) and one click for
  * none / affected / carrier; a new finding with a suggested, changeable
- * region and fill; the mark of an existing finding can be changed for
+ * fill; the mark of an existing finding can be changed for
  * everyone. Used in the ring menu and in the right panel.
  */
 import { useId, useRef, useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { t } from '../i18n';
 import DraftField from './DraftField';
-import { REGIONS, REGION_LABEL, FILLS, FILL_LABEL, REGION_ANGLES, suggestStyle, styleTaken, normLabel, KEY_FULL_MESSAGE } from '../graph/conditionKey';
+import { FILLS, FILL_LABEL, suggestStyle, styleTaken, normLabel, KEY_FULL_MESSAGE } from '../graph/conditionKey';
 import { useShownKey, shownEntry, movedOffBlack } from '../utils/shownKey';
 
 const INK = '#1e293b';
 
-/** A small symbol with one finding's mark, the way the drawing shows it. */
-export function FindingGlyph({ region = 'q1', fill = 'solid', carrier = false, shape = 'square', size = 18 }) {
+/** A small symbol with one finding's mark, the way the drawing shows it: the whole symbol, a carrier the left half. */
+export function FindingGlyph({ fill = 'solid', carrier = false, shape = 'square', size = 18 }) {
   const uid = useId().replace(/:/g, '');
   const s = 8;
-  // a carrier is drawn on the left half (clinician decision 2026-10-25)
-  const [a0, a1] = carrier ? [90, 270] : (REGION_ANGLES[region] || REGION_ANGLES.q1);
-  const p = (a) => [14 * Math.cos((a * Math.PI) / 180), 14 * Math.sin((a * Math.PI) / 180)];
-  const [x0, y0] = p(a0), [x1, y1] = p(a1);
-  const paint = { solid: INK, grey: '#9ca3af', hatch: `url(#h${uid})`, dots: `url(#d${uid})` }[fill] || INK;
+  const pat = (id, rotate, inner) => (
+    <pattern id={`${id}${uid}`} patternUnits="userSpaceOnUse" width="3" height="3" patternTransform={rotate ? `rotate(${rotate})` : undefined}>
+      <rect width="3" height="3" fill="#fff" />{inner}
+    </pattern>
+  );
+  const paint = {
+    solid: INK, grey: '#9ca3af', hatch: `url(#h${uid})`, dots: `url(#d${uid})`, horiz: `url(#x${uid})`,
+    vert: `url(#v${uid})`, back: `url(#b${uid})`, checker: `url(#c${uid})`,
+  }[fill] || INK;
   const outline = shape === 'circle'
     ? <circle r={s} />
     : <rect x={-s} y={-s} width={2 * s} height={2 * s} />;
   return (
     <svg width={size} height={size} viewBox="-10 -10 20 20" aria-hidden="true">
       <defs>
-        <pattern id={`h${uid}`} patternUnits="userSpaceOnUse" width="3" height="3" patternTransform="rotate(45)">
-          <rect width="3" height="3" fill="#fff" /><line x1="0" y1="0" x2="0" y2="3" stroke={INK} strokeWidth="1.2" />
-        </pattern>
-        <pattern id={`d${uid}`} patternUnits="userSpaceOnUse" width="3" height="3">
-          <rect width="3" height="3" fill="#fff" /><circle cx="1.5" cy="1.5" r="0.7" fill={INK} />
-        </pattern>
-        <clipPath id={`c${uid}`}>{outline}</clipPath>
+        {pat('h', 45, <line x1="0" y1="0" x2="0" y2="3" stroke={INK} strokeWidth="1.2" />)}
+        {pat('b', -45, <line x1="0" y1="0" x2="0" y2="3" stroke={INK} strokeWidth="1.2" />)}
+        {pat('x', 0, <line x1="0" y1="1.5" x2="3" y2="1.5" stroke={INK} strokeWidth="1" />)}
+        {pat('v', 0, <line x1="1.5" y1="0" x2="1.5" y2="3" stroke={INK} strokeWidth="1" />)}
+        {pat('d', 0, <circle cx="1.5" cy="1.5" r="0.7" fill={INK} />)}
+        {pat('c', 0, <><rect width="1.5" height="1.5" fill={INK} /><rect x="1.5" y="1.5" width="1.5" height="1.5" fill={INK} /></>)}
+        <clipPath id={`k${uid}`}>{outline}</clipPath>
       </defs>
       <g fill="#fff">{outline}</g>
-      <g clipPath={`url(#c${uid})`}>
-        <path d="M0,-14V14M-14,0H14" stroke={INK} strokeWidth="0.7" />
-        <path d={`M0,0L${x0},${y0}A14,14 0 0 1 ${x1},${y1}Z`} fill={paint} stroke="#fff" strokeWidth="1" />
+      <g clipPath={`url(#k${uid})`}>
+        {carrier
+          ? <><rect x="-10" y="-10" width="10" height="20" fill={paint} /><path d="M0,-10V10" stroke={INK} strokeWidth="1" /></>
+          : <rect x="-10" y="-10" width="20" height="20" fill={paint} />}
       </g>
       <g fill="none" stroke={INK} strokeWidth="1.4">{outline}</g>
     </svg>
@@ -53,18 +58,10 @@ export function StylePicker({ value, onChange, isTaken, note }) {
     <div className="style-picker">
       {note && <div className="field-hint style-picker-note">{note}</div>}
       <div className="style-row">
-        {REGIONS.map(r => (
-          <button key={r} className={`style-opt${value.region === r ? ' on' : ''}`} title={t(REGION_LABEL[r])} aria-label={t(REGION_LABEL[r])}
-            disabled={isTaken({ region: r, fill: value.fill })} onClick={() => onChange({ ...value, region: r })}>
-            <FindingGlyph region={r} fill="solid" />
-          </button>
-        ))}
-      </div>
-      <div className="style-row">
         {FILLS.map(f => (
           <button key={f} className={`style-opt${value.fill === f ? ' on' : ''}`} title={t(FILL_LABEL[f])} aria-label={t(FILL_LABEL[f])}
-            disabled={isTaken({ region: value.region, fill: f })} onClick={() => onChange({ ...value, fill: f })}>
-            <FindingGlyph region={value.region} fill={f} />
+            disabled={isTaken({ fill: f })} onClick={() => onChange({ fill: f })}>
+            <FindingGlyph fill={f} />
           </button>
         ))}
       </div>
@@ -133,9 +130,9 @@ export default function FindingsPalette({ node, conditionKey = [], people, onSet
             const reserved = movedOffBlack(e, shown);
             return (
               <div key={e.id} className="finding-row">
-                <button className="finding-glyph" title={t('Bulgunun sembolde gösterildiği bölgeyi ve deseni değiştirir; değişiklik bu bulguya sahip herkese uygulanır')}
+                <button className="finding-glyph" title={t('Bulgunun sembolde gösterildiği deseni değiştirir; değişiklik bu bulguya sahip herkese uygulanır')}
                   onClick={() => setEditing(editing === e.id ? null : e.id)}>
-                  <FindingGlyph region={shown.region} fill={shown.fill} shape={shape} carrier={st === 'carrier'} />
+                  <FindingGlyph fill={shown.fill} shape={shape} carrier={st === 'carrier'} />
                 </button>
                 <FindingName key={e.label} label={e.label} onRename={onRename} />
                 <div className="segmented finding-state" role="radiogroup" aria-label={e.label}>
@@ -155,9 +152,9 @@ export default function FindingsPalette({ node, conditionKey = [], people, onSet
                   </label>
                 )}
                 {editing === e.id && (
-                  <StylePicker value={{ region: shown.region, fill: shown.fill }}
+                  <StylePicker value={{ fill: shown.fill }}
                     isTaken={(st2) => styleTaken(conditionKey, st2, e.label) || (reserved && st2.fill === 'solid')}
-                    note={reserved ? t('Yarısı siyah gösteriminde siyah dolgu taşıyıcılara ayrıldı; bu bulgu çizimde bu desenle gösteriliyor.') : null}
+                    note={reserved ? t('Siyah, bu çizimde adı girilmemiş taşıyıcılık ya da etkilenmişlik için kullanıldığından bu bulgu çizimde bu desenle gösteriliyor.') : null}
                     onChange={(st2) => onSetStyle(e.label, st2)} />
                 )}
               </div>
@@ -168,7 +165,7 @@ export default function FindingsPalette({ node, conditionKey = [], people, onSet
       {suggested ? (
         <>
         <div className="finding-new">
-          <FindingGlyph region={suggested.region} fill={suggested.fill} shape={shape} />
+          <FindingGlyph fill={suggested.fill} shape={shape} />
           <input type="text" className="input" value={draft} placeholder={t('Yeni bulgu (örneğin miyopi)')} aria-label={t('Yeni bulgunun adı')}
             onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }} />
           <button className="ui-btn ui-btn-sm ui-btn-primary" disabled={!draft.trim()} onClick={add}>{t('Ekle')}</button>

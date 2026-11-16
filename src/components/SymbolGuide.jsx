@@ -32,7 +32,7 @@ const GROUPS = [
     [() => <><Square x={26} y={14} /><Arrow /></>, tk('Danışan'), tk('Danışmanlık için başvuran kişi (P yazmaz)')],
   ]],
   [tk('Durum'), [
-    [() => <Square fill={INK} />, tk('Etkilenmiş'), tk('Etkilenmiş birey; birden çok bulgu sembolde ayrı bölgelerle gösterilir ve açıklamada belirtilir')],
+    [() => <Square fill={INK} />, tk('Etkilenmiş'), tk('Etkilenmiş birey; birden çok bulgu sembolde eşit bölümlerle, her biri kendi deseniyle gösterilir ve açıklamada belirtilir')],
     [(carrier) => (carrier === 'dot'
       ? <><Square /><circle cx={22} cy={16} r={2.4} fill={INK} /></>
       : carrier === 'half'

@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { usePedigreeStore } from '../state/usePedigreeStore';
-import { fillFor, suggestStyle } from '../graph/conditionKey';
+import { fillFor, displayStyles } from '../graph/conditionKey';
 import { toPed, fromPed } from '../graph/ped';
 import { flushDrafts, pendingDrafts } from '../utils/drafts';
 
@@ -47,28 +47,22 @@ describe('#2 carrier and affected are both read', () => {
     const f = fillFor({ affected: true, carrier: true, conditions: [] }, []);
     expect(f.mode).toBe('regions');
     expect(f.parts).toEqual([
-      { region: 'q1', fill: 'cross', carrier: true, a0: 90, a1: 270 },
-      { region: 'q2', fill: 'solid', carrier: false, unnamed: true, a0: 270, a1: 450 },
+      { fill: 'cross', carrier: true, a0: 90, a1: 270 },
+      { fill: 'solid', carrier: false, unnamed: true, a0: 270, a1: 450 },
     ]);
     expect(f.carrierDot).toBeUndefined();
   });
-  it('a carried finding in black next to a plain "affected": the finding gets another fill for everyone', () => {
+  it('a carried finding in black next to a plain "affected": the drawing shows the finding in another pattern; the file keeps it', () => {
     S().resetPedigree();
-    S().addFinding('proband', 'X'); // q1 solid
+    S().addFinding('proband', 'X'); // solid
     S().setFindingStatus('mother', 'X', 'carrier');
     S().updateIndividual('mother', { affected: true });
-    const x = S().doc.graph.conditionKey.find(e => e.label === 'X');
-    expect(x.fill).not.toBe('solid');
-  });
-  it('when no distinct signature is left, an indistinguishable combination is refused with the reason', () => {
-    S().resetPedigree();
-    for (let i = 1; i <= 16; i++) S().addFinding('father', `B${i}`, suggestStyle(S().doc.graph.conditionKey));
-    // B1 (q1 solid) carried and B2 (q2 solid) affected by the mother: no free right signature to move B2 to
-    S().setFindingStatus('mother', 'B1', 'carrier');
-    const before = S().doc;
-    S().setFindingStatus('mother', 'B2', 'affected');
-    expect(S().doc).toBe(before);
-    expect(S().actionNotice.message).toMatch(/ayırt edilemez/);
+    const g = S().doc.graph;
+    const st = displayStyles(g.individuals, g.conditionKey);
+    expect(st.key.find(e => e.label === 'X').fill).not.toBe('solid');
+    expect(g.conditionKey.find(e => e.label === 'X').fill).toBe('solid');
+    const mother = g.individuals.find(i => i.id === 'mother');
+    expect(new Set(fillFor(mother, st.key, 'split', st).parts.map(p => p.fill)).size).toBe(2);
   });
 });
 

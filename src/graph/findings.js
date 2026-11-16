@@ -11,7 +11,7 @@
  */
 import { commit, block } from './ops';
 import { normalizeAge } from '../utils/age';
-import { normLabel, keyEntry, styleTaken, keyFull, KEY_FULL_MESSAGE, rightSideFindings, REGIONS, FILLS } from './conditionKey';
+import { normLabel, keyEntry, styleTaken, keyFull, KEY_FULL_MESSAGE, FILLS } from './conditionKey';
 import { t } from '../i18n';
 
 // 'unknown': the clinician is not sure (clinician decision 2026-10-25:
@@ -47,8 +47,8 @@ export function setFindingStatus(doc, personId, label, status) {
 }
 
 /**
- * A new (or existing) finding for a person, affected; `style` = { region,
- * fill } chosen by the clinician for a finding the key does not have yet.
+ * A new (or existing) finding for a person, affected; `style` = { fill }
+ * chosen by the clinician for a finding the key does not have yet.
  */
 export function addFinding(doc, personId, label, style = null) {
   return commit(doc, (d) => {
@@ -59,10 +59,10 @@ export function addFinding(doc, personId, label, style = null) {
     d.graph.conditionKey = d.graph.conditionKey || [];
     if (!keyEntry(d.graph.conditionKey, name) && keyFull(d.graph.conditionKey)) block(t(KEY_FULL_MESSAGE));
     if (style && !keyEntry(d.graph.conditionKey, name)) {
-      if (!REGIONS.includes(style.region) || !FILLS.includes(style.fill)) block(t('Geçersiz bir bölge ya da dolgu seçildi.'));
-      if (styleTaken(d.graph.conditionKey, style)) block(t('Bu bölge ve desen başka bir bulguyu göstermektedir; iki bulgunun karışmaması için başka bir bölge ya da desen seçin.'));
+      if (!FILLS.includes(style.fill)) block(t('Geçersiz bir desen seçildi.'));
+      if (styleTaken(d.graph.conditionKey, style)) block(t('Bu desen başka bir bulguyu göstermektedir; iki bulgunun karışmaması için başka bir desen seçin.'));
       const n = Math.max(0, ...d.graph.conditionKey.map((e) => Number(String(e.id).replace(/^k/, '')) || 0)) + 1;
-      d.graph.conditionKey.push({ id: `k${n}`, label: name, region: style.region, fill: style.fill });
+      d.graph.conditionKey.push({ id: `k${n}`, label: name, fill: style.fill });
     }
     applyStatus(p, name, 'affected');
   });
@@ -73,16 +73,9 @@ export function setFindingStyle(doc, label, style) {
   return commit(doc, (d) => {
     const e = keyEntry(d.graph.conditionKey, label);
     if (!e) block(t('Bu bulgu açıklamada yer almıyor.'));
-    if (!REGIONS.includes(style.region) || !FILLS.includes(style.fill)) block(t('Geçersiz bir bölge ya da dolgu seçildi.'));
-    if (styleTaken(d.graph.conditionKey, style, label)) block(t('Bu bölge ve desen başka bir bulguyu göstermektedir; iki bulgunun karışmaması için başka bir bölge ya da desen seçin.'));
-    const beside = rightSideFindings(d.graph).get(normLabel(label));
-    if (beside && !['q2', 'q3'].includes(style.region)) {
-      block(t('Bu bulgu taşıyıcı bir kişide de bulunuyor; taşıyıcılık sembolün sol yarısında gösterildiğinden bulgunun sağ üst ya da sağ alt çeyrekte yer alması gerekir.'));
-    }
-    if (beside && beside.has(style.fill)) {
-      block(t('Bu dolgu, aynı kişinin sol yarısındaki taşıyıcılık işaretiyle aynı olduğundan bulgu ayırt edilemez; başka bir dolgu seçin.'));
-    }
-    e.region = style.region;
+    if (!style || !FILLS.includes(style.fill)) block(t('Geçersiz bir desen seçildi.'));
+    if (styleTaken(d.graph.conditionKey, style, label)) block(t('Bu desen başka bir bulguyu göstermektedir; iki bulgunun karışmaması için başka bir desen seçin.'));
+    delete e.region;
     e.fill = style.fill;
   });
 }

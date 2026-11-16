@@ -7,7 +7,7 @@
  *   unions                    — exactly two partners
  *   parentChildRelationships  — BIOLOGICAL parenthood, ≤ 1 per child
  *   socialParentLinks         — social parenthood (adoptive, foster, …), any number
- *   conditionKey              — the legend: [{ id, label }], derived from the
+ *   conditionKey              — the legend: [{ id, label, fill }], derived from the
  *                               people's conditions (conditionKey.js)
  */
 import { tk } from '../i18n';

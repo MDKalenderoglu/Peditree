@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 /**
- * The regions of findings in a symbol, drawn by the real app (clinician report 2026-11-07: a
- * square with one finding showed white gaps in the middle of its dividing lines — every sector
- * had a white edge that broke the dark lines where they cross). The dividing lines are whole and
- * lie over the sectors; a white gap stands only where two findings meet.
+ * The parts of findings in a symbol, drawn by the real app. NSGC 2022 (clinician decision
+ * 2026-11-16): the symbol is divided among what the person has, each part in its own pattern, and a
+ * dark line runs along every edge between parts, from the middle to the outline. It used to be a
+ * white gap where two findings met (clinician report 2026-11-16: two patterns then read as one) and
+ * quarters crowded into slivers with three findings or more beside a carrier's half.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 import { mount, settle, createElement } from './support/dom';
@@ -25,41 +26,41 @@ beforeEach(async () => { await settle(() => { S().resetPedigree(); }); });
 const regionsOf = (id) => [...view.container.querySelectorAll('.node-group')]
   .find((el) => el.__data__ && el.__data__.id === id).querySelector('.condition-regions');
 const kids = (g) => [...g.children];
+const parts = (g) => kids(g).filter((el) => el.classList.contains('condition-region') || el.classList.contains('condition-carrier'));
+const dividers = (g) => kids(g).filter((el) => el.classList.contains('region-divider'));
+// the direction a divider runs to, in degrees (0 = east, clockwise)
+const angle = (l) => Math.round(((Math.atan2(Number(l.getAttribute('y2')), Number(l.getAttribute('x2'))) * 180) / Math.PI + 360) % 360);
 
-describe('finding regions (clinician report 2026-11-07)', () => {
-  it('one finding in one quarter (as in the report): no white edge, no white gap, the dividing lines whole and over it', async () => {
-    // two findings in the family give each one a quarter; the father has only the first
-    await settle(() => { S().addFinding('mother', 'Miyop', null); S().addFinding('mother', 'Kolestaz', null); S().addFinding('father', 'Miyop', null); });
+describe('finding parts (NSGC 2022, clinician decision 2026-11-16)', () => {
+  it('one finding fills the whole symbol in its pattern: no dividing line', async () => {
+    await settle(() => { S().addFinding('mother', 'Miyop', null); S().addFinding('mother', 'Kolestaz', null); S().addFinding('father', 'Kolestaz', null); });
     const g = regionsOf('father');
-    const sectors = kids(g).filter((el) => el.tagName === 'path');
-    expect(sectors.length).toBe(1);
-    expect(sectors[0].getAttribute('stroke')).toBe('none');
-    expect(kids(g).filter((el) => el.classList.contains('region-gap'))).toEqual([]);
-    const dividers = kids(g).filter((el) => el.classList.contains('region-divider'));
-    expect(dividers.length).toBe(2);
-    // whole: each runs through the centre from one side to the other
-    for (const l of dividers) {
-      const [x1, y1, x2, y2] = ['x1', 'y1', 'x2', 'y2'].map((at) => Number(l.getAttribute(at)));
-      expect(Math.sign(x1) * Math.sign(x2) <= 0 && Math.sign(y1) * Math.sign(y2) <= 0).toBe(true);
-      expect(Math.hypot(x2 - x1, y2 - y1)).toBeGreaterThan(40);
-    }
-    // over the sector
-    const order = kids(g);
-    expect(Math.min(...dividers.map((l) => order.indexOf(l)))).toBeGreaterThan(order.indexOf(sectors[0]));
+    expect(parts(g)).toHaveLength(1);
+    expect(parts(g)[0].getAttribute('fill')).toBe('url(#fill-hatch)');
+    expect(dividers(g)).toEqual([]);
   });
 
-  it('two findings side by side: a white gap where they meet, starting off the centre so the cross stays whole', async () => {
-    await settle(() => { S().addFinding('mother', 'Miyop', null); S().addFinding('mother', 'Kolestaz', null); });
+  it('several findings: equal parts, a dark line along every edge from the middle, over the parts; no white gap', async () => {
+    await settle(() => { ['Miyop', 'Kolestaz', 'Katarakt'].forEach((f) => S().addFinding('mother', f, null)); });
     const g = regionsOf('mother');
-    const gaps = kids(g).filter((el) => el.classList.contains('region-gap'));
-    expect(gaps.length).toBeGreaterThan(0);
-    for (const l of gaps) {
-      expect(l.getAttribute('stroke')).toBe('#ffffff');
-      expect(Math.hypot(Number(l.getAttribute('x1')), Number(l.getAttribute('y1')))).toBeGreaterThan(0.4);
+    expect(parts(g).map((p) => p.getAttribute('fill'))).toEqual(['#1e293b', 'url(#fill-hatch)', 'url(#fill-dots)']);
+    expect(dividers(g).map(angle).sort((a, b) => a - b)).toEqual([30, 150, 270]);
+    for (const l of dividers(g)) {
+      expect(l.getAttribute('stroke')).toBe('#1e293b');
+      expect([Number(l.getAttribute('x1')), Number(l.getAttribute('y1'))]).toEqual([0, 0]);
     }
-    // the gaps are drawn last, over the dividing lines
+    expect(kids(g).filter((el) => el.classList.contains('region-gap'))).toEqual([]);
     const order = kids(g);
-    const last = Math.max(...kids(g).filter((el) => el.classList.contains('region-divider')).map((l) => order.indexOf(l)));
-    expect(Math.min(...gaps.map((l) => order.indexOf(l)))).toBeGreaterThan(last);
+    expect(Math.min(...dividers(g).map((l) => order.indexOf(l)))).toBeGreaterThan(Math.max(...parts(g).map((p) => order.indexOf(p))));
+  });
+
+  it('a carrier with three findings: the half on the left, the findings share the right half; the half\'s edge runs top to bottom', async () => {
+    await settle(() => {
+      S().updateIndividual('mother', { carrier: true });
+      ['Miyop', 'Kolestaz', 'Katarakt'].forEach((f) => S().addFinding('mother', f, null));
+    });
+    const g = regionsOf('mother');
+    expect(parts(g).map((p) => p.getAttribute('class'))).toEqual(['condition-carrier', 'condition-region', 'condition-region', 'condition-region']);
+    expect(dividers(g).map(angle).sort((a, b) => a - b)).toEqual([30, 90, 330, 270].sort((a, b) => a - b));
   });
 });

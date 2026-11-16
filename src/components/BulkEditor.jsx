@@ -58,7 +58,7 @@ export default function BulkEditor({ nodes, conditionKey = [], people, onUpdateM
             const st = states.size === 1 ? [...states][0] : null;
             return (
               <div key={e.id} className="finding-row">
-                <span className="finding-glyph"><FindingGlyph region={shownEntry(shownKey, e).region} fill={shownEntry(shownKey, e).fill} /></span>
+                <span className="finding-glyph"><FindingGlyph fill={shownEntry(shownKey, e).fill} /></span>
                 <span className="finding-name" title={e.label}>{e.label}{st === null ? t(' · karışık') : ''}</span>
                 <div className="segmented finding-state" role="radiogroup" aria-label={e.label}>
                   {[['none', t('Yok')], ['affected', t('Var')], ['carrier', t('Taşıyıcı')], ['unknown', '?']].map(([v, label]) => (
@@ -74,7 +74,7 @@ export default function BulkEditor({ nodes, conditionKey = [], people, onUpdateM
       {suggested ? (
         <>
         <div className="finding-new">
-          <FindingGlyph region={suggested.region} fill={suggested.fill} />
+          <FindingGlyph fill={suggested.fill} />
           <input type="text" className="input" value={draft} placeholder={t('Yeni bulgu adı (seçili herkese eklenir)')}
             onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }} />
           <button className="ui-btn ui-btn-sm ui-btn-primary" disabled={!draft.trim()} onClick={add}>{t('Ekle')}</button>

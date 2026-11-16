@@ -1,14 +1,17 @@
 /**
- * conditionKey.test.js — findings marked as regions of the symbol, defined in
- * a legend (clinician requests 2026-10-24): each finding has a signature
- * (quadrant + fill), suggested automatically and changeable; the same finding
- * marks the same region on everyone; a plain "affected" without a finding
- * stays a full fill. A carrier is drawn on the LEFT half of the symbol, the
- * person's findings on the RIGHT side (clinician decision 2026-10-25).
+ * conditionKey.test.js — findings in the symbol, defined in a legend. NSGC 2022
+ * (Figure 2, §4.5; clinician decision 2026-11-16): each finding has a fill
+ * pattern of its own, suggested automatically and changeable; the symbol is
+ * divided among what the person has, in equal parts in the order of the key,
+ * from the top clockwise, one finding the whole symbol; a carrier is drawn on
+ * the LEFT half and the person's findings share the RIGHT half; a plain
+ * "affected" without a finding stays a full fill. (It used to be a fixed
+ * quarter per finding: with a carrier's half and three or more findings the
+ * quarters crowded into slivers.)
  */
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { usePedigreeStore } from '../state/usePedigreeStore';
-import { deriveConditionKey, fillFor, suggestStyle, keyEntry } from '../graph/conditionKey';
+import { deriveConditionKey, fillFor, suggestStyle, keyEntry, displayStyles, FILLS } from '../graph/conditionKey';
 import { keyGrid } from '../utils/keyGrid';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
@@ -17,12 +20,15 @@ const S = () => usePedigreeStore.getState();
 const person = (id) => S().doc.graph.individuals.find(i => i.id === id);
 const key = () => S().doc.graph.conditionKey;
 const labels = () => key().map(e => e.label);
-const regionsOf = (id) => fillFor(person(id), key()).parts?.map(p => `${p.region}:${p.fill}${p.carrier ? ':carrier' : ''}`);
+const part = (p) => `${p.fill}${p.carrier ? ':carrier' : ''}@${p.a0}-${p.a1}`;
+const partsOf = (p, k = key(), mark, styles) => fillFor(p, k, mark, styles).parts?.map(part);
+const aff = (...ls) => ls.map(label => ({ label, status: 'affected' }));
+const K = (...fills) => fills.map((fill, i) => ({ id: `k${i + 1}`, label: 'ABCDEFGH'[i], fill }));
 
 describe('the legend follows the findings', () => {
   beforeEach(() => S().resetPedigree());
 
-  it('proband with myopia, tall stature, arachnodactyly; a sister with myopia only: same region for the same finding', () => {
+  it('proband with myopia, tall stature, arachnodactyly; a sister with myopia only: one pattern per finding, the same on everyone', () => {
     S().addFinding('proband', 'Miyop');
     S().addFinding('proband', 'Uzun boy');
     S().addFinding('proband', 'Araknodaktili');
@@ -30,53 +36,55 @@ describe('the legend follows the findings', () => {
     const sister = S().wizardData.siblings.female[0].id;
     S().addFinding(sister, 'miyop '); // same finding, other spelling
     expect(labels()).toEqual(['Miyop', 'Uzun boy', 'Araknodaktili']);
-    // the proband stays fully filled (clinician decision 2026-10-25); the
-    // findings' regions mark the relatives
+    expect(key().map(e => e.fill)).toEqual(['solid', 'hatch', 'dots']);
+    expect(key().every(e => !('region' in e))).toBe(true);
+    // the proband stays fully filled (clinician decision 2026-10-25); one finding fills a relative's whole symbol
     expect(fillFor(person('proband'), key())).toEqual({ mode: 'full' });
-    expect(regionsOf(sister)).toEqual(['q1:solid']);
+    expect(partsOf(person(sister))).toEqual(['solid@270-630']);
     expect(fillFor(person('mother'), key())).toEqual({ mode: 'none' });
     expect(person('proband').affected).toBe(true);
     expect(S().pedigreeData.conditionKey).toEqual(key()); // the renderer gets the same key
   });
 
-  it('a single finding marks its region on a relative (the clinician paints a quarter); the proband stays full', () => {
-    S().addFinding('mother', 'Miyop', { region: 'q2', fill: 'solid' });
-    expect(regionsOf('mother')).toEqual(['q2:solid']);
-    S().addFinding('proband', 'Miyop');
-    expect(fillFor(person('proband'), key())).toEqual({ mode: 'full' });
+  it('the symbol is divided among the findings in equal parts, in the key\'s order, from the top clockwise', () => {
+    const k = K('solid', 'hatch', 'dots', 'grey', 'horiz');
+    expect(partsOf({ conditions: aff('B', 'A') }, k)).toEqual(['solid@270-450', 'hatch@450-630']);
+    expect(partsOf({ conditions: aff('A', 'B', 'C') }, k)).toEqual(['solid@270-390', 'hatch@390-510', 'dots@510-630']);
+    expect(partsOf({ conditions: aff('A', 'B', 'C', 'D') }, k)).toEqual(['solid@270-360', 'hatch@360-450', 'dots@450-540', 'grey@540-630']);
+    expect(partsOf({ conditions: aff('A', 'B', 'C', 'D', 'E') }, k)).toHaveLength(5);
   });
 
-  it('the clinician chooses region and fill; a taken signature is refused; style can change later', () => {
-    S().addFinding('father', 'A', { region: 'q3', fill: 'hatch' });
-    expect(keyEntry(key(), 'A')).toMatchObject({ region: 'q3', fill: 'hatch' });
+  it('the clinician chooses the pattern; a taken one is refused; it can change later', () => {
+    S().addFinding('father', 'A', { fill: 'hatch' });
+    expect(keyEntry(key(), 'A')).toEqual({ id: 'k1', label: 'A', fill: 'hatch' });
     const before = S().doc;
-    S().addFinding('mother', 'B', { region: 'q3', fill: 'hatch' });
+    S().addFinding('mother', 'B', { fill: 'hatch' });
     expect(S().doc).toBe(before);
     expect(S().actionNotice.message).toMatch(/başka bir bulguyu göstermektedir/);
-    S().setFindingStyle('A', { region: 'q1', fill: 'dots' });
-    expect(regionsOf('father')).toEqual(['q1:dots']);
+    S().setFindingStyle('A', { fill: 'vert' });
+    expect(partsOf(person('father'))).toEqual(['vert@270-630']);
+    S().setFindingStyle('A', { fill: 'nope' });
+    expect(S().actionNotice.message).toMatch(/Geçersiz/);
   });
 
-  it('suggestion: four quadrants in solid first, then other fills', () => {
-    const k = ['q1', 'q2', 'q3', 'q4'].map((r, i) => ({ id: `k${i}`, label: `F${i}`, region: r, fill: 'solid' }));
-    expect(suggestStyle([])).toEqual({ region: 'q1', fill: 'solid' });
-    expect(suggestStyle(k)).toEqual({ region: 'q1', fill: 'hatch' });
+  it('suggestion: the fills in order, one each; null when all eight are used', () => {
+    expect(suggestStyle([])).toEqual({ fill: 'solid' });
+    expect(suggestStyle(K('solid', 'hatch'))).toEqual({ fill: 'dots' });
+    expect(suggestStyle(K(...FILLS))).toBeNull();
+    expect(FILLS).toHaveLength(8);
   });
 
-  it('a finding keeps its signature while others come and go; an unused finding leaves the legend', () => {
+  it('a finding keeps its pattern while others come and go; an unused finding leaves the legend', () => {
     S().addFinding('mother', 'A');
     S().addFinding('father', 'B');
     S().addFinding('proband', 'C');
-    expect(keyEntry(key(), 'B').region).toBe('q2');
+    expect(keyEntry(key(), 'B').fill).toBe('hatch');
     S().setFindingStatus('mother', 'A', 'none');
     expect(labels()).toEqual(['B', 'C']);
-    expect(keyEntry(key(), 'B').region).toBe('q2');
+    expect(keyEntry(key(), 'B').fill).toBe('hatch');
     S().addFinding('mother', 'D');
-    expect(keyEntry(key(), 'D').region).toBe('q1'); // the freed quadrant
+    expect(keyEntry(key(), 'D').fill).toBe('solid'); // the freed pattern
   });
-
-  const part = (p) => `${p.fill}${p.carrier ? ':carrier' : ''}@${p.a0}-${p.a1}`;
-  const partsOf = (p, k = key()) => fillFor(p, k).parts?.map(part);
 
   it('a carrier: the left half in the finding’s fill; plain affected: full; person-level carrier: the left half cross-hatched (NSGC 2022)', () => {
     S().addFinding('mother', 'Miyop');
@@ -87,79 +95,57 @@ describe('the legend follows the findings', () => {
     expect(partsOf({ carrier: true }, key())).toEqual(['cross:carrier@90-270']);
   });
 
-  it('carrier of X and affected by Y: left half X, Y in its own quarter, as the key shows it (clinician 2026-11-16; it filled the right half)', () => {
-    const k = [{ id: 'k1', label: 'X', region: 'q2', fill: 'solid' }, { id: 'k2', label: 'Y', region: 'q2', fill: 'hatch' }];
-    const p = { conditions: [{ label: 'X', status: 'carrier' }, { label: 'Y', status: 'affected' }] };
-    expect(partsOf(p, k)).toEqual(['solid:carrier@90-270', 'hatch@270-360']);
-    // a finding in the lower right stays there
-    const low = [{ id: 'k1', label: 'X', region: 'q1', fill: 'solid' }, { id: 'k2', label: 'Y', region: 'q3', fill: 'hatch' }];
-    expect(partsOf(p, low)).toEqual(['solid:carrier@90-270', 'hatch@360-450']);
-    // two findings of one quarter share it, as on anyone else
-    const two = [...k, { id: 'k3', label: 'Z', region: 'q2', fill: 'dots' }];
-    expect(partsOf({ conditions: [...p.conditions, { label: 'Z', status: 'affected' }] }, two)).toEqual(['solid:carrier@90-270', 'hatch@270-315', 'dots@315-360']);
-  });
-
-  it('carrier of X, affected by Y and Z: left half X, upper right Y, lower right Z', () => {
-    const k = [
-      { id: 'k1', label: 'X', region: 'q1', fill: 'solid' },
-      { id: 'k2', label: 'Y', region: 'q2', fill: 'hatch' },
-      { id: 'k3', label: 'Z', region: 'q3', fill: 'dots' },
-    ];
-    const p = { conditions: [{ label: 'X', status: 'carrier' }, { label: 'Z', status: 'affected' }, { label: 'Y', status: 'affected' }] };
-    expect(partsOf(p, k)).toEqual(['solid:carrier@90-270', 'hatch@270-360', 'dots@360-450']);
+  it('a carrier with findings: the carrier half on the left, the findings share the right half in equal parts', () => {
+    const k = K('solid', 'hatch', 'dots', 'grey', 'horiz');
+    const carries = [{ label: 'A', status: 'carrier' }];
+    expect(partsOf({ conditions: [...carries, ...aff('B')] }, k)).toEqual(['solid:carrier@90-270', 'hatch@270-450']);
+    expect(partsOf({ conditions: [...carries, ...aff('C', 'B')] }, k)).toEqual(['solid:carrier@90-270', 'hatch@270-360', 'dots@360-450']);
+    expect(partsOf({ conditions: [...carries, ...aff('B', 'C', 'D', 'E')] }, k)).toEqual(['solid:carrier@90-270', 'hatch@270-315', 'dots@315-360', 'grey@360-405', 'horiz@405-450']);
+    // a person-level carrier: the half in its own pattern, never a finding's
+    expect(partsOf({ carrier: true, conditions: aff('B', 'C') }, k)).toEqual(['cross:carrier@90-270', 'hatch@270-360', 'dots@360-450']);
   });
 
   it('two carried findings share the left half (upper, lower); affected without a named finding fills the right half', () => {
-    const k = [{ id: 'k1', label: 'X', region: 'q1', fill: 'solid' }, { id: 'k2', label: 'W', region: 'q4', fill: 'grey' }];
-    const p = { affected: true, conditions: [{ label: 'X', status: 'carrier' }, { label: 'W', status: 'carrier' }] };
-    expect(partsOf(p, k)).toEqual(['solid:carrier@180-270', 'grey:carrier@90-180', 'solid@270-450']);
+    const k = K('hatch', 'grey');
+    const p = { affected: true, conditions: [{ label: 'A', status: 'carrier' }, { label: 'B', status: 'carrier' }] };
+    expect(partsOf(p, k)).toEqual(['hatch:carrier@180-270', 'grey:carrier@90-180', 'solid@270-450']);
   });
 
-  it('a person-level carrier with a finding: left half the carrier pattern (never a finding\'s), the finding on the right', () => {
-    const k = [{ id: 'k1', label: 'Y', region: 'q2', fill: 'hatch' }];
-    expect(partsOf({ carrier: true, conditions: [{ label: 'Y', status: 'affected' }] }, k)).toEqual(['cross:carrier@90-270', 'hatch@270-360']);
+  it('a carried finding drawn solid beside "affected" without a name: black stays with "affected", the finding takes another pattern — never a solid symbol', () => {
+    const k = K('solid', 'hatch');
+    const p = { affected: true, conditions: [{ label: 'A', status: 'carrier' }] };
+    const styles = displayStyles([p], k);
+    const parts = fillFor(p, styles.key, 'split', styles).parts;
+    expect(parts.map(q => q.fill)).toEqual(['checker', 'solid']);
+    // and if no pattern were left, "affected" would take one instead of the carrier's black
+    const noPick = fillFor(p, k, 'split', { affectedFill: 'grey' }).parts;
+    expect(noPick.map(q => q.fill)).toEqual(['solid', 'grey']);
   });
 
-  it('the proband affected by X stays fully filled; both parents carry X; a parent’s extra finding is drawn on the right', () => {
+  it('the proband affected by X stays fully filled; both parents carry X; a parent’s extra finding is drawn on the right in its own pattern', () => {
     S().addFinding('proband', 'X');
     S().setFindingStatus('mother', 'X', 'carrier');
     S().setFindingStatus('father', 'X', 'carrier');
     S().addFinding('father', 'Y', null);
     expect(fillFor(person('proband'), key())).toEqual({ mode: 'full' });
     expect(partsOf(person('mother'))).toEqual(['solid:carrier@90-270']);
-    const y = keyEntry(key(), 'Y');
-    expect(['q2', 'q3']).toContain(y.region); // moved to the right side for everyone
-    expect(y.fill).not.toBe('solid'); // never the same fill as the carrier half beside it
-    expect(fillFor(person('father'), key()).parts.map(p => p.carrier ? 'L' : 'R')).toEqual(['L', 'R']);
+    expect(partsOf(person('father'))).toEqual(['solid:carrier@90-270', 'hatch@270-450']);
   });
 
-  it('a finding drawn on the left is moved to the right for everyone once a carrier has it too', () => {
-    S().addFinding('mother', 'A'); // q1 solid
-    S().addFinding('mother', 'B'); // q2 solid
-    S().addFinding('father', 'C'); // q3 solid
-    S().addFinding('proband', 'D'); // q4 solid
-    expect(['A', 'B', 'C', 'D'].map(l => keyEntry(key(), l).region)).toEqual(['q1', 'q2', 'q3', 'q4']);
-    // a sibling carries C and has A: A must leave the left side (q1 → a free right signature)
+  it('a finding never moves for anyone because someone carries another one (it used to: findings piled into one quarter)', () => {
+    S().addFinding('mother', 'A');
+    S().addFinding('mother', 'B');
+    S().addFinding('father', 'C');
+    S().addFinding('proband', 'D');
+    const fills = () => ['A', 'B', 'C', 'D'].map(l => keyEntry(key(), l).fill);
+    expect(fills()).toEqual(['solid', 'hatch', 'dots', 'grey']);
     S().addSiblingTo('proband', 'female');
     const sib = S().doc.graph.parentChildRelationships.find(r => r.children.includes('proband')).children.find(c => c !== 'proband');
     S().setFindingStatus(sib, 'C', 'carrier');
     S().setFindingStatus(sib, 'A', 'affected');
-    const a = keyEntry(key(), 'A');
-    expect(['q2', 'q3']).toContain(a.region);
-    expect(new Set(key().map(e => `${e.region}|${e.fill}`)).size).toBe(key().length);
-    // the mother, affected by A, shows it in the same new place
-    expect(fillFor(person('mother'), key()).parts.some(p => p.region === a.region && p.fill === a.fill)).toBe(true);
-    // choosing a left quadrant for A now is refused with the reason
-    const before = S().doc;
-    S().setFindingStyle('A', { region: 'q1', fill: 'grey' });
-    expect(S().doc).toBe(before);
-    expect(S().actionNotice.message).toMatch(/sağ/);
-  });
-
-  it('two findings of one person sharing a quadrant split it', () => {
-    const k = [{ id: 'k1', label: 'A', region: 'q1', fill: 'solid' }, { id: 'k2', label: 'B', region: 'q1', fill: 'hatch' }];
-    const f = fillFor({ conditions: [{ label: 'A', status: 'affected' }, { label: 'B', status: 'affected' }] }, k);
-    expect(f.parts.map(p => [p.fill, p.a0, p.a1])).toEqual([['solid', 180, 225], ['hatch', 225, 270]]);
+    expect(fills()).toEqual(['solid', 'hatch', 'dots', 'grey']);
+    expect(partsOf(person('mother'))).toEqual(['solid@270-450', 'hatch@450-630']);
+    expect(partsOf(person(sib))).toEqual(['dots:carrier@90-270', 'solid@270-450']);
   });
 
   it('renaming a finding on the key renames it for everyone; a name already in use is refused', () => {
@@ -175,35 +161,53 @@ describe('the legend follows the findings', () => {
     expect(S().actionNotice.message).toMatch(/başka bir bulgu/);
   });
 
-  it('save → load keeps the legend with its signatures', () => {
-    S().addFinding('proband', 'Miyop', { region: 'q4', fill: 'grey' });
+  it('save → load keeps the legend with its patterns', () => {
+    S().addFinding('proband', 'Miyop', { fill: 'checker' });
     const file = S().exportProjectFile();
     S().resetPedigree();
     S().openProjectFile(file);
-    expect(keyEntry(key(), 'Miyop')).toMatchObject({ region: 'q4', fill: 'grey' });
+    expect(keyEntry(key(), 'Miyop')).toMatchObject({ fill: 'checker' });
   });
 
-  it('deriveConditionKey: empty labels ignored; entries from before styles get a signature', () => {
+  it('deriveConditionKey: empty labels ignored; entries from before patterns get one; an older file\'s quarters are dropped and a shared fill is parted', () => {
     const g = { individuals: [{ id: 'a', conditions: [{ label: '  ' }, { label: 'X' }, { label: 'Y' }] }], conditionKey: [{ id: 'k1', label: 'Y' }] };
     expect(deriveConditionKey(g).conditionKey).toEqual([
-      { id: 'k1', label: 'Y', region: 'q1', fill: 'solid' },
-      { id: 'k2', label: 'X', region: 'q2', fill: 'solid' },
+      { id: 'k1', label: 'Y', fill: 'solid' },
+      { id: 'k2', label: 'X', fill: 'hatch' },
+    ]);
+    // a file from before 2026-11-16: four findings, all solid in four quarters
+    const old = {
+      individuals: [{ id: 'a', conditions: aff('A', 'B', 'C', 'D') }],
+      conditionKey: ['q1', 'q2', 'q3', 'q4'].map((region, i) => ({ id: `k${i + 1}`, label: 'ABCD'[i], region, fill: i === 3 ? 'grey' : 'solid' })),
+    };
+    expect(deriveConditionKey(old).conditionKey).toEqual([
+      { id: 'k1', label: 'A', fill: 'solid' }, { id: 'k2', label: 'B', fill: 'hatch' },
+      { id: 'k3', label: 'C', fill: 'dots' }, { id: 'k4', label: 'D', fill: 'grey' },
     ]);
   });
 });
 
-// moved to screen.test.js: regions, the key inside the drawing, texts corrected where they stand (CSS rule: stylesheet.test.js)
+describe('black is kept for what has no name, where it is drawn (clinician 2026-11-16)', () => {
+  it('"affected" without a finding named beside findings: a solid finding is shown in another pattern', () => {
+    const k = K('solid', 'hatch');
+    const people = [{ affected: true }, { conditions: aff('A') }];
+    const st = displayStyles(people, k);
+    expect(st.key.map(e => e.fill)).toEqual(['checker', 'hatch']); // the boldest pattern in place of black
+    expect(k.map(e => e.fill)).toEqual(['solid', 'hatch']); // the stored key is untouched
+    // without such a person nothing changes
+    expect(displayStyles([{ conditions: aff('A') }], k).key.map(e => e.fill)).toEqual(['solid', 'hatch']);
+  });
 
-describe('a carrier with two findings: the two right quadrants differ in fill', () => {
-  it('neither matches the carrier half, nor each other', () => {
-    S().resetPedigree();
-    S().addFinding('proband', 'X');
-    S().setFindingStatus('mother', 'X', 'carrier');
-    S().addFinding('mother', 'Y', null);
-    S().addFinding('mother', 'Z', null);
-    const [x, y, z] = ['X', 'Y', 'Z'].map(l => keyEntry(key(), l));
-    expect(new Set([x.fill, y.fill, z.fill]).size).toBe(3);
-    expect([y.region, z.region].sort()).toEqual(['q2', 'q3']); // upper and lower right, as the key shows them
+  it('"Yarısı siyah": a plain carrier\'s half is solid; a solid finding then takes another pattern', () => {
+    const k = K('solid');
+    const carrier = { carrier: true, conditions: aff('A') };
+    const st = displayStyles([carrier], k, 'half');
+    expect(st.key[0].fill).not.toBe('solid');
+    expect(partsOf(carrier, st.key, 'half', st)).toEqual(['solid:carrier@90-270', `${st.key[0].fill}@270-450`]);
+    // with every pattern taken the carrier keeps the NSGC 2022 hatching
+    const full = displayStyles([carrier], K(...FILLS), 'half');
+    expect(full.halfFree).toBe(false);
+    expect(partsOf(carrier, full.key, 'half', full)[0]).toBe('cross:carrier@90-270');
   });
 });
 

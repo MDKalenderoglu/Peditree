@@ -26,7 +26,7 @@
 
 import { useEffect, useRef, useState, useCallback, forwardRef } from 'react';
 import * as d3 from 'd3';
-import { fillFor, displayStyles, REGION_ANGLES, CARRIER_FILL } from '../graph/conditionKey';
+import { fillFor, displayStyles, isUnnamedAffected, CARRIER_FILL } from '../graph/conditionKey';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
 import { applyDrawingStyle } from '../utils/drawingStyleSvg';
 import { paintPaper } from '../utils/paper';
@@ -79,67 +79,65 @@ function sectorPath(a0, a1, r) {
   return `M0,0L${x0},${y0}A${r},${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1},${y1}Z`;
 }
 
-const FILL_PAINT = { solid: NODE_STROKE, grey: '#9ca3af', hatch: 'url(#fill-hatch)', dots: 'url(#fill-dots)', cross: 'url(#fill-cross)' };
+const FILL_PAINT = {
+  solid: NODE_STROKE, grey: '#9ca3af', hatch: 'url(#fill-hatch)', dots: 'url(#fill-dots)', cross: 'url(#fill-cross)',
+  horiz: 'url(#fill-horiz)', vert: 'url(#fill-vert)', back: 'url(#fill-back)', checker: 'url(#fill-checker)',
+};
 
-/** Patterns for findings drawn in a region (graph/conditionKey.js FILLS). */
+/** Patterns for findings (graph/conditionKey.js FILLS) and the plain carrier (CARRIER_FILL). */
 function addFindingPatterns(defs) {
-  const hatch = defs.append('pattern').attr('id', 'fill-hatch').attr('patternUnits', 'userSpaceOnUse')
-    .attr('width', 5).attr('height', 5).attr('patternTransform', 'rotate(45)');
-  hatch.append('rect').attr('width', 5).attr('height', 5).attr('fill', NODE_FILL);
-  hatch.append('line').attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 5).attr('stroke', NODE_STROKE).attr('stroke-width', 1.6);
-  const dots = defs.append('pattern').attr('id', 'fill-dots').attr('patternUnits', 'userSpaceOnUse')
-    .attr('width', 5).attr('height', 5);
-  dots.append('rect').attr('width', 5).attr('height', 5).attr('fill', NODE_FILL);
-  dots.append('circle').attr('cx', 2.5).attr('cy', 2.5).attr('r', 1.1).attr('fill', NODE_STROKE);
+  const pattern = (id, rotate) => {
+    const pt = defs.append('pattern').attr('id', id).attr('patternUnits', 'userSpaceOnUse').attr('width', 5).attr('height', 5);
+    if (rotate) pt.attr('patternTransform', `rotate(${rotate})`);
+    pt.append('rect').attr('width', 5).attr('height', 5).attr('fill', NODE_FILL);
+    return pt;
+  };
+  const line = (pt, x1, y1, x2, y2, w) => pt.append('line').attr('x1', x1).attr('y1', y1).attr('x2', x2).attr('y2', y2).attr('stroke', NODE_STROKE).attr('stroke-width', w);
+  line(pattern('fill-hatch', 45), 0, 0, 0, 5, 1.6);
+  line(pattern('fill-back', -45), 0, 0, 0, 5, 1.6);
+  line(pattern('fill-horiz'), 0, 2.5, 5, 2.5, 1.4);
+  line(pattern('fill-vert'), 2.5, 0, 2.5, 5, 1.4);
+  pattern('fill-dots').append('circle').attr('cx', 2.5).attr('cy', 2.5).attr('r', 1.1).attr('fill', NODE_STROKE);
+  const checker = pattern('fill-checker');
+  checker.append('rect').attr('width', 2.5).attr('height', 2.5).attr('fill', NODE_STROKE);
+  checker.append('rect').attr('x', 2.5).attr('y', 2.5).attr('width', 2.5).attr('height', 2.5).attr('fill', NODE_STROKE);
   // a carrier without a named finding (conditionKey.js CARRIER_FILL): cross-hatching, no finding's pattern
-  const cross = defs.append('pattern').attr('id', 'fill-cross').attr('patternUnits', 'userSpaceOnUse')
-    .attr('width', 5).attr('height', 5).attr('patternTransform', 'rotate(45)');
-  cross.append('rect').attr('width', 5).attr('height', 5).attr('fill', NODE_FILL);
-  cross.append('line').attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 5).attr('stroke', NODE_STROKE).attr('stroke-width', 1.2);
-  cross.append('line').attr('x1', 0).attr('y1', 0).attr('x2', 5).attr('y2', 0).attr('stroke', NODE_STROKE).attr('stroke-width', 1.2);
+  const cross = pattern('fill-cross', 45);
+  line(cross, 0, 0, 0, 5, 1.2);
+  line(cross, 0, 0, 5, 0, 1.2);
 }
 
 /**
- * Mark a symbol's regions (NSGC: one region per finding, defined in the
- * legend; graph/conditionKey.js): thin quadrant lines divide the symbol
- * (as in the clinic's reference sheet), each finding's sector in its fill,
- * clipped to the outline; where two findings meet, a white gap keeps them
- * apart so they never read as one (clinician feedback 2026-10-24); a
- * carrier's part is half of the region. The dividing lines are drawn whole
- * over the sectors: a white edge around every sector broke them where they
- * cross (clinician report 2026-11-07).
+ * Mark a symbol's parts (NSGC 2022: the symbol divided among what the person
+ * has, each part in its own fill, defined in the legend; graph/conditionKey.js
+ * fillFor): each part a sector clipped to the outline, a part of 360 degrees
+ * the whole symbol. A dark line runs along every edge between parts, from the
+ * middle to the outline, so two parts never read as one (clinician 2026-11-16:
+ * the white gaps that used to part them made two patterns look like one).
  */
 function drawRegions(el, defs, clipId, outline, parts, sz) {
   const clip = defs.append('clipPath').attr('id', clipId);
   clip.node().appendChild(outline.node().cloneNode());
   const regions = el.append('g').attr('class', 'condition-regions').attr('clip-path', `url(#${clipId})`);
   const R = sz * 1.8;
+  const whole = (p) => p.a1 - p.a0 >= 359.99;
   for (const p of parts) {
-    regions.append('path').attr('class', p.carrier ? 'condition-carrier' : 'condition-region')
-      .attr('d', sectorPath(p.a0, p.a1, R))
+    const shape = whole(p)
+      ? regions.append('rect').attr('x', -R).attr('y', -R).attr('width', 2 * R).attr('height', 2 * R)
+      : regions.append('path').attr('d', sectorPath(p.a0, p.a1, R));
+    shape.attr('class', p.carrier ? 'condition-carrier' : 'condition-region')
       .attr('fill', FILL_PAINT[p.fill] || NODE_STROKE).attr('stroke', 'none');
   }
-  regions.append('line').attr('class', 'region-divider').attr('x1', 0).attr('y1', -R).attr('x2', 0).attr('y2', R)
-    .attr('stroke', NODE_STROKE).attr('stroke-width', 1);
-  // a symbol in halves (a carrier, one finding beside it) has no quarters: a line
-  // across an empty half would read as a mark (clinician report 2026-11-04)
-  if (parts.some(p => p.a1 - p.a0 < 180)) {
-    regions.append('line').attr('class', 'region-divider').attr('x1', -R).attr('y1', 0).attr('x2', R).attr('y2', 0)
-      .attr('stroke', NODE_STROKE).attr('stroke-width', 1);
-  }
-  // the white gap where two findings meet: from the dividing lines' edge outwards, so the cross stays whole
+  // the edges between parts (and of a half with nothing beside it): every part's two edges, once each
   const norm = (a) => ((Math.round(a * 1000) / 1000) % 360 + 360) % 360;
-  const meets = [...new Set(parts.flatMap(p => parts.filter(q => q !== p && norm(q.a0) === norm(p.a1)).map(() => norm(p.a1))))];
-  // a carrier's half beside a finding: the edge along the whole half, above and below the middle,
-  // so the half keeps one width where the finding fills only one quarter (clinician 2026-11-16)
-  if (parts.some(p => p.carrier) && parts.some(p => !p.carrier)) for (const a of [90, 270]) if (!meets.includes(a)) meets.push(a);
-  for (const a of meets) {
+  const edges = [...new Set(parts.filter(p => !whole(p)).flatMap(p => [norm(p.a0), norm(p.a1)]))];
+  for (const a of edges) {
     const [c, s] = [Math.cos((a * Math.PI) / 180), Math.sin((a * Math.PI) / 180)];
-    regions.append('line').attr('class', 'region-gap')
-      .attr('x1', c * 0.5).attr('y1', s * 0.5).attr('x2', c * R).attr('y2', s * R)
-      .attr('stroke', NODE_FILL).attr('stroke-width', Math.max(1.2, sz * 0.12));
+    regions.append('line').attr('class', 'region-divider')
+      .attr('x1', 0).attr('y1', 0).attr('x2', c * R).attr('y2', s * R)
+      .attr('stroke', NODE_STROKE).attr('stroke-width', 1.5);
   }
-  // outline on top, so the regions never thin the symbol's border
+  // outline on top, so the parts never thin the symbol's border
   el.node().appendChild(outline.node().cloneNode());
   el.select(':scope > :last-child').attr('fill', 'none').attr('class', 'pedigree-shape-outline');
 }
@@ -322,13 +320,19 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     const carrierFills = nodes.map(n => (n.carrier ? fillFor(n, shownStyles, carrierMark, styles) : {}));
     const plainCarrier = carrierFills.some(f => f.dot || f.parts?.some(p => p.fill === CARRIER_FILL));
     const solidCarrier = carrierFills.some(f => f.parts?.some(p => p.plain));
-    const unnamedAffected = carrierFills.some(f => f.parts?.some(p => p.unnamedAffected));
+    // "affected" without a finding named, explained once the key has findings: solid (whole, or the right half
+    // beside a carrier's), or beside a carrier's solid half another pattern (conditionKey.js displayStyles)
+    const unnamedFills = nodes.filter(isUnnamedAffected).map(n => {
+      const f = fillFor(n, shownStyles, carrierMark, styles);
+      return f.mode === 'full' ? 'solid' : (f.parts || []).find(p => p.unnamed)?.fill;
+    }).filter(Boolean);
     const shownKey = [
-      ...(unnamedAffected ? [{ label: null, region: 'q2', fill: styles.affectedFill, carrier: false, rightHalf: true, text: td('Etkilenmiş') }] : []),
+      ...(conditionKey.length && unnamedFills.includes('solid') ? [{ label: null, fill: 'solid', carrier: false, text: td('Etkilenmiş') }] : []),
+      ...(unnamedFills.some(f => f !== 'solid') ? [{ label: null, fill: styles.affectedFill, carrier: false, rightHalf: true, text: td('Etkilenmiş') }] : []),
       ...shownStyles.filter(e => has('affected', e)).map(e => ({ ...e, carrier: false, text: e.label })),
       ...shownStyles.filter(e => has('carrier', e)).map(e => ({ ...e, carrier: true, text: td('{label} taşıyıcısı', { label: e.label }) })),
-      ...(solidCarrier ? [{ label: null, region: 'q1', fill: 'solid', carrier: true, text: td('Taşıyıcı') }] : []),
-      ...(plainCarrier ? [{ label: null, region: 'q1', fill: CARRIER_FILL, carrier: true, dot: carrierMark === 'dot', text: td('Taşıyıcı') }] : []),
+      ...(solidCarrier ? [{ label: null, fill: 'solid', carrier: true, text: td('Taşıyıcı') }] : []),
+      ...(plainCarrier ? [{ label: null, fill: CARRIER_FILL, carrier: true, dot: carrierMark === 'dot', text: td('Taşıyıcı') }] : []),
       // the vertical line is explained in the key too (NSGC 2022 Fig 2)
       ...(nodes.some(n => n.presymptomatic && !isSmallSymbol(n)) ? [{ label: null, presymptomatic: true, text: td('Presemptomatik (henüz belirti yok)') }] : []),
       ...(nodes.some(n => n.recordsReviewed) ? [{ label: null, recordsReviewed: true, text: td('Kayıtlarla doğrulandı (tıbbi kayıt ya da rapor görüldü)') }] : []),
@@ -1125,7 +1129,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
         } else if (entry.dot) {
           drawCarrierDot(cell, { mode: 'none' }, s);
         } else {
-          const [a0, a1] = entry.carrier ? [90, 270] : entry.rightHalf ? [270, 450] : (REGION_ANGLES[entry.region] || REGION_ANGLES.q1);
+          const [a0, a1] = entry.carrier ? [90, 270] : entry.rightHalf ? [270, 450] : [270, 630];
           drawRegions(cell, defs, `key-region-${row}`, box, [{ fill: entry.fill, a0, a1, carrier: entry.carrier }], s);
         }
         keyLines[row].forEach((line, li) => {

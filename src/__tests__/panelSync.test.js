@@ -206,10 +206,10 @@ describe('several people at once (clinician request 2026-10-24)', () => {
     expect(ppl.map(id => !!get(id).affected)).toEqual(before);
   });
 
-  it('a new finding for everyone selected keeps one signature; it can be removed from all at once', () => {
-    S().addFindingMany(ppl, 'Miyop', { region: 'q2', fill: 'hatch' });
+  it('a new finding for everyone selected keeps one pattern; it can be removed from all at once', () => {
+    S().addFindingMany(ppl, 'Miyop', { fill: 'hatch' });
     expect(ppl.every(id => (get(id).conditions || []).some(c => c.label === 'Miyop' && c.status === 'affected'))).toBe(true);
-    expect(S().doc.graph.conditionKey).toEqual([expect.objectContaining({ label: 'Miyop', region: 'q2', fill: 'hatch' })]);
+    expect(S().doc.graph.conditionKey).toEqual([{ id: 'k1', label: 'Miyop', fill: 'hatch' }]);
     S().setFindingStatusMany(ppl, 'Miyop', 'none');
     expect(S().doc.graph.conditionKey).toEqual([]);
     expect(errors()).toEqual([]);
