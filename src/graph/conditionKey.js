@@ -47,13 +47,70 @@ export const CARRIER_MARKS = [
 ];
 
 /**
- * May a plain carrier's left half be drawn solid ('half') in this pedigree?
- * Not when someone carries a named finding whose fill is solid: that carrier's
- * left half is solid too, and the two could not be told apart.
+ * How the drawing shows the key with the chosen carrier mark (the stored key
+ * never changes). With 'half' a plain carrier's left half is solid, always
+ * (clinician 2026-11-16: the carrier mark never changes; what else is drawn
+ * changes instead), so solid is kept free where it would meet it:
+ *  - a named finding drawn solid that someone carries (its half would look
+ *    like the plain carrier's) or that a plain carrier also has (beside the
+ *    solid half the whole symbol would be solid) is shown in another free
+ *    signature, in the drawing and the key alike;
+ *  - "affected" without a named finding beside a plain carrier fills the
+ *    right half in affectedFill, explained in the key as "Etkilenmiş".
+ * Fills a moved finding takes are kept apart from what stands beside it on
+ * the same symbol. halfFree is false only when no signature is left for such
+ * a finding (all 16 used): then plain carriers keep the NSGC 2022 hatching.
  */
-export function classicHalfFree(people = [], key = []) {
-  return !people.some((p) => (Array.isArray(p.conditions) ? p.conditions : [])
-    .some((c) => c && c.status === 'carrier' && c.label && keyEntry(key, c.label)?.fill === 'solid'));
+export function displayStyles(people = [], key = [], carrierMark = 'split') {
+  if (carrierMark !== 'half') return { key, halfFree: true, affectedFill: 'solid' };
+  const conds = (p) => (Array.isArray(p.conditions) ? p.conditions : []).filter((c) => c && c.label);
+  const out = key.map((e) => ({ ...e }));
+  const entry = (label) => keyEntry(out, label);
+  const plainCarriers = people.filter((p) => p.carrier && !conds(p).some((c) => c.status === 'carrier'));
+  const move = new Set();
+  for (const p of people) {
+    for (const c of conds(p)) {
+      const e = entry(c.label);
+      if (!e || e.fill !== 'solid') continue;
+      if (c.status === 'carrier' || (c.status === 'affected' && plainCarriers.includes(p))) move.add(normLabel(e.label));
+    }
+  }
+  // fills that must not be next to a finding: what the same people have on the other side of their symbol
+  const beside = (label) => {
+    const n = normLabel(label);
+    const fills = new Set(['solid']);
+    for (const p of people) {
+      const cs = conds(p);
+      const mine = cs.find((c) => normLabel(c.label) === n);
+      if (!mine) continue;
+      for (const c of cs) {
+        if (c === mine || c.status === mine.status) continue;
+        const f = entry(c.label)?.fill;
+        if (f) fills.add(f);
+      }
+    }
+    return fills;
+  };
+  const taken = new Set(out.filter(validStyle).map(signature));
+  let halfFree = true;
+  for (const e of out) {
+    if (!move.has(normLabel(e.label))) continue;
+    const avoid = beside(e.label);
+    const fills = FILLS.filter((f) => !avoid.has(f));
+    let sig = null;
+    for (const f of fills) { if (!taken.has(`${e.region}|${f}`)) { sig = { region: e.region, fill: f }; break; } }
+    if (!sig) for (const f of fills) { const r = REGIONS.find((q) => !taken.has(`${q}|${f}`)); if (r) { sig = { region: r, fill: f }; break; } }
+    if (!sig) { halfFree = false; continue; }
+    taken.delete(signature(e));
+    e.region = sig.region;
+    e.fill = sig.fill;
+    taken.add(signature(e));
+  }
+  if (!halfFree) return { key, halfFree: false, affectedFill: 'solid' };
+  // "affected" beside a plain carrier: a pattern no finding uses if there is one
+  const used = new Set(out.map((e) => e.fill));
+  const affectedFill = ['hatch', 'dots', 'grey'].find((f) => !used.has(f)) || 'hatch';
+  return { key: out, halfFree: true, affectedFill };
 }
 // angles (degrees, screen: 0 = east, clockwise)
 export const REGION_ANGLES = { q1: [180, 270], q2: [270, 360], q3: [0, 90], q4: [90, 180] };
@@ -227,16 +284,21 @@ export function keyIndex(key, label) {
  * finding's region"). A carrier without a named finding has the left half in
  * CARRIER_FILL, also alone and also beside "affected" (NSGC 2022: no dot);
  * with carrierMark 'dot' it is drawn as the rest of the symbol plus
- * { dot: true } — a dot in the middle; with 'half' (and halfFree, from
- * classicHalfFree) a carrier with nothing else on the symbol has its left
- * half solid, marked plain (CARRIER_MARKS).
+ * { dot: true } — a dot in the middle; with 'half' (key and styles from
+ * displayStyles) the plain carrier's left half is solid, marked plain, and
+ * "affected" without a name beside it takes styles.affectedFill (CARRIER_MARKS).
  */
-export function fillFor(person, key = [], carrierMark = 'split', halfFree = true) {
+export function fillFor(person, key = [], carrierMark = 'split', styles = {}) {
   if (carrierMark === 'half' && person.carrier) {
-    // the classic solid half: only for a carrier with nothing else on the symbol
+    // the classic solid half (key and styles from displayStyles): the plain carrier's half solid,
+    // "affected" without a name beside it in styles.affectedFill
     const f = regionsFor(person, key);
-    const only = f.mode === 'regions' && f.parts.length === 1 && f.parts[0].fill === CARRIER_FILL;
-    return only && halfFree ? { ...f, parts: [{ ...f.parts[0], fill: 'solid', plain: true }] } : f;
+    if (styles.halfFree === false || f.mode !== 'regions') return f;
+    return {
+      ...f,
+      parts: f.parts.map((q) => (q.carrier && q.fill === CARRIER_FILL ? { ...q, fill: 'solid', plain: true }
+        : q.unnamed ? { ...q, fill: styles.affectedFill || 'hatch', unnamedAffected: true } : q)),
+    };
   }
   if (carrierMark !== 'dot' || !person.carrier) return regionsFor(person, key);
   // the dot: the rest of the symbol as for a non-carrier; a carried finding with a name keeps its half
@@ -260,7 +322,7 @@ function regionsFor(person, key, plainCarrierHalf = !!person.carrier) {
   // a carrier without a named finding: the left half in its own pattern; beside it "affected"
   // without a name fills the right half (NSGC 2022 — it used to be the 2008 carrier dot)
   if (plainCarrierHalf && !affected.length && !carried.length) {
-    return { mode: 'regions', parts: [plainCarrier, ...(person.affected ? [{ region: 'q2', fill: 'solid', carrier: false, a0: 270, a1: 450 }] : [])] };
+    return { mode: 'regions', parts: [plainCarrier, ...(person.affected ? [{ region: 'q2', fill: 'solid', carrier: false, unnamed: true, a0: 270, a1: 450 }] : [])] };
   }
   const byKey = (a, b) => keyIndex(key, a.label) - keyIndex(key, b.label);
   const upperFirst = (m) => (m.region === 'q1' || m.region === 'q2' ? 0 : 1);
@@ -275,7 +337,7 @@ function regionsFor(person, key, plainCarrierHalf = !!person.carrier) {
       const rstep = 180 / right.length;
       right.forEach((m, k) => parts.push({ region: m.region, fill: m.fill, carrier: false, a0: 270 + k * rstep, a1: 270 + (k + 1) * rstep }));
     } else if (person.affected) {
-      parts.push({ region: 'q2', fill: 'solid', carrier: false, a0: 270, a1: 450 });
+      parts.push({ region: 'q2', fill: 'solid', carrier: false, unnamed: true, a0: 270, a1: 450 });
     }
     return { mode: 'regions', parts };
   }

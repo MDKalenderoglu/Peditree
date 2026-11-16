@@ -48,7 +48,7 @@ describe('#2 carrier and affected are both read', () => {
     expect(f.mode).toBe('regions');
     expect(f.parts).toEqual([
       { region: 'q1', fill: 'cross', carrier: true, a0: 90, a1: 270 },
-      { region: 'q2', fill: 'solid', carrier: false, a0: 270, a1: 450 },
+      { region: 'q2', fill: 'solid', carrier: false, unnamed: true, a0: 270, a1: 450 },
     ]);
     expect(f.carrierDot).toBeUndefined();
   });
