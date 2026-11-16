@@ -1808,6 +1808,24 @@ describe('notation per the literature (NSGC 2022 and its 2025 correction)', () =
     expect(half('pat_gf').getAttribute('fill')).toBe('#1e293b');
   });
 
+  it('a carrier\'s half is one even width, with a finding in only one quarter beside it: the white edge runs along the whole half (clinician 2026-11-16)', async () => {
+    await run(() => { S().updateIndividual('mother', { carrier: true }); S().addFinding('mother', 'Miyop'); });
+    await run(() => S().setFindingStyle('Miyop', { region: 'q2', fill: 'hatch' }));
+    for (const mark of ['split', 'half']) {
+      try {
+        await run(() => useViewSettings.getState().setView({ carrierMark: mark }));
+        // a vertical white edge above the middle and one below it, the same width
+        const gaps = [...drawn('mother').querySelectorAll('.region-gap')]
+          .filter(l => Math.abs(Number(l.getAttribute('x2'))) < 0.01)
+          .map(l => [Math.sign(Number(l.getAttribute('y2'))), l.getAttribute('stroke-width')]);
+        expect(gaps.map(g => g[0]).sort()).toEqual([-1, 1]);
+        expect(gaps[0][1]).toBe(gaps[1][1]);
+      } finally {
+        await run(() => useViewSettings.getState().setView({ carrierMark: 'split' }));
+      }
+    }
+  });
+
   it('a carrier of a named finding keeps that finding\'s pattern with the dot chosen: a dot cannot say which', async () => {
     await run(() => S().addFinding('mother', 'FMF'));
     await run(() => { S().setFindingStatus('mother', 'FMF', 'carrier'); S().updateIndividual('mother', { carrier: true }); });

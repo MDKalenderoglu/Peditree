@@ -130,6 +130,9 @@ function drawRegions(el, defs, clipId, outline, parts, sz) {
   // the white gap where two findings meet: from the dividing lines' edge outwards, so the cross stays whole
   const norm = (a) => ((Math.round(a * 1000) / 1000) % 360 + 360) % 360;
   const meets = [...new Set(parts.flatMap(p => parts.filter(q => q !== p && norm(q.a0) === norm(p.a1)).map(() => norm(p.a1))))];
+  // a carrier's half beside a finding: the edge along the whole half, above and below the middle,
+  // so the half keeps one width where the finding fills only one quarter (clinician 2026-11-16)
+  if (parts.some(p => p.carrier) && parts.some(p => !p.carrier)) for (const a of [90, 270]) if (!meets.includes(a)) meets.push(a);
   for (const a of meets) {
     const [c, s] = [Math.cos((a * Math.PI) / 180), Math.sin((a * Math.PI) / 180)];
     regions.append('line').attr('class', 'region-gap')
