@@ -278,10 +278,10 @@ export function keyIndex(key, label) {
  *
  * A carrier is drawn first, on the LEFT half of the symbol (the finding's
  * fill; several carried findings share it, upper to lower), and the person's
- * findings on the RIGHT side: one finding the whole right half, two the
- * upper and lower right quadrants; "affected" without a named finding fills
- * the right half (clinician decision 2026-10-25, replacing "half of the
- * finding's region"). A carrier without a named finding has the left half in
+ * findings on the RIGHT side, each in its own quarter as the key shows it
+ * (clinician 2026-11-16; one finding used to fill the whole right half);
+ * "affected" without a named finding fills the right half (clinician
+ * decision 2026-10-25). A carrier without a named finding has the left half in
  * CARRIER_FILL, also alone and also beside "affected" (NSGC 2022: no dot);
  * with carrierMark 'dot' it is drawn as the rest of the symbol plus
  * { dot: true } — a dot in the middle; with 'half' (key and styles from
@@ -334,8 +334,15 @@ function regionsFor(person, key, plainCarrierHalf = !!person.carrier) {
     left.forEach((m, k) => parts.push({ region: m.region, fill: m.fill, carrier: true, a0: 270 - (k + 1) * lstep, a1: 270 - k * lstep }));
     const right = [...affected].sort((a, b) => upperFirst(a) - upperFirst(b) || byKey(a, b));
     if (right.length) {
-      const rstep = 180 / right.length;
-      right.forEach((m, k) => parts.push({ region: m.region, fill: m.fill, carrier: false, a0: 270 + k * rstep, a1: 270 + (k + 1) * rstep }));
+      // each finding in its own quarter, as the key shows it (clinician 2026-11-16: one finding filled the
+      // whole right half while the key showed a quarter); one left of the line (no free signature) mirrored
+      const RIGHT_ANGLES = { q2: [270, 360], q3: [360, 450] };
+      for (const region of RIGHT) {
+        const here = right.filter((m) => (RIGHT.includes(m.region) ? m.region : MIRROR[m.region]) === region);
+        const [a0, a1] = RIGHT_ANGLES[region];
+        const step = (a1 - a0) / (here.length || 1);
+        here.forEach((m, k) => parts.push({ region, fill: m.fill, carrier: false, a0: a0 + step * k, a1: a0 + step * (k + 1) }));
+      }
     } else if (person.affected) {
       parts.push({ region: 'q2', fill: 'solid', carrier: false, unnamed: true, a0: 270, a1: 450 });
     }

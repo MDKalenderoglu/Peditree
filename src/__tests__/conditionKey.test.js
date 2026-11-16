@@ -87,10 +87,16 @@ describe('the legend follows the findings', () => {
     expect(partsOf({ carrier: true }, key())).toEqual(['cross:carrier@90-270']);
   });
 
-  it('carrier of X and affected by Y: left half X, right half Y (clinician decision 2026-10-25)', () => {
+  it('carrier of X and affected by Y: left half X, Y in its own quarter, as the key shows it (clinician 2026-11-16; it filled the right half)', () => {
     const k = [{ id: 'k1', label: 'X', region: 'q2', fill: 'solid' }, { id: 'k2', label: 'Y', region: 'q2', fill: 'hatch' }];
     const p = { conditions: [{ label: 'X', status: 'carrier' }, { label: 'Y', status: 'affected' }] };
-    expect(partsOf(p, k)).toEqual(['solid:carrier@90-270', 'hatch@270-450']);
+    expect(partsOf(p, k)).toEqual(['solid:carrier@90-270', 'hatch@270-360']);
+    // a finding in the lower right stays there
+    const low = [{ id: 'k1', label: 'X', region: 'q1', fill: 'solid' }, { id: 'k2', label: 'Y', region: 'q3', fill: 'hatch' }];
+    expect(partsOf(p, low)).toEqual(['solid:carrier@90-270', 'hatch@360-450']);
+    // two findings of one quarter share it, as on anyone else
+    const two = [...k, { id: 'k3', label: 'Z', region: 'q2', fill: 'dots' }];
+    expect(partsOf({ conditions: [...p.conditions, { label: 'Z', status: 'affected' }] }, two)).toEqual(['solid:carrier@90-270', 'hatch@270-315', 'dots@315-360']);
   });
 
   it('carrier of X, affected by Y and Z: left half X, upper right Y, lower right Z', () => {
@@ -111,7 +117,7 @@ describe('the legend follows the findings', () => {
 
   it('a person-level carrier with a finding: left half the carrier pattern (never a finding\'s), the finding on the right', () => {
     const k = [{ id: 'k1', label: 'Y', region: 'q2', fill: 'hatch' }];
-    expect(partsOf({ carrier: true, conditions: [{ label: 'Y', status: 'affected' }] }, k)).toEqual(['cross:carrier@90-270', 'hatch@270-450']);
+    expect(partsOf({ carrier: true, conditions: [{ label: 'Y', status: 'affected' }] }, k)).toEqual(['cross:carrier@90-270', 'hatch@270-360']);
   });
 
   it('the proband affected by X stays fully filled; both parents carry X; a parent’s extra finding is drawn on the right', () => {
