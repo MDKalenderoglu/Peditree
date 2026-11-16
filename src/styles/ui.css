@@ -882,7 +882,7 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 /* where a free text appears (label vs note; clinician question 2026-11-03) */
 .field-where { margin-left: 6px; font-weight: 400; font-size: 12px; color: var(--muted); }
 .field-warn { color: var(--warn); }
-/* Ayarlar, quieter (clinician 2026-11-11: "too amateur; more minimal"): groups as plain white sheets with
+/* Ayarlar, quieter (clinician 2026-11-11: "plainer; more minimal"): groups as plain white sheets with
    hairline rows, smaller and lighter choices, the chosen one marked by the accent's text and a fine edge
    instead of a heavy pill, short hints; the colour themes as six dots */
 .settings-dialog .set-block { border: 0; box-shadow: 0 0 0 1px var(--line-2); padding: 0 18px; }
