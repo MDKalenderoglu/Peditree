@@ -21,248 +21,109 @@
 
 <p align="center">
   <img src="docs/images/example-pedigree.png" alt="A sample pedigree drawn in PediTree: deceased great-grandparents; their two sons, both carriers; the sons' children, first cousins, married (double line), both carriers with their genetic test result; their son, the proband and consultand, affected; an affected brother who died at age 2 with records reviewed, a sister, a stillbirth and a miscarriage; an uncle and his wife as an infertile couple; an aunt divorced from her first partner, with a daughter, and an adopted son with her second partner" width="680">
-  <br><sub>A sample family (no patient data): the carrier status passed down two generations to first-cousin parents, with their genetic test results; an affected proband and an affected brother who died at 2, a stillbirth and a miscarriage; an infertile couple; a divorce, a second partner and an adopted son.</sub>
+  <br><sub>A sample family drawn in PediTree (no patient data).</sub>
 </p>
 
 ---
 
-**[Türkçe açıklama aşağıda ↓](#türkçe)**
+**[Türkçe ↓](#türkçe)**
 
 ## About
 
-PediTree is a browser-based tool for drawing family pedigrees for genetic
-counselling, in standard NSGC nomenclature (Bennett et al., 2022). It runs in
-the browser on a computer, tablet or phone. There is nothing to install and no
-account to create.
-
-A clinician must never misread who is whose child, sibling, partner or blood
-relative. For that reason PediTree puts structural correctness before looks.
-Its graph model guarantees four things:
-
-- every child has at most one biological parent couple;
-- consanguinity is shown only where shared ancestors are drawn;
-- pregnancy outcomes keep their distinct symbols;
-- the layout may only place and route, never change what a symbol means.
+PediTree draws family pedigrees for genetic counselling in standard NSGC
+notation (Bennett et al., 2022). It runs in the browser on a computer, tablet
+or phone, with nothing to install and no account.
 
 **Patient data never leaves the browser.** There is no server. The drawing
-lives only in the open tab and is gone when the tab closes. Clinicians
-download what they want to keep.
+stays in the open tab; you download what you want to keep.
 
-PediTree is a drawing tool, not a medical device. Clinical decisions rest on
-clinical assessment, not on the drawing.
+PediTree is a drawing tool, not a medical device.
 
-## How PediTree was built
+## Features
+
+- Start from the core family, or from a ready-made consanguineous family
+- Add relatives from a ring menu on the drawing
+- NSGC 2022 symbols: affected, carrier, deceased, pregnancies, twins, adoption, donors and more
+- Consanguinity and the inbreeding coefficient (F) worked out from the drawing
+- Automatic layout that keeps birth order and moves little as you edit
+- Turkish or English, for the screens and the drawing separately
+- PNG, PDF and SVG export; PED import and export; share without the patient's name
+
+## How it was built
 
 PediTree was designed and directed by Muhammed Doğukan Kalenderoğlu, a
 paediatrician and paediatric genetics research fellow at Ankara University
 Faculty of Medicine. The code was written with an AI coding assistant
-(Anthropic's Claude), working under the author's direction.
-
-- **The author** decided what PediTree must do and how a pedigree must read
-  in the clinic. Every clinical and design decision is the author's: the
-  notation, the layout rules, the wording on screen. The author tried each
-  version in use, reported what was wrong, and reviewed every change before
-  it was kept.
-- **The AI assistant** wrote and revised the code, the tests and the
-  documentation from these decisions.
-- **Every change is checked automatically** on GitHub: more than 1,200
-  tests, graph-integrity audits, layout benchmarks and randomised family
-  tests.
-- **The record is open.** Clinical decisions are dated in [`docs/`](docs/)
-  and in the commit history. Commits written with the assistant are marked
-  `Co-Authored-By: Claude`.
-
-Responsibility for the clinical content and for the software rests with the
-author.
-
-## Features
-
-- **Fast start:**
-  - start from the proband, the parents and the grandparents;
-  - or start from a ready-made consanguineous family. It covers first to
-    third cousins, the once-removed pairs and double first cousins, with the
-    inbreeding coefficient F and a preview.
-- **Drawing by touch or mouse:** relatives are added from a ring menu on the
-  drawing. Details go in a side panel.
-- **NSGC 2022 notation:**
-  - affected, carrier, presymptomatic and deceased;
-  - proband and consultand;
-  - miscarriage, stillbirth, termination, ectopic and ongoing pregnancy, each
-    with its own symbol;
-  - twins (identical, non-identical, unknown);
-  - several people in one numbered symbol;
-  - childlessness by choice or infertility;
-  - separated partners;
-  - sex assigned at birth;
-  - records reviewed (\*);
-  - genetic test results and age at diagnosis.
-- **Relationships:**
-  - adoption in and out, with brackets and a dashed line;
-  - assisted reproduction with sperm or egg donors and surrogates;
-  - same-sex partners (turned on in Settings);
-  - partners from different generations.
-- **Consanguinity from the structure:** partners with drawn shared ancestors
-  get the double line, the degree and F automatically.
-- **Automatic layout** that keeps birth order, avoids line crossings where it
-  can, and moves as little as possible when you edit.
-- **Turkish or English:** the interface and the drawing can each be set to
-  either language.
-- **Output:** PNG, SVG, one-page A4 PDF, print, and the device's share menu
-  (optionally without the patient's name). PED files can be exported and
-  imported. A project file stores the full pedigree for later.
-- **Guided tour** on a sample family, so the patient's drawing is never
-  touched.
+(Anthropic's Claude) under the author's direction. Every clinical and design
+decision is the author's, and every change is checked by more than 1,200
+automated tests.
+Decisions are dated in [`docs/`](docs/) and in the commit history.
 
 ## Feedback
 
-- **Report a bug:** [bug report form](https://github.com/MDKalenderoglu/Peditree/issues/new?template=hata-bildirimi.yml)
-- **Suggest something or share your experience:** [suggestion form](https://github.com/MDKalenderoglu/Peditree/issues/new?template=oneri.yml)
-- **No GitHub account?** Email peditree.app@gmail.com
-
-Please never include patient data. For security issues, see
+[Report a bug](https://github.com/MDKalenderoglu/Peditree/issues/new?template=hata-bildirimi.yml) ·
+[Suggest something](https://github.com/MDKalenderoglu/Peditree/issues/new?template=oneri.yml) ·
+peditree.app@gmail.com. Please never include patient data. Security issues:
 [`SECURITY.md`](SECURITY.md).
 
 ## Citation
 
-If you use PediTree in a publication, presentation or teaching material,
-please cite it:
-
 > Kalenderoğlu MD. PediTree: clinical pedigree drawing for genetic counselling
 > [Software]. Version 0.9.0. 2026. https://doi.org/10.5281/zenodo.23791764
 
-[`CITATION.cff`](CITATION.cff) holds the details. On GitHub, **"Cite this
-repository"** on the right gives ready-made formats.
+Details in [`CITATION.cff`](CITATION.cff).
 
 ## Development
 
-Requires Node.js 22.
-
 ```bash
 npm install
-npm run dev      # http://localhost:5173
-npm test         # unit and screen tests (Vitest)
-npm run lint
-npm run build    # dist/ — a static site
+npm run dev     # http://localhost:5173
+npm test
+npm run build   # dist/, a static site
 ```
 
-Every change runs these checks on GitHub ([CI](.github/workflows/ci.yml)):
-
-- lint;
-- the full test suite;
-- the generation check (`node verify-generations.mjs`);
-- the build.
-
-The layout engine has its own measuring tools:
-
-- `npm run audit:layout-benchmark`
-- `npm run audit:layout-fuzz -- --seed 1`
-
-Design and clinical decisions are documented in [`docs/`](docs/).
-
-The code is organised as follows:
-
-| Folder | What it holds |
-|---|---|
-| `src/graph/` | the pedigree graph, its operations and validation |
-| `src/layout/pcl/` | the layout engine: layered layout with pedigree constraints |
-| `src/components/` | the screens (React) |
-| `src/i18n/` | Turkish and English text |
-
-Built with React, D3 and Zustand.
+Requires Node.js 22. Design and clinical decisions: [`docs/`](docs/).
 
 ## Licence
 
-[Apache License 2.0](LICENSE) — © 2026 Muhammed Doğukan Kalenderoğlu.
-The PediTree name and logo are not covered by the licence (see
-[`NOTICE`](NOTICE)).
+[Apache License 2.0](LICENSE) © 2026 Muhammed Doğukan Kalenderoğlu. The
+PediTree name and logo are not covered (see [`NOTICE`](NOTICE)).
 
 ---
 
 ## Türkçe
 
 PediTree, genetik danışmanlıkta aile ağacını (pedigri) NSGC standart
-gösterimine uygun çizmek için tarayıcıda çalışan bir araçtır. Bilgisayarda,
-tablette ve telefonda çalışır; kurulum ya da hesap gerekmez.
+gösterimiyle çizmek için bir araçtır. Bilgisayarda, tablette ve telefonda
+tarayıcıda çalışır; kurulum ya da hesap gerekmez.
 **[PediTree'yi açın →](https://peditree.netlify.app)**
 
-Klinisyen, kimin kimin çocuğu, kardeşi, eşi ya da akrabası olduğunu yanlış
-okumamalıdır. Bu yüzden uygulama önce ilişkilerin doğruluğunu, sonra görünümü
-gözetir.
+**Hasta bilgisi tarayıcıdan çıkmaz.** Sunucu yoktur; çizim açık sekmede
+durur, saklamak istediğinizi indirirsiniz. PediTree bir çizim aracıdır, tıbbi
+cihaz değildir.
 
-**Neler yapar**
-
-- **Başlangıç:**
-  - proband, anne-baba ve büyükanne-büyükbabalarla başlanır;
-  - ya da hazır bir akraba evliliği şablonuyla başlanır: 1.–3. derece
-    kuzenler, bir kuşak farklı kuzenler ve çift kuzenler; F katsayısı ve
-    önizleme ile.
-- **Kişi ekleme:** kişiler çizimin üzerindeki halka menüyle eklenir; ayrıntılar
-  yan panelde girilir.
-- **NSGC 2022 işaretleri:**
-  - etkilenmiş, taşıyıcı, presemptomatik ve ölmüş kişi;
-  - proband ve danışan;
-  - düşük, ölü doğum, gebelik sonlandırma, dış gebelik ve süren gebelik, her
-    biri ayrı sembolle;
-  - ikizler;
-  - tek sembolde birden çok kişi;
-  - çocuksuzluk;
-  - ayrılmış eşler;
-  - doğumda atanan cinsiyet;
-  - kayıtlarla doğrulanmış tanı (\*);
-  - genetik test sonuçları ve tanı yaşı.
-- **İlişkiler:**
-  - evlat edinme (köşeli parantez ve kesikli çizgiyle);
-  - yardımla üreme (sperm / yumurta bağışçısı, taşıyıcı anne);
-  - aynı cinsiyetten eşler (Ayarlar'dan açılır);
-  - farklı kuşaklardan eşler.
-- **Akraba evliliği çizimden hesaplanır:** ortak ataları çizilmiş eşler, çift
-  çizgiyle, derecesiyle ve F katsayısıyla gösterilir.
-- **Otomatik yerleşim:** doğum sırası korunur; düzenleme yapıldığında çizim
-  olabildiğince az kıpırdar.
-- **Dil:** arayüz ve çizim, birbirinden ayrı olarak Türkçe ya da İngilizce
-  seçilebilir.
-- **Çıktı:**
-  - PNG, SVG, A4 PDF;
-  - yazdırma;
-  - cihazın paylaşma menüsü (istenirse hasta adı olmadan);
-  - PED dosyası alma ve verme;
-  - proje dosyası.
-- **Örnek aile üzerinde rehberli tur:** hastanın çizimine dokunulmaz.
+**Neler yapar:** temel aileyle ya da hazır bir akraba evliliği şablonuyla
+başlama; çizim üzerindeki halka menüyle akraba ekleme; NSGC 2022 sembolleri;
+çizimden hesaplanan akrabalık derecesi ve F katsayısı; doğum sırasını koruyan
+otomatik yerleşim; Türkçe ya da İngilizce arayüz; PNG, PDF, SVG ve PED; hasta
+adı olmadan paylaşma.
 
 **Nasıl geliştirildi:** PediTree'yi Ankara Üniversitesi Tıp Fakültesi'nde
 çocuk sağlığı ve hastalıkları uzmanı ve çocuk genetik hastalıkları araştırma
-görevlisi Muhammed Doğukan Kalenderoğlu tasarladı ve yönetti. Kod, onun yönlendirmesiyle bir yapay zekâ
-kodlama asistanı (Anthropic'in Claude'u) ile yazıldı. Ne yapılacağına, klinik
-gösterime, çizim kurallarına ve ekrandaki her ifadeye geliştirici karar verdi;
-her sürümü kullanarak denedi ve her değişikliği gözden geçirdi. Her değişiklik
-1.200'ü aşkın otomatik testle denetlenir. Kararlar tarihleriyle `docs/`
-klasöründe ve commit geçmişinde durur; asistanla yazılan commit'ler
-`Co-Authored-By: Claude` ile işaretlidir. Klinik içerikten ve yazılımdan
-geliştirici sorumludur.
+görevlisi Muhammed Doğukan Kalenderoğlu tasarladı ve yönetti. Kod, onun
+yönlendirmesiyle bir yapay zekâ kodlama asistanı (Anthropic'in Claude'u) ile
+yazıldı. Klinik ve tasarım kararlarının hepsi ona aittir; her değişiklik
+1.200'ü aşkın otomatik testle denetlenir.
 
-**Hasta bilgisi hiçbir sunucuya gönderilmez.** Çizim yalnızca açık sekmede
-tutulur; sekme kapanınca silinir. Saklamak istediğiniz pedigriyi "Kaydet"
-ile kendi cihazınıza indirirsiniz.
+**Geri bildirim:** [hata bildirimi](https://github.com/MDKalenderoglu/Peditree/issues/new?template=hata-bildirimi.yml) ·
+[öneri](https://github.com/MDKalenderoglu/Peditree/issues/new?template=oneri.yml) ·
+peditree.app@gmail.com. Bildirimlere hasta bilgisi eklemeyin.
 
-PediTree bir çizim aracıdır, tıbbi cihaz değildir. Klinik kararlar çizime
-değil, klinik değerlendirmeye dayanır.
-
-**Hata ve öneriler:**
-
-- [Hata bildirimi formu](https://github.com/MDKalenderoglu/Peditree/issues/new?template=hata-bildirimi.yml)
-- [Öneri formu](https://github.com/MDKalenderoglu/Peditree/issues/new?template=oneri.yml)
-- GitHub hesabınız yoksa: peditree.app@gmail.com
-
-Bildirimlere hasta bilgisi eklemeyin.
-
-**Atıf:** PediTree'yi bir yayında, sunumda ya da eğitim materyalinde
-kullandıysanız lütfen yukarıdaki atıf bilgisini kullanın
-([`CITATION.cff`](CITATION.cff)).
+**Atıf:** yukarıdaki atıf bilgisini kullanın ([`CITATION.cff`](CITATION.cff)).
 
 ---
 
-<sub>Bennett RL, French KS, Resta RG, Austin J. Practice resource-focused
-revision: Standardized pedigree nomenclature update centered on sex and gender
-inclusivity: A practice resource of the National Society of Genetic
-Counselors. *J Genet Couns.* 2022;31(6):1238–1248.
-https://doi.org/10.1002/jgc4.1621</sub>
+<sub>Bennett RL, French KS, Resta RG, Austin J. Standardized pedigree
+nomenclature update centered on sex and gender inclusivity: A practice resource
+of the National Society of Genetic Counselors. *J Genet Couns.*
+2022;31(6):1238–1248. https://doi.org/10.1002/jgc4.1621</sub>
