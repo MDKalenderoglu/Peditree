@@ -36,6 +36,7 @@ import logoMark from './assets/logo-mark.png';
 import logoWordmark from './assets/logo-wordmark.png';
 import { kinTerm } from './graph/kinTerm';
 import TidyIcon from './components/TidyIcon';
+import { useKeyboardRoom } from './utils/keyboardRoom';
 
 /** The buttons that may wait in "Diğer" (⋯) on a narrow bar: icon and name (App runMore does what they do). */
 const MORE = {
@@ -332,6 +333,8 @@ function App() {
   const t = useT();
   const { ui: uiLang, drawing: drawingChoice } = useLang();
   const drawLang = drawingLangOf({ ui: uiLang, drawing: drawingChoice });
+  // a phone's keyboard never hides the box being typed in (utils/keyboardRoom.js; clinician report 2026-11-17)
+  useKeyboardRoom();
   // the page's language, for screen readers and the browser's spelling and hyphenation
   React.useEffect(() => { document.documentElement.lang = uiLang; }, [uiLang]);
   // The page itself never scrolls: everything lives in one screen. A phone's browser still shifts it up to

@@ -1387,3 +1387,20 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
 .crash-card { max-width: 480px; display: flex; flex-direction: column; gap: 10px; }
 .crash-card .notice-title { font-size: 17px; }
 .crash-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+
+/* A phone's keyboard open over a box being typed in (utils/keyboardRoom.js; clinician report 2026-11-17: the
+   sheet's boxes stood under the keyboard). The browser leaves the page as tall as it was and only what is in
+   sight shrinks: the sheet, the dialogs and their backdrops stand inside what is in sight (--vvtop, --vvh) with
+   their foot on the keyboard (--kb); their bodies scroll; the zoom buttons step aside. Nothing changes without
+   a keyboard. */
+html.kb-open .app-shell.touch .touch-sheet, html.kb-open .app-shell.touch .touch-sheet.sheet-full {
+  /* between the top bar (while it is in sight) and the keyboard */
+  top: auto; bottom: calc(var(--kb, 0px) + 6px); height: auto; animation: none;
+  max-height: min(calc(var(--vvh, 100dvh) - 12px), calc(var(--vvh, 100dvh) + var(--vvtop, 0px) - var(--touch-bar-h, 56px) - 14px));
+}
+html.kb-open .app-shell.touch .zoom-controls { display: none !important; }
+html.kb-open .settings-backdrop, html.kb-open .relation-backdrop {
+  inset: auto 0; top: var(--vvtop, 0px); height: var(--vvh, 100dvh); padding: 8px; align-items: flex-start;
+}
+html.kb-open .settings-dialog { height: calc(var(--vvh, 100dvh) - 16px); }
+html.kb-open .relation-dialog { max-height: calc(var(--vvh, 100dvh) - 16px); }
