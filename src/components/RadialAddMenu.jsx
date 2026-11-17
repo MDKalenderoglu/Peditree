@@ -184,7 +184,7 @@ function sectorPath(a0, a1, r, R, gap = 6, cOut = 12, cIn = 7) {
 
 export default function RadialAddMenu({
   anchor, node, pedigreeData, onAddSibling, onAddChild, onAddSpouse, onAddParents, onAddTwin,
-  onUpdate, onSetProband, onClearProband, onSetConsultand, onClearConsultand, onAddFinding, onSetFindingStatus, onSetFindingStyle, onSetFindingOnset, onRenameFinding,
+  onUpdate, onSetProband, onClearProband, onSetConsultand, onClearConsultand, onAddFinding, onSetFindingStatus, onSetFindingStyle, onSetFindingOnset, onRenameFinding, onRemoveFinding,
   onNeedRoom, sameSex = false, dock = false, onDetails, onSetChildlessness, ref,
 }) {
   const [active, setActive] = useState(null);   // sector under the pointer
@@ -224,11 +224,21 @@ export default function RadialAddMenu({
   useLayoutEffect(() => {
     const el = popRef.current;
     if (!el || dock) { setNudge({ x: 0, y: 0 }); return; }
+    let raf = 0;
     const fit = () => {
       el.style.translate = '0px 0px';
+      // never taller than the drawing area: a long list (eight findings) scrolls inside it rather than
+      // running under the top bar (clinician report 2026-11-17)
+      const stage = el.closest('.canvas-stage');
+      if (stage && stage.clientHeight && el.classList.contains('findings-panel')) el.style.maxHeight = `${stage.clientHeight - 16}px`;
       // a Bilgiler part's box stands beside the list: both must be on screen
       const aside = el.querySelector('.ring-aside');
+      // measured at full size: the opening growth (ui.css soft-in, scale 0.97 → 1) would make a tall list
+      // look 3 % shorter and leave it running under the top bar once grown (clinician report 2026-11-17)
+      const grown = [el, aside].filter(Boolean);
+      grown.forEach((x) => x.style.setProperty('scale', 'none', 'important'));
       const r = aside ? spanOf([el.getBoundingClientRect(), aside.getBoundingClientRect()]) : el.getBoundingClientRect();
+      grown.forEach((x) => x.style.removeProperty('scale'));
       const host = el.closest('.canvas-stage') || document.body;
       const h = host.getBoundingClientRect();
       if (r.right - r.left <= 0 || !h.width) return; // nothing laid out (a test page)
@@ -244,6 +254,9 @@ export default function RadialAddMenu({
         slid.current = opened;
         sx = px; sy = py;
         onNeedRoom(px, py);
+        // the drawing may slide less than asked (its edge): once it has, fit the popup to where it really is
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(fit);
       }
       const dx = shiftInto(r.left + sx, r.right + sx, h.left, h.right), dy = shiftInto(r.top + sy, r.bottom + sy, h.top, h.bottom);
       el.style.translate = `${dx}px ${dy}px`;
@@ -251,10 +264,10 @@ export default function RadialAddMenu({
     };
     fit();
     // it grows after opening ("Diğer…", a choice that shows another row): fit it again
-    if (typeof ResizeObserver === 'undefined') return;
+    if (typeof ResizeObserver === 'undefined') return () => cancelAnimationFrame(raf);
     const watch = new ResizeObserver(fit);
     watch.observe(el);
-    return () => watch.disconnect();
+    return () => { watch.disconnect(); cancelAnimationFrame(raf); };
   }, [active, panel, infoFor, anchor.x, anchor.y, onNeedRoom]);
   // keyboard (App): a letter opens a sector's choices or a satellite's panel
   const kbOpen = useRef(false);
@@ -522,8 +535,8 @@ export default function RadialAddMenu({
   // ones, on its own side unless the drawing area has more room on the other (widths: ui.css)
   const opensRight = (s) => {
     const [x] = satPos(s.angle);
-    // findings 340 px, a list 200 (a Bilgiler part's box opens on the same side: the drawing slides for it)
-    const w = s.key === 'findings' ? 340 : 200;
+    // findings 420 px, a list 200 (a Bilgiler part's box opens on the same side: the drawing slides for it)
+    const w = s.key === 'findings' ? 420 : 200;
     const roomRight = (anchor.boxW ?? Infinity) - (anchor.x + x);
     const roomLeft = anchor.x + x;
     return x > 0 ? roomRight >= w || roomRight >= roomLeft : roomLeft < w && roomRight > roomLeft;
@@ -611,7 +624,7 @@ export default function RadialAddMenu({
   const panels = {
     findings: (
       <FindingsPalette node={node} conditionKey={pedigreeData.conditionKey || []} people={pedigreeData.individuals} compact
-        onSetStatus={onSetFindingStatus} onAdd={onAddFinding} onSetStyle={onSetFindingStyle} onSetOnset={onSetFindingOnset} onRename={onRenameFinding} />
+        onSetStatus={onSetFindingStatus} onAdd={onAddFinding} onSetStyle={onSetFindingStyle} onSetOnset={onSetFindingOnset} onRename={onRenameFinding} onRemove={onRemoveFinding} />
     ),
     twins: (
       <span className="radial-hint">{isLoss ? t('Düşük, ölü doğum ya da süren gebelik kaydına buradan ikiz eklenemez.') : t('İkiz eklemek için önce kişinin anne ve babası eklenmelidir (halkanın üstündeki Ebeveyn bölümü).')}</span>

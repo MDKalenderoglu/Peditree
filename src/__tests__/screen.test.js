@@ -1128,6 +1128,55 @@ describe('more of what the clinician sees', () => {
     }
   });
 
+  it('Bulgu: the red bin removes a finding from the whole pedigree after one question; Vazgeç keeps it (clinician request 2026-11-17)', async () => {
+    await run(() => { S().addFinding('mother', 'Miyop', null); S().setFindingStatus('father', 'Miyop', 'carrier'); S().addFinding('mother', 'Kolestaz', null); });
+    try {
+      await select('mother');
+      await key('b');
+      const row = (name) => $$('.findings-panel .finding-row').find(r => r.textContent.includes(name));
+      const bin = row('Miyop').querySelector('button.finding-remove');
+      expect(bin.getAttribute('aria-label')).toBe('Miyop: bulguyu sil');
+      bin.click();
+      await settle();
+      const ask = $('.findings-panel .finding-remove-ask');
+      expect(ask.textContent).toMatch(/“Miyop” 2 kişiden ve açıklamadan silinecek/);
+      // Vazgeç: nothing changes
+      [...ask.querySelectorAll('button')].find(b => b.textContent === 'Vazgeç').click();
+      await settle();
+      expect($('.findings-panel .finding-remove-ask')).toBeNull();
+      expect(S().doc.graph.conditionKey.map(e => e.label)).toEqual(['Miyop', 'Kolestaz']);
+      // Sil: gone from both people, the key and the drawing's key
+      row('Miyop').querySelector('button.finding-remove').click();
+      await settle();
+      [...$('.findings-panel .finding-remove-ask').querySelectorAll('button')].find(b => b.textContent === 'Sil').click();
+      await settle();
+      expect(S().doc.graph.conditionKey.map(e => e.label)).toEqual(['Kolestaz']);
+      expect(S().doc.graph.individuals.find(i => i.id === 'father').conditions || []).toEqual([]);
+      expect(row('Miyop')).toBeUndefined();
+      expect($$('.condition-legend text').some(t => t.textContent === 'Miyop')).toBe(false);
+      await run(() => S().undo());
+      expect(S().doc.graph.conditionKey.map(e => e.label)).toEqual(['Miyop', 'Kolestaz']);
+    } finally {
+      await key('Escape');
+    }
+  });
+
+  it('eight findings and a plain carrier with "Yarısı siyah": the carrier\'s half stays solid in the drawing and the key (clinician report 2026-11-17)', async () => {
+    await run(() => {
+      ['miyop', 'sağır', 'kçr', 'ama', 'lal', 'mam', 'sam', 'şam'].forEach(f => S().addFinding('father', f, null));
+      S().updateIndividual('mother', { carrier: true });
+    });
+    expect(drawn('mother').querySelector('.condition-carrier').getAttribute('fill')).toBe('#1e293b');
+    expect($$('.condition-legend .condition-carrier').map(p => p.getAttribute('fill'))).toEqual(['#1e293b']);
+    // the father's eight parts: eight different marks, none of them black
+    const fills = [...drawn('father').querySelectorAll('.condition-region')].map(p => p.getAttribute('fill'));
+    expect(fills).toHaveLength(8);
+    expect(new Set(fills).size).toBe(8);
+    expect(fills).not.toContain('#1e293b');
+    // the key shows the finding in the pattern it is drawn in
+    expect($$('.condition-legend .condition-region').map(p => p.getAttribute('fill'))).toContain('url(#fill-grid)');
+  });
+
   it('Bulgu: the age at diagnosis is written right beside the finding once it is "Var", free text too (clinician request 2026-11-07)', async () => {
     await run(() => S().addFinding('mother', 'Miyop', null));
     await select('mother');

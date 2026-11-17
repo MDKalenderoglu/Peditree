@@ -102,6 +102,22 @@ export function renameFinding(doc, oldLabel, newLabel) {
 }
 
 /**
+ * Remove a finding from the pedigree: from everyone who has it (as affected,
+ * carrier or unknown) and from the key (clinician request 2026-11-17: "Yok"
+ * removes it from one person only; a finding no longer wanted must go at
+ * once). One undo step brings it back.
+ */
+export function removeFinding(doc, label) {
+  return commit(doc, (d) => {
+    const e = keyEntry(d.graph.conditionKey, label);
+    const had = d.graph.individuals.filter((p) => Array.isArray(p.conditions) && p.conditions.some((c) => c && normLabel(c.label) === normLabel(label)));
+    if (!e && !had.length) block(t('Bu bulgu açıklamada yer almıyor.'));
+    for (const p of had) applyStatus(p, label, 'none');
+    d.graph.conditionKey = (d.graph.conditionKey || []).filter((x) => normLabel(x.label) !== normLabel(label));
+  });
+}
+
+/**
  * The age a finding was diagnosed at, for one person (clinician decision
  * 2026-10-25: shown in the notes, not under the symbol). '' removes it.
  */

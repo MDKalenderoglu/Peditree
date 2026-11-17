@@ -82,6 +82,7 @@ function sectorPath(a0, a1, r) {
 const FILL_PAINT = {
   solid: NODE_STROKE, grey: '#9ca3af', hatch: 'url(#fill-hatch)', dots: 'url(#fill-dots)', cross: 'url(#fill-cross)',
   horiz: 'url(#fill-horiz)', vert: 'url(#fill-vert)', back: 'url(#fill-back)', checker: 'url(#fill-checker)',
+  grid: 'url(#fill-grid)', bands: 'url(#fill-bands)',
 };
 
 /** Patterns for findings (graph/conditionKey.js FILLS) and the plain carrier (CARRIER_FILL). */
@@ -101,6 +102,11 @@ function addFindingPatterns(defs) {
   const checker = pattern('fill-checker');
   checker.append('rect').attr('width', 2.5).attr('height', 2.5).attr('fill', NODE_STROKE);
   checker.append('rect').attr('x', 2.5).attr('y', 2.5).attr('width', 2.5).attr('height', 2.5).attr('fill', NODE_STROKE);
+  // the spare patterns (conditionKey.js SPARE_FILLS): drawn only, never chosen
+  const grid = pattern('fill-grid');
+  line(grid, 0, 0.5, 5, 0.5, 1);
+  line(grid, 0.5, 0, 0.5, 5, 1);
+  pattern('fill-bands', 45).append('rect').attr('width', 2.6).attr('height', 5).attr('fill', NODE_STROKE);
   // a carrier without a named finding (conditionKey.js CARRIER_FILL): cross-hatching, no finding's pattern
   const cross = pattern('fill-cross', 45);
   line(cross, 0, 0, 0, 5, 1.2);

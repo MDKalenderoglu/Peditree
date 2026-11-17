@@ -206,10 +206,21 @@ describe('black is kept for what has no name, where it is drawn (clinician 2026-
     const st = displayStyles([carrier], k, 'half');
     expect(st.key[0].fill).not.toBe('solid');
     expect(partsOf(carrier, st.key, 'half', st)).toEqual(['solid:carrier@90-270', `${st.key[0].fill}@270-450`]);
-    // with every pattern taken the carrier keeps the NSGC 2022 hatching
-    const full = displayStyles([carrier], K(...FILLS), 'half');
-    expect(full.halfFree).toBe(false);
-    expect(partsOf(carrier, full.key, 'half', full)[0]).toBe('cross:carrier@90-270');
+  });
+
+  it('with all eight patterns in use the carrier\'s half stays solid: the black finding and "affected" without a name take the spare patterns (clinician report 2026-11-17)', () => {
+    const plain = { carrier: true };
+    const full = displayStyles([plain, { conditions: aff('A') }], K(...FILLS), 'half');
+    expect(partsOf(plain, full.key, 'half', full)).toEqual(['solid:carrier@90-270']);
+    expect(full.key[0].fill).toBe('grid');
+    // beside a solid carrier half, "affected" without a name: one more spare, never a finding's pattern
+    const both = { carrier: true, affected: true };
+    const st = displayStyles([both, { conditions: aff('A') }], K(...FILLS), 'half');
+    expect(partsOf(both, st.key, 'half', st)).toEqual(['solid:carrier@90-270', 'bands@270-450']);
+    const shown = [...st.key.map(e => e.fill), st.affectedFill, 'solid'];
+    expect(new Set(shown).size).toBe(shown.length); // every mark in the drawing is told apart
+    // the stored key is untouched
+    expect(K(...FILLS)[0].fill).toBe('solid');
   });
 });
 
@@ -240,4 +251,29 @@ describe('the findings key runs in columns (clinician request 2026-10-27)', () =
     expect(g.width).toBe(350);
   });
   // moved to screen.test.js: the key entries follow one another with the same gap
+});
+
+describe('a finding removed from the whole pedigree (clinician request 2026-11-17)', () => {
+  beforeEach(() => S().resetPedigree());
+  it('goes from everyone who has it and from the key; an "affected" it set goes with it; one undo brings it all back', () => {
+    S().addFinding('mother', 'Miyop');
+    S().setFindingStatus('father', 'Miyop', 'carrier');
+    S().setFindingStatus('pat_gf', 'Miyop', 'unknown');
+    S().addFinding('proband', 'Kolestaz');
+    S().updateIndividual('pat_gm', { affected: true });
+    S().setFindingStatus('pat_gm', 'Miyop', 'affected');
+    expect(S().removeFinding('Miyop').ok).toBe(true);
+    expect(labels()).toEqual(['Kolestaz']);
+    for (const id of ['mother', 'father', 'pat_gf', 'pat_gm']) expect((person(id).conditions || []).map(c => c.label)).toEqual([]);
+    expect(person('mother').affected).toBe(false); // set by the finding: cleared with it
+    expect(person('pat_gm').affected).toBe(true); // set by hand: kept
+    expect(person('proband').conditions.map(c => c.label)).toEqual(['Kolestaz']);
+    S().undo();
+    expect(labels()).toEqual(['Miyop', 'Kolestaz']);
+    expect(person('father').conditions).toEqual([{ label: 'Miyop', status: 'carrier' }]);
+    expect(person('mother').affected).toBe(true);
+  });
+  it('a finding nobody has is refused with the reason', () => {
+    expect(S().removeFinding('Yok böyle').ok).toBe(false);
+  });
 });

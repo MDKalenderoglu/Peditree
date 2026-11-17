@@ -24,7 +24,16 @@ export const FILLS = ['solid', 'hatch', 'dots', 'grey', 'horiz', 'vert', 'back',
 export const FILL_LABEL = {
   solid: tk('Siyah'), hatch: tk('Tarama'), dots: tk('Noktalı'), grey: tk('Gri'),
   horiz: tk('Yatay çizgili'), vert: tk('Dikey çizgili'), back: tk('Ters tarama'), checker: tk('Damalı'),
+  grid: tk('Kareli'), bands: tk('Kalın tarama'),
 };
+/**
+ * Two patterns no finding can be given, only drawn in: when black is kept for
+ * a mark without a name (displayStyles) and all eight fills are in use, the
+ * finding stored as black, and "affected" without a name beside a solid
+ * carrier half, are drawn in these (clinician report 2026-11-17: with eight
+ * findings the carrier's half fell back to hatching).
+ */
+export const SPARE_FILLS = ['grid', 'bands'];
 /**
  * A carrier without a named finding (person.carrier): the left half in a
  * pattern of its own, never a finding's, explained in the key as
@@ -62,25 +71,21 @@ export const isUnnamedAffected = (p) => !!p.affected && !p.proband && !condition
  * person marked "affected" without a finding named. A finding whose fill is
  * solid is then shown in the next free fill, in the drawing and the key alike.
  * affectedFill: the fill of "affected" without a name drawn beside a carrier
- * whose half is already solid ("Etkilenmiş" in the key). halfFree is false
- * only when no fill is left for such a finding: then plain carriers keep the
- * NSGC 2022 hatching.
+ * whose half is already solid ("Etkilenmiş" in the key). With all eight
+ * fills in use the spare patterns are drawn (SPARE_FILLS), so the carrier's
+ * half stays solid whatever the key holds; halfFree stays for callers and is
+ * always true.
  */
 export function displayStyles(people = [], key = [], carrierMark = 'half') {
   const out = key.map((e) => ({ ...e }));
   const used = () => new Set(out.map((e) => e.fill));
   // in place of black, the boldest pattern first (checkered reads as dark; the two hatchings are kept apart)
-  const free = () => ['checker', 'horiz', 'vert', 'dots', 'grey', 'hatch', 'back'].find((f) => !used().has(f));
+  const free = () => ['checker', 'horiz', 'vert', 'dots', 'grey', 'hatch', 'back', ...SPARE_FILLS].find((f) => !used().has(f));
   const reserve = (carrierMark === 'half' && people.some(isPlainCarrier)) || (out.length > 0 && people.some(isUnnamedAffected));
-  let halfFree = true;
   const solid = out.find((e) => e.fill === 'solid');
-  if (reserve && solid) {
-    const f = free();
-    if (f) solid.fill = f;
-    else if (carrierMark === 'half') halfFree = false;
-  }
+  if (reserve && solid) solid.fill = free();
   const affectedFill = free() || 'grey';
-  return { key: halfFree ? out : key, halfFree, affectedFill };
+  return { key: out, halfFree: true, affectedFill };
 }
 
 const validStyle = (e) => FILLS.includes(e.fill);
@@ -179,7 +184,8 @@ function regionsFor(person, key, plainCarrierHalf, styles, carrierMark) {
   for (const c of conditionsOf(person)) {
     if (c.status !== 'affected' && c.status !== 'carrier') continue;
     const e = keyEntry(key, c.label);
-    if (!e || !validStyle(e) || marks.some((m) => m.label === e.label)) continue;
+    // a spare pattern is one the drawing put in place of black (displayStyles): drawn like any other
+    if (!e || !(validStyle(e) || SPARE_FILLS.includes(e.fill)) || marks.some((m) => m.label === e.label)) continue;
     marks.push({ label: e.label, fill: e.fill, carrier: c.status === 'carrier', at: keyIndex(key, e.label) });
   }
   const byKey = (a, b) => a.at - b.at;

@@ -529,7 +529,7 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .radial-panel.findings-panel { width: 330px; padding: 6px 8px 8px; gap: 0; border-radius: 12px; }
 .findings { display: flex; flex-direction: column; gap: 6px; }
 .findings-list { display: flex; flex-direction: column; gap: 0; }
-.finding-row { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 6px; min-height: 34px; padding: 2px 0; }
+.finding-row { display: grid; grid-template-columns: auto 1fr auto auto auto; align-items: center; gap: 6px; min-height: 34px; padding: 2px 0; }
 .finding-row + .finding-row { border-top: 1px solid var(--line-2); }
 .finding-row .style-picker { grid-column: 1 / -1; }
 .finding-glyph { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 1px solid transparent; border-radius: var(--radius-sm); background: none; cursor: pointer; }
@@ -551,6 +551,13 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .finding-new .input { min-width: 0; height: 30px; background: var(--sunken); border-color: transparent; border-radius: 8px; }
 .finding-new .input:focus { background: var(--surface); border-color: var(--accent); }
 .finding-onset { display: flex; align-items: center; }
+/* removing a finding from the whole pedigree: red, asked once in the row (clinician request 2026-11-17) */
+.finding-remove { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; color: var(--danger); background: none; border: 1px solid transparent; border-radius: 999px; cursor: pointer; }
+.finding-remove:hover, .finding-remove:focus-visible { background: var(--danger-soft); border-color: var(--danger-line); }
+.finding-remove-ask { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 4px 2px 2px; font-size: 12.5px; color: var(--danger); }
+.finding-remove-ask > span { flex: 1 1 160px; }
+.ui-btn-danger-solid { color: #fff; background: var(--danger); border-color: var(--danger); }
+.ui-btn-danger-solid:hover:not(:disabled) { filter: brightness(0.92); }
 .finding-onset .input { height: 26px; width: 74px; font-size: 12px; padding: 0 8px; background: var(--sunken); border-color: transparent; border-radius: 999px; text-align: left; }
 .finding-onset .input:focus { background: var(--surface); border-color: var(--accent); }
 .style-picker { display: flex; flex-direction: column; gap: 4px; padding: 6px; background: var(--sunken); border-radius: 8px; }
@@ -581,7 +588,7 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .radial-flyout { border-radius: 18px; }
 .radial-panel:not(.ring-list-panel):not(.findings-panel) { border-radius: 20px; }
 .ring-hint-panel { border-radius: 18px; }
-.radial-panel.findings-panel { width: 380px; }
+.radial-panel.findings-panel { width: 420px; overflow-y: auto; overscroll-behavior: contain; }
 .findings-panel .finding-row { min-height: 38px; padding: 3px 6px 3px 6px; border-radius: 999px; }
 .findings-panel .finding-row:has(.style-picker) { border-radius: 20px; padding-bottom: 6px; }
 .findings-panel .finding-row + .finding-row { border-top: 1px solid rgba(25, 40, 61, 0.08); }

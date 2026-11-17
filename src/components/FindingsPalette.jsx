@@ -7,7 +7,7 @@
  * everyone. Used in the ring menu and in the right panel.
  */
 import { useId, useRef, useState } from 'react';
-import { Pencil } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { t } from '../i18n';
 import DraftField from './DraftField';
 import { FILLS, FILL_LABEL, suggestStyle, styleTaken, normLabel, KEY_FULL_MESSAGE } from '../graph/conditionKey';
@@ -26,7 +26,7 @@ export function FindingGlyph({ fill = 'solid', carrier = false, shape = 'square'
   );
   const paint = {
     solid: INK, grey: '#9ca3af', hatch: `url(#h${uid})`, dots: `url(#d${uid})`, horiz: `url(#x${uid})`,
-    vert: `url(#v${uid})`, back: `url(#b${uid})`, checker: `url(#c${uid})`,
+    vert: `url(#v${uid})`, back: `url(#b${uid})`, checker: `url(#c${uid})`, grid: `url(#g${uid})`, bands: `url(#s${uid})`,
   }[fill] || INK;
   const outline = shape === 'circle'
     ? <circle r={s} />
@@ -40,6 +40,8 @@ export function FindingGlyph({ fill = 'solid', carrier = false, shape = 'square'
         {pat('v', 0, <line x1="1.5" y1="0" x2="1.5" y2="3" stroke={INK} strokeWidth="1" />)}
         {pat('d', 0, <circle cx="1.5" cy="1.5" r="0.7" fill={INK} />)}
         {pat('c', 0, <><rect width="1.5" height="1.5" fill={INK} /><rect x="1.5" y="1.5" width="1.5" height="1.5" fill={INK} /></>)}
+        {pat('g', 0, <><line x1="0" y1="0.4" x2="3" y2="0.4" stroke={INK} strokeWidth="0.8" /><line x1="0.4" y1="0" x2="0.4" y2="3" stroke={INK} strokeWidth="0.8" /></>)}
+        {pat('s', 45, <rect width="1.6" height="3" fill={INK} />)}
         <clipPath id={`k${uid}`}>{outline}</clipPath>
       </defs>
       <g fill="#fff">{outline}</g>
@@ -102,11 +104,14 @@ function FindingName({ label, onRename }) {
   );
 }
 
-export default function FindingsPalette({ node, conditionKey = [], people, onSetStatus, onAdd, onSetStyle, onSetOnset, onRename, compact = false }) {
+export default function FindingsPalette({ node, conditionKey = [], people, onSetStatus, onAdd, onSetStyle, onSetOnset, onRename, onRemove, compact = false }) {
   const shownKey = useShownKey(conditionKey, people);
   const [draft, setDraft] = useState('');
   const [style, setStyle] = useState(null);
   const [editing, setEditing] = useState(null);
+  // the finding whose removal from the whole pedigree is being asked about (clinician request 2026-11-17)
+  const [removing, setRemoving] = useState(null);
+  const holders = (label) => (people || []).filter((p) => Array.isArray(p.conditions) && p.conditions.some((c) => c && normLabel(c.label) === normLabel(label))).length;
   const shape = node.sex === 'female' ? 'circle' : 'square';
   const conds = Array.isArray(node.conditions) ? node.conditions : [];
   const stateOf = (label) => {
@@ -150,6 +155,19 @@ export default function FindingsPalette({ node, conditionKey = [], people, onSet
                       value={(conds.find(x => normLabel(x.label) === normLabel(e.label)) || {}).onsetAge || ''}
                       onCommit={v => onSetOnset(node.id, e.label, v.trim())} />
                   </label>
+                )}
+                {onRemove && (
+                  <button className="finding-remove" title={t('Bulguyu pedigriden siler: bu bulguya sahip herkesten ve açıklamadan kaldırılır')}
+                    aria-label={t('{label}: bulguyu sil', { label: e.label })} onClick={() => setRemoving(removing === e.id ? null : e.id)}>
+                    <Trash2 size={14} aria-hidden="true" />
+                  </button>
+                )}
+                {removing === e.id && (
+                  <div className="finding-remove-ask" role="alertdialog" aria-label={t('{label}: bulguyu sil', { label: e.label })}>
+                    <span>{t('“{label}” {n} kişiden ve açıklamadan silinecek.', { label: e.label, n: holders(e.label) })}</span>
+                    <button className="ui-btn ui-btn-sm" onClick={() => setRemoving(null)}>{t('Vazgeç')}</button>
+                    <button className="ui-btn ui-btn-sm ui-btn-danger-solid" onClick={() => { setRemoving(null); onRemove(e.label); }}>{t('Sil')}</button>
+                  </div>
                 )}
                 {editing === e.id && (
                   <StylePicker value={{ fill: shown.fill }}
