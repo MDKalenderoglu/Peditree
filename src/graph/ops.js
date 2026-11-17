@@ -16,6 +16,7 @@
  * result is stored as graph, not replayed from instructions.
  */
 import { cloneGraph, indexGraph, displayParentage, makePerson, SOCIAL_LINK_KINDS, PREGNANCY_FIELDS, PREGNANCY_KINDS, PREGNANCY_LABEL, isPregnancy, pregnancyKind, GENETIC_TESTED, SEX_AT_BIRTH, CARRIER_BASES, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, REPRO_ROLES, EGG_SOURCE, CARRIER_ROLES, REPRO_LABEL, ART_DONOR_RELATION, hasClinicalData, sameReproductiveSex } from './model';
+import { formatNewGeneticLines } from '../utils/hgvs';
 import { allocateEditNumber, retire } from './ids';
 import { finalizeGraph, ageOrder } from './finalize';
 import { validateDocument, errorsOf } from './validate';
@@ -242,6 +243,12 @@ export function updatePerson(doc, id, fields, opts = {}) {
         if (v && v !== GENETIC_TESTED) block(t('Genetik test “+” (yapıldı) ya da “−” (yapılmadı) olarak işaretlenmelidir.'));
         // "−": no test, so nothing written for it stays
         if (v) p.geneticTest = v; else { delete p.geneticTest; delete p.geneticNote; }
+        continue;
+      }
+      if (k === 'geneticNote') {
+        // a line the clinician writes as the nomenclature writes it ("fbn1" → "FBN1"; utils/hgvs.js,
+        // clinician request 2026-11-17); lines already there stay as they are
+        p.geneticNote = typeof v === 'string' ? formatNewGeneticLines(v, p.geneticNote) : v;
         continue;
       }
       if (k === 'carrierBasis') {

@@ -10,6 +10,7 @@
  * was made carrier); a hand toggle takes over (ops.updatePerson).
  */
 import { commit, block } from './ops';
+import { formatGeneticLine } from '../utils/hgvs';
 import { normalizeAge } from '../utils/age';
 import { CARRIER_BASES, GENETIC_TESTED, geneticLines } from './model';
 import { normLabel, keyEntry, styleTaken, keyFull, KEY_FULL_MESSAGE, FILLS } from './conditionKey';
@@ -120,7 +121,8 @@ export function setFindingVariant(doc, label, variant) {
   return commit(doc, (d) => {
     const e = keyEntry(d.graph.conditionKey, label);
     if (!e) block(t('Bu bulgu açıklamada yer almıyor.'));
-    const v = String(variant ?? '').replace(/\s+/g, ' ').trim();
+    // as the nomenclature writes it ("cftr:c.1234g>a" → "CFTR:c.1234G>A"; utils/hgvs.js)
+    const v = formatGeneticLine(String(variant ?? '').replace(/\s+/g, ' ').trim());
     if (v.length > VARIANT_MAX) block(t('Varyant en fazla {n} karakter olabilir.', { n: VARIANT_MAX }));
     const old = e.variant;
     if ((old || '') === v) return;
