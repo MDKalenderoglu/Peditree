@@ -246,7 +246,7 @@ export function updatePerson(doc, id, fields, opts = {}) {
       }
       if (k === 'carrierBasis') {
         // what the carrier status rests on (model.js CARRIER_BASES; clinician decision 2026-11-17)
-        if (v && !CARRIER_BASES.includes(v)) block(t('Taşıyıcılığın dayanağı genetik test, pedigriden zorunlu ya da beyana dayalı olarak seçilmelidir.'));
+        if (v && !CARRIER_BASES.includes(v)) block(t('Taşıyıcılığın dayanağı genetik test ya da beyana dayalı olarak seçilmelidir.'));
         if (v && !(fields.carrier === true || (p.carrier && fields.carrier !== false))) block(t('Dayanak yalnızca taşıyıcı olarak işaretlenen kişiye girilir.'));
         if (v) {
           p.carrierBasis = v;

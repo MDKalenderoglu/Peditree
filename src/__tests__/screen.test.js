@@ -1149,8 +1149,8 @@ describe('more of what the clinician sees', () => {
     const chip = $$('.chips .chip').find(b => b.textContent.startsWith('Taşıyıcı'));
     await click(chip);
     expect(['mat_gf', 'mat_gm'].map(id => !!S().doc.graph.individuals.find(i => i.id === id).carrier)).toEqual([false, false]);
-    await click([...$('.card .carrier-basis').querySelectorAll('button')].find(b => b.textContent === 'Pedigriden zorunlu'));
-    expect(['mat_gf', 'mat_gm'].map(id => S().doc.graph.individuals.find(i => i.id === id).carrierBasis)).toEqual(['obligate', 'obligate']);
+    await click([...$('.card .carrier-basis').querySelectorAll('button')].find(b => b.textContent === 'Beyana dayalı'));
+    expect(['mat_gf', 'mat_gm'].map(id => S().doc.graph.individuals.find(i => i.id === id).carrierBasis)).toEqual(['report', 'report']);
     await run(() => S().clearSelection());
   });
 
@@ -1386,11 +1386,12 @@ describe('more of what the clinician sees', () => {
     expect(g().individuals.find(i => i.id === 'mother').carrier).toBeFalsy();
     const ask = $('.radial-panel .carrier-basis');
     expect(ask.textContent).toMatch(/Taşıyıcılığın dayanağı nedir\?/);
-    expect([...ask.querySelectorAll('button')].map(b => b.textContent)).toEqual(['Genetik test', 'Pedigriden zorunlu', 'Beyana dayalı']);
-    await click([...ask.querySelectorAll('button')].find(b => b.textContent === 'Pedigriden zorunlu'));
-    expect(g().individuals.find(i => i.id === 'mother')).toMatchObject({ carrier: true, carrierBasis: 'obligate' });
+    // two choices: no "obligate carrier" from the pedigree (clinician decision 2026-11-17)
+    expect([...ask.querySelectorAll('button')].map(b => b.textContent)).toEqual(['Genetik test', 'Beyana dayalı']);
+    await click([...ask.querySelectorAll('button')].find(b => b.textContent === 'Beyana dayalı'));
+    expect(g().individuals.find(i => i.id === 'mother')).toMatchObject({ carrier: true, carrierBasis: 'report' });
     expect(on()).toEqual(['Etkilenmiş', 'Taşıyıcı']);
-    expect(choiceRows().find(b => b.getAttribute('aria-label') === 'Taşıyıcı').textContent).toContain('Pedigriden zorunlu');
+    expect(choiceRows().find(b => b.getAttribute('aria-label') === 'Taşıyıcı').textContent).toContain('Beyana dayalı');
     expect($('.radial-panel .carrier-basis')).toBeNull();
     // the hidden choice comes into the same list
     expect(choiceLabels()).not.toContain('Presemptomatik');

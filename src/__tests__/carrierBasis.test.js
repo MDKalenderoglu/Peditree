@@ -1,8 +1,8 @@
 /**
  * carrierBasis.test.js — what a carrier status rests on (clinician decision
- * 2026-11-17, after Bennett 2008 Fig. 4 and 2022 §4.5): a genetic test, the
- * pedigree (obligate carrier) or a report — never a finding a relative
- * happens to share. Asked whenever carrier status is entered; kept on the
+ * 2026-11-17, after Bennett 2008 Fig. 4 and 2022 §4.5): a genetic test or a
+ * report — never a finding a relative happens to share, nor an "obligate
+ * carrier" read from the pedigree (a de novo variant, uniparental disomy). Asked whenever carrier status is entered; kept on the
  * person (carrierBasis) or on the carried finding (conditions[].basis); a
  * carrier without it is a soft note. Also: no plain grey for a finding, and
  * with the solid half black stays the carrier's wherever a carrier is drawn.
@@ -18,12 +18,12 @@ const S = () => usePedigreeStore.getState();
 const P = (id) => S().doc.graph.individuals.find(i => i.id === id);
 const missing = () => validateDocument(S().doc).find(i => i.code === 'CARRIER_BASIS_MISSING');
 
-describe('a carrier status rests on a test, the pedigree or a report (clinician decision 2026-11-17)', () => {
+describe('a carrier status rests on a genetic test or a report (clinician decision 2026-11-17)', () => {
   beforeEach(() => S().resetPedigree());
 
   it('"Taşıyıcı" is kept with its basis; a genetic test marks the person tested (+); no longer a carrier, no basis', () => {
-    expect(S().updateIndividual('mother', { carrier: true, carrierBasis: 'obligate' }).ok).toBe(true);
-    expect(P('mother')).toMatchObject({ carrier: true, carrierBasis: 'obligate' });
+    expect(S().updateIndividual('mother', { carrier: true, carrierBasis: 'report' }).ok).toBe(true);
+    expect(P('mother')).toMatchObject({ carrier: true, carrierBasis: 'report' });
     expect(P('mother').geneticTest).toBeUndefined();
     expect(S().updateIndividual('father', { carrier: true, carrierBasis: 'test' }).ok).toBe(true);
     expect(P('father')).toMatchObject({ carrierBasis: 'test', geneticTest: 'tested' });
@@ -31,8 +31,10 @@ describe('a carrier status rests on a test, the pedigree or a report (clinician 
     expect(P('mother').carrierBasis).toBeUndefined();
   });
 
-  it('refused: a basis that is none of the three, and a basis for someone who is not a carrier', () => {
+  it('refused: a basis that is neither — "obligate" from the pedigree too — and a basis for someone who is not a carrier', () => {
     expect(S().updateIndividual('mother', { carrier: true, carrierBasis: 'tahmin' }).ok).toBe(false);
+    expect(S().updateIndividual('mother', { carrier: true, carrierBasis: 'obligate' }).ok).toBe(false);
+    expect(S().setFindingStatus('mother', 'FMF', 'carrier', 'obligate').ok).toBe(false);
     expect(P('mother').carrier).toBeFalsy();
     expect(S().updateIndividual('father', { carrierBasis: 'report' }).ok).toBe(false);
     expect(S().setFindingStatus('mother', 'FMF', 'carrier', 'tahmin').ok).toBe(false);
@@ -58,8 +60,20 @@ describe('a carrier status rests on a test, the pedigree or a report (clinician 
     expect(notes[0].text).toMatch(/II-\d/); // pedigree numbers, never ids
     expect(notes[0].text).not.toMatch(/mother|father/);
     S().updateIndividual('mother', { carrierBasis: 'report' });
-    S().setFindingStatus('father', 'FMF', 'carrier', 'obligate');
+    S().setFindingStatus('father', 'FMF', 'carrier', 'test');
     expect(missing()).toBeUndefined();
+  });
+
+  it('a file saved with "obligate" opens: the basis is dropped and the note asks for one', () => {
+    const d = JSON.parse(S().exportProjectFile());
+    const mother = d.graph.individuals.find(i => i.id === 'mother');
+    Object.assign(mother, { carrier: true, carrierBasis: 'obligate', conditions: [{ label: 'FMF', status: 'carrier', basis: 'obligate' }] });
+    d.graph.conditionKey = [{ id: 'k1', label: 'FMF', fill: 'solid' }];
+    expect(S().openProjectFile(JSON.stringify(d)).ok).toBe(true);
+    expect(P('mother').carrier).toBe(true);
+    expect(P('mother').carrierBasis).toBeUndefined();
+    expect(P('mother').conditions).toEqual([{ label: 'FMF', status: 'carrier' }]);
+    expect(missing().ids).toEqual(['mother']);
   });
 
   it('a file with an unknown basis does not open', () => {

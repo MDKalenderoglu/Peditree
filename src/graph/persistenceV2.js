@@ -23,7 +23,7 @@
 import { STORAGE_KEY as V1_KEY } from '../utils/persistence';
 import { migrateV1ToV2 } from './migrate';
 import { isDocumentV2 } from './document';
-import { normalizeGenetics } from './model';
+import { normalizeGenetics, normalizeCarrierBasis } from './model';
 import { validateDocument, errorsOf } from './validate';
 import { clearChildlessWithChildren } from './finalize';
 import { t } from '../i18n';
@@ -130,7 +130,7 @@ export function clearAllSessions() {
 // "+" with the result as the first written line (graph/model.js)
 function currentGenetics(doc) {
   const people = doc && doc.graph && Array.isArray(doc.graph.individuals) ? doc.graph.individuals : [];
-  people.forEach((p) => { if (p && typeof p === 'object') normalizeGenetics(p); });
+  people.forEach((p) => { if (p && typeof p === 'object') { normalizeGenetics(p); normalizeCarrierBasis(p); } });
   return doc;
 }
 

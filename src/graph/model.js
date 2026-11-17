@@ -68,15 +68,24 @@ export const SEX_AT_BIRTH = ['AMAB', 'AFAB', 'UAAB'];
 /**
  * What a carrier status rests on (clinician decision 2026-11-17, after Bennett
  * 2008 Fig. 4 and 2022 §4.5: carrier status comes from a result or a report,
- * never from a finding a relative happens to share): person.carrierBasis for
+ * finding a relative happens to share): person.carrierBasis for
  * "Taşıyıcı" without a finding named, conditions[].basis for the carrier of a
  * named finding. 'test' a genetic test showed it (a heterozygous variant; the
- * person is marked tested, "+"); 'obligate' the pedigree requires it (e.g.
- * the parents of a child with an autosomal recessive condition); 'report'
- * the patient's or family's word, no result seen. Asked whenever carrier
- * status is entered; absent only in files from before, with a note to add it.
+ * person is marked tested, "+"); 'report' the patient's or family's word, no
+ * result seen. Asked whenever carrier status is entered; absent only in files
+ * from before, with a note to add it. No "obligate carrier" from the pedigree
+ * (clinician decision 2026-11-17: a parent of an affected child need not carry
+ * it — a de novo variant, uniparental disomy, mosaicism; it may come back
+ * later for teaching): a basis 'obligate' saved that day is dropped on opening.
  */
-export const CARRIER_BASES = ['test', 'obligate', 'report'];
+export const CARRIER_BASES = ['test', 'report'];
+const DROPPED_BASES = new Set(['obligate']);
+
+/** A carrier basis no longer offered (DROPPED_BASES) is dropped: the person then lacks one, with a note. */
+export function normalizeCarrierBasis(p) {
+  if (DROPPED_BASES.has(p.carrierBasis)) delete p.carrierBasis;
+  if (Array.isArray(p.conditions)) for (const c of p.conditions) if (c && DROPPED_BASES.has(c.basis)) delete c.basis;
+}
 /**
  * The sex a person's gametes follow (NSGC 2022: the symbol shows gender identity; AMAB / AFAB under it
  * when sex assigned at birth differs): sex assigned at birth when written, otherwise the symbol's sex.

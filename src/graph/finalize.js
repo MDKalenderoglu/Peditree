@@ -20,7 +20,7 @@
  * Mutates the (already cloned) graph in place and returns it.
  */
 import { computeGenerations } from '../utils/graphTraversal';
-import { indexGraph, displayParentage, isPregnancy, normalizeGenetics, REPRO_ROLES, CARRIER_ROLES, sameReproductiveSex } from './model';
+import { indexGraph, displayParentage, isPregnancy, normalizeGenetics, normalizeCarrierBasis, REPRO_ROLES, CARRIER_ROLES, sameReproductiveSex } from './model';
 import { kinshipOf } from './kinship';
 import { deriveConditionKey } from './conditionKey';
 import { normalizeMultiples } from './multiples';
@@ -43,6 +43,7 @@ export function finalizeGraph(graph, { anchorId = 'proband' } = {}) {
   shareTwinLinks(graph);
   keepOwnGamete(graph);
   graph.individuals.forEach(normalizeGenetics);
+  graph.individuals.forEach(normalizeCarrierBasis);
 
   const anchor = idx0.byId.has(anchorId)
     ? anchorId

@@ -48,7 +48,7 @@ function applyStatus(person, label, status, basis) {
 export function setFindingStatus(doc, personId, label, status, basis) {
   return commit(doc, (d) => {
     if (!STATUSES.includes(status)) block(`Bilinmeyen durum: ${status}`);
-    if (basis && (status !== 'carrier' || !CARRIER_BASES.includes(basis))) block(t('Taşıyıcılığın dayanağı genetik test, pedigriden zorunlu ya da beyana dayalı olarak seçilmelidir.'));
+    if (basis && (status !== 'carrier' || !CARRIER_BASES.includes(basis))) block(t('Taşıyıcılığın dayanağı genetik test ya da beyana dayalı olarak seçilmelidir.'));
     if (!String(label || '').trim()) block(t('Bulgunun adı boş olamaz.'));
     const p = d.graph.individuals.find((i) => i.id === personId);
     if (!p) block(t('Kişi çizimde bulunamadı.'));

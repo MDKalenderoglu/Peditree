@@ -259,7 +259,7 @@ export function auditPedigreeGraph(graph) {
   }
 
   // 11a. A carrier status entered without what it rests on (clinician decision 2026-11-17: a genetic
-  //      test, the pedigree, or a report — model.js CARRIER_BASES). Asked whenever carrier status is
+  //      test or a report — model.js CARRIER_BASES). Asked whenever carrier status is
   //      entered; a file from before may lack it. A soft note, never a refusal.
   {
     const lacking = individuals.filter((i) => (i.carrier && !i.carrierBasis)
@@ -268,7 +268,7 @@ export function auditPedigreeGraph(graph) {
       issues.push({
         severity: 'warning',
         code: 'CARRIER_BASIS_MISSING',
-        message: t('Taşıyıcılığın dayanağı girilmemiş: {v0}. Taşıyıcılığın genetik teste mi, pedigriye mi (zorunlu taşıyıcı), yoksa beyana mı dayandığını Durum ya da Bulgu → Taşıyıcı ile seçin.', { v0: lacking.map((id) => `"${id}"`).join(', ') }),
+        message: t('Taşıyıcılığın dayanağı girilmemiş: {v0}. Taşıyıcılığın genetik teste mi yoksa beyana mı dayandığını Durum ya da Bulgu → Taşıyıcı ile seçin; ikisi de yoksa kişi taşıyıcı olarak işaretlenmemelidir.', { v0: lacking.map((id) => `"${id}"`).join(', ') }),
         ids: lacking,
       });
     }
