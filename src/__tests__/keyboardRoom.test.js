@@ -65,6 +65,15 @@ describe('the keyboard and what is in sight (clinician report 2026-11-17)', () =
     expect(html().classList.contains('kb-open')).toBe(false);
     await keyboard(500);
     expect(html().classList.contains('kb-open')).toBe(true);
+    // the browser moves the sight down the page to show the box (iPhone 2026-11-17): still a keyboard, the sheet's
+    // foot where the sight ends
+    vv.offsetTop = 344;
+    await keyboard(500);
+    expect(html().classList.contains('kb-open')).toBe(true);
+    expect(html().style.getPropertyValue('--kb')).toBe('0px');
+    expect(html().style.getPropertyValue('--vvtop')).toBe('344px');
+    vv.offsetTop = 0;
+    await keyboard(500);
     await run(() => box.blur());
     await keyboard(844);
     expect(html().classList.contains('kb-open')).toBe(false);
@@ -135,7 +144,7 @@ describe('the box brought into sight', () => {
   });
 
   it('what is in sight is read from visualViewport; a keyboard only for boxes that type', () => {
-    expect(sightOf({ innerHeight: 844, visualViewport: { height: 500, offsetTop: 40 } })).toEqual({ kb: 304, vvh: 500, vvtop: 40 });
+    expect(sightOf({ innerHeight: 844, visualViewport: { height: 500, offsetTop: 40 } })).toEqual({ kb: 304, vvh: 500, vvtop: 40, shrunk: 344 });
     expect(sightOf({ innerHeight: 844 })).toBeNull();
     const make = (tag, type) => { const e = document.createElement(tag); if (type) e.setAttribute('type', type); return e; };
     expect([make('input'), make('input', 'text'), make('textarea'), make('input', 'checkbox'), make('button')].map(takesKeyboard)).toEqual([true, true, true, false, false]);

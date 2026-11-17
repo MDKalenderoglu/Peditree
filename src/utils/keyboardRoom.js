@@ -27,12 +27,17 @@ export function takesKeyboard(el) {
   return el.tagName === 'INPUT' && TEXT_TYPES.has(String(el.getAttribute('type') || '').toLowerCase());
 }
 
-/** What is in sight: the keyboard's height below it, its height and how far it is moved down the page. */
+/**
+ * What is in sight: the room below it on the page (kb), its height and how far it is moved down the page; and
+ * how much shorter it is than the page (shrunk) — the keyboard's height, however far the browser has moved the
+ * sight down to show the box (iPhone 2026-11-17: with the sight moved down, kb came out near 0 and the
+ * keyboard went unnoticed).
+ */
 export function sightOf(win = window) {
   const vv = win.visualViewport;
   if (!vv) return null;
   const vvh = Math.round(vv.height), vvtop = Math.max(0, Math.round(vv.offsetTop || 0));
-  return { kb: Math.max(0, Math.round(win.innerHeight - vvh - vvtop)), vvh, vvtop };
+  return { kb: Math.max(0, Math.round(win.innerHeight - vvh - vvtop)), vvh, vvtop, shrunk: Math.max(0, Math.round(win.innerHeight - vvh)) };
 }
 
 function scrollingParent(el) {
@@ -76,7 +81,7 @@ export function useKeyboardRoom() {
     const update = () => {
       const el = document.activeElement;
       const sight = sightOf(window);
-      const open = !!sight && takesKeyboard(el) && sight.kb >= KB_MIN;
+      const open = !!sight && takesKeyboard(el) && sight.shrunk >= KB_MIN;
       root.classList.toggle('kb-open', open);
       if (open) {
         root.style.setProperty('--kb', `${sight.kb}px`);

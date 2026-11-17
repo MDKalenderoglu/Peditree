@@ -566,7 +566,7 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .finding-basis { grid-column: 1 / -1; padding: 2px 2px 4px; }
 /* a finding's genetic test result, shared with everyone who has a result for it (clinician request 2026-11-17) */
 .finding-variant { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; padding: 2px 2px 4px; }
-.finding-variant .input { height: 28px; font-size: 12.5px; border-radius: 999px; }
+.finding-variant .input { width: 100%; min-width: 0; box-sizing: border-box; height: 28px; font-size: 12.5px; border-radius: 999px; }
 .finding-variant-add { grid-column: 1 / -1; justify-self: start; padding: 2px 8px; font: inherit; font-size: 12px; color: var(--accent-ink); background: none; border: none; cursor: pointer; }
 .finding-variant-add:hover { text-decoration: underline; }
 /* removing a finding from the whole pedigree: red, asked once in the row (clinician request 2026-11-17) */
@@ -609,6 +609,10 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .radial-panel.findings-panel { width: 420px; overflow-y: auto; overscroll-behavior: contain; }
 .findings-panel .finding-row { min-height: 38px; padding: 3px 6px 3px 6px; border-radius: 999px; }
 .findings-panel .finding-row:has(.style-picker) { border-radius: 20px; padding-bottom: 6px; }
+/* a finding with more than one line (its basis, its test result, deleting it) is a card, not a pill: a pill that
+   tall became an oval with its edges over the text (iPhone 2026-11-17) */
+.findings-panel .finding-row:has(.finding-basis, .finding-variant, .finding-variant-add, .finding-remove-ask) { border-radius: 16px; padding-bottom: 6px; }
+.finding-variant .field-hint { overflow-wrap: anywhere; }
 .findings-panel .finding-row + .finding-row { border-top: 1px solid rgba(25, 40, 61, 0.08); }
 .findings-panel .findings-list + .finding-new { border-top: 1px solid rgba(25, 40, 61, 0.08); }
 .findings-panel .finding-new { padding: 4px 4px 4px 10px; border-radius: 999px; }
@@ -1342,6 +1346,23 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
    offset and its floating shadow are for the ring, not for "İkiz" and the lists in the sheet (clinician report
    2026-11-15: "İkiz" stood over "Çocuk") */
 .ring-dock .dock-chip { transform: none; translate: none; height: auto; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* a finding in the sheet, on two lines (iPhone 2026-11-17: on one line its name had no room, the row ran off the
+   sheet's edge and the bin dropped alone to a line of its own): its pattern, name and bin above; Yok / Var /
+   Taşıyıcı / ? and the age at diagnosis below; the rest (basis, test result, deleting it) under them */
+.ring-dock .findings-panel { width: auto; max-width: 100%; min-width: 0; }
+.ring-dock .findings-panel .finding-row { grid-template-columns: auto minmax(0, 1fr) auto; row-gap: 4px; border-radius: 16px; padding: 4px 6px 6px; }
+.ring-dock .finding-row > .finding-glyph { grid-column: 1; grid-row: 1; width: 32px; height: 32px; }
+.ring-dock .finding-row > .finding-name, .ring-dock .finding-row > .finding-name-edit { grid-column: 2; grid-row: 1; }
+.ring-dock .finding-row > .finding-remove { grid-column: 3; grid-row: 1; justify-self: end; width: 36px; height: 36px; }
+.ring-dock .finding-row > .finding-state { grid-column: 1 / 3; grid-row: 2; justify-self: start; }
+.ring-dock .finding-row > .finding-state button { padding: 6px 10px; font-size: 13.5px; min-height: 34px; }
+.ring-dock .finding-row > .finding-onset { grid-column: 3; grid-row: 2; justify-self: end; }
+.ring-dock .finding-row > .finding-onset .input { width: 76px; }
+.ring-dock .finding-row > .finding-basis { grid-row: 3; }
+.ring-dock .finding-row > .finding-variant, .ring-dock .finding-row > .finding-variant-add { grid-row: 4; }
+.ring-dock .finding-row > .finding-remove-ask { grid-row: 5; }
+.ring-dock .finding-row > .style-picker { grid-row: 6; }
+.ring-dock .finding-variant .field-hint { font-size: 11.5px; line-height: 1.35; }
 .ring-dock .ring-list-panel > .ring-sex, .ring-dock .ring-list-panel .ring-row > .ring-choice, .ring-dock .ring-aside, .ring-dock .ring-hint-panel,
 .ring-dock .findings-panel .finding-row, .ring-dock .findings-panel .finding-new, .ring-dock .findings-panel .finding-limit,
 .ring-dock .radial-flyout, .ring-dock .radial-panel:not(.ring-list-panel):not(.findings-panel) {
@@ -1371,6 +1392,22 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
 .touch-sheet .input, .touch-sheet .select { height: 38px; }
 .touch-sheet textarea.input { min-height: 48px; }
 .touch-sheet .field-hint { font-size: 12px; }
+/* closer still (iPhone 2026-11-17: "too much room — more minimal, easy to reach"): "Geri" in the person's own
+   line beside the close button, not a line of its own; the name beside its label; the hint about where the
+   name and the note are shown left to the computer (the note's box says what goes in it) */
+.touch-sheet.sheet-full .sheet-head-back { position: absolute; top: 14px; right: 50px; z-index: 5; padding: 0; background: none; }
+:root[data-mode="dark"] .touch-sheet.sheet-full .sheet-head-back { background: none; }
+.touch-sheet.sheet-full .sheet-head-back .sheet-back { height: 34px; padding: 0 10px 0 4px; }
+.touch-sheet.sheet-full .side-header { padding: 0 6px 8px 14px; }
+.touch-sheet.sheet-full .side-header > .side-header-text { margin-right: 72px; } /* "Geri" stands there */
+.touch-sheet .name-field { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 10px; row-gap: 3px; }
+.touch-sheet .name-field > .field-warn { grid-column: 1 / -1; }
+.touch-sheet .card-foot { display: none; }
+.touch-sheet .editor-body { padding: 8px 8px 16px; gap: 8px; }
+.touch-sheet .card { gap: 7px; padding: 8px 12px 10px; }
+.touch-sheet .card-title { padding-bottom: 6px; }
+.touch-sheet textarea.input { min-height: 40px; }
+.touch-sheet .segmented button { min-height: 36px; }
 .app-shell.touch .sheet-grip > span { width: 38px; height: 4px; }
 .sheet-head { padding: 0 4px 0 14px; }
 .sheet-title { font: 700 14.5px/1.3 var(--font-ui); color: var(--accent-ink); }

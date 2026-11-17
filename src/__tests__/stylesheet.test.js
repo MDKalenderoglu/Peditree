@@ -298,3 +298,24 @@ describe('a tablet: the page never zooms, the add buttons fit (clinician report 
   });
 });
 
+
+describe('the phone\'s sheet, close-set and inside its edges (iPhone report 2026-11-17)', () => {
+  it('a finding on two lines in the sheet: name and bin above, Yok / Var / Taşıyıcı / ? and the age below; never wider than the sheet', () => {
+    expect(block('ui.css', '.ring-dock .findings-panel')).toMatch(/width: auto; max-width: 100%; min-width: 0;/);
+    expect(block('ui.css', '.ring-dock .findings-panel .finding-row')).toMatch(/grid-template-columns: auto minmax\(0, 1fr\) auto;/);
+    expect(block('ui.css', '.ring-dock .finding-row > .finding-remove')).toMatch(/grid-column: 3; grid-row: 1;/);
+    expect(block('ui.css', '.ring-dock .finding-row > .finding-state')).toMatch(/grid-column: 1 \/ 3; grid-row: 2;/);
+    expect(block('ui.css', '.finding-variant .input')).toMatch(/width: 100%; min-width: 0;/);
+  });
+
+  it('a finding with more than one line is a card, not an oval', () => {
+    expect(block('ui.css', '.findings-panel .finding-row:has(.finding-basis, .finding-variant, .finding-variant-add, .finding-remove-ask)')).toMatch(/border-radius: 16px;/);
+  });
+
+  it('the details: "Geri" in the person\'s line, the name beside its label, the hint left to the computer', () => {
+    expect(block('ui.css', '.touch-sheet.sheet-full .sheet-head-back')).toMatch(/position: absolute;[^}]*z-index: 5;/);
+    expect(block('ui.css', '.touch-sheet.sheet-full .side-header > .side-header-text')).toMatch(/margin-right: 72px;/);
+    expect(block('ui.css', '.touch-sheet .name-field')).toMatch(/grid-template-columns: auto minmax\(0, 1fr\);/);
+    expect(block('ui.css', '.touch-sheet .card-foot')).toMatch(/display: none;/);
+  });
+});
