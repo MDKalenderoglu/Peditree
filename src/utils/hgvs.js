@@ -46,8 +46,16 @@ function geneCase(word) {
   return word.toUpperCase();
 }
 
+// genes without a digit seen often in the clinic: in capitals wherever they stand in the line
+// ("cftr pozitif" → "CFTR pozitif"; clinician request 2026-11-17)
+const KNOWN_GENES = new Set(`CFTR DMD HBB HBD PAH MEFV HEXA HEXB GBA GAA GLA IDUA IDS ARSA ARSB GALC GALT ATM APC VHL RET PTEN MUTYH TTR DMPK FXN HTT
+LMNA TTN DES EMD DYSF NEB ACADM ACADVL ACADS OTC ASL MMUT PCCA PCCB IVD BTD CBS MTHFR HFE AR VWF LIPA AGL PYGM PYGL POLG
+ADA BTK WAS CYBB ELANE PHEX ALPL KRAS HRAS NRAS BRAF NIPBL SHOX ELN NAGLU GUSB GNS HGSNAT GALNS GNPTAB CTNS AGXT ALDOB
+FAH HGD QDPR PTS SPR MLYCD HLCS ETFA ETFB ETFDH AIRE CASR CTRC PKLR SBDS PROC FGA FGB FGG KIT VCP DSP JUP MITF TYR`.split(/\s+/));
+
 function looksLikeGene(word, after, wholeLine) {
   if (word.length < 2 || word.length > 12 || NOT_GENE.has(word.toLowerCase())) return false;
+  if (KNOWN_GENES.has(word.toUpperCase())) return true;
   if (/\d/.test(word)) return !NOT_GENE_DIGIT.test(word);
   if (word.length > 6 || !/^[a-z]+$/i.test(word)) return false;
   const rest = after.replace(/^\s*[:(]?\s*/, '');

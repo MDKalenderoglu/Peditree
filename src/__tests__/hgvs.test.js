@@ -20,6 +20,10 @@ describe('the nomenclature\'s capitals', () => {
   it('gene symbols in capitals — alone, before a variant, a reference, a zygosity or an exon; C9orf72 as HGNC writes it', () => {
     expect(f('fbn1')).toBe('FBN1');
     expect(f('cftr')).toBe('CFTR');
+    // a gene seen often in the clinic, wherever it stands (clinician request 2026-11-17)
+    expect(f('cftr pozitif')).toBe('CFTR pozitif');
+    expect(f('kistik fibrozis, cftr negatif')).toBe('kistik fibrozis, CFTR negatif');
+    expect(f('mefv ve dmd')).toBe('MEFV ve DMD');
     expect(f('fbn1 het')).toBe('FBN1 het');
     expect(f('cftr:c.1234g>a')).toBe('CFTR:c.1234G>A');
     expect(f('mefv c.2080A>G hom')).toBe('MEFV c.2080A>G hom');
