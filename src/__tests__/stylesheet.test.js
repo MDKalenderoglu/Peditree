@@ -76,7 +76,8 @@ describe('stylesheet rules', () => {
   it('the side panel draws the eye (clinician report 2026-11-11: pale headings, one block): framed cards apart, headings in the accent colour, the panel off the window’s edge', () => {
     expect(block('ui.css', '.card')).toMatch(/border: 1px solid var\(--line\)/);
     expect(block('ui.css', '.card')).toMatch(/box-shadow:/);
-    expect(block('ui.css', '.editor-body')).toMatch(/gap: 1[4-9]px/);
+    // parts apart, close-set (clinician request 2026-11-17: "Kişiyi sil" in sight without scrolling)
+    expect(block('ui.css', '.editor-body')).toMatch(/gap: (?:[89]|1\d)px/);
     expect(block('ui.css', '.card-title')).toMatch(/font-size: 14px; font-weight: 700; color: var\(--accent-ink\)/);
     expect(css('ui.css')).toMatch(/\.card-title:not\(\.partner-title\)::before \{[^}]*background: var\(--accent\)/);
     expect(block('ui.css', '.app-shell:not(.touch) > .side-right.editor-panel')).toMatch(/margin: 10px 10px 10px 0;[^}]*border-radius: 16px/);

@@ -47,7 +47,7 @@ function AddLineField({ onAdd, ...rest }) {
  */
 export function NameField({ node, set, autoFocus = false, where = true }) {
   return (
-    <label className="field-col">
+    <label className="field-col name-field">
       <span className="field-label">{t('Ad ya da kısaltma')}{where && <> <span className="field-where">{t('sembolün altında')}</span></>}</span>
       <DraftField key={`${node.id}-label`} type="text" className="input input-wide" value={node.displayLabel || ''} placeholder={t('Ayşe, A.Y., amca…')}
         onCommit={v => set({ displayLabel: v })} autoFocus={autoFocus} />

@@ -59,12 +59,14 @@ function Header({ title, kin, kinFrom, sub, chips, glyph, onClose }) {
     <div className="side-header">
       {glyph}
       <div className="side-header-text">
-        <div className="person-id">{title}</div>
+        {/* the number and the person's marks on one line (clinician request 2026-11-17: a close-set panel) */}
+        <div className="person-id-row">
+          <div className="person-id">{title}</div>
+          {chips && chips.length > 0 && <div className="person-chips">{chips.map(c => <span key={c} className="person-chip">{c}</span>)}</div>}
+        </div>
         {/* what the person is to the proband (clinician 2026-11-11: who is who in a wide pedigree) */}
         {kin && <div className="person-kin" title={kinFrom === 'consultand' ? t('Danışana göre akrabalığı') : t('Probanda göre akrabalığı')}>{kin}</div>}
-        {chips && chips.length > 0
-          ? <div className="person-chips">{chips.map(c => <span key={c} className="person-chip">{c}</span>)}</div>
-          : sub && <div className="person-sub">{sub}</div>}
+        {!(chips && chips.length > 0) && sub && <div className="person-sub">{sub}</div>}
       </div>
       {onClose && (
         <button className="ui-btn ui-btn-ghost ui-btn-icon" onClick={onClose} aria-label={t('Seçimi kapat')} title={t('Seçimi kapat')}>
