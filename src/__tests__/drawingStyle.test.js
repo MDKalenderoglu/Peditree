@@ -34,8 +34,8 @@ function samplePath(d, steps = 20) {
 }
 
 describe('drawing style settings', () => {
-  it('starts standard, with plain pedigree numbers and exports as on screen; the carrier as NSGC 2022 draws it', () => {
-    expect(DEFAULT_VIEW).toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, textSize: 100, paper: 'plain', carrierMark: 'split', theme: 'indigo', mode: 'system', ringClear: 5, panelWidth: 0, tourOffer: true, sameSexPartners: false, touchMode: 'auto' });
+  it('starts standard, with plain pedigree numbers and exports as on screen; the carrier\'s half solid (clinician decision 2026-11-17)', () => {
+    expect(DEFAULT_VIEW).toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, textSize: 100, paper: 'plain', carrierMark: 'half', carrierMarkV: 2, theme: 'indigo', mode: 'system', ringClear: 5, panelWidth: 0, tourOffer: true, sameSexPartners: false, touchMode: 'auto' });
     expect(drawingSpec(DEFAULT_VIEW)).toMatchObject({ hand: false, family: STANDARD_FAMILY, k: 1, numberK: 1 });
   });
 
@@ -53,7 +53,13 @@ describe('drawing style settings', () => {
 
   it('keeps only known values from storage', () => {
     expect(normalizeView({ drawStyle: 'crayon', fontId: 'comic', plainNumbers: 'no', exportAs: 'x', openHelp: 'maybe', legendSize: 'huge', paper: 'tartan', carrierMark: 'star', theme: 'neon', ringAlpha: 'glass', panelWidth: 'wide', tourOffer: 'perhaps' }))
-      .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, textSize: 100, paper: 'plain', carrierMark: 'split', theme: 'indigo', mode: 'system', ringClear: 5, panelWidth: 0, tourOffer: true, sameSexPartners: false, touchMode: 'auto' });
+      .toEqual({ drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, textSize: 100, paper: 'plain', carrierMark: 'half', carrierMarkV: 2, theme: 'indigo', mode: 'system', ringClear: 5, panelWidth: 0, tourOffer: true, sameSexPartners: false, touchMode: 'auto' });
+    // a carrier mark stored before 2026-11-17 was saved with every change while the divided half was the default: it opens
+    // as the solid half; one chosen since is kept
+    expect(normalizeView({ carrierMark: 'split' }).carrierMark).toBe('half');
+    expect(normalizeView({ carrierMark: 'dot' }).carrierMark).toBe('half');
+    expect(normalizeView({ carrierMark: 'split', carrierMarkV: 2 }).carrierMark).toBe('split');
+    expect(normalizeView({ carrierMark: 'dot', carrierMarkV: 2 }).carrierMark).toBe('dot');
     // the ring's transparency in steps of 5 % within 0–100 (60 until 2026-11-11); the four words of the first version carried over
     expect(normalizeView({ ringClear: 7 }).ringClear).toBe(5);
     // touch screen: 'always' kept; an 'on' saved under the old word "Açık" (read as "light") opens as 'auto' (2026-11-12)
@@ -70,8 +76,8 @@ describe('drawing style settings', () => {
     expect(normalizeView({ panelWidth: 900 }).panelWidth).toBe(560);
     expect(normalizeView({ panelWidth: 300.4 }).panelWidth).toBe(300);
     expect(normalizeView({ paper: 'dots' }).paper).toBe('dots');
-    expect(normalizeView({ carrierMark: 'dot' }).carrierMark).toBe('dot');
-    expect(normalizeView({ carrierMark: 'half' }).carrierMark).toBe('half');
+    expect(normalizeView({ carrierMark: 'dot', carrierMarkV: 2 }).carrierMark).toBe('dot');
+    expect(normalizeView({ carrierMark: 'half', carrierMarkV: 2 }).carrierMark).toBe('half');
     // "Bir daha gösterme" (Aç) is kept
     expect(normalizeView({ openHelp: false }).openHelp).toBe(false);
     expect(normalizeView(null)).toEqual(DEFAULT_VIEW);
@@ -103,7 +109,7 @@ describe('drawing style settings', () => {
   it('the carrier dot is notation, not look: an export "always standard" keeps it', () => {
     const v = { ...DEFAULT_VIEW, drawStyle: 'hand', exportAs: 'standard', carrierMark: 'dot' };
     expect(exportSpec(v)).toEqual({ ...STANDARD_SPEC, carrierMark: 'dot' });
-    expect(STANDARD_SPEC.carrierMark).toBe('split');
+    expect(STANDARD_SPEC.carrierMark).toBe('half');
   });
 
   // moved to screen.test.js: the hand-drawn look leaves the family untouched; kept in localStorage

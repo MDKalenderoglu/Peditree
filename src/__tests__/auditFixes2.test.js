@@ -44,7 +44,7 @@ describe('#1 undo across opening another patient’s file', () => {
 describe('#2 carrier and affected are both read', () => {
   // NSGC 2022 §4.5 (clinician decision 2026-11-02): no carrier dot — the carrier half in a pattern of its own
   it('affected and carrier without a named finding: affected right half, the carrier half cross-hatched (no dot)', () => {
-    const f = fillFor({ affected: true, carrier: true, conditions: [] }, []);
+    const f = fillFor({ affected: true, carrier: true, conditions: [] }, [], 'split');
     expect(f.mode).toBe('regions');
     expect(f.parts).toEqual([
       { fill: 'cross', carrier: true, a0: 90, a1: 270 },

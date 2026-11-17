@@ -35,17 +35,18 @@ export const CARRIER_FILL = 'cross';
 /**
  * How the viewer wants that carrier drawn (Ayarlar → Çizim, a device
  * preference — the file never changes; clinician decisions 2026-11-04 and
- * 2026-11-16): 'split' the NSGC 2022 left half above, 'dot' the classic dot
- * in the middle (NSGC 2008, many textbooks), or 'half' the left half solid as
- * many publications draw a recessive carrier — each explained in the key. A
+ * 2026-11-16, 2026-11-17): 'half' the left half solid as most publications draw
+ * a carrier — the default (clinician decision 2026-11-17: a carrier is drawn
+ * solid, not patterned) —, 'split' the NSGC 2022 left half above, or 'dot' the
+ * classic dot in the middle (NSGC 2008) — each explained in the key. A
  * carried finding with a name keeps its own pattern in all: a dot cannot say
  * which. With 'half' the carrier's half is always solid; what would meet it
  * changes instead (displayStyles).
  */
 export const CARRIER_MARKS = [
+  { id: 'half', label: tk('Yarısı siyah (klasik)') },
   { id: 'split', label: tk('Bölünmüş (NSGC 2022)') },
   { id: 'dot', label: tk('Ortada nokta') },
-  { id: 'half', label: tk('Yarısı siyah (klasik)') },
 ];
 
 const conditionsOf = (p) => (Array.isArray(p.conditions) ? p.conditions : []).filter((c) => c && typeof c.label === 'string' && c.label.trim());
@@ -65,7 +66,7 @@ export const isUnnamedAffected = (p) => !!p.affected && !p.proband && !condition
  * only when no fill is left for such a finding: then plain carriers keep the
  * NSGC 2022 hatching.
  */
-export function displayStyles(people = [], key = [], carrierMark = 'split') {
+export function displayStyles(people = [], key = [], carrierMark = 'half') {
   const out = key.map((e) => ({ ...e }));
   const used = () => new Set(out.map((e) => e.fill));
   // in place of black, the boldest pattern first (checkered reads as dark; the two hatchings are kept apart)
@@ -164,7 +165,7 @@ export function keyIndex(key, label) {
  * carrierMark 'dot' a plain carrier is drawn as the rest of the symbol plus
  * { dot: true } — a dot in the middle (CARRIER_MARKS).
  */
-export function fillFor(person, key = [], carrierMark = 'split', styles = {}) {
+export function fillFor(person, key = [], carrierMark = 'half', styles = {}) {
   if (carrierMark === 'dot' && person.carrier) {
     // the dot: the rest of the symbol as for a non-carrier; a carried finding with a name keeps its half
     const f = regionsFor(person, key, false, styles, carrierMark);

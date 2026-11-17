@@ -312,7 +312,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       && c.label.trim().toLocaleLowerCase('tr') === entry.label.trim().toLocaleLowerCase('tr')));
     // a carrier without a named finding: its own pattern (NSGC 2022 §4.5) or the dot the
     // viewer chose (Ayarlar), explained in the key
-    const carrierMark = (drawing && drawing.carrierMark) || 'split';
+    const carrierMark = (drawing && drawing.carrierMark) || 'half';
     // with the classic solid half the carrier's mark never changes; a finding that would meet it is
     // shown in another pattern, in the drawing and the key alike (conditionKey.js displayStyles)
     const styles = displayStyles(nodes, conditionKey, carrierMark);

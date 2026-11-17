@@ -92,7 +92,9 @@ describe('the legend follows the findings', () => {
     expect(partsOf(person('mother'))).toEqual(['solid:carrier@90-270']);
     expect(person('mother').affected).toBe(false);
     expect(fillFor({ affected: true }, key())).toEqual({ mode: 'full' });
-    expect(partsOf({ carrier: true }, key())).toEqual(['cross:carrier@90-270']);
+    expect(partsOf({ carrier: true }, key(), 'split')).toEqual(['cross:carrier@90-270']);
+    // by default (clinician decision 2026-11-17) the person-level carrier's half is solid
+    expect(partsOf({ carrier: true }, key())).toEqual(['solid:carrier@90-270']);
   });
 
   it('a carrier with findings: the carrier half on the left, the findings share the right half in equal parts', () => {
@@ -102,7 +104,7 @@ describe('the legend follows the findings', () => {
     expect(partsOf({ conditions: [...carries, ...aff('C', 'B')] }, k)).toEqual(['solid:carrier@90-270', 'hatch@270-360', 'dots@360-450']);
     expect(partsOf({ conditions: [...carries, ...aff('B', 'C', 'D', 'E')] }, k)).toEqual(['solid:carrier@90-270', 'hatch@270-315', 'dots@315-360', 'grey@360-405', 'horiz@405-450']);
     // a person-level carrier: the half in its own pattern, never a finding's
-    expect(partsOf({ carrier: true, conditions: aff('B', 'C') }, k)).toEqual(['cross:carrier@90-270', 'hatch@270-360', 'dots@360-450']);
+    expect(partsOf({ carrier: true, conditions: aff('B', 'C') }, k, 'split')).toEqual(['cross:carrier@90-270', 'hatch@270-360', 'dots@360-450']);
   });
 
   it('two carried findings share the left half (upper, lower); affected without a named finding fills the right half', () => {

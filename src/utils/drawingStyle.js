@@ -75,14 +75,15 @@ export const fontById = (id) => DRAWING_FONTS.find(f => f.id === id) || DRAWING_
 // name, the key and the notes (clinician requests 2026-10-30, 2026-11-05); the layout gives larger text more room
 // paper: the page under the drawing on screen (paper.js; clinician request 2026-11-03)
 // carrierMark: a carrier without a named finding, divided (NSGC 2022), dot, or half solid (conditionKey.js CARRIER_MARKS;
-// 2026-11-04, 2026-11-16)
+// 2026-11-04, 2026-11-16); half solid by default since 2026-11-17 (clinician decision) — carrierMarkV marks a choice
+// made since then: one stored before, when the divided half was the default and saved with every change, opens as 'half'
 // theme: the screens' accent colour, warm to cool (THEMES); ringClear: how see-through the ring's parts are, in %
 // (RING_CLEAR); panelWidth: the side panel's width in px, dragged at its edge, 0 = the usual width (PANEL_WIDTH)
 // (clinician requests 2026-11-07) — the look of the screen only, never the drawing or a file;
 // tourOffer: the first opening offers the guided tour, until it is started or put off (2026-11-09)
 // touchMode: the touch screen for a phone ('auto': on a phone; 'on' / 'off'; clinician request 2026-11-10)
 // sameSexPartners: same-sex partners may be made (clinician decision 2026-11-10; off unless chosen)
-export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, textSize: 100, paper: 'plain', carrierMark: 'split', theme: 'indigo', mode: 'system', ringClear: 5, panelWidth: 0, tourOffer: true, sameSexPartners: false, touchMode: 'auto' };
+export const DEFAULT_VIEW = { drawStyle: 'standard', fontId: 'standard', plainNumbers: true, exportAs: 'screen', openHelp: true, textSize: 100, paper: 'plain', carrierMark: 'half', carrierMarkV: 2, theme: 'indigo', mode: 'system', ringClear: 5, panelWidth: 0, tourOffer: true, sameSexPartners: false, touchMode: 'auto' };
 
 /**
  * Day or night (clinician 2026-11-11: users found the screen too white): 'system' follows the device.
@@ -166,7 +167,8 @@ export function normalizeView(v) {
     openHelp: o.openHelp !== false,
     textSize: textSizeOf(o),
     paper: PAPERS.some(p => p.id === o.paper) ? o.paper : 'plain',
-    carrierMark: CARRIER_MARKS.some(m => m.id === o.carrierMark) ? o.carrierMark : 'split',
+    carrierMark: o.carrierMarkV === 2 && CARRIER_MARKS.some(m => m.id === o.carrierMark) ? o.carrierMark : 'half',
+    carrierMarkV: 2,
     theme: THEMES.some(x => x.id === o.theme) ? o.theme : 'indigo',
     mode: ['light', 'dark'].includes(o.mode) ? o.mode : 'system',
     ringClear: clearOf(o),
@@ -216,7 +218,7 @@ export function drawingSpec(view) {
     fontId: font.id,
     legendScale: scaleOf(view),
     paper: view.paper || 'plain', // the screen only: an export loses it
-    carrierMark: view.carrierMark || 'split', // notation, not look: exports keep it
+    carrierMark: view.carrierMark || 'half', // notation, not look: exports keep it
   };
 }
 

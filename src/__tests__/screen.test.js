@@ -1097,6 +1097,7 @@ describe('more of what the clinician sees', () => {
     // someone carries Miyop (its half solid) and the mother is a carrier without a name: with "Yarısı siyah" her half is solid too
     await run(() => { S().addFinding('pat_gf', 'Miyop', null); S().setFindingStatus('pat_gf', 'Miyop', 'carrier'); S().updateIndividual('mother', { carrier: true }); });
     await run(() => S().setFindingStyle('Miyop', { fill: 'solid' }));
+    await run(() => useViewSettings.getState().setView({ carrierMark: 'split' }));
     const paint = () => {
       const row = $$('.findings-panel .finding-row').find(r => r.textContent.includes('Miyop'));
       return row.querySelector('.finding-glyph g[clip-path] rect').getAttribute('fill');
@@ -1122,7 +1123,7 @@ describe('more of what the clinician sees', () => {
       // the stored choice is untouched
       expect(S().doc.graph.conditionKey.find(e => e.label === 'Miyop').fill).toBe('solid');
     } finally {
-      await run(() => useViewSettings.getState().setView({ carrierMark: 'split' }));
+      await run(() => useViewSettings.getState().setView({ carrierMark: 'half' }));
       await key('Escape');
     }
   });
@@ -1714,13 +1715,20 @@ describe('notation per the literature (NSGC 2022 and its 2025 correction)', () =
     expect([...drawn(ect).querySelectorAll('text')].some(t => t.textContent === 'ECT')).toBe(true);
   });
 
-  it('a carrier without a named finding: the left half cross-hatched, explained as "Taşıyıcı" in the key; never the old dot', async () => {
+  it('a carrier without a named finding: the left half solid by default (clinician decision 2026-11-17), cross-hatched with "Bölünmüş (NSGC 2022)", explained as "Taşıyıcı" in the key; never the old dot', async () => {
     await run(() => { S().updateIndividual('mother', { carrier: true }); S().updateIndividual('father', { carrier: true, affected: true }); });
     for (const id of ['mother', 'father']) {
-      expect(drawn(id).querySelector('.condition-carrier').getAttribute('fill')).toBe('url(#fill-cross)');
+      expect(drawn(id).querySelector('.condition-carrier').getAttribute('fill')).toBe('#1e293b');
       expect(drawn(id).querySelector('.carrier-dot')).toBeNull();
     }
-    expect(drawn('father').querySelector('.condition-region').getAttribute('fill')).not.toBe('url(#fill-cross)');
+    expect(drawn('father').querySelector('.condition-region').getAttribute('fill')).not.toBe('#1e293b');
+    try {
+      await run(() => useViewSettings.getState().setView({ carrierMark: 'split' }));
+      for (const id of ['mother', 'father']) expect(drawn(id).querySelector('.condition-carrier').getAttribute('fill')).toBe('url(#fill-cross)');
+      expect(drawn('father').querySelector('.condition-region').getAttribute('fill')).not.toBe('url(#fill-cross)');
+    } finally {
+      await run(() => useViewSettings.getState().setView({ carrierMark: 'half' }));
+    }
     const row = $$('.condition-legend text').find(t => t.textContent === 'Taşıyıcı');
     expect(row).toBeTruthy();
     expect(row.classList.contains('editable')).toBe(false);
@@ -1763,7 +1771,7 @@ describe('notation per the literature (NSGC 2022 and its 2025 correction)', () =
       const copy = prepareExportSvg($('.pedigree-viewport').ownerSVGElement);
       expect(copy.querySelectorAll('.carrier-dot').length).toBeGreaterThanOrEqual(3);
     } finally {
-      await run(() => useViewSettings.getState().setView({ carrierMark: 'split', exportAs: 'screen' }));
+      await run(() => useViewSettings.getState().setView({ carrierMark: 'half', exportAs: 'screen' }));
     }
     expect(drawn('mother').querySelector('.carrier-dot')).toBeNull();
     expect(drawn('mother').querySelector('.condition-carrier')).toBeTruthy();
@@ -1813,6 +1821,7 @@ describe('notation per the literature (NSGC 2022 and its 2025 correction)', () =
     expect(half('pat_gf').getAttribute('fill')).not.toBe('#1e293b');
     await run(() => S().updateIndividual('father', { affected: false }));
     expect(half('pat_gf').getAttribute('fill')).toBe('#1e293b');
+    await run(() => useViewSettings.getState().setView({ carrierMark: 'half' }));
   });
 
   it('a carrier of a named finding keeps that finding\'s pattern with the dot chosen: a dot cannot say which', async () => {
@@ -1823,7 +1832,7 @@ describe('notation per the literature (NSGC 2022 and its 2025 correction)', () =
       expect(drawn('mother').querySelector('.condition-carrier')).toBeTruthy();
       expect(drawn('mother').querySelector('.carrier-dot')).toBeNull();
     } finally {
-      await run(() => useViewSettings.getState().setView({ carrierMark: 'split' }));
+      await run(() => useViewSettings.getState().setView({ carrierMark: 'half' }));
     }
   });
 });
@@ -2061,15 +2070,16 @@ describe('the Settings window (clinician request 2026-11-03)', () => {
     expect(genetic.querySelector('svg text')).toBeNull();
     expect(genetic.textContent).toMatch(/Sembolün altında sonuç satırları/);
     const carrier = () => rows().find(li => li.querySelector('.set-row-title').textContent === 'Taşıyıcı').querySelector('svg');
-    expect(carrier().querySelector('pattern')).not.toBeNull(); // split (NSGC 2022) by default
-    await run(() => views.getState().setView({ carrierMark: 'dot' }));
-    expect(carrier().querySelector('pattern')).toBeNull();
-    expect(carrier().querySelector('circle')).not.toBeNull();
-    await run(() => views.getState().setView({ carrierMark: 'half' }));
+    // the left half solid by default (clinician decision 2026-11-17)
     expect(carrier().querySelector('pattern')).toBeNull();
     expect(carrier().querySelector('circle')).toBeNull();
     expect(carrier().querySelector('path[d="M13,7h9v18h-9z"]').getAttribute('fill')).not.toMatch(/url/);
+    await run(() => views.getState().setView({ carrierMark: 'dot' }));
+    expect(carrier().querySelector('pattern')).toBeNull();
+    expect(carrier().querySelector('circle')).not.toBeNull();
     await run(() => views.getState().setView({ carrierMark: 'split' }));
+    expect(carrier().querySelector('pattern')).not.toBeNull();
+    await run(() => views.getState().setView({ carrierMark: 'half' }));
     await key('Escape');
   });
 
