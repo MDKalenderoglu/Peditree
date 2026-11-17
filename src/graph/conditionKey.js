@@ -6,7 +6,7 @@
  * fixed quarter per finding of 2026-10-24: with a carrier's half and three or
  * more findings the quarters crowded into slivers no one could read).
  *
- * Model: graph.conditionKey = [{ id, label, fill }] — one entry per finding
+ * Model: graph.conditionKey = [{ id, label, fill, variant? }] — one entry per finding
  * that at least one person has (person.conditions[].label, matched without
  * case). The fill is the finding's sign, unique in the key: a new finding
  * gets the next free one, the clinician may choose another; it keeps it while
@@ -60,7 +60,6 @@ export const CARRIER_MARKS = [
 ];
 
 const conditionsOf = (p) => (Array.isArray(p.conditions) ? p.conditions : []).filter((c) => c && typeof c.label === 'string' && c.label.trim());
-const isPlainCarrier = (p) => !!p.carrier && !conditionsOf(p).some((c) => c.status === 'carrier');
 // "affected" set by hand without a finding named: the whole symbol solid, or the right half beside a carrier's (the proband aside)
 export const isUnnamedAffected = (p) => !!p.affected && !p.proband && !conditionsOf(p).some((c) => c.status === 'affected');
 
@@ -130,7 +129,9 @@ export function deriveConditionKey(graph) {
     if (!used.has(normLabel(e.label))) continue;
     // an entry with no fill, or one another entry already has, gets the next free fill; a quarter from before is dropped
     const fill = validStyle(e) && !styleTaken(key, e) ? e.fill : (suggestStyle(key) || FALLBACK_STYLE).fill;
-    key.push({ id: e.id, label: e.label, fill });
+    // the finding's shared variant (findings.setFindingVariant) stays with it
+    const variant = typeof e.variant === 'string' && e.variant.trim() ? e.variant.trim() : null;
+    key.push({ id: e.id, label: e.label, fill, ...(variant ? { variant } : {}) });
   }
   const have = new Set(key.map((e) => normLabel(e.label)));
   let n = Math.max(0, ...key.map((e) => Number(String(e.id).replace(/^k/, '')) || 0));

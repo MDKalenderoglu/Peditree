@@ -1154,6 +1154,29 @@ describe('more of what the clinician sees', () => {
     await run(() => S().clearSelection());
   });
 
+  it('Bulgu → Taşıyıcı → Genetik test asks the result at once; written there, it stands under the affected relative too (clinician request 2026-11-17)', async () => {
+    await run(() => S().addFinding('proband', 'Kistik fibrozis', null));
+    try {
+      await select('mother');
+      await key('b');
+      const row = () => $$('.findings-panel .finding-row').find(r => r.textContent.includes('Kistik fibrozis'));
+      // affected relatives' rows offer it on request; the carrier's row asks it once the basis is a test
+      await click([...row().querySelectorAll('.finding-state button')].find(b => b.textContent === 'Taşıyıcı'));
+      await click([...row().querySelectorAll('.carrier-basis button')].find(b => b.textContent === 'Genetik test'));
+      const field = row().querySelector('.finding-variant input');
+      expect(field.getAttribute('placeholder')).toMatch(/CFTR:c\.1234G>A/);
+      await typeInto(field, 'CFTR:c.1234G>A');
+      await key('Enter', {}, field);
+      expect(S().doc.graph.conditionKey.find(e => e.label === 'Kistik fibrozis').variant).toBe('CFTR:c.1234G>A');
+      for (const id of ['mother', 'proband']) {
+        expect(S().doc.graph.individuals.find(i => i.id === id).geneticNote).toBe('CFTR:c.1234G>A');
+        expect([...drawn(id).querySelectorAll('text')].some(t => t.textContent.includes('CFTR:c.1234G>A'))).toBe(true);
+      }
+    } finally {
+      await key('Escape');
+    }
+  });
+
   it('Bulgu: the red bin removes a finding from the whole pedigree after one question; Vazgeç keeps it (clinician request 2026-11-17)', async () => {
     await run(() => { S().addFinding('mother', 'Miyop', null); S().setFindingStatus('father', 'Miyop', 'carrier'); S().addFinding('mother', 'Kolestaz', null); });
     try {

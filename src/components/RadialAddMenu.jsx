@@ -186,7 +186,7 @@ function sectorPath(a0, a1, r, R, gap = 6, cOut = 12, cIn = 7) {
 
 export default function RadialAddMenu({
   anchor, node, pedigreeData, onAddSibling, onAddChild, onAddSpouse, onAddParents, onAddTwin,
-  onUpdate, onSetProband, onClearProband, onSetConsultand, onClearConsultand, onAddFinding, onSetFindingStatus, onSetFindingStyle, onSetFindingOnset, onRenameFinding, onRemoveFinding,
+  onUpdate, onSetProband, onClearProband, onSetConsultand, onClearConsultand, onAddFinding, onSetFindingStatus, onSetFindingStyle, onSetFindingOnset, onRenameFinding, onRemoveFinding, onSetFindingVariant,
   onNeedRoom, sameSex = false, dock = false, onDetails, onSetChildlessness, ref,
 }) {
   const [active, setActive] = useState(null);   // sector under the pointer
@@ -235,7 +235,7 @@ export default function RadialAddMenu({
       // running under the top bar (clinician report 2026-11-17)
       const stage = el.closest('.canvas-stage');
       if (stage && stage.clientHeight && el.classList.contains('findings-panel')) el.style.maxHeight = `${stage.clientHeight - 16}px`;
-      // a Bilgiler part's box stands beside the list: both must be on screen
+      // a Bilgiler part's box (or the carrier basis question) stands beside the list: both must be on screen
       const aside = el.querySelector('.ring-aside');
       // measured at full size: the opening growth (ui.css soft-in, scale 0.97 → 1) would make a tall list
       // look 3 % shorter and leave it running under the top bar once grown (clinician report 2026-11-17)
@@ -252,7 +252,7 @@ export default function RadialAddMenu({
       const u = ringEl ? spanOf([r, ringEl.getBoundingClientRect()]) : r;
       const px = u.right - u.left <= h.width - 16 ? shiftInto(u.left, u.right, h.left, h.right) : 0;
       const py = u.bottom - u.top <= h.height - 16 ? shiftInto(u.top, u.bottom, h.top, h.bottom) : 0;
-      const opened = `${node && node.id}|${active}|${panel}|${infoFor ? infoFor.part : ''}`;
+      const opened = `${node && node.id}|${active}|${panel}|${infoFor ? infoFor.part : ''}|${basisFor || ''}`;
       let sx = 0, sy = 0; // what the drawing slides now (once per opening); the popup itself makes up the rest
       if (onNeedRoom && (Math.abs(px) > 1 || Math.abs(py) > 1) && slid.current !== opened) {
         slid.current = opened;
@@ -272,7 +272,7 @@ export default function RadialAddMenu({
     const watch = new ResizeObserver(fit);
     watch.observe(el);
     return () => { watch.disconnect(); cancelAnimationFrame(raf); };
-  }, [active, panel, infoFor, anchor.x, anchor.y, onNeedRoom]);
+  }, [active, panel, infoFor, basisFor, anchor.x, anchor.y, onNeedRoom]);
   // keyboard (App): a letter opens a sector's choices or a satellite's panel
   const kbOpen = useRef(false);
   useImperativeHandle(ref, () => ({
@@ -590,7 +590,12 @@ export default function RadialAddMenu({
           title: t('Kişi etkilenmemiştir, ancak hastalığa yol açan varyantı taşır'),
           aside: basisFor === node.id || (node.carrier && !node.carrierBasis) ? (
             <div className={`radial-info-box ring-aside${opensRight(SATELLITES.find((x) => x.key === 'status')) ? '' : ' ring-aside-left'}`}>
-              <CarrierBasisChoice value={node.carrierBasis} onPick={(b) => { onUpdate(node.id, { carrier: true, carrierBasis: b }); setBasisFor(null); }} />
+              <CarrierBasisChoice value={node.carrierBasis} onPick={(b) => {
+                onUpdate(node.id, { carrier: true, carrierBasis: b });
+                setBasisFor(null);
+                // a genetic test: its result is written next, in Bilgiler → Genetik test (clinician request 2026-11-17)
+                if (b === 'test') { setPanel('note'); setInfoFor({ node: node.id, part: 'genetic' }); }
+              }} />
             </div>
           ) : null,
         },
@@ -638,7 +643,7 @@ export default function RadialAddMenu({
   const panels = {
     findings: (
       <FindingsPalette node={node} conditionKey={pedigreeData.conditionKey || []} people={pedigreeData.individuals} compact
-        onSetStatus={onSetFindingStatus} onAdd={onAddFinding} onSetStyle={onSetFindingStyle} onSetOnset={onSetFindingOnset} onRename={onRenameFinding} onRemove={onRemoveFinding} />
+        onSetStatus={onSetFindingStatus} onAdd={onAddFinding} onSetStyle={onSetFindingStyle} onSetOnset={onSetFindingOnset} onRename={onRenameFinding} onRemove={onRemoveFinding} onSetVariant={onSetFindingVariant} />
     ),
     twins: (
       <span className="radial-hint">{isLoss ? t('Düşük, ölü doğum ya da süren gebelik kaydına buradan ikiz eklenemez.') : t('İkiz eklemek için önce kişinin anne ve babası eklenmelidir (halkanın üstündeki Ebeveyn bölümü).')}</span>

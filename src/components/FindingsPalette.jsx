@@ -106,7 +106,7 @@ function FindingName({ label, onRename }) {
   );
 }
 
-export default function FindingsPalette({ node, conditionKey = [], people, onSetStatus, onAdd, onSetStyle, onSetOnset, onRename, onRemove, compact = false }) {
+export default function FindingsPalette({ node, conditionKey = [], people, onSetStatus, onAdd, onSetStyle, onSetOnset, onRename, onRemove, onSetVariant, compact = false }) {
   const shownKey = useShownKey(conditionKey, people);
   const [draft, setDraft] = useState('');
   const [style, setStyle] = useState(null);
@@ -115,6 +115,8 @@ export default function FindingsPalette({ node, conditionKey = [], people, onSet
   const [removing, setRemoving] = useState(null);
   // "Taşıyıcı" for a finding: what it rests on is asked before it is set (clinician decision 2026-11-17)
   const [asking, setAsking] = useState(null);
+  // an affected person's row opens the variant field on request; a tested carrier's shows it at once
+  const [variantFor, setVariantFor] = useState(null);
   const holders = (label) => (people || []).filter((p) => Array.isArray(p.conditions) && p.conditions.some((c) => c && normLabel(c.label) === normLabel(label))).length;
   const shape = node.sex === 'female' ? 'circle' : 'square';
   const conds = Array.isArray(node.conditions) ? node.conditions : [];
@@ -166,6 +168,18 @@ export default function FindingsPalette({ node, conditionKey = [], people, onSet
                     <CarrierBasisChoice value={st === 'carrier' ? basisOf(e.label) : undefined}
                       onPick={(b) => { setAsking(null); onSetStatus(node.id, e.label, 'carrier', b); }} />
                   </div>
+                )}
+                {onSetVariant && (st === 'affected' || (st === 'carrier' && basisOf(e.label) === 'test')) && (
+                  e.variant || variantFor === e.id || st === 'carrier' ? (
+                    <div className="finding-variant">
+                      <DraftField key={`${node.id}-${e.id}-variant-${e.variant || ''}`} type="text" className="input" autoFocus={variantFor === e.id || (st === 'carrier' && !e.variant)}
+                        placeholder={t('Genetik test sonucu (örneğin CFTR:c.1234G>A)')} aria-label={t('{label}: genetik test sonucu', { label: e.label })}
+                        value={e.variant || ''} onCommit={(v) => { setVariantFor(null); onSetVariant(e.label, v); }} />
+                      <span className="field-hint">{t('Bu bulguda etkilenmiş olanların ve genetik testle taşıyıcı olanların genetik test satırına da yazılır. Zigoziteyi (het, hom) her kişinin kendi satırına ekleyebilirsiniz.')}</span>
+                    </div>
+                  ) : (
+                    <button className="finding-variant-add" onClick={() => setVariantFor(e.id)}>{t('+ Genetik test sonucu')}</button>
+                  )
                 )}
                 {onRemove && (
                   <button className="finding-remove" title={t('Bulguyu pedigriden siler: bu bulguya sahip herkesten ve açıklamadan kaldırılır')}

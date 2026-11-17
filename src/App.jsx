@@ -322,7 +322,7 @@ function App() {
     deleteIndividual, createUnionBetween, addCustomConsanguinity,
     reorderChild, setUnionRelationshipBackground, setUnionStatus,
     setMultipleBirth, addMultipleSibling, setMultipleZygosity, leaveMultipleBirth, setGroupCount, splitGroup, mergeIntoGroup,
-    addFinding, setFindingStatus, setFindingStyle, renameFinding, removeFinding, wizardData, updateWizardData,
+    addFinding, setFindingStatus, setFindingStyle, renameFinding, removeFinding, setFindingVariant, wizardData, updateWizardData,
     addParentsTo, addSiblingTo, moveSideways, dropOnto, setFindingOnset, setChildlessness, setLineNote, setPregnancyKind, setGestationWeeks,
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
@@ -1011,7 +1011,7 @@ function App() {
             <RadialAddMenu ref={ringRef} anchor={anchor} node={selectedNode} pedigreeData={pedigreeData} onNeedRoom={panBy} dock={dock} onDetails={dock ? () => setSheetFull(true) : undefined}
               onAddSibling={addSiblingTo} onAddSpouse={addSpouseTo} onAddParents={addParentsTo} onAddTwin={addMultipleSibling}
               onUpdate={updateIndividual} onSetProband={setProband} onClearProband={clearProband} onSetConsultand={setConsultand} onClearConsultand={clearConsultand}
-              onAddFinding={addFinding} onSetFindingStatus={setFindingStatus} onSetFindingStyle={setFindingStyle} onSetFindingOnset={setFindingOnset} onRenameFinding={renameFinding} onRemoveFinding={removeFinding}
+              onAddFinding={addFinding} onSetFindingStatus={setFindingStatus} onSetFindingStyle={setFindingStyle} onSetFindingOnset={setFindingOnset} onRenameFinding={renameFinding} onRemoveFinding={removeFinding} onSetFindingVariant={setFindingVariant}
               onAddChild={(unionId, sex, targetId, extra) => (unionId ? addChildToUnion(unionId, sex, extra) : addChildTo(targetId, sex, extra))}
               onSetChildlessness={setChildlessness}
               sameSex={!!view.sameSexPartners} />

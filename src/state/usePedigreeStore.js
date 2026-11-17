@@ -439,6 +439,7 @@ export const usePedigreeStore = create((zSet, get) => {
     setFindingStyle: (label, style) => apply(findings.setFindingStyle(get().doc, label, style)),
     renameFinding: (oldLabel, newLabel) => apply(findings.renameFinding(get().doc, oldLabel, newLabel)),
     removeFinding: (label) => apply(findings.removeFinding(get().doc, label)),
+    setFindingVariant: (label, variant) => apply(findings.setFindingVariant(get().doc, label, variant)),
     setPregnancyKind: (id, kind) => apply(ops.setPregnancyKind(get().doc, id, kind)),
     setGestationWeeks: (id, weeks) => apply(ops.setGestationWeeks(get().doc, id, weeks)),
     setFindingOnset: (personId, label, onset) => apply(findings.setFindingOnset(get().doc, personId, label, onset)),

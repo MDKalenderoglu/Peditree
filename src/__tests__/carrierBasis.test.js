@@ -105,3 +105,54 @@ describe('finding patterns that cannot be misread (clinician report 2026-11-17)'
     expect(displayStyles([p], key, 'split').key[1].fill).toBe('solid');
   });
 });
+
+describe('a finding\'s genetic test result, shared by everyone with a result for it (clinician request 2026-11-17)', () => {
+  beforeEach(() => S().resetPedigree());
+  const lines = (id) => String(P(id).geneticNote || '').split('\n').filter(Boolean);
+
+  it('written once, it lands on the tested carriers and the affected, marked tested (+); a carrier by report or someone without the finding gets nothing', () => {
+    S().setFindingStatus('mother', 'FMF', 'carrier', 'test');
+    S().setFindingStatus('father', 'FMF', 'carrier', 'report');
+    S().addFinding('proband', 'FMF');
+    expect(S().setFindingVariant('FMF', '  MEFV:c.2080A>G ').ok).toBe(true);
+    expect(lines('mother')).toEqual(['MEFV:c.2080A>G']);
+    expect(lines('proband')).toEqual(['MEFV:c.2080A>G']);
+    expect(P('proband').geneticTest).toBe('tested');
+    expect(P('father').geneticNote).toBeUndefined();
+    expect(P('pat_gf').geneticNote).toBeUndefined();
+    // kept with the finding through every later operation, and in a saved file
+    S().updateIndividual('mat_gf', { age: '70' });
+    expect(S().doc.graph.conditionKey[0].variant).toBe('MEFV:c.2080A>G');
+    S().openProjectFile(S().exportProjectFile());
+    expect(S().doc.graph.conditionKey[0].variant).toBe('MEFV:c.2080A>G');
+  });
+
+  it('each line is the person\'s own (zygosity beside it); someone who comes to have the finding later gets the line, someone who loses it loses the line as written', () => {
+    S().setFindingStatus('mother', 'FMF', 'carrier', 'test');
+    S().setFindingVariant('FMF', 'MEFV:c.2080A>G');
+    S().updateIndividual('mother', { geneticNote: 'MEFV:c.2080A>G het' });
+    S().addFinding('proband', 'FMF');
+    expect(lines('proband')).toEqual(['MEFV:c.2080A>G']);
+    S().setFindingStatus('father', 'FMF', 'carrier', 'test');
+    expect(lines('father')).toEqual(['MEFV:c.2080A>G']);
+    S().setFindingStatus('proband', 'FMF', 'none');
+    expect(P('proband').geneticNote).toBeUndefined();
+    // a carrier by report: no test result
+    S().setFindingStatus('father', 'FMF', 'carrier', 'report');
+    expect(P('father').geneticNote).toBeUndefined();
+    expect(lines('mother')).toEqual(['MEFV:c.2080A>G het']); // her own line, untouched
+  });
+
+  it('a changed result replaces the line where it stands; an empty one takes it away; a very long one is refused', () => {
+    S().setFindingStatus('mother', 'FMF', 'carrier', 'test');
+    S().updateIndividual('mother', { geneticNote: 'Kromozom analizi normal' });
+    S().setFindingVariant('FMF', 'MEFV:c.2080A>G');
+    expect(lines('mother')).toEqual(['Kromozom analizi normal', 'MEFV:c.2080A>G']);
+    S().setFindingVariant('FMF', 'MEFV:c.2177T>C');
+    expect(lines('mother')).toEqual(['Kromozom analizi normal', 'MEFV:c.2177T>C']);
+    S().setFindingVariant('FMF', '');
+    expect(lines('mother')).toEqual(['Kromozom analizi normal']);
+    expect(S().doc.graph.conditionKey[0].variant).toBeUndefined();
+    expect(S().setFindingVariant('FMF', 'x'.repeat(121)).ok).toBe(false);
+  });
+});

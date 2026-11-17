@@ -11,7 +11,7 @@
  */
 import { commit, block } from './ops';
 import { normalizeAge } from '../utils/age';
-import { CARRIER_BASES, GENETIC_TESTED } from './model';
+import { CARRIER_BASES, GENETIC_TESTED, geneticLines } from './model';
 import { normLabel, keyEntry, styleTaken, keyFull, KEY_FULL_MESSAGE, FILLS } from './conditionKey';
 import { t } from '../i18n';
 
@@ -19,7 +19,31 @@ import { t } from '../i18n';
 // written as unknown, never as "no", e.g. in a PED file)
 const STATUSES = ['affected', 'carrier', 'unknown', 'none'];
 
-function applyStatus(person, label, status, basis) {
+/**
+ * A finding's variant (conditionKey entry `variant`, clinician request
+ * 2026-11-17): the genetic test result shared by everyone with the finding
+ * who has a result for it — affected, or a carrier whose basis is a genetic
+ * test. Written once, it lands as a line of each one's genetic test (and
+ * marks them tested, "+"); each line is then the person's own, so the
+ * zygosity can be written beside it. Someone who comes to have the finding
+ * later gets the line too; someone who no longer has it loses the line as
+ * it was written.
+ */
+export const VARIANT_MAX = 120;
+const hasResult = (c) => !!c && (c.status === 'affected' || (c.status === 'carrier' && c.basis === 'test'));
+const findingOf = (p, label) => (Array.isArray(p.conditions) ? p.conditions : []).find((c) => c && normLabel(c.label) === normLabel(label));
+function addLine(p, line) {
+  const lines = geneticLines(p);
+  if (!lines.includes(line)) lines.push(line);
+  p.geneticNote = lines.join('\n');
+  p.geneticTest = GENETIC_TESTED;
+}
+function dropLine(p, line) {
+  const lines = geneticLines(p).filter((l) => l !== line);
+  if (lines.length) p.geneticNote = lines.join('\n'); else delete p.geneticNote;
+}
+
+function applyStatus(person, label, status, basis, key = []) {
   const conds = Array.isArray(person.conditions) ? person.conditions : [];
   const rest = conds.filter((c) => normLabel(c.label) !== normLabel(label));
   const existing = conds.find((c) => normLabel(c.label) === normLabel(label));
@@ -28,6 +52,13 @@ function applyStatus(person, label, status, basis) {
   if (status === 'carrier' && basis) entry.basis = basis;
   if (status !== 'carrier') delete entry.basis;
   if (status === 'carrier' && basis === 'test' && !person.geneticTest) person.geneticTest = GENETIC_TESTED;
+  // the finding's shared variant follows whether the person has a result for it
+  const variant = (keyEntry(key, label) || {}).variant;
+  if (variant) {
+    const had = hasResult(existing), has = status !== 'none' && hasResult(entry);
+    if (!had && has) addLine(person, variant);
+    if (had && !has) dropLine(person, variant);
+  }
   const next = status === 'none' ? rest : [...rest, entry];
   person.conditions = next;
   const anyAffected = next.some((c) => c.status === 'affected');
@@ -53,7 +84,7 @@ export function setFindingStatus(doc, personId, label, status, basis) {
     const p = d.graph.individuals.find((i) => i.id === personId);
     if (!p) block(t('Kişi çizimde bulunamadı.'));
     if (status !== 'none' && !keyEntry(d.graph.conditionKey, label) && keyFull(d.graph.conditionKey)) block(t(KEY_FULL_MESSAGE));
-    applyStatus(p, label, status, basis);
+    applyStatus(p, label, status, basis, d.graph.conditionKey);
   });
 }
 
@@ -75,7 +106,35 @@ export function addFinding(doc, personId, label, style = null) {
       const n = Math.max(0, ...d.graph.conditionKey.map((e) => Number(String(e.id).replace(/^k/, '')) || 0)) + 1;
       d.graph.conditionKey.push({ id: `k${n}`, label: name, fill: style.fill });
     }
-    applyStatus(p, name, 'affected');
+    applyStatus(p, name, 'affected', undefined, d.graph.conditionKey);
+  });
+}
+
+/**
+ * The variant a finding's genetic test found, for everyone with a result for
+ * it (see VARIANT_MAX above): a new one is added to their genetic test lines,
+ * a changed one replaces the line as it was written, an empty one takes it
+ * away. Free text, as the clinician writes it ("CFTR:c.1234G>A").
+ */
+export function setFindingVariant(doc, label, variant) {
+  return commit(doc, (d) => {
+    const e = keyEntry(d.graph.conditionKey, label);
+    if (!e) block(t('Bu bulgu açıklamada yer almıyor.'));
+    const v = String(variant ?? '').replace(/\s+/g, ' ').trim();
+    if (v.length > VARIANT_MAX) block(t('Varyant en fazla {n} karakter olabilir.', { n: VARIANT_MAX }));
+    const old = e.variant;
+    if ((old || '') === v) return;
+    for (const p of d.graph.individuals) {
+      if (!hasResult(findingOf(p, label))) continue;
+      if (old) {
+        const lines = geneticLines(p);
+        const at = lines.indexOf(old);
+        if (at >= 0 && v) { lines[at] = v; p.geneticNote = lines.join('\n'); p.geneticTest = GENETIC_TESTED; continue; }
+        if (at >= 0) { dropLine(p, old); continue; }
+      }
+      if (v) addLine(p, v);
+    }
+    if (v) e.variant = v; else delete e.variant;
   });
 }
 
@@ -123,7 +182,7 @@ export function removeFinding(doc, label) {
     const e = keyEntry(d.graph.conditionKey, label);
     const had = d.graph.individuals.filter((p) => Array.isArray(p.conditions) && p.conditions.some((c) => c && normLabel(c.label) === normLabel(label)));
     if (!e && !had.length) block(t('Bu bulgu açıklamada yer almıyor.'));
-    for (const p of had) applyStatus(p, label, 'none');
+    for (const p of had) applyStatus(p, label, 'none', undefined, d.graph.conditionKey);
     d.graph.conditionKey = (d.graph.conditionKey || []).filter((x) => normLabel(x.label) !== normLabel(label));
   });
 }
