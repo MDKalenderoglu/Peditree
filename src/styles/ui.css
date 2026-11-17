@@ -1399,6 +1399,9 @@ html.kb-open .app-shell.touch .touch-sheet, html.kb-open .app-shell.touch .touch
   max-height: min(calc(var(--vvh, 100dvh) - 12px), calc(var(--vvh, 100dvh) + var(--vvtop, 0px) - var(--touch-bar-h, 56px) - 14px));
 }
 html.kb-open .app-shell.touch .zoom-controls { display: none !important; }
+/* the person's buttons (Ekle, Bulgu …) step aside while typing: the box being typed in has the sheet's room
+   (iPhone 2026-11-17: the bar stood over the genetic box); they come back with the keyboard gone */
+html.kb-open .app-shell.touch .touch-sheet .dock-tiles, html.kb-open .app-shell.touch .touch-sheet .dock-add { display: none; }
 html.kb-open .settings-backdrop, html.kb-open .relation-backdrop {
   inset: auto 0; top: var(--vvtop, 0px); height: var(--vvh, 100dvh); padding: 8px; align-items: flex-start;
 }

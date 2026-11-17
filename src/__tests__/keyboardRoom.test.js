@@ -79,6 +79,8 @@ describe('the keyboard and what is in sight (clinician report 2026-11-17)', () =
     expect(sheet).toMatch(/max-height: min\(calc\(var\(--vvh, 100dvh\) - 12px\), calc\(var\(--vvh, 100dvh\) \+ var\(--vvtop, 0px\) - var\(--touch-bar-h, 56px\) - 14px\)\)/);
     expect(sheet).toMatch(/top: auto/);
     expect(rule('html.kb-open .settings-backdrop, html.kb-open .relation-backdrop')).toMatch(/top: var\(--vvtop, 0px\); height: var\(--vvh, 100dvh\)/);
+    // the person's buttons step aside while typing (iPhone 2026-11-17: the bar stood over the genetic box)
+    expect(rule('html.kb-open .app-shell.touch .touch-sheet .dock-tiles, html.kb-open .app-shell.touch .touch-sheet .dock-add')).toMatch(/display: none/);
   });
 });
 
@@ -101,6 +103,21 @@ describe('the box brought into sight', () => {
     input.getBoundingClientRect = () => boxAt(200);
     reveal(input, sight);
     expect(body.scrollTop).toBe(0);
+    body.remove();
+  });
+
+  it('in sight but under the scrolling part\'s own edge (iPhone 2026-11-17): scrolled into what the part shows', () => {
+    const body = document.createElement('div');
+    body.style.overflowY = 'auto';
+    Object.defineProperty(body, 'scrollHeight', { value: 900 });
+    Object.defineProperty(body, 'clientHeight', { value: 300 });
+    body.getBoundingClientRect = () => ({ top: 100, bottom: 400, left: 0, right: 390, width: 390, height: 300 });
+    const input = document.createElement('input');
+    body.appendChild(input);
+    document.body.appendChild(body);
+    input.getBoundingClientRect = () => boxAt(380); // above the keyboard (500), below the part's edge (400)
+    reveal(input, sight);
+    expect(body.scrollTop).toBe(380 + 30 - (400 - 12));
     body.remove();
   });
 

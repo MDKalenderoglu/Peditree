@@ -48,10 +48,15 @@ export function reveal(el, sight, margin = 12) {
   if (!el || !sight) return;
   if (el.style && el.style.translate && el.classList.contains('inline-edit')) el.style.translate = '';
   const r = el.getBoundingClientRect();
-  const top = sight.vvtop + margin, bottom = sight.vvtop + sight.vvh - margin;
+  const box = scrollingParent(el);
+  // in sight, and inside what its scrolling part shows (iPhone 2026-11-17: the box stood in sight but under the
+  // sheet's own edge)
+  const seen = box && box.getBoundingClientRect();
+  const shown = seen && seen.height > 0 ? seen : null;
+  const top = Math.max(sight.vvtop, shown ? shown.top : -Infinity) + margin;
+  const bottom = Math.min(sight.vvtop + sight.vvh, shown ? shown.bottom : Infinity) - margin;
   const below = r.bottom - bottom, above = top - r.top;
   if (below <= 0 && above <= 0) return;
-  const box = scrollingParent(el);
   if (box) {
     box.scrollTop += below > 0 ? below : -above;
     return;
