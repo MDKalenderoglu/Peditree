@@ -318,4 +318,8 @@ describe('the phone\'s sheet, close-set and inside its edges (iPhone report 2026
     expect(block('ui.css', '.touch-sheet .name-field')).toMatch(/grid-template-columns: auto minmax\(0, 1fr\);/);
     expect(block('ui.css', '.touch-sheet .card-foot')).toMatch(/display: none;/);
   });
+
+  it('an open Bilgiler part (Genetik, Not …) as wide as the rows of the sheet (iOS Simulator 2026-11-17: 280px, narrower than its rows)', () => {
+    expect(block('ui.css', '.ring-dock .ring-aside')).toMatch(/position: static; margin-top: 6px; width: auto;/);
+  });
 });
