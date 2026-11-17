@@ -1128,6 +1128,32 @@ describe('more of what the clinician sees', () => {
     }
   });
 
+  it('Bulgu → Taşıyıcı and several people at once: the basis is asked first, nothing is set before the answer (clinician decision 2026-11-17)', async () => {
+    await run(() => S().addFinding('proband', 'FMF', null));
+    try {
+      await select('mother');
+      await key('b');
+      const row = () => $$('.findings-panel .finding-row').find(r => r.textContent.includes('FMF'));
+      await click([...row().querySelectorAll('.finding-state button')].find(b => b.textContent === 'Taşıyıcı'));
+      expect(S().doc.graph.individuals.find(i => i.id === 'mother').conditions || []).toEqual([]);
+      const ask = row().querySelector('.finding-basis .carrier-basis');
+      expect(ask.textContent).toMatch(/Taşıyıcılığın dayanağı nedir\?/);
+      await click([...ask.querySelectorAll('button')].find(b => b.textContent === 'Genetik test'));
+      expect(S().doc.graph.individuals.find(i => i.id === 'mother')).toMatchObject({ geneticTest: 'tested', conditions: [{ label: 'FMF', status: 'carrier', basis: 'test' }] });
+      expect(row().querySelector('.finding-basis')).toBeNull();
+    } finally {
+      await key('Escape');
+    }
+    // several people: "Taşıyıcı" asks once, for all of them
+    await run(() => { S().selectIndividual('mat_gf'); S().selectIndividual('mat_gm', { additive: true }); });
+    const chip = $$('.chips .chip').find(b => b.textContent.startsWith('Taşıyıcı'));
+    await click(chip);
+    expect(['mat_gf', 'mat_gm'].map(id => !!S().doc.graph.individuals.find(i => i.id === id).carrier)).toEqual([false, false]);
+    await click([...$('.card .carrier-basis').querySelectorAll('button')].find(b => b.textContent === 'Pedigriden zorunlu'));
+    expect(['mat_gf', 'mat_gm'].map(id => S().doc.graph.individuals.find(i => i.id === id).carrierBasis)).toEqual(['obligate', 'obligate']);
+    await run(() => S().clearSelection());
+  });
+
   it('Bulgu: the red bin removes a finding from the whole pedigree after one question; Vazgeç keeps it (clinician request 2026-11-17)', async () => {
     await run(() => { S().addFinding('mother', 'Miyop', null); S().setFindingStatus('father', 'Miyop', 'carrier'); S().addFinding('mother', 'Kolestaz', null); });
     try {
@@ -1355,9 +1381,17 @@ describe('more of what the clinician sees', () => {
     const on = () => choiceRows().filter(b => b.getAttribute('aria-pressed') === 'true').map(b => b.getAttribute('aria-label'));
     expect(on()).toEqual(['Etkilenmiş']);
     expect(choiceRows().find(b => b.classList.contains('on')).querySelector('.ring-check svg')).not.toBeNull();
+    // Taşıyıcı asks first what it rests on (clinician decision 2026-11-17); nothing is set before the answer
     await click(choiceRows().find(b => b.getAttribute('aria-label') === 'Taşıyıcı'));
-    expect(g().individuals.find(i => i.id === 'mother').carrier).toBe(true);
+    expect(g().individuals.find(i => i.id === 'mother').carrier).toBeFalsy();
+    const ask = $('.radial-panel .carrier-basis');
+    expect(ask.textContent).toMatch(/Taşıyıcılığın dayanağı nedir\?/);
+    expect([...ask.querySelectorAll('button')].map(b => b.textContent)).toEqual(['Genetik test', 'Pedigriden zorunlu', 'Beyana dayalı']);
+    await click([...ask.querySelectorAll('button')].find(b => b.textContent === 'Pedigriden zorunlu'));
+    expect(g().individuals.find(i => i.id === 'mother')).toMatchObject({ carrier: true, carrierBasis: 'obligate' });
     expect(on()).toEqual(['Etkilenmiş', 'Taşıyıcı']);
+    expect(choiceRows().find(b => b.getAttribute('aria-label') === 'Taşıyıcı').textContent).toContain('Pedigriden zorunlu');
+    expect($('.radial-panel .carrier-basis')).toBeNull();
     // the hidden choice comes into the same list
     expect(choiceLabels()).not.toContain('Presemptomatik');
     await click(choiceRows().find(b => b.textContent.includes('Diğer')));

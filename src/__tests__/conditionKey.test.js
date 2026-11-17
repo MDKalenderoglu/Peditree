@@ -47,10 +47,10 @@ describe('the legend follows the findings', () => {
   });
 
   it('the symbol is divided among the findings in equal parts, in the key\'s order, from the top clockwise', () => {
-    const k = K('solid', 'hatch', 'dots', 'grey', 'horiz');
+    const k = K('solid', 'hatch', 'dots', 'grid', 'horiz');
     expect(partsOf({ conditions: aff('B', 'A') }, k)).toEqual(['solid@270-450', 'hatch@450-630']);
     expect(partsOf({ conditions: aff('A', 'B', 'C') }, k)).toEqual(['solid@270-390', 'hatch@390-510', 'dots@510-630']);
-    expect(partsOf({ conditions: aff('A', 'B', 'C', 'D') }, k)).toEqual(['solid@270-360', 'hatch@360-450', 'dots@450-540', 'grey@540-630']);
+    expect(partsOf({ conditions: aff('A', 'B', 'C', 'D') }, k)).toEqual(['solid@270-360', 'hatch@360-450', 'dots@450-540', 'grid@540-630']);
     expect(partsOf({ conditions: aff('A', 'B', 'C', 'D', 'E') }, k)).toHaveLength(5);
   });
 
@@ -98,19 +98,19 @@ describe('the legend follows the findings', () => {
   });
 
   it('a carrier with findings: the carrier half on the left, the findings share the right half in equal parts', () => {
-    const k = K('solid', 'hatch', 'dots', 'grey', 'horiz');
+    const k = K('solid', 'hatch', 'dots', 'grid', 'horiz');
     const carries = [{ label: 'A', status: 'carrier' }];
     expect(partsOf({ conditions: [...carries, ...aff('B')] }, k)).toEqual(['solid:carrier@90-270', 'hatch@270-450']);
     expect(partsOf({ conditions: [...carries, ...aff('C', 'B')] }, k)).toEqual(['solid:carrier@90-270', 'hatch@270-360', 'dots@360-450']);
-    expect(partsOf({ conditions: [...carries, ...aff('B', 'C', 'D', 'E')] }, k)).toEqual(['solid:carrier@90-270', 'hatch@270-315', 'dots@315-360', 'grey@360-405', 'horiz@405-450']);
+    expect(partsOf({ conditions: [...carries, ...aff('B', 'C', 'D', 'E')] }, k)).toEqual(['solid:carrier@90-270', 'hatch@270-315', 'dots@315-360', 'grid@360-405', 'horiz@405-450']);
     // a person-level carrier: the half in its own pattern, never a finding's
     expect(partsOf({ carrier: true, conditions: aff('B', 'C') }, k, 'split')).toEqual(['cross:carrier@90-270', 'hatch@270-360', 'dots@360-450']);
   });
 
   it('two carried findings share the left half (upper, lower); affected without a named finding fills the right half', () => {
-    const k = K('hatch', 'grey');
+    const k = K('hatch', 'grid');
     const p = { affected: true, conditions: [{ label: 'A', status: 'carrier' }, { label: 'B', status: 'carrier' }] };
-    expect(partsOf(p, k)).toEqual(['hatch:carrier@180-270', 'grey:carrier@90-180', 'solid@270-450']);
+    expect(partsOf(p, k)).toEqual(['hatch:carrier@180-270', 'grid:carrier@90-180', 'solid@270-450']);
   });
 
   it('a carried finding drawn solid beside "affected" without a name: black stays with "affected", the finding takes another pattern — never a solid symbol', () => {
@@ -120,8 +120,8 @@ describe('the legend follows the findings', () => {
     const parts = fillFor(p, styles.key, 'split', styles).parts;
     expect(parts.map(q => q.fill)).toEqual(['checker', 'solid']);
     // and if no pattern were left, "affected" would take one instead of the carrier's black
-    const noPick = fillFor(p, k, 'split', { affectedFill: 'grey' }).parts;
-    expect(noPick.map(q => q.fill)).toEqual(['solid', 'grey']);
+    const noPick = fillFor(p, k, 'split', { affectedFill: 'grid' }).parts;
+    expect(noPick.map(q => q.fill)).toEqual(['solid', 'grid']);
   });
 
   it('the proband affected by X stays fully filled; both parents carry X; a parent’s extra finding is drawn on the right in its own pattern', () => {
@@ -140,12 +140,12 @@ describe('the legend follows the findings', () => {
     S().addFinding('father', 'C');
     S().addFinding('proband', 'D');
     const fills = () => ['A', 'B', 'C', 'D'].map(l => keyEntry(key(), l).fill);
-    expect(fills()).toEqual(['solid', 'hatch', 'dots', 'grey']);
+    expect(fills()).toEqual(['solid', 'hatch', 'dots', 'grid']);
     S().addSiblingTo('proband', 'female');
     const sib = S().doc.graph.parentChildRelationships.find(r => r.children.includes('proband')).children.find(c => c !== 'proband');
     S().setFindingStatus(sib, 'C', 'carrier');
     S().setFindingStatus(sib, 'A', 'affected');
-    expect(fills()).toEqual(['solid', 'hatch', 'dots', 'grey']);
+    expect(fills()).toEqual(['solid', 'hatch', 'dots', 'grid']);
     expect(partsOf(person('mother'))).toEqual(['solid@270-450', 'hatch@450-630']);
     expect(partsOf(person(sib))).toEqual(['dots:carrier@90-270', 'solid@270-450']);
   });
@@ -180,11 +180,11 @@ describe('the legend follows the findings', () => {
     // a file from before 2026-11-16: four findings, all solid in four quarters
     const old = {
       individuals: [{ id: 'a', conditions: aff('A', 'B', 'C', 'D') }],
-      conditionKey: ['q1', 'q2', 'q3', 'q4'].map((region, i) => ({ id: `k${i + 1}`, label: 'ABCD'[i], region, fill: i === 3 ? 'grey' : 'solid' })),
+      conditionKey: ['q1', 'q2', 'q3', 'q4'].map((region, i) => ({ id: `k${i + 1}`, label: 'ABCD'[i], region, fill: i === 3 ? 'grid' : 'solid' })),
     };
     expect(deriveConditionKey(old).conditionKey).toEqual([
       { id: 'k1', label: 'A', fill: 'solid' }, { id: 'k2', label: 'B', fill: 'hatch' },
-      { id: 'k3', label: 'C', fill: 'dots' }, { id: 'k4', label: 'D', fill: 'grey' },
+      { id: 'k3', label: 'C', fill: 'dots' }, { id: 'k4', label: 'D', fill: 'grid' },
     ]);
   });
 });
@@ -212,11 +212,11 @@ describe('black is kept for what has no name, where it is drawn (clinician 2026-
     const plain = { carrier: true };
     const full = displayStyles([plain, { conditions: aff('A') }], K(...FILLS), 'half');
     expect(partsOf(plain, full.key, 'half', full)).toEqual(['solid:carrier@90-270']);
-    expect(full.key[0].fill).toBe('grid');
+    expect(full.key[0].fill).toBe('bands');
     // beside a solid carrier half, "affected" without a name: one more spare, never a finding's pattern
     const both = { carrier: true, affected: true };
     const st = displayStyles([both, { conditions: aff('A') }], K(...FILLS), 'half');
-    expect(partsOf(both, st.key, 'half', st)).toEqual(['solid:carrier@90-270', 'bands@270-450']);
+    expect(partsOf(both, st.key, 'half', st)).toEqual(['solid:carrier@90-270', 'zigzag@270-450']);
     const shown = [...st.key.map(e => e.fill), st.affectedFill, 'solid'];
     expect(new Set(shown).size).toBe(shown.length); // every mark in the drawing is told apart
     // the stored key is untouched

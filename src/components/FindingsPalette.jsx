@@ -8,6 +8,7 @@
  */
 import { useId, useRef, useState } from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
+import CarrierBasisChoice from './CarrierBasis';
 import { t } from '../i18n';
 import DraftField from './DraftField';
 import { FILLS, FILL_LABEL, suggestStyle, styleTaken, normLabel, KEY_FULL_MESSAGE } from '../graph/conditionKey';
@@ -25,8 +26,8 @@ export function FindingGlyph({ fill = 'solid', carrier = false, shape = 'square'
     </pattern>
   );
   const paint = {
-    solid: INK, grey: '#9ca3af', hatch: `url(#h${uid})`, dots: `url(#d${uid})`, horiz: `url(#x${uid})`,
-    vert: `url(#v${uid})`, back: `url(#b${uid})`, checker: `url(#c${uid})`, grid: `url(#g${uid})`, bands: `url(#s${uid})`,
+    solid: INK, hatch: `url(#h${uid})`, dots: `url(#d${uid})`, horiz: `url(#x${uid})`,
+    vert: `url(#v${uid})`, back: `url(#b${uid})`, checker: `url(#c${uid})`, grid: `url(#g${uid})`, bands: `url(#s${uid})`, zigzag: `url(#z${uid})`,
   }[fill] || INK;
   const outline = shape === 'circle'
     ? <circle r={s} />
@@ -42,6 +43,7 @@ export function FindingGlyph({ fill = 'solid', carrier = false, shape = 'square'
         {pat('c', 0, <><rect width="1.5" height="1.5" fill={INK} /><rect x="1.5" y="1.5" width="1.5" height="1.5" fill={INK} /></>)}
         {pat('g', 0, <><line x1="0" y1="0.4" x2="3" y2="0.4" stroke={INK} strokeWidth="0.8" /><line x1="0.4" y1="0" x2="0.4" y2="3" stroke={INK} strokeWidth="0.8" /></>)}
         {pat('s', 45, <rect width="1.6" height="3" fill={INK} />)}
+        {pat('z', 0, <path d="M0,2.2L0.75,0.8L1.5,2.2L2.25,0.8L3,2.2" fill="none" stroke={INK} strokeWidth="0.7" />)}
         <clipPath id={`k${uid}`}>{outline}</clipPath>
       </defs>
       <g fill="#fff">{outline}</g>
@@ -111,6 +113,8 @@ export default function FindingsPalette({ node, conditionKey = [], people, onSet
   const [editing, setEditing] = useState(null);
   // the finding whose removal from the whole pedigree is being asked about (clinician request 2026-11-17)
   const [removing, setRemoving] = useState(null);
+  // "Taşıyıcı" for a finding: what it rests on is asked before it is set (clinician decision 2026-11-17)
+  const [asking, setAsking] = useState(null);
   const holders = (label) => (people || []).filter((p) => Array.isArray(p.conditions) && p.conditions.some((c) => c && normLabel(c.label) === normLabel(label))).length;
   const shape = node.sex === 'female' ? 'circle' : 'square';
   const conds = Array.isArray(node.conditions) ? node.conditions : [];
@@ -118,6 +122,7 @@ export default function FindingsPalette({ node, conditionKey = [], people, onSet
     const c = conds.find(x => normLabel(x.label) === normLabel(label));
     return !c ? 'none' : ['affected', 'carrier', 'unknown'].includes(c.status) ? c.status : 'none';
   };
+  const basisOf = (label) => (conds.find(x => normLabel(x.label) === normLabel(label)) || {}).basis;
   const suggested = style || suggestStyle(conditionKey);
   const add = () => {
     if (!draft.trim()) return;
@@ -144,7 +149,7 @@ export default function FindingsPalette({ node, conditionKey = [], people, onSet
                   {[['none', t('Yok')], ['affected', t('Var')], ['carrier', t('Taşıyıcı')], ['unknown', '?']].map(([v, label]) => (
                     <button key={v} className={st === v ? 'on' : undefined} role="radio" aria-checked={st === v}
                       title={{ none: t('Bu kişide bu bulgu yok'), affected: t('Bu kişide bu bulgu var (hasta)'), carrier: t('Bu kişi hasta değil, taşıyıcı'), unknown: t('Bilinmiyor: bulgunun bu kişide bulunup bulunmadığı bilinmiyor') }[v]} aria-label={v === 'unknown' ? t('Bilinmiyor') : undefined}
-                      onClick={() => onSetStatus(node.id, e.label, v)}>{label}</button>
+                      onClick={() => (v === 'carrier' ? setAsking(st === 'carrier' || asking === e.id ? null : e.id) : (setAsking(null), onSetStatus(node.id, e.label, v)))}>{label}</button>
                   ))}
                 </div>
                 {/* the age it was diagnosed at, free text right beside the finding (shown in the notes;
@@ -155,6 +160,12 @@ export default function FindingsPalette({ node, conditionKey = [], people, onSet
                       value={(conds.find(x => normLabel(x.label) === normLabel(e.label)) || {}).onsetAge || ''}
                       onCommit={v => onSetOnset(node.id, e.label, v.trim())} />
                   </label>
+                )}
+                {(asking === e.id || (st === 'carrier' && !basisOf(e.label))) && (
+                  <div className="finding-basis">
+                    <CarrierBasisChoice value={st === 'carrier' ? basisOf(e.label) : undefined}
+                      onPick={(b) => { setAsking(null); onSetStatus(node.id, e.label, 'carrier', b); }} />
+                  </div>
                 )}
                 {onRemove && (
                   <button className="finding-remove" title={t('Bulguyu pedigriden siler: bu bulguya sahip herkesten ve açıklamadan kaldırılır')}

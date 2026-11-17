@@ -8,7 +8,7 @@
  * Issues: { severity: 'error' | 'warning', code, message (Turkish), ids }
  */
 import { auditPedigreeGraph } from '../utils/graphIntegrity';
-import { SOCIAL_LINK_KINDS, SEX_AT_BIRTH, indexGraph, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, isPregnancy, ancestorsOf, PREGNANCY_FIELDS, REPRO_ROLES, EGG_SOURCE, CARRIER_ROLES, ART_DONOR_RELATION, sameReproductiveSex } from './model';
+import { SOCIAL_LINK_KINDS, SEX_AT_BIRTH, CARRIER_BASES, indexGraph, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, isPregnancy, ancestorsOf, PREGNANCY_FIELDS, REPRO_ROLES, EGG_SOURCE, CARRIER_ROLES, ART_DONOR_RELATION, sameReproductiveSex } from './model';
 
 const FLAG_FIELDS = ['affected', 'carrier', 'presymptomatic', 'recordsReviewed', 'deceased', 'proband', 'consultand', 'adoptedOut', 'placeholder', ...PREGNANCY_FIELDS];
 const FINDING_STATUSES = ['affected', 'carrier', 'unknown'];
@@ -56,11 +56,13 @@ export function validateGraphStructure(graph, { retired = [] } = {}) {
     if (notFlag.length) err('FIELD_FLAG', t('Bir kişinin “{v0}” alanı evet ya da hayır olarak girilmemiş.', { v0: notFlag[0] }), [ind.id]);
     if (PREGNANCY_FIELDS.filter((f) => ind[f] === true).length > 1) err('PREGNANCY_KIND_MULTIPLE', t('Bir gebelik sonucu aynı anda iki türde işaretlenmiş (örneğin hem düşük hem ölü doğum).'), [ind.id]);
     if (ind.sexAtBirth !== undefined && !SEX_AT_BIRTH.includes(ind.sexAtBirth)) err('FIELD_SEX_AT_BIRTH', t('Bir kişinin doğumda atanan cinsiyeti okunamadı (“{v0}”).', { v0: String(ind.sexAtBirth) }), [ind.id]);
+    if (ind.carrierBasis !== undefined && !CARRIER_BASES.includes(ind.carrierBasis)) err('FIELD_CARRIER_BASIS', t('Bir kişinin taşıyıcılık dayanağı okunamadı (“{v0}”).', { v0: String(ind.carrierBasis) }), [ind.id]);
     if (ind.lmp !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(String(ind.lmp))) err('FIELD_LMP', t('Bir gebeliğin son adet tarihi okunamadı (“{v0}”).', { v0: String(ind.lmp) }), [ind.id]);
     if (ind.presymptomatic && ind.affected) out.push({ severity: 'warning', code: 'PRESYMPTOMATIC_AFFECTED', message: t('Bir kişi hem etkilenmiş hem de presemptomatik olarak işaretlenmiş; işaretlerden birinin kaldırılması gerekir.'), ids: [ind.id] });
     if (ind.conditions !== undefined && !Array.isArray(ind.conditions)) err('FIELD_CONDITIONS', t('Bir kişinin bulgu kaydı geçerli bir liste değil.'), [ind.id]);
     for (const c of Array.isArray(ind.conditions) ? ind.conditions : []) {
       // a finding without a status comes from an older record and is kept as it is
+      if (c && c.basis !== undefined && !CARRIER_BASES.includes(c.basis)) err('FIELD_CARRIER_BASIS', t('Bir kişinin taşıyıcılık dayanağı okunamadı (“{v0}”).', { v0: String(c.basis) }), [ind.id]);
       if (!c || typeof c.label !== 'string' || !c.label.trim() || (c.status !== undefined && !FINDING_STATUSES.includes(c.status))) {
         err('FIELD_FINDING', t('Bir kişinin bulgusu okunamadı ({name}, durum “{status}”).', { name: c && typeof c.label === 'string' ? `"${c.label}"` : t('adsız'), status: c && String(c.status) }), [ind.id]);
       }

@@ -428,14 +428,14 @@ export const usePedigreeStore = create((zSet, get) => {
 
     // ── several people at once (one undo step each) ──
     updateMany: (ids, patch) => apply(chain(get().doc, ids.map(id => (d) => ops.updatePerson(d, id, patch, { allowSameSex: sameSexAllowed() })))),
-    setFindingStatusMany: (ids, label, status) => apply(chain(get().doc, ids.map(id => (d) => findings.setFindingStatus(d, id, label, status)))),
+    setFindingStatusMany: (ids, label, status, basis) => apply(chain(get().doc, ids.map(id => (d) => findings.setFindingStatus(d, id, label, status, basis)))),
     addFindingMany: (ids, label, style) => apply(chain(get().doc, ids.map((id, k) => (d) => (k === 0
       ? findings.addFinding(d, id, label, style)
       : findings.setFindingStatus(d, id, label, 'affected'))))),
 
     // ── findings (legend regions) ──
     addFinding: (personId, label, style) => apply(findings.addFinding(get().doc, personId, label, style)),
-    setFindingStatus: (personId, label, status) => apply(findings.setFindingStatus(get().doc, personId, label, status)),
+    setFindingStatus: (personId, label, status, basis) => apply(findings.setFindingStatus(get().doc, personId, label, status, basis)),
     setFindingStyle: (label, style) => apply(findings.setFindingStyle(get().doc, label, style)),
     renameFinding: (oldLabel, newLabel) => apply(findings.renameFinding(get().doc, oldLabel, newLabel)),
     removeFinding: (label) => apply(findings.removeFinding(get().doc, label)),

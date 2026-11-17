@@ -11,6 +11,7 @@
  */
 import { commit, block } from './ops';
 import { normalizeAge } from '../utils/age';
+import { CARRIER_BASES, GENETIC_TESTED } from './model';
 import { normLabel, keyEntry, styleTaken, keyFull, KEY_FULL_MESSAGE, FILLS } from './conditionKey';
 import { t } from '../i18n';
 
@@ -18,11 +19,16 @@ import { t } from '../i18n';
 // written as unknown, never as "no", e.g. in a PED file)
 const STATUSES = ['affected', 'carrier', 'unknown', 'none'];
 
-function applyStatus(person, label, status) {
+function applyStatus(person, label, status, basis) {
   const conds = Array.isArray(person.conditions) ? person.conditions : [];
   const rest = conds.filter((c) => normLabel(c.label) !== normLabel(label));
   const existing = conds.find((c) => normLabel(c.label) === normLabel(label));
-  const next = status === 'none' ? rest : [...rest, { ...(existing || {}), label: existing ? existing.label : label.trim(), status }];
+  const entry = { ...(existing || {}), label: existing ? existing.label : label.trim(), status };
+  // a carrier's basis (model.js CARRIER_BASES) belongs to the carrier status only
+  if (status === 'carrier' && basis) entry.basis = basis;
+  if (status !== 'carrier') delete entry.basis;
+  if (status === 'carrier' && basis === 'test' && !person.geneticTest) person.geneticTest = GENETIC_TESTED;
+  const next = status === 'none' ? rest : [...rest, entry];
   person.conditions = next;
   const anyAffected = next.some((c) => c.status === 'affected');
   if (anyAffected) {
@@ -34,15 +40,20 @@ function applyStatus(person, label, status) {
   }
 }
 
-/** Set one finding of a person: 'affected' | 'carrier' | 'none' (removes it). */
-export function setFindingStatus(doc, personId, label, status) {
+/**
+ * Set one finding of a person: 'affected' | 'carrier' | 'unknown' | 'none'
+ * (removes it). `basis`: what a carrier status rests on (model.js
+ * CARRIER_BASES; clinician decision 2026-11-17).
+ */
+export function setFindingStatus(doc, personId, label, status, basis) {
   return commit(doc, (d) => {
     if (!STATUSES.includes(status)) block(`Bilinmeyen durum: ${status}`);
+    if (basis && (status !== 'carrier' || !CARRIER_BASES.includes(basis))) block(t('Taşıyıcılığın dayanağı genetik test, pedigriden zorunlu ya da beyana dayalı olarak seçilmelidir.'));
     if (!String(label || '').trim()) block(t('Bulgunun adı boş olamaz.'));
     const p = d.graph.individuals.find((i) => i.id === personId);
     if (!p) block(t('Kişi çizimde bulunamadı.'));
     if (status !== 'none' && !keyEntry(d.graph.conditionKey, label) && keyFull(d.graph.conditionKey)) block(t(KEY_FULL_MESSAGE));
-    applyStatus(p, label, status);
+    applyStatus(p, label, status, basis);
   });
 }
 

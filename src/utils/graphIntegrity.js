@@ -258,6 +258,22 @@ export function auditPedigreeGraph(graph) {
     }
   }
 
+  // 11a. A carrier status entered without what it rests on (clinician decision 2026-11-17: a genetic
+  //      test, the pedigree, or a report — model.js CARRIER_BASES). Asked whenever carrier status is
+  //      entered; a file from before may lack it. A soft note, never a refusal.
+  {
+    const lacking = individuals.filter((i) => (i.carrier && !i.carrierBasis)
+      || (Array.isArray(i.conditions) && i.conditions.some((c) => c && c.status === 'carrier' && !c.basis))).map((i) => i.id);
+    if (lacking.length) {
+      issues.push({
+        severity: 'warning',
+        code: 'CARRIER_BASIS_MISSING',
+        message: t('Taşıyıcılığın dayanağı girilmemiş: {v0}. Taşıyıcılığın genetik teste mi, pedigriye mi (zorunlu taşıyıcı), yoksa beyana mı dayandığını Durum ya da Bulgu → Taşıyıcı ile seçin.', { v0: lacking.map((id) => `"${id}"`).join(', ') }),
+        ids: lacking,
+      });
+    }
+  }
+
   // ──────────────────────────────────────
   // 11b. Union partner sex conflict (v0.5 Faz 2a, DM-7). Under the current
   //      product rule a partnership is woman + man; the rule is enforced

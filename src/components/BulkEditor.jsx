@@ -10,6 +10,7 @@ import { FindingGlyph, StylePicker } from './FindingsPalette';
 import { useShownKey, shownEntry } from '../utils/shownKey';
 import { normLabel, suggestStyle, styleTaken, KEY_FULL_MESSAGE } from '../graph/conditionKey';
 import { isPregnancy } from '../graph/model';
+import CarrierBasisChoice from './CarrierBasis';
 
 const findingState = (p, label) => {
   const c = (Array.isArray(p.conditions) ? p.conditions : []).find(x => normLabel(x.label) === normLabel(label));
@@ -20,13 +21,20 @@ export default function BulkEditor({ nodes, conditionKey = [], people, onUpdateM
   const shownKey = useShownKey(conditionKey, people);
   const [draft, setDraft] = useState('');
   const [style, setStyle] = useState(null);
+  // carrier status for everyone selected: what it rests on is asked first (clinician decision 2026-11-17);
+  // 'person' for "Taşıyıcı", a finding's label for its carrier status
+  const [asking, setAsking] = useState(null);
   const ids = nodes.map(n => n.id);
   const living = nodes.filter(n => !isPregnancy(n));
   const flag = (key, list = nodes) => {
     const on = list.filter(n => !!n[key]).length;
     return on === 0 ? 'none' : on === list.length ? 'all' : 'some';
   };
-  const toggle = (key, list = nodes) => onUpdateMany(list.map(n => n.id), { [key]: flag(key, list) !== 'all' });
+  const toggle = (key, list = nodes) => {
+    const on = flag(key, list) !== 'all';
+    if (key === 'carrier' && on) { setAsking(asking === 'person' ? null : 'person'); return; }
+    onUpdateMany(list.map(n => n.id), { [key]: on });
+  };
   const chip = (key, label, list = nodes) => {
     const st = flag(key, list);
     return (
@@ -51,6 +59,9 @@ export default function BulkEditor({ nodes, conditionKey = [], people, onUpdateM
         {chip('carrier', t('Taşıyıcı'))}
         {chip('deceased', t('Vefat'), living)}
       </div>
+      {asking === 'person' && (
+        <CarrierBasisChoice onPick={(b) => { setAsking(null); onUpdateMany(ids, { carrier: true, carrierBasis: b }); }} />
+      )}
       {conditionKey.length > 0 && (
         <div className="findings-list">
           {conditionKey.map(e => {
@@ -63,9 +74,14 @@ export default function BulkEditor({ nodes, conditionKey = [], people, onUpdateM
                 <div className="segmented finding-state" role="radiogroup" aria-label={e.label}>
                   {[['none', t('Yok')], ['affected', t('Var')], ['carrier', t('Taşıyıcı')], ['unknown', '?']].map(([v, label]) => (
                     <button key={v} className={st === v ? 'on' : undefined} role="radio" aria-checked={st === v}
-                      onClick={() => onSetFindingStatusMany(ids, e.label, v)}>{label}</button>
+                      onClick={() => (v === 'carrier' ? setAsking(asking === e.label ? null : e.label) : (setAsking(null), onSetFindingStatusMany(ids, e.label, v)))}>{label}</button>
                   ))}
                 </div>
+                {asking === e.label && (
+                  <div className="finding-basis">
+                    <CarrierBasisChoice onPick={(b) => { setAsking(null); onSetFindingStatusMany(ids, e.label, 'carrier', b); }} />
+                  </div>
+                )}
               </div>
             );
           })}

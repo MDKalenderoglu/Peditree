@@ -15,7 +15,7 @@
  * so behaviour does not change for the clinician; what changes is that the
  * result is stored as graph, not replayed from instructions.
  */
-import { cloneGraph, indexGraph, displayParentage, makePerson, SOCIAL_LINK_KINDS, PREGNANCY_FIELDS, PREGNANCY_KINDS, PREGNANCY_LABEL, isPregnancy, pregnancyKind, GENETIC_TESTED, SEX_AT_BIRTH, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, REPRO_ROLES, EGG_SOURCE, CARRIER_ROLES, REPRO_LABEL, ART_DONOR_RELATION, hasClinicalData, sameReproductiveSex } from './model';
+import { cloneGraph, indexGraph, displayParentage, makePerson, SOCIAL_LINK_KINDS, PREGNANCY_FIELDS, PREGNANCY_KINDS, PREGNANCY_LABEL, isPregnancy, pregnancyKind, GENETIC_TESTED, SEX_AT_BIRTH, CARRIER_BASES, isGroup, validGroupCount, GROUP_FORBIDDEN, GROUP_MAX, REPRO_ROLES, EGG_SOURCE, CARRIER_ROLES, REPRO_LABEL, ART_DONOR_RELATION, hasClinicalData, sameReproductiveSex } from './model';
 import { allocateEditNumber, retire } from './ids';
 import { finalizeGraph, ageOrder } from './finalize';
 import { validateDocument, errorsOf } from './validate';
@@ -244,6 +244,16 @@ export function updatePerson(doc, id, fields, opts = {}) {
         if (v) p.geneticTest = v; else { delete p.geneticTest; delete p.geneticNote; }
         continue;
       }
+      if (k === 'carrierBasis') {
+        // what the carrier status rests on (model.js CARRIER_BASES; clinician decision 2026-11-17)
+        if (v && !CARRIER_BASES.includes(v)) block(t('Taşıyıcılığın dayanağı genetik test, pedigriden zorunlu ya da beyana dayalı olarak seçilmelidir.'));
+        if (v && !(fields.carrier === true || (p.carrier && fields.carrier !== false))) block(t('Dayanak yalnızca taşıyıcı olarak işaretlenen kişiye girilir.'));
+        if (v) {
+          p.carrierBasis = v;
+          if (v === 'test' && !p.geneticTest) p.geneticTest = GENETIC_TESTED; // a test was done: "+"
+        } else delete p.carrierBasis;
+        continue;
+      }
       if (k === 'sexAtBirth') {
         if (v && !SEX_AT_BIRTH.includes(v)) block(t('Doğumda atanan cinsiyet AMAB, AFAB ya da UAAB olarak girilmelidir.'));
         if (v) p.sexAtBirth = v; else delete p.sexAtBirth;
@@ -283,6 +293,8 @@ export function updatePerson(doc, id, fields, opts = {}) {
     if (Object.prototype.hasOwnProperty.call(fields, 'affected')) delete p.affectedByFindings;
     // symptoms now: no longer a presymptomatic carrier (the line goes, visibly)
     if (fields.affected === true) delete p.presymptomatic;
+    // no longer a carrier: nothing it rested on stays
+    if (fields.carrier === false) delete p.carrierBasis;
   });
 }
 

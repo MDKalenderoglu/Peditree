@@ -19,12 +19,13 @@ import { tk } from '../i18n';
 
 export const normLabel = (label) => String(label ?? '').trim().toLocaleLowerCase('tr');
 
-// in the order a new finding is offered them
-export const FILLS = ['solid', 'hatch', 'dots', 'grey', 'horiz', 'vert', 'back', 'checker'];
+// in the order a new finding is offered them; no plain grey (clinician 2026-11-17: a symbol filled grey
+// reads as "affected" without a name — a finding from before in grey is given the next free pattern)
+export const FILLS = ['solid', 'hatch', 'dots', 'grid', 'horiz', 'vert', 'back', 'checker'];
 export const FILL_LABEL = {
-  solid: tk('Siyah'), hatch: tk('Tarama'), dots: tk('Noktalı'), grey: tk('Gri'),
+  solid: tk('Siyah'), hatch: tk('Tarama'), dots: tk('Noktalı'),
   horiz: tk('Yatay çizgili'), vert: tk('Dikey çizgili'), back: tk('Ters tarama'), checker: tk('Damalı'),
-  grid: tk('Kareli'), bands: tk('Kalın tarama'),
+  grid: tk('Kareli'), bands: tk('Kalın tarama'), zigzag: tk('Zikzak'),
 };
 /**
  * Two patterns no finding can be given, only drawn in: when black is kept for
@@ -33,7 +34,7 @@ export const FILL_LABEL = {
  * carrier half, are drawn in these (clinician report 2026-11-17: with eight
  * findings the carrier's half fell back to hatching).
  */
-export const SPARE_FILLS = ['grid', 'bands'];
+export const SPARE_FILLS = ['bands', 'zigzag'];
 /**
  * A carrier without a named finding (person.carrier): the left half in a
  * pattern of its own, never a finding's, explained in the key as
@@ -80,11 +81,14 @@ export function displayStyles(people = [], key = [], carrierMark = 'half') {
   const out = key.map((e) => ({ ...e }));
   const used = () => new Set(out.map((e) => e.fill));
   // in place of black, the boldest pattern first (checkered reads as dark; the two hatchings are kept apart)
-  const free = () => ['checker', 'horiz', 'vert', 'dots', 'grey', 'hatch', 'back', ...SPARE_FILLS].find((f) => !used().has(f));
-  const reserve = (carrierMark === 'half' && people.some(isPlainCarrier)) || (out.length > 0 && people.some(isUnnamedAffected));
+  const free = () => ['checker', 'horiz', 'vert', 'dots', 'grid', 'hatch', 'back', ...SPARE_FILLS].find((f) => !used().has(f));
+  // with the solid half, black means carrier wherever a carrier is drawn: a finding in black beside a
+  // carrier's patterned half read as a solid carrier half (clinician report 2026-11-17)
+  const anyCarrier = people.some((p) => p.carrier || conditionsOf(p).some((c) => c.status === 'carrier'));
+  const reserve = (carrierMark === 'half' && anyCarrier) || (out.length > 0 && people.some(isUnnamedAffected));
   const solid = out.find((e) => e.fill === 'solid');
   if (reserve && solid) solid.fill = free();
-  const affectedFill = free() || 'grey';
+  const affectedFill = free() || 'bands';
   return { key: out, halfFree: true, affectedFill };
 }
 
@@ -209,7 +213,7 @@ function regionsFor(person, key, plainCarrierHalf, styles, carrierMark) {
   if (affected.length) parts.push(...share(affected, 270, 180));
   else if (person.affected) {
     const leftSolid = left.some((p) => p.fill === 'solid');
-    parts.push({ fill: leftSolid ? (styles.affectedFill || 'grey') : 'solid', carrier: false, unnamed: true, a0: 270, a1: 450 });
+    parts.push({ fill: leftSolid ? (styles.affectedFill || 'bands') : 'solid', carrier: false, unnamed: true, a0: 270, a1: 450 });
   }
   return { mode: 'regions', parts };
 }

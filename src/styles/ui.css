@@ -551,6 +551,12 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .finding-new .input { min-width: 0; height: 30px; background: var(--sunken); border-color: transparent; border-radius: 8px; }
 .finding-new .input:focus { background: var(--surface); border-color: var(--accent); }
 .finding-onset { display: flex; align-items: center; }
+/* what a carrier status rests on, asked when it is entered (CarrierBasis.jsx; clinician decision 2026-11-17) */
+.carrier-basis { display: flex; flex-direction: column; gap: 6px; }
+.carrier-basis-q { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.carrier-basis-options { display: flex; flex-wrap: wrap; }
+.carrier-basis-options button { flex: 1 1 auto; font-size: 12px; padding: 4px 8px; }
+.finding-basis { grid-column: 1 / -1; padding: 2px 2px 4px; }
 /* removing a finding from the whole pedigree: red, asked once in the row (clinician request 2026-11-17) */
 .finding-remove { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; color: var(--danger); background: none; border: 1px solid transparent; border-radius: 999px; cursor: pointer; }
 .finding-remove:hover, .finding-remove:focus-visible { background: var(--danger-soft); border-color: var(--danger-line); }

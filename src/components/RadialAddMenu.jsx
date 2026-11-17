@@ -13,6 +13,8 @@
 import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import { Stethoscope, HeartPulse, Users, StickyNote, Check, ArrowUp, ArrowDown, UsersRound, HeartHandshake, UserPlus as UserPlusIcon, ChevronsUp } from 'lucide-react';
 import FindingsPalette from './FindingsPalette';
+import CarrierBasisChoice from './CarrierBasis';
+import { basisLabel } from '../utils/carrierBasis';
 import { NameField, AgeField, NoteField, GeneticTextField } from './InfoFields';
 import { groupOf, multipleName } from '../graph/multiples';
 import { isPregnancy, isGroup, adoptionOf, ART_DONOR_RELATION, geneticLines, sameReproductiveSex } from '../graph/model';
@@ -193,6 +195,8 @@ export default function RadialAddMenu({
   const [adding, setAdding] = useState(false);
   // the part of Bilgiler whose box is open under its band (age, genetic, note, name)
   const [infoFor, setInfoFor] = useState(null); // { node, part }
+  // "Taşıyıcı" chosen: what it rests on is asked before it is set (clinician decision 2026-11-17)
+  const [basisFor, setBasisFor] = useState(null);
   const closeTimer = useRef(null);
   const panelTimer = useRef(null);
   // the list the pointer opened on its way in: the click that follows (still on the
@@ -579,7 +583,17 @@ export default function RadialAddMenu({
       const sexes = isLoss ? [] : [['male', t('Erkek')], ['female', t('Kadın')], ['unknown', t('Bilinmiyor')]];
       const byId = {
         affected: { label: t('Etkilenmiş'), on: !!node.affected, onClick: () => onUpdate(node.id, { affected: !node.affected }), title: t('Kişi etkilenmiştir; sembolün içi tamamen doldurulur. Hastalığın adı Bulgu düğmesinden girilir.') },
-        carrier: { label: t('Taşıyıcı'), on: !!node.carrier, onClick: () => onUpdate(node.id, { carrier: !node.carrier }), title: t('Kişi etkilenmemiştir, ancak hastalığa yol açan varyantı taşır') },
+        carrier: {
+          label: t('Taşıyıcı'), on: !!node.carrier, value: node.carrier ? basisLabel(node.carrierBasis) : '',
+          // set only with what it rests on: a genetic test, the pedigree, or a report (clinician decision 2026-11-17)
+          onClick: () => (node.carrier ? onUpdate(node.id, { carrier: false }) : setBasisFor(basisFor === node.id ? null : node.id)),
+          title: t('Kişi etkilenmemiştir, ancak hastalığa yol açan varyantı taşır'),
+          aside: basisFor === node.id || (node.carrier && !node.carrierBasis) ? (
+            <div className={`radial-info-box ring-aside${opensRight(SATELLITES.find((x) => x.key === 'status')) ? '' : ' ring-aside-left'}`}>
+              <CarrierBasisChoice value={node.carrierBasis} onPick={(b) => { onUpdate(node.id, { carrier: true, carrierBasis: b }); setBasisFor(null); }} />
+            </div>
+          ) : null,
+        },
         deceased: isLoss ? null : { label: t('Vefat'), on: !!node.deceased, onClick: () => onUpdate(node.id, { deceased: !node.deceased }), title: t('Kişi hayatta değildir; sembolün üzerine çapraz bir çizgi çekilir') },
         proband: { label: t('Proband'), on: !!node.proband, onClick: () => (node.proband ? onClearProband() : onSetProband(node.id)), title: t('Ailenin incelenmesine yol açan ilk etkilenmiş kişi; yanında ok ve P harfi gösterilir') },
         presymptomatic: isLoss ? null : { label: t('Presemptomatik'), on: !!node.presymptomatic, onClick: () => onUpdate(node.id, { presymptomatic: !node.presymptomatic }), title: t('Şu anda belirtisi yoktur, ancak ileride belirti gösterebilir (çoğunlukla dominant kalıtılan hastalıklarda); sembolün ortasından dikey bir çizgi geçer ve açıklamada belirtilir') },

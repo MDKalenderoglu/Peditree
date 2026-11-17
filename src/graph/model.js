@@ -66,6 +66,18 @@ export const GENETIC_TESTED = 'tested';
  */
 export const SEX_AT_BIRTH = ['AMAB', 'AFAB', 'UAAB'];
 /**
+ * What a carrier status rests on (clinician decision 2026-11-17, after Bennett
+ * 2008 Fig. 4 and 2022 §4.5: carrier status comes from a result or a report,
+ * never from a finding a relative happens to share): person.carrierBasis for
+ * "Taşıyıcı" without a finding named, conditions[].basis for the carrier of a
+ * named finding. 'test' a genetic test showed it (a heterozygous variant; the
+ * person is marked tested, "+"); 'obligate' the pedigree requires it (e.g.
+ * the parents of a child with an autosomal recessive condition); 'report'
+ * the patient's or family's word, no result seen. Asked whenever carrier
+ * status is entered; absent only in files from before, with a note to add it.
+ */
+export const CARRIER_BASES = ['test', 'obligate', 'report'];
+/**
  * The sex a person's gametes follow (NSGC 2022: the symbol shows gender identity; AMAB / AFAB under it
  * when sex assigned at birth differs): sex assigned at birth when written, otherwise the symbol's sex.
  */
