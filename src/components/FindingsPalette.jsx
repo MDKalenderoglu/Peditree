@@ -7,7 +7,7 @@
  * everyone. Used in the ring menu and in the right panel.
  */
 import { useId, useRef, useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Dna, Pencil, Trash2 } from 'lucide-react';
 import CarrierBasisChoice from './CarrierBasis';
 import { t } from '../i18n';
 import DraftField from './DraftField';
@@ -169,18 +169,25 @@ export default function FindingsPalette({ node, conditionKey = [], people, onSet
                       onPick={(b) => { setAsking(null); onSetStatus(node.id, e.label, 'carrier', b); }} />
                   </div>
                 )}
-                {onSetVariant && (st === 'affected' || (st === 'carrier' && basisOf(e.label) === 'test')) && (
-                  e.variant || variantFor === e.id || st === 'carrier' ? (
+                {/* the finding's test result (clinician request 2026-11-17); one line for the finding stays one line
+                    (clinician report 2026-11-17: "Var" opened two more lines under every finding): offered as a
+                    small button in the row, written in a slim box, the explanation only while it is being written */}
+                {onSetVariant && (st === 'affected' || (st === 'carrier' && basisOf(e.label) === 'test')) && (() => {
+                  const writing = variantFor === e.id || (st === 'carrier' && !e.variant);
+                  return e.variant || writing ? (
                     <div className="finding-variant">
-                      <DraftField key={`${node.id}-${e.id}-variant-${e.variant || ''}`} type="text" className="input" autoFocus={variantFor === e.id || (st === 'carrier' && !e.variant)}
+                      <DraftField key={`${node.id}-${e.id}-variant-${e.variant || ''}`} type="text" className="input" autoFocus={writing}
                         placeholder={t('Genetik test sonucu (örneğin CFTR:c.1234G>A)')} aria-label={t('{label}: genetik test sonucu', { label: e.label })}
                         value={e.variant || ''} onCommit={(v) => { setVariantFor(null); onSetVariant(e.label, v); }} />
-                      <span className="field-hint">{t('Bu bulguda etkilenmiş olanların ve genetik testle taşıyıcı olanların genetik test satırına da yazılır. Zigoziteyi (het, hom) her kişinin kendi satırına ekleyebilirsiniz.')}</span>
+                      {writing && <span className="field-hint">{t('Bu bulguda etkilenmiş olanların ve genetik testle taşıyıcı olanların genetik test satırına da yazılır. Zigoziteyi (het, hom) her kişinin kendi satırına ekleyebilirsiniz.')}</span>}
                     </div>
                   ) : (
-                    <button className="finding-variant-add" onClick={() => setVariantFor(e.id)}>{t('+ Genetik test sonucu')}</button>
-                  )
-                )}
+                    <button className="finding-variant-add" title={t('Genetik test sonucu ekle (örneğin CFTR:c.1234G>A)')}
+                      aria-label={t('{label}: genetik test sonucu ekle', { label: e.label })} onClick={() => setVariantFor(e.id)}>
+                      <Dna size={15} aria-hidden="true" />
+                    </button>
+                  );
+                })()}
                 {onRemove && (
                   <button className="finding-remove" title={t('Bulguyu pedigriden siler: bu bulguya sahip herkesten ve açıklamadan kaldırılır')}
                     aria-label={t('{label}: bulguyu sil', { label: e.label })} onClick={() => setRemoving(removing === e.id ? null : e.id)}>

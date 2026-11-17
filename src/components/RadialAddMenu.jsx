@@ -539,8 +539,8 @@ export default function RadialAddMenu({
   // ones, on its own side unless the drawing area has more room on the other (widths: ui.css)
   const opensRight = (s) => {
     const [x] = satPos(s.angle);
-    // findings 420 px, a list 200 (a Bilgiler part's box opens on the same side: the drawing slides for it)
-    const w = s.key === 'findings' ? 420 : 200;
+    // findings 460 px, a list 200 (a Bilgiler part's box opens on the same side: the drawing slides for it)
+    const w = s.key === 'findings' ? 460 : 200;
     const roomRight = (anchor.boxW ?? Infinity) - (anchor.x + x);
     const roomLeft = anchor.x + x;
     return x > 0 ? roomRight >= w || roomRight >= roomLeft : roomLeft < w && roomRight > roomLeft;

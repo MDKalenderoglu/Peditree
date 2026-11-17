@@ -1177,6 +1177,30 @@ describe('more of what the clinician sees', () => {
     }
   });
 
+  it('Bulgu: "Var" keeps a finding on one line — the test result a small button, its explanation only while it is written (clinician report 2026-11-17)', async () => {
+    await run(() => S().addFinding('mother', 'İshal', null));
+    try {
+      await select('mother');
+      await key('b');
+      const row = () => $$('.findings-panel .finding-row').find(r => r.textContent.includes('İshal'));
+      expect(row().querySelector('.finding-variant')).toBeNull();
+      expect(row().querySelector('.field-hint')).toBeNull();
+      const add = row().querySelector('button.finding-variant-add');
+      expect(add.getAttribute('aria-label')).toBe('İshal: genetik test sonucu ekle');
+      expect(add.textContent).toBe('');
+      await click(add);
+      const field = row().querySelector('.finding-variant input');
+      expect(row().querySelector('.finding-variant .field-hint')).not.toBeNull();
+      await typeInto(field, 'abcc8 c.1A>G');
+      await key('Enter', {}, field);
+      // written: the result stays in sight, the explanation goes
+      expect(row().querySelector('.finding-variant input').value).toBe('ABCC8 c.1A>G');
+      expect(row().querySelector('.finding-variant .field-hint')).toBeNull();
+    } finally {
+      await key('Escape');
+    }
+  });
+
   it('Bulgu: the red bin removes a finding from the whole pedigree after one question; Vazgeç keeps it (clinician request 2026-11-17)', async () => {
     await run(() => { S().addFinding('mother', 'Miyop', null); S().setFindingStatus('father', 'Miyop', 'carrier'); S().addFinding('mother', 'Kolestaz', null); });
     try {
