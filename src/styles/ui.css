@@ -740,6 +740,7 @@ textarea.input { height: auto; min-height: 60px; max-height: 40vh; padding: 7px 
 .download-item small, .download-item-head small { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
 .download-ped { display: flex; flex-direction: column; gap: 8px; margin: 2px 8px 8px; }
 .about-popover { left: 0; right: auto; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 110px); overflow-y: auto; }
+.about-popover .ui-btn { white-space: normal; height: auto; min-height: 36px; padding-top: 6px; padding-bottom: 6px; text-align: left; }
 .open-popover { left: 0; right: auto; width: 320px; max-width: calc(100vw - 24px); transform-origin: top left; }
 .open-popover .download-item-head { padding: 2px 0; }
 /* a file dragged over the drawing */
@@ -1130,8 +1131,12 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
 .toolbar.touch-bar .toolbar-group > :not([data-popup="download"]):not([data-popup="share"]) { display: none; }
 .toolbar.touch-bar .toolbar-end > :not(.toolbar-more):not(.toolbar-group) { display: none; }
 /* Paylaş on the bar, by its icon, beside Menü (clinician request 2026-11-12); the end's other buttons stay in the menu */
-.toolbar.touch-bar .toolbar-end > .toolbar-group > :not([data-popup="share"]) { display: none; }
-.toolbar.touch-bar .toolbar-end > .toolbar-group:not(:has([data-popup="share"])) { display: none; }
+.toolbar.touch-bar .toolbar-end > .toolbar-group > :not([data-popup="share"]):not(.keys-wrap) { display: none; }
+/* Atıf and Geri bildirim: their buttons hidden, their windows (opened from Menü) shown (iOS Simulator 2026-11-17:
+   both showed nothing — their whole group was hidden) */
+.toolbar.touch-bar .toolbar-end > .toolbar-group:not(:has([data-popup="share"])),
+.toolbar.touch-bar .toolbar-end > .toolbar-group > .keys-wrap:not([data-popup="share"]) { display: contents; }
+.toolbar.touch-bar .toolbar-end > .toolbar-group > .keys-wrap:not([data-popup="share"]) > button { display: none; }
 .toolbar.touch-bar [data-popup="share"] { display: flex; }
 /* what the menu opens (Yeni, Paylaş, Atıf …) lives beside its own hidden button: the window shows, the button
    does not (clinician report 2026-11-12: Menü → Yeni did nothing — its window opened inside a hidden box) */
@@ -1241,8 +1246,8 @@ body.touring .keys-popover, body.touring .radial-flyout, body.touring .radial-pa
 .ring-dock .radial-flyout, .ring-dock .radial-panel { position: static; transform: none; translate: none; width: auto; max-width: none; animation: none; }
 .ring-dock .radial-flyout { white-space: normal; }
 .ring-dock .flyout-row { flex-wrap: wrap; }
-.ring-dock .quick-btn { min-width: 64px; height: auto; min-height: 52px; flex-direction: column; gap: 2px; padding: 6px; }
-.dock-word { display: block; font-size: 12px; line-height: 1.2; color: var(--ink-2); }
+.ring-dock .quick-btn { width: auto; min-width: 64px; max-width: 96px; height: auto; min-height: 52px; flex-direction: column; gap: 2px; padding: 6px; }
+.dock-word { display: block; font-size: 12px; line-height: 1.2; color: var(--ink-2); overflow-wrap: anywhere; }
 .ring-dock .ring-aside { position: static; margin-top: 6px; width: auto; }
 
 /* the drawing keeps the whole screen; its zoom buttons and Sığdır stand just above the docked sheet, in reach

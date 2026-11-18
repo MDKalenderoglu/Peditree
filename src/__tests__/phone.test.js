@@ -375,6 +375,60 @@ describe('the phone, fourth request (clinician 2026-11-12)', () => {
     await run(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
   });
 
+  it('every window the menu opens is in sight, never inside a hidden box: Yeni, Atıf, Geri bildirim, PediTree hakkında (iOS Simulator 2026-11-17: Atıf and Geri bildirim showed nothing)', async () => {
+    // the app's own stylesheet on the page, as the phone draws it
+    const style = document.createElement('style');
+    style.textContent = readFileSync(join(process.cwd(), 'src/styles/ui.css'), 'utf8');
+    document.head.appendChild(style);
+    try {
+      const shown = (el) => { for (let p = el; p && p !== document.body; p = p.parentElement) if (getComputedStyle(p).display === 'none') return false; return true; };
+      for (const [item, window] of [['Yeni', '.new-popover'], ['Atıf', '.info-popover'], ['Geri bildirim', '.info-popover'], ['PediTree hakkında', '.about-popover']]) {
+        await click(named('Menü', $('.toolbar')));
+        await click([...$('.more-popover').querySelectorAll('.download-item')].find((b) => b.textContent.trim() === item));
+        expect($(window), item).not.toBeNull();
+        expect(shown($(window)), item).toBe(true);
+        await run(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+      }
+    } finally {
+      style.remove();
+    }
+  });
+
+  it('the sheet grows (Bulgu, Bilgiler opened) over the person chosen: the drawing moves them back into sight; not while typing (iOS Simulator 2026-11-17)', async () => {
+    const realRect = Element.prototype.getBoundingClientRect;
+    let sheetTop = 740;
+    const rects = (el) => {
+      if (el.classList && el.classList.contains('touch-sheet')) return { left: 0, right: 390, top: sheetTop, bottom: 844, width: 390, height: 844 - sheetTop };
+      if (el.matches && el.matches('.node-selected .pedigree-shape')) {
+        const m = /translate\(([-\d.]+),\s*([-\d.]+)\)/.exec($('.pedigree-viewport').getAttribute('transform') || '') || [0, 0, 0];
+        return { left: 180 + Number(m[1]), right: 220 + Number(m[1]), top: 580 + Number(m[2]), bottom: 620 + Number(m[2]), width: 40, height: 40 };
+      }
+      if (el.id === 'pedigree-svg' || (el.tagName === 'svg' && el.querySelector && el.querySelector('.pedigree-viewport'))) return { left: 0, right: 390, top: 0, bottom: 844, width: 390, height: 844 };
+      return realRect.call(el);
+    };
+    Element.prototype.getBoundingClientRect = function () { return rects(this); };
+    const shapeY = () => { const r = $('.node-selected .pedigree-shape').getBoundingClientRect(); return r.top + r.height / 2; };
+    try {
+      await click(drawn('mother'));
+      await new Promise((r) => setTimeout(r, 400));
+      expect(shapeY()).toBe(600); // above the low sheet: left where it was
+      // a finding list opens: the sheet now stands over her
+      sheetTop = 470;
+      await run(() => window.dispatchEvent(new Event('peditree:sheet')));
+      expect(shapeY()).toBeLessThan(470 - 40);
+      // typing: the keyboard has lifted the sheet for a moment; the drawing stays still
+      const before = shapeY();
+      document.documentElement.classList.add('kb-open');
+      sheetTop = 200;
+      await run(() => window.dispatchEvent(new Event('peditree:sheet')));
+      expect(shapeY()).toBe(before);
+    } finally {
+      document.documentElement.classList.remove('kb-open');
+      Element.prototype.getBoundingClientRect = realRect;
+      await run(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+    }
+  });
+
   it('the birth date typed as digits alone gets its dots, and is kept as a date', async () => {
     await click(named('Hasta bilgileri'));
     const box = $('.patient-popover .birth-date');

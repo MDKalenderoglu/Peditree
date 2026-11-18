@@ -17,6 +17,7 @@ import App from '../App';
 import { usePedigreeStore } from '../state/usePedigreeStore';
 import { useViewSettings } from '../utils/drawingStyle';
 import { prepareExportSvg } from '../utils/exportUtils';
+import * as d3 from 'd3';
 
 const S = () => usePedigreeStore.getState();
 const g = () => S().doc.graph;
@@ -248,6 +249,20 @@ describe('text under the symbols and in the notes', () => {
     expect(regions.querySelectorAll('.region-divider').length).toBeGreaterThan(0);
     expect($('svg .condition-legend')).not.toBeNull();
     expect($$('.condition-legend text').map(t => t.textContent)).toEqual(expect.arrayContaining(['Miyop', 'Kolestaz']));
+  });
+
+  it('the key and the notes move with the drawing when it is moved: never standing over the people (iOS Simulator 2026-11-17)', async () => {
+    await run(() => { S().addFinding('mother', 'Miyop', null); S().updateIndividual('mother', { notes: 'Bir not' }); });
+    const svg = $('svg.pedigree-svg') || $('.pedigree-viewport').ownerSVGElement;
+    const zoom = svg.__zoom_ref;
+    await run(() => d3.select(svg).call(zoom.translateBy, 0, -120));
+    const moved = $('.pedigree-viewport').getAttribute('transform');
+    expect(moved).toMatch(/translate\(0,\s*-120\)/);
+    // what moves the people moves the key and the notes the same way
+    for (const sel of ['.condition-legend', '.notes-legend']) {
+      expect($(sel).closest('.pedigree-viewport')).not.toBeNull();
+    }
+    await run(() => d3.select(svg).call(zoom.translateBy, 0, 120));
   });
 });
 

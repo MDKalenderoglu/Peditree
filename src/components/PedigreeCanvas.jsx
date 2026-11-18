@@ -1082,7 +1082,8 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     // --- Key (NSGC legend), top right: the patient's line, then which mark
     //     is which finding ---
     if (headBlock || shownKey.length) {
-      const keyG = svg.append('g').attr('class', 'condition-legend');
+      // in the zoom group: the key moves with the drawing, never left standing over the people (iOS Simulator 2026-11-17)
+      const keyG = g.append('g').attr('class', 'condition-legend');
       const s = KS;
       // the findings start under the proband's symbol (clinician request 2026-10-25)
       const headW = headBlock ? 2 * s + 12 * LK + headTextW : 0;
@@ -1153,7 +1154,7 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
 
     // --- Notes legend (each part editable where it stands) ---
     if (noteLines.length > 0) {
-      const legendG = svg.append('g').attr('class', 'notes-legend');
+      const legendG = g.append('g').attr('class', 'notes-legend');
       legendG.append('text')
         .attr('x', legendX).attr('y', legendY + 12 * LK)
         .attr('font-size', `${13 * LK}px`).attr('font-weight', '700').attr('fill', '#1e293b')
@@ -1307,7 +1308,10 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
       const side = sh.top <= full.top + 40;
       const box = { left: full.left, top: full.top, right: side ? Math.min(full.right, sh.left) : full.right, bottom: full.bottom };
       const top = box.top;
-      const bottom = side ? box.bottom : Math.min(box.bottom, sh.top);
+      // the zoom buttons stand just above the sheet: the person is not left under them either
+      const zc = document.querySelector('.zoom-controls');
+      const zr = zc && zc.getBoundingClientRect();
+      const bottom = side ? box.bottom : Math.min(box.bottom, sh.top, zr && zr.height && zr.bottom <= sh.top + 1 ? zr.top : Infinity);
       if (!(bottom > top) || !r.width) return;
       const ROOM = 96; // the ring round the person
       const cx = r.left + r.width / 2;
@@ -1318,7 +1322,11 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     };
     // after the sheet has come up (its own motion) and the drawing has settled
     const late = setTimeout(bring, 320);
-    return () => clearTimeout(late);
+    // the sheet grew (a finding list, Bilgiler opened): the person is brought out from under it again; never
+    // while typing, when the keyboard has moved the sheet up for the moment
+    const grew = () => { if (!document.documentElement.classList.contains('kb-open')) bring(); };
+    window.addEventListener('peditree:sheet', grew);
+    return () => { clearTimeout(late); window.removeEventListener('peditree:sheet', grew); };
   }, [keepAbove, selectedNodeId, panBy]);
 
   const zoomBy = (k) => {

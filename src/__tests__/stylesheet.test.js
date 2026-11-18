@@ -322,4 +322,13 @@ describe('the phone\'s sheet, close-set and inside its edges (iPhone report 2026
   it('an open Bilgiler part (Genetik, Not …) as wide as the rows of the sheet (iOS Simulator 2026-11-17: 280px, narrower than its rows)', () => {
     expect(block('ui.css', '.ring-dock .ring-aside')).toMatch(/position: static; margin-top: 6px; width: auto;/);
   });
+
+  it('a choice under Ekle as wide as its longest word: "Sonlandırma (TOP)" inside its button (iOS Simulator 2026-11-17)', () => {
+    expect(block('ui.css', '.ring-dock .quick-btn')).toMatch(/width: auto; min-width: 64px; max-width: 96px;/);
+    expect(block('ui.css', '.dock-word')).toMatch(/overflow-wrap: anywhere;/);
+  });
+
+  it('a long button in PediTree hakkında wraps on a small phone instead of running past its edge (320 px, 2026-11-18)', () => {
+    expect(block('ui.css', '.about-popover .ui-btn')).toMatch(/white-space: normal; height: auto;/);
+  });
 });

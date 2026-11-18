@@ -262,7 +262,8 @@ const stroked = (el) => {
 
 /** Everything the hand-drawn look redraws: each stroked line or outline of the drawing and its key. */
 export function handDrawnTargets(svg) {
-  const roots = [...svg.querySelectorAll('.pedigree-viewport, .condition-legend')];
+  // the key stands in the zoom group: each line taken once
+  const roots = [...svg.querySelectorAll('.pedigree-viewport, .condition-legend')].filter((r, _, all) => !all.some((o) => o !== r && o.contains(r)));
   return roots.flatMap((r) => [...r.querySelectorAll('path, rect, circle, line, polyline, ellipse')])
     .filter((el) => stroked(el) && !skipped(el));
 }

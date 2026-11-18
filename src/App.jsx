@@ -235,7 +235,14 @@ function TouchSheet({ full, canDock, onFull, onClose, title, children }) {
   React.useLayoutEffect(() => {
     const el = sheetRef.current, shell = el && el.closest('.app-shell');
     if (!el || !shell) return undefined;
-    const set = () => shell.style.setProperty('--touch-sheet-h', `${Math.max(0, Math.round(window.innerHeight - el.getBoundingClientRect().top))}px`);
+    let last = null;
+    const set = () => {
+      const h = Math.max(0, Math.round(window.innerHeight - el.getBoundingClientRect().top));
+      shell.style.setProperty('--touch-sheet-h', `${h}px`);
+      // the sheet grew or shrank (Bulgu, Bilgiler opened): the drawing keeps the person in sight (iOS Simulator 2026-11-17)
+      if (last !== null && h !== last) window.dispatchEvent(new Event('peditree:sheet'));
+      last = h;
+    };
     set();
     window.addEventListener('resize', set);
     // the sheet slides in: measured again once it stands still
