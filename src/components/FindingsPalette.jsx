@@ -11,8 +11,8 @@ import { Dna, Pencil, Trash2 } from 'lucide-react';
 import CarrierBasisChoice from './CarrierBasis';
 import { t } from '../i18n';
 import DraftField from './DraftField';
-import { FILLS, FILL_LABEL, suggestStyle, styleTaken, normLabel, KEY_FULL_MESSAGE } from '../graph/conditionKey';
-import { useShownKey, shownEntry, movedOffBlack } from '../utils/shownKey';
+import { FILLS, FILL_LABEL, styleTaken, normLabel, KEY_FULL_MESSAGE } from '../graph/conditionKey';
+import { useShownKey, useNewStyle, shownEntry, movedOffBlack } from '../utils/shownKey';
 
 const INK = '#1e293b';
 
@@ -20,14 +20,15 @@ const INK = '#1e293b';
 export function FindingGlyph({ fill = 'solid', carrier = false, shape = 'square', size = 18 }) {
   const uid = useId().replace(/:/g, '');
   const s = 8;
-  const pat = (id, rotate, inner) => (
-    <pattern id={`${id}${uid}`} patternUnits="userSpaceOnUse" width="3" height="3" patternTransform={rotate ? `rotate(${rotate})` : undefined}>
-      <rect width="3" height="3" fill="#fff" />{inner}
+  const pat = (id, rotate, inner, n = 3) => (
+    <pattern id={`${id}${uid}`} patternUnits="userSpaceOnUse" width={n} height={n} patternTransform={rotate ? `rotate(${rotate})` : undefined}>
+      <rect width={n} height={n} fill="#fff" />{inner}
     </pattern>
   );
   const paint = {
     solid: INK, hatch: `url(#h${uid})`, dots: `url(#d${uid})`, horiz: `url(#x${uid})`,
     vert: `url(#v${uid})`, back: `url(#b${uid})`, checker: `url(#c${uid})`, grid: `url(#g${uid})`, bands: `url(#s${uid})`, zigzag: `url(#z${uid})`,
+    rings: `url(#r${uid})`, plus: `url(#p${uid})`, brick: `url(#w${uid})`, tri: `url(#t${uid})`,
   }[fill] || INK;
   const outline = shape === 'circle'
     ? <circle r={s} />
@@ -44,6 +45,10 @@ export function FindingGlyph({ fill = 'solid', carrier = false, shape = 'square'
         {pat('g', 0, <><line x1="0" y1="0.4" x2="3" y2="0.4" stroke={INK} strokeWidth="0.8" /><line x1="0.4" y1="0" x2="0.4" y2="3" stroke={INK} strokeWidth="0.8" /></>)}
         {pat('s', 45, <rect width="1.6" height="3" fill={INK} />)}
         {pat('z', 0, <path d="M0,2.2L0.75,0.8L1.5,2.2L2.25,0.8L3,2.2" fill="none" stroke={INK} strokeWidth="0.7" />)}
+        {pat('r', 0, <circle cx="2" cy="2" r="1.15" fill="none" stroke={INK} strokeWidth="0.6" />, 4)}
+        {pat('p', 0, <path d="M0.6,2H3.4M2,0.6V3.4" stroke={INK} strokeWidth="0.7" />, 4)}
+        {pat('w', 0, <path d="M0,0.3H4M0,2.3H4M1,0.3V2.3M3,2.3V4" stroke={INK} strokeWidth="0.55" />, 4)}
+        {pat('t', 0, <path d="M2,0.6L3.4,3.2H0.6Z" fill={INK} />, 4)}
         <clipPath id={`k${uid}`}>{outline}</clipPath>
       </defs>
       <g fill="#fff">{outline}</g>
@@ -125,7 +130,8 @@ export default function FindingsPalette({ node, conditionKey = [], people, onSet
     return !c ? 'none' : ['affected', 'carrier', 'unknown'].includes(c.status) ? c.status : 'none';
   };
   const basisOf = (label) => (conds.find(x => normLabel(x.label) === normLabel(label)) || {}).basis;
-  const suggested = style || suggestStyle(conditionKey);
+  const offered = useNewStyle(conditionKey, people, [node.id]);
+  const suggested = style || offered.style;
   const add = () => {
     if (!draft.trim()) return;
     onAdd(node.id, draft.trim(), suggested);
@@ -204,7 +210,7 @@ export default function FindingsPalette({ node, conditionKey = [], people, onSet
                 {editing === e.id && (
                   <StylePicker value={{ fill: shown.fill }}
                     isTaken={(st2) => styleTaken(conditionKey, st2, e.label) || (reserved && st2.fill === 'solid')}
-                    note={reserved ? t('Siyah, bu çizimde adı girilmemiş taşıyıcılık ya da etkilenmişlik için kullanıldığından bu bulgu çizimde bu desenle gösteriliyor.') : null}
+                    note={reserved ? t('Siyah, bu çizimde probandı ya da adı girilmemiş taşıyıcılık veya etkilenmişliği gösterdiğinden bu bulgu çizimde bu desenle gösteriliyor.') : null}
                     onChange={(st2) => onSetStyle(e.label, st2)} />
                 )}
               </div>
@@ -221,7 +227,7 @@ export default function FindingsPalette({ node, conditionKey = [], people, onSet
           <button className="ui-btn ui-btn-sm ui-btn-primary" disabled={!draft.trim()} onClick={add}>{t('Ekle')}</button>
         </div>
         {draft.trim() && (
-          <StylePicker value={suggested} isTaken={(st2) => styleTaken(conditionKey, st2)} onChange={setStyle} />
+          <StylePicker value={suggested} isTaken={(st2) => styleTaken(conditionKey, st2) || (offered.blackHeld && st2.fill === 'solid')} onChange={setStyle} />
         )}
         </>
       ) : (

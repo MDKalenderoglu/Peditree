@@ -21,11 +21,13 @@ export const normLabel = (label) => String(label ?? '').trim().toLocaleLowerCase
 
 // in the order a new finding is offered them; no plain grey (clinician 2026-11-17: a symbol filled grey
 // reads as "affected" without a name — a finding from before in grey is given the next free pattern)
-export const FILLS = ['solid', 'hatch', 'dots', 'grid', 'horiz', 'vert', 'back', 'checker'];
+// (clinician 2026-11-18: eight were too few — four more, told apart at a symbol's size)
+export const FILLS = ['solid', 'hatch', 'dots', 'grid', 'horiz', 'vert', 'back', 'checker', 'bands', 'zigzag', 'rings', 'plus'];
 export const FILL_LABEL = {
   solid: tk('Siyah'), hatch: tk('Tarama'), dots: tk('Noktalı'),
   horiz: tk('Yatay çizgili'), vert: tk('Dikey çizgili'), back: tk('Ters tarama'), checker: tk('Damalı'),
   grid: tk('Kareli'), bands: tk('Kalın tarama'), zigzag: tk('Zikzak'),
+  rings: tk('Halkalı'), plus: tk('Artılı'), brick: tk('Tuğla'), tri: tk('Üçgenli'),
 };
 /**
  * Two patterns no finding can be given, only drawn in: when black is kept for
@@ -34,7 +36,7 @@ export const FILL_LABEL = {
  * carrier half, are drawn in these (clinician report 2026-11-17: with eight
  * findings the carrier's half fell back to hatching).
  */
-export const SPARE_FILLS = ['bands', 'zigzag'];
+export const SPARE_FILLS = ['brick', 'tri'];
 /**
  * A carrier without a named finding (person.carrier): the left half in a
  * pattern of its own, never a finding's, explained in the key as
@@ -80,14 +82,22 @@ export function displayStyles(people = [], key = [], carrierMark = 'half') {
   const out = key.map((e) => ({ ...e }));
   const used = () => new Set(out.map((e) => e.fill));
   // in place of black, the boldest pattern first (checkered reads as dark; the two hatchings are kept apart)
-  const free = () => ['checker', 'horiz', 'vert', 'dots', 'grid', 'hatch', 'back', ...SPARE_FILLS].find((f) => !used().has(f));
+  const free = () => ['checker', 'horiz', 'vert', 'dots', 'grid', 'hatch', 'back', 'bands', 'zigzag', 'plus', 'rings', ...SPARE_FILLS].find((f) => !used().has(f));
   // with the solid half, black means carrier wherever a carrier is drawn: a finding in black beside a
   // carrier's patterned half read as a solid carrier half (clinician report 2026-11-17)
   const anyCarrier = people.some((p) => p.carrier || conditionsOf(p).some((c) => c.status === 'carrier'));
-  const reserve = (carrierMark === 'half' && anyCarrier) || (out.length > 0 && people.some(isUnnamedAffected));
   const solid = out.find((e) => e.fill === 'solid');
+  // a proband drawn solid (affected, with or without findings named; fillFor): black is the proband's,
+  // so a finding the proband does not have alone is never drawn solid beside them (clinician report
+  // 2026-11-18: a new finding was drawn like the proband)
+  const probandOwnsBlack = people.some((p) => {
+    if (!p.proband || fillFor(p, out, carrierMark).mode !== 'full') return false;
+    const own = conditionsOf(p).filter((c) => c.status === 'affected').map((c) => normLabel(c.label));
+    return !(solid && own.length === 1 && own[0] === normLabel(solid.label));
+  });
+  const reserve = (carrierMark === 'half' && anyCarrier) || (out.length > 0 && people.some(isUnnamedAffected)) || probandOwnsBlack;
   if (reserve && solid) solid.fill = free();
-  const affectedFill = free() || 'bands';
+  const affectedFill = free() || SPARE_FILLS[SPARE_FILLS.length - 1];
   return { key: out, halfFree: true, affectedFill };
 }
 
@@ -97,10 +107,27 @@ const validStyle = (e) => FILLS.includes(e.fill);
 // from the others; adding one is refused with this message (clinician
 // decision 2026-10-25: an explicit warning, the clinician simplifies)
 export const KEY_CAPACITY = FILLS.length;
-export const KEY_FULL_MESSAGE = tk('8 bulgu sınırına ulaşıldı: her bulgu sembolde kendine ait bir desenle gösterildiğinden kullanılabilecek desen kalmadı. Yeni bir bulgu eklemek için benzer bulgular tek bir ad altında toplanabilir ya da gereksiz bir bulgu kaldırılabilir.');
+export const KEY_FULL_MESSAGE = tk('12 bulgu sınırına ulaşıldı: her bulgu sembolde kendine ait bir desenle gösterildiğinden kullanılabilecek desen kalmadı. Yeni bir bulgu eklemek için benzer bulgular tek bir ad altında toplanabilir ya da gereksiz bir bulgu kaldırılabilir.');
 
 export function keyFull(key = []) {
   return new Set(key.filter(validStyle).map((e) => e.fill)).size >= KEY_CAPACITY;
+}
+
+/**
+ * The fill to offer a new finding given to `ids` (the panel, the bulk editor):
+ * the next free one, skipping black when the drawing would not show it black
+ * (displayStyles — the proband's black, a carrier's solid half), so what is
+ * offered is what is drawn. Black still, when nothing else is free.
+ */
+export function suggestNewStyle(people = [], key = [], carrierMark = 'half', ids = []) {
+  const first = suggestStyle(key);
+  if (!first || first.fill !== 'solid') return first;
+  const label = '\u0000new';
+  const them = new Set(ids);
+  const after = people.map((p) => (them.has(p.id) ? { ...p, conditions: [...conditionsOf(p), { label, status: 'affected' }] } : p));
+  const shown = displayStyles(after, [...key, { id: 'new', label, fill: 'solid' }], carrierMark).key.find((e) => e.id === 'new');
+  if (shown.fill === 'solid') return first;
+  return suggestStyle([...key, { label, fill: 'solid' }]) || first;
 }
 
 /** The next free fill, in the order of FILLS; null when all are used. */

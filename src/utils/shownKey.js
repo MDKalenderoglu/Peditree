@@ -6,7 +6,7 @@
  * 2026-11-16). The stored key never changes.
  */
 import { useMemo } from 'react';
-import { displayStyles } from '../graph/conditionKey';
+import { displayStyles, suggestNewStyle, suggestStyle } from '../graph/conditionKey';
 import { useViewSettings } from './drawingStyle';
 
 export function useShownKey(conditionKey = [], people) {
@@ -18,3 +18,18 @@ export const shownEntry = (shownKey, e) => shownKey.find((x) => x.id === e.id) |
 
 /** Moved off black for the carriers: black cannot be chosen for it while that view is on. */
 export const movedOffBlack = (stored, shown) => stored.fill === 'solid' && shown.fill !== stored.fill;
+
+/**
+ * The pattern offered a new finding for `ids`, as the drawing will show it
+ * (conditionKey.js suggestNewStyle); blackHeld: black is the proband's or a
+ * carrier's here, so it is not offered (clinician report 2026-11-18).
+ */
+export function useNewStyle(conditionKey = [], people, ids = []) {
+  const mark = useViewSettings((s) => s.view.carrierMark);
+  const who = ids.join('\u0001');
+  return useMemo(() => {
+    const style = suggestNewStyle(people || [], conditionKey, mark, who ? who.split('\u0001') : []);
+    const first = suggestStyle(conditionKey);
+    return { style, blackHeld: !!(style && first && first.fill === 'solid' && style.fill !== 'solid') };
+  }, [people, conditionKey, mark, who]);
+}

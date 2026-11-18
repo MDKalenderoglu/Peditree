@@ -83,14 +83,15 @@ const FILL_PAINT = {
   solid: NODE_STROKE, hatch: 'url(#fill-hatch)', dots: 'url(#fill-dots)', cross: 'url(#fill-cross)',
   horiz: 'url(#fill-horiz)', vert: 'url(#fill-vert)', back: 'url(#fill-back)', checker: 'url(#fill-checker)',
   grid: 'url(#fill-grid)', bands: 'url(#fill-bands)', zigzag: 'url(#fill-zigzag)',
+  rings: 'url(#fill-rings)', plus: 'url(#fill-plus)', brick: 'url(#fill-brick)', tri: 'url(#fill-tri)',
 };
 
 /** Patterns for findings (graph/conditionKey.js FILLS) and the plain carrier (CARRIER_FILL). */
 function addFindingPatterns(defs) {
-  const pattern = (id, rotate) => {
-    const pt = defs.append('pattern').attr('id', id).attr('patternUnits', 'userSpaceOnUse').attr('width', 5).attr('height', 5);
+  const pattern = (id, rotate, n = 5) => {
+    const pt = defs.append('pattern').attr('id', id).attr('patternUnits', 'userSpaceOnUse').attr('width', n).attr('height', n);
     if (rotate) pt.attr('patternTransform', `rotate(${rotate})`);
-    pt.append('rect').attr('width', 5).attr('height', 5).attr('fill', NODE_FILL);
+    pt.append('rect').attr('width', n).attr('height', n).attr('fill', NODE_FILL);
     return pt;
   };
   const line = (pt, x1, y1, x2, y2, w) => pt.append('line').attr('x1', x1).attr('y1', y1).attr('x2', x2).attr('y2', y2).attr('stroke', NODE_STROKE).attr('stroke-width', w);
@@ -102,12 +103,17 @@ function addFindingPatterns(defs) {
   const checker = pattern('fill-checker');
   checker.append('rect').attr('width', 2.5).attr('height', 2.5).attr('fill', NODE_STROKE);
   checker.append('rect').attr('x', 2.5).attr('y', 2.5).attr('width', 2.5).attr('height', 2.5).attr('fill', NODE_STROKE);
-  // the grid (a finding's) and the spare patterns (conditionKey.js SPARE_FILLS): drawn only, never chosen
+  // the grid, the thick hatching and the zigzag (findings')
   const grid = pattern('fill-grid');
   line(grid, 0, 0.5, 5, 0.5, 1);
   line(grid, 0.5, 0, 0.5, 5, 1);
   pattern('fill-bands', 45).append('rect').attr('width', 2.6).attr('height', 5).attr('fill', NODE_STROKE);
   pattern('fill-zigzag').append('path').attr('d', 'M0,3.6L1.25,1.4L2.5,3.6L3.75,1.4L5,3.6').attr('fill', 'none').attr('stroke', NODE_STROKE).attr('stroke-width', 1.1);
+  // four more for findings (clinician 2026-11-18), and the two spares after them (SPARE_FILLS)
+  pattern('fill-rings', 0, 7).append('circle').attr('cx', 3.5).attr('cy', 3.5).attr('r', 2).attr('fill', 'none').attr('stroke', NODE_STROKE).attr('stroke-width', 1);
+  pattern('fill-plus', 0, 7).append('path').attr('d', 'M1,3.5H6M3.5,1V6').attr('stroke', NODE_STROKE).attr('stroke-width', 1.2);
+  pattern('fill-brick', 0, 7).append('path').attr('d', 'M0,0.5H7M0,4H7M1.75,0.5V4M5.25,4V7').attr('fill', 'none').attr('stroke', NODE_STROKE).attr('stroke-width', 1);
+  pattern('fill-tri', 0, 7).append('path').attr('d', 'M3.5,1L6,5.6H1Z').attr('fill', NODE_STROKE);
   // a carrier without a named finding (conditionKey.js CARRIER_FILL): cross-hatching, no finding's pattern
   const cross = pattern('fill-cross', 45);
   line(cross, 0, 0, 0, 5, 1.2);

@@ -291,23 +291,23 @@ describe('#2 the child of a cross-generation couple can be the proband', () => {
   });
 });
 
-describe('#13 the findings key holds 8 findings, one pattern each, then says so (16 quarter signatures until 2026-11-16)', () => {
-  it('a 9th finding is refused with a clear message by every way in; the 8 stay usable', async () => {
+describe('#13 the findings key holds 12 findings, one pattern each, then says so (8 until 2026-11-18; 16 quarter signatures until 2026-11-16)', () => {
+  it('a 13th finding is refused with a clear message by every way in; the 12 stay usable', async () => {
     const { suggestStyle, keyFull } = await import('../graph/conditionKey');
     S().resetPedigree();
-    for (let i = 1; i <= 8; i++) S().addFinding('mother', `Bulgu ${i}`, suggestStyle(S().doc.graph.conditionKey));
+    for (let i = 1; i <= 12; i++) S().addFinding('mother', `Bulgu ${i}`, suggestStyle(S().doc.graph.conditionKey));
     const key = S().doc.graph.conditionKey;
-    expect(key).toHaveLength(8);
-    expect(new Set(key.map(e => e.fill)).size).toBe(8);
+    expect(key).toHaveLength(12);
+    expect(new Set(key.map(e => e.fill)).size).toBe(12);
     expect(keyFull(key)).toBe(true);
     expect(suggestStyle(key)).toBeNull();
     const before = S().doc;
-    S().addFinding('father', 'Bulgu 9', null);
+    S().addFinding('father', 'Bulgu 13', null);
     expect(S().doc).toBe(before);
-    expect(S().actionNotice.message).toMatch(/8 bulgu sınırı/);
-    S().setFindingStatus('father', 'Bulgu 9', 'carrier');
+    expect(S().actionNotice.message).toMatch(/12 bulgu sınırı/);
+    S().setFindingStatus('father', 'Bulgu 13', 'carrier');
     expect(S().doc).toBe(before);
-    S().addFindingMany(['father', 'proband'], 'Bulgu 9', null);
+    S().addFindingMany(['father', 'proband'], 'Bulgu 13', null);
     expect(S().doc).toBe(before);
     S().setFindingStatus('father', 'Bulgu 3', 'affected');
     expect(P('father').conditions.map(c => c.label)).toEqual(['Bulgu 3']);

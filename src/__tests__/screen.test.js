@@ -1110,7 +1110,8 @@ describe('more of what the clinician sees', () => {
 
   it('Bulgu with "Yarısı siyah (klasik)": the finding\'s mark in the list and in its picker is the one the drawing shows; black, kept for the carrier without a name, cannot be chosen for it (clinician 2026-11-16)', async () => {
     // someone carries Miyop (its half solid) and the mother is a carrier without a name: with "Yarısı siyah" her half is solid too
-    await run(() => { S().addFinding('pat_gf', 'Miyop', null); S().setFindingStatus('pat_gf', 'Miyop', 'carrier'); S().updateIndividual('mother', { carrier: true }); });
+    // (the proband not affected: an affected proband holds black on their own — clinician report 2026-11-18)
+    await run(() => { S().updateIndividual('proband', { affected: false }); S().addFinding('pat_gf', 'Miyop', null); S().setFindingStatus('pat_gf', 'Miyop', 'carrier'); S().updateIndividual('mother', { carrier: true }); });
     await run(() => S().setFindingStyle('Miyop', { fill: 'solid' }));
     await run(() => useViewSettings.getState().setView({ carrierMark: 'split' }));
     const paint = () => {
@@ -1249,20 +1250,34 @@ describe('more of what the clinician sees', () => {
     }
   });
 
-  it('eight findings and a plain carrier with "Yarısı siyah": the carrier\'s half stays solid in the drawing and the key (clinician report 2026-11-17)', async () => {
+  it('twelve findings and a plain carrier with "Yarısı siyah": the carrier\'s half stays solid in the drawing and the key (clinician reports 2026-11-17, 2026-11-18)', async () => {
     await run(() => {
-      ['miyop', 'sağır', 'kçr', 'ama', 'lal', 'mam', 'sam', 'şam'].forEach(f => S().addFinding('father', f, null));
+      ['miyop', 'sağır', 'kçr', 'ama', 'lal', 'mam', 'sam', 'şam', 'kel', 'köse', 'topal', 'şaşı'].forEach(f => S().addFinding('father', f, null));
       S().updateIndividual('mother', { carrier: true });
     });
     expect(drawn('mother').querySelector('.condition-carrier').getAttribute('fill')).toBe('#1e293b');
     expect($$('.condition-legend .condition-carrier').map(p => p.getAttribute('fill'))).toEqual(['#1e293b']);
-    // the father's eight parts: eight different marks, none of them black
+    // the father's twelve parts: twelve different marks, none of them black, each a pattern the drawing has
     const fills = [...drawn('father').querySelectorAll('.condition-region')].map(p => p.getAttribute('fill'));
-    expect(fills).toHaveLength(8);
-    expect(new Set(fills).size).toBe(8);
+    expect(fills).toHaveLength(12);
+    expect(new Set(fills).size).toBe(12);
+    fills.forEach(f => expect(document.querySelector(f.replace(/^url\((.*)\)$/, '$1'))).not.toBeNull());
     expect(fills).not.toContain('#1e293b');
     // the key shows the finding in the pattern it is drawn in
     expect($$('.condition-legend .condition-region').map(p => p.getAttribute('fill'))).toContain('url(#fill-grid)');
+  });
+
+  it('the proband marked affected: a relative\'s finding is never drawn black like the proband, in the drawing or the key (clinician report 2026-11-18)', async () => {
+    await run(() => {
+      S().updateIndividual('proband', { affected: true });
+      S().addFinding('mother', 'Miyop', null); // stored black, the first pattern
+    });
+    const shape = drawn('proband').querySelector('rect, circle, path');
+    expect(shape.getAttribute('fill')).toBe('#1e293b');
+    const mother = [...drawn('mother').querySelectorAll('.condition-region')].map(p => p.getAttribute('fill'));
+    expect(mother).toHaveLength(1);
+    expect(mother[0]).not.toBe('#1e293b');
+    expect($$('.condition-legend .condition-region').map(p => p.getAttribute('fill'))).toEqual(mother);
   });
 
   it('Bulgu: the age at diagnosis is written right beside the finding once it is "Var", free text too (clinician request 2026-11-07)', async () => {
@@ -1965,7 +1980,10 @@ describe('notation per the literature (NSGC 2022 and its 2025 correction)', () =
     expect(half('mother').getAttribute('fill')).toBe('url(#fill-cross)');
     expect(right('father')).toEqual(['#1e293b']);
     expect(half('pat_gf').getAttribute('fill')).not.toBe('#1e293b');
+    // (the proband, affected without a finding, holds black too — clinician report 2026-11-18)
     await run(() => S().updateIndividual('father', { affected: false }));
+    expect(half('pat_gf').getAttribute('fill')).not.toBe('#1e293b');
+    await run(() => S().updateIndividual('proband', { affected: false }));
     expect(half('pat_gf').getAttribute('fill')).toBe('#1e293b');
     await run(() => useViewSettings.getState().setView({ carrierMark: 'half' }));
   });

@@ -11,7 +11,7 @@
  */
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { usePedigreeStore } from '../state/usePedigreeStore';
-import { deriveConditionKey, fillFor, suggestStyle, keyEntry, displayStyles, FILLS } from '../graph/conditionKey';
+import { deriveConditionKey, fillFor, suggestStyle, suggestNewStyle, keyEntry, displayStyles, FILLS } from '../graph/conditionKey';
 import { keyGrid } from '../utils/keyGrid';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
@@ -23,7 +23,7 @@ const labels = () => key().map(e => e.label);
 const part = (p) => `${p.fill}${p.carrier ? ':carrier' : ''}@${p.a0}-${p.a1}`;
 const partsOf = (p, k = key(), mark, styles) => fillFor(p, k, mark, styles).parts?.map(part);
 const aff = (...ls) => ls.map(label => ({ label, status: 'affected' }));
-const K = (...fills) => fills.map((fill, i) => ({ id: `k${i + 1}`, label: 'ABCDEFGH'[i], fill }));
+const K = (...fills) => fills.map((fill, i) => ({ id: `k${i + 1}`, label: 'ABCDEFGHIJKL'[i], fill }));
 
 describe('the legend follows the findings', () => {
   beforeEach(() => S().resetPedigree());
@@ -67,11 +67,11 @@ describe('the legend follows the findings', () => {
     expect(S().actionNotice.message).toMatch(/Geçersiz/);
   });
 
-  it('suggestion: the fills in order, one each; null when all eight are used', () => {
+  it('suggestion: the fills in order, one each; null when all twelve are used (eight until 2026-11-18)', () => {
     expect(suggestStyle([])).toEqual({ fill: 'solid' });
     expect(suggestStyle(K('solid', 'hatch'))).toEqual({ fill: 'dots' });
     expect(suggestStyle(K(...FILLS))).toBeNull();
-    expect(FILLS).toHaveLength(8);
+    expect(FILLS).toHaveLength(12);
   });
 
   it('a finding keeps its pattern while others come and go; an unused finding leaves the legend', () => {
@@ -189,6 +189,45 @@ describe('the legend follows the findings', () => {
   });
 });
 
+describe('the proband\'s black is never a new finding\'s (clinician report 2026-11-18)', () => {
+  const proband = (more = {}) => ({ id: 'p', proband: true, affected: true, ...more });
+  const sister = { id: 's', conditions: aff('A') };
+
+  it('a proband marked affected without a finding: the first finding a relative is given is drawn in a pattern, not black', () => {
+    const st = displayStyles([proband(), sister], K('solid'));
+    expect(fillFor(proband(), st.key, 'half', st)).toEqual({ mode: 'full' });
+    expect(st.key[0].fill).not.toBe('solid');
+    expect(partsOf(sister, st.key, 'half', st)).toEqual([`${st.key[0].fill}@270-630`]);
+  });
+
+  it('a proband with findings A and B is drawn solid: a sister with A alone is not drawn like the proband', () => {
+    const st = displayStyles([proband({ conditions: aff('A', 'B') }), sister], K('solid', 'hatch'));
+    expect(st.key.map(e => e.fill)).not.toContain('solid');
+  });
+
+  it('a proband whose one finding is the black one: a sister with the same finding stays black, as the proband', () => {
+    const st = displayStyles([proband({ conditions: aff('A') }), sister], K('solid', 'hatch'));
+    expect(st.key.map(e => e.fill)).toEqual(['solid', 'hatch']);
+  });
+
+  it('the pattern offered for a new finding is the one drawn: not black beside a solid proband, black for the proband\'s own first finding', () => {
+    const people = [proband(), { id: 's' }];
+    expect(suggestNewStyle(people, [], 'half', ['s'])).toEqual({ fill: 'hatch' });
+    expect(suggestNewStyle(people, [], 'half', ['p'])).toEqual({ fill: 'solid' });
+    expect(suggestNewStyle([{ id: 's' }], [], 'half', ['s'])).toEqual({ fill: 'solid' });
+  });
+
+  it('in the store: the proband marked affected, a new finding for the mother through the panel\'s suggestion is not black', () => {
+    S().resetPedigree();
+    S().updateIndividual('proband', { affected: true });
+    const people = () => S().doc.graph.individuals;
+    S().addFinding('mother', 'Miyop', suggestNewStyle(people(), key(), 'half', ['mother']));
+    const st = displayStyles(people(), key(), 'half');
+    expect(fillFor(person('proband'), st.key, 'half', st)).toEqual({ mode: 'full' });
+    expect(fillFor(person('mother'), st.key, 'half', st).parts.map(p => p.fill)).not.toContain('solid');
+  });
+});
+
 describe('black is kept for what has no name, where it is drawn (clinician 2026-11-16)', () => {
   it('"affected" without a finding named beside findings: a solid finding is shown in another pattern', () => {
     const k = K('solid', 'hatch');
@@ -208,15 +247,15 @@ describe('black is kept for what has no name, where it is drawn (clinician 2026-
     expect(partsOf(carrier, st.key, 'half', st)).toEqual(['solid:carrier@90-270', `${st.key[0].fill}@270-450`]);
   });
 
-  it('with all eight patterns in use the carrier\'s half stays solid: the black finding and "affected" without a name take the spare patterns (clinician report 2026-11-17)', () => {
+  it('with all twelve patterns in use the carrier\'s half stays solid: the black finding and "affected" without a name take the spare patterns (clinician report 2026-11-17)', () => {
     const plain = { carrier: true };
     const full = displayStyles([plain, { conditions: aff('A') }], K(...FILLS), 'half');
     expect(partsOf(plain, full.key, 'half', full)).toEqual(['solid:carrier@90-270']);
-    expect(full.key[0].fill).toBe('bands');
+    expect(full.key[0].fill).toBe('brick');
     // beside a solid carrier half, "affected" without a name: one more spare, never a finding's pattern
     const both = { carrier: true, affected: true };
     const st = displayStyles([both, { conditions: aff('A') }], K(...FILLS), 'half');
-    expect(partsOf(both, st.key, 'half', st)).toEqual(['solid:carrier@90-270', 'zigzag@270-450']);
+    expect(partsOf(both, st.key, 'half', st)).toEqual(['solid:carrier@90-270', 'tri@270-450']);
     const shown = [...st.key.map(e => e.fill), st.affectedFill, 'solid'];
     expect(new Set(shown).size).toBe(shown.length); // every mark in the drawing is told apart
     // the stored key is untouched

@@ -43,7 +43,8 @@ describe('finding parts (NSGC 2022, clinician decision 2026-11-16)', () => {
   it('several findings: equal parts, a dark line along every edge from the middle, over the parts; no white gap', async () => {
     await settle(() => { ['Miyop', 'Kolestaz', 'Katarakt'].forEach((f) => S().addFinding('mother', f, null)); });
     const g = regionsOf('mother');
-    expect(parts(g).map((p) => p.getAttribute('fill'))).toEqual(['#1e293b', 'url(#fill-hatch)', 'url(#fill-dots)']);
+    // the first finding is stored black; the proband, affected without a finding, holds black, so it is drawn checkered (2026-11-18)
+    expect(parts(g).map((p) => p.getAttribute('fill'))).toEqual(['url(#fill-checker)', 'url(#fill-hatch)', 'url(#fill-dots)']);
     expect(dividers(g).map(angle).sort((a, b) => a - b)).toEqual([30, 150, 270]);
     for (const l of dividers(g)) {
       expect(l.getAttribute('stroke')).toBe('#1e293b');

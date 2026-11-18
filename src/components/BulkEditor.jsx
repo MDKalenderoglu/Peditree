@@ -7,8 +7,8 @@
 import { useState } from 'react';
 import { t } from '../i18n';
 import { FindingGlyph, StylePicker } from './FindingsPalette';
-import { useShownKey, shownEntry } from '../utils/shownKey';
-import { normLabel, suggestStyle, styleTaken, KEY_FULL_MESSAGE } from '../graph/conditionKey';
+import { useShownKey, useNewStyle, shownEntry } from '../utils/shownKey';
+import { normLabel, styleTaken, KEY_FULL_MESSAGE } from '../graph/conditionKey';
 import { isPregnancy } from '../graph/model';
 import CarrierBasisChoice from './CarrierBasis';
 
@@ -44,7 +44,8 @@ export default function BulkEditor({ nodes, conditionKey = [], people, onUpdateM
       </button>
     );
   };
-  const suggested = style || suggestStyle(conditionKey);
+  const offered = useNewStyle(conditionKey, people, ids);
+  const suggested = style || offered.style;
   const add = () => {
     if (!draft.trim()) return;
     onAddFindingMany(ids, draft.trim(), suggested);
@@ -95,7 +96,7 @@ export default function BulkEditor({ nodes, conditionKey = [], people, onUpdateM
             onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }} />
           <button className="ui-btn ui-btn-sm ui-btn-primary" disabled={!draft.trim()} onClick={add}>{t('Ekle')}</button>
         </div>
-        {draft.trim() && <StylePicker value={suggested} isTaken={(st2) => styleTaken(conditionKey, st2)} onChange={setStyle} />}
+        {draft.trim() && <StylePicker value={suggested} isTaken={(st2) => styleTaken(conditionKey, st2) || (offered.blackHeld && st2.fill === 'solid')} onChange={setStyle} />}
         </>
       ) : (
         <div className="field-hint finding-limit" role="alert">{t(KEY_FULL_MESSAGE)}</div>
