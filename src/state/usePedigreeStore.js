@@ -21,6 +21,7 @@
  * Persistence: the document is autosaved (persistenceV2.js); a v1 session
  * found at start-up is migrated without loss (migrate.js).
  */
+import { readProject } from '../utils/pngProject';
 import { create } from 'zustand';
 import { validatePedigree } from '../utils/validators';
 import { computePedigreeLayoutV2 as computePedigreeLayout } from '../utils/pedigreeLayoutV2';
@@ -634,6 +635,14 @@ export const usePedigreeStore = create((zSet, get) => {
       const result = apply({ ok: true, doc }, sel([]), derived);
       if (parsed.migrated) zSet({ actionNotice: { message: t('Eski biçimdeki dosya yeni veri biçimine aktarılarak açıldı.'), kind: 'info', at: Date.now() } });
       return { ...result, migrated: parsed.migrated };
+    },
+
+    // a PNG downloaded with Kaydet → PNG carries its PediTree file (utils/pngProject.js; clinician
+    // request 2026-11-20); one without it (shared, recompressed, from elsewhere) opens nothing
+    openPngFile: (bytes) => {
+      const text = bytes ? readProject(bytes) : null;
+      if (!text) return apply({ ok: false, reason: t('Bu resimde düzenlenebilir çizim bilgisi yok: yalnızca PediTree’de Kaydet → PNG ile indirilen resimler yeniden açılabilir. Paylaşılan ya da bir uygulamada küçültülen resimler bu bilgiyi taşımaz.') });
+      return get().openProjectFile(text);
     },
 
     // a PED file from a lab or another tool: drawn afresh, one undo step

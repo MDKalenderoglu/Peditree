@@ -117,7 +117,7 @@ export const TOUR_STEPS = [
     text: tk('Aç, daha önce PediTree dosyası olarak kaydettiğiniz bir pedigriyi bütün bilgileriyle geri getirir. PED dosyaları da açılabilir; bu dosyalar yalnızca aile bağlarını ve etkilenme durumunu taşır.'),
     target: () => one('.toolbar [data-overflow="open"]'), prepare: (c) => c.clear() },
   { id: 'save', icon: Save, title: tk('Kaydetmek'),
-    text: tk('Çizim yalnızca bu sekmede tutulur ve sekme kapandığında silinir. Kaydet menüsünden çizimi resim olarak (PNG, PDF ya da SVG) alabilir ya da sonra açıp düzenlemeye devam etmek için PediTree dosyası olarak saklayabilirsiniz. Resim rapora ve hasta dosyasına eklenir; PediTree dosyası yalnızca PediTree’de açılır.'),
+    text: tk('Çizim yalnızca bu sekmede tutulur ve sekme kapandığında silinir. Kaydet menüsünden çizimi resim olarak (PNG, PDF ya da SVG) alabilir ya da sonra açıp düzenlemeye devam etmek için PediTree dosyası olarak saklayabilirsiniz. Resim rapora ve hasta dosyasına eklenir; Kaydet → PNG ile indirilen resim “Aç” ile yeniden düzenlenebilir. PediTree dosyası yalnızca PediTree’de açılır.'),
     target: () => [one('.toolbar [data-popup="download"] > button'), one('.toolbar .download-popover')], prepare: (c) => { c.clear(); c.openSave(); } },
   { id: 'arrange', icon: TidyIcon, title: tk('Geri al ve Konumlandır'),
     text: tk('Geri al ve Yinele her değişikliği adım adım geri getirir (Cmd/Ctrl + Z). Konumlandır, bireyleri çizimde yeniden yerleştirerek düzeni sadeleştirir; akrabalık ilişkileri değişmez ve bu işlem de geri alınabilir.'),

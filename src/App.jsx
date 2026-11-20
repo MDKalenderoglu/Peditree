@@ -335,7 +335,7 @@ function App() {
     undo, redo, _history, _future,
     dismissedWarningIds, dismissWarning,
     actionNotice, dismissActionNotice, autosaveFailed,
-    exportProjectFile, openProjectFile, importPedFile, relayout, doc, setPatientName, setProbandBirthDate, newFromTemplate,
+    exportProjectFile, openProjectFile, openPngFile, importPedFile, relayout, doc, setPatientName, setProbandBirthDate, newFromTemplate,
   } = usePedigreeStore();
   const t = useT();
   const { ui: uiLang, drawing: drawingChoice } = useLang();
@@ -661,7 +661,8 @@ function App() {
     if (!assessment) return;
     try {
       const opts = await exportOpts();
-      await exportPNG(svgRef.current, exportFileName(doc.patientName, 'png', undefined, drawLang), opts);
+      flushDrafts(); // what is still being typed goes into the file inside the picture
+      await exportPNG(svgRef.current, exportFileName(doc.patientName, 'png', undefined, drawLang), opts, exportProjectFile());
       markDownloaded();
       setExportError(null);
       setExportNotice(exportNoticeFor(assessment, opts));
@@ -898,6 +899,11 @@ function App() {
     if (!file) return;
     // asks whenever work would be replaced, also when only the patient's name was typed
     if (needsLeaveWarning(doc, downloadedDoc.current) && !window.confirm(t('Açık olan pedigrinin yerine dosyadaki pedigri yüklensin mi? Bu işlem “Geri al” ile geri alınabilir.'))) return;
+    // a PNG saved by PediTree carries its PediTree file (utils/pngProject.js; clinician request 2026-11-20)
+    if (/\.png$/i.test(file.name) || file.type === 'image/png') {
+      file.arrayBuffer().then(buf => openPngFile(new Uint8Array(buf))).catch(() => openPngFile(null));
+      return;
+    }
     // a project file is JSON; anything else is read as a PED file
     file.text().then(text => (/\.(ped|fam|txt)$/i.test(file.name) || !text.trim().startsWith('{') ? importPedFile(text) : openProjectFile(text)))
       .catch(() => openProjectFile(null));
@@ -1202,11 +1208,12 @@ function App() {
             document.body,
           )}
           <div className="keys-wrap" data-popup="open">
-            <button className="ui-btn" data-overflow="open" data-overflow-order="6" onClick={handleOpenClick} aria-expanded={openHelp} title={t('Daha önce kaydettiğiniz bir pedigri dosyasını (.peditree.json) ya da bir PED dosyasını açar')}><FolderOpen size={15} /> <span className="btn-label" data-fold-order="7">{t('Aç')}</span></button>
+            <button className="ui-btn" data-overflow="open" data-overflow-order="6" onClick={handleOpenClick} aria-expanded={openHelp} title={t('Daha önce kaydettiğiniz bir pedigri dosyasını (.peditree.json ya da PediTree’de kaydedilmiş PNG) ya da bir PED dosyasını açar')}><FolderOpen size={15} /> <span className="btn-label" data-fold-order="7">{t('Aç')}</span></button>
             {openHelp && (
               <div className="keys-popover share-popover open-popover" role="dialog" aria-label={t('Dosya aç')}>
                 <div className="keys-title">{t('Dosya aç')}</div>
                 <div className="download-item-head"><Save size={18} /><span><b>{t('PediTree dosyası')}</b> (.peditree.json)<small>{t('Kaldığınız yerden, bütün bilgileriyle')}</small></span></div>
+                <div className="download-item-head"><ImageIcon size={18} /><span><b>{t('PediTree’de kaydedilmiş PNG')}</b> (.png)<small>{t('Kaydet → PNG ile indirilen resim, bütün bilgileriyle yeniden açılır')}</small></span></div>
                 <div className="download-item-head"><Table2 size={18} /><span><b>{t('PED dosyası')}</b> (.ped, .fam, .txt)<small>{t('Yalnızca aile bağları ve etkilenme durumu aktarılır; ad, yaş ve bulgular aktarılmaz')}</small></span></div>
                 <button className="ui-btn ui-btn-primary" onClick={chooseFile}><FolderOpen size={15} /> {t('Dosya seç')}</button>
                 <p className="share-note mouse-only">{t('Dosyayı çizimin üzerine bırakarak da açabilirsiniz.')}</p>
@@ -1229,7 +1236,7 @@ function App() {
               <div className="keys-popover share-popover download-popover" role="dialog" aria-label={t('Kaydet')}>
                 <div className="download-group">{t('Resim olarak')}</div>
                 <button className="download-item" title={t('Sunum, mesaj ve belgeler için')} onClick={() => { setDownloadOpen(false); handleExportPNG(); }}>
-                  <ImageIcon size={18} /><span><b>PNG</b><small>{t('rapora, sunuma, mesaja eklemek için')}</small></span>
+                  <ImageIcon size={18} /><span><b>PNG</b><small>{t('rapora, sunuma, mesaja eklemek için; “Aç” ile yeniden düzenlenebilir')}</small></span>
                 </button>
                 <button className="download-item" title={t('Tek bir A4 sayfası; yazdırılmaya ve hasta dosyasına eklenmeye uygundur')} onClick={() => { setDownloadOpen(false); handleExportPDF(); }}>
                   <FileText size={18} /><span><b>PDF</b><small>{t('A4 sayfa')}</small></span>
@@ -1261,7 +1268,7 @@ function App() {
               </div>
             )}
           </div>
-          <input ref={fileInputRef} type="file" accept=".json,application/json,.ped,.fam,.txt,text/plain" onChange={handleOpenProject} style={{ display: 'none' }} aria-label={t('Proje ya da PED dosyası seç')} />
+          <input ref={fileInputRef} type="file" accept=".json,application/json,.png,image/png,.ped,.fam,.txt,text/plain" onChange={handleOpenProject} style={{ display: 'none' }} aria-label={t('Proje ya da PED dosyası seç')} />
         </div>
         <div className="toolbar-sep" data-fold-order="10" />
         <div className="toolbar-group">

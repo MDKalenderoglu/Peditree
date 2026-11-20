@@ -14,6 +14,7 @@
  * That failure mode is why this now throws instead of returning early:
  * a missing svg is surfaced to the caller, not swallowed.
  */
+import { embedProject } from './pngProject';
 import { applyDrawingStyle, stripStyleHelpers } from './drawingStyleSvg';
 import { pageLayout, pdfBlob, rgbaToRgb } from './pdf';
 import { t, currentLang } from '../i18n';
@@ -237,11 +238,13 @@ export async function exportPDF(svgElement, filename = 'pedigree.pdf', opts = {}
 /**
  * Export the pedigree as a PNG file.
  * @param {SVGSVGElement} [svgElement] - the live svg node (preferred). Falls back to #pedigree-svg.
+ * `project`: the PediTree file to carry inside (Kaydet → PNG only; never a shared picture).
  * @returns {Promise<void>} resolves once the download has been triggered, rejects with ExportError on failure.
  */
-export async function exportPNG(svgElement, filename = 'pedigree.png', opts = {}) {
+export async function exportPNG(svgElement, filename = 'pedigree.png', opts = {}, project = null) {
   const blob = await pngBlob(svgElement, opts);
-  downloadBlob(blob, filename);
+  // the PediTree file inside, so "Aç" can open the picture again to edit it (utils/pngProject.js)
+  downloadBlob(project ? new Blob([embedProject(new Uint8Array(await blob.arrayBuffer()), project)], { type: 'image/png' }) : blob, filename);
 }
 
 /** Save a Blob as a file. */

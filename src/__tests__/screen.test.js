@@ -647,6 +647,55 @@ describe('saving, opening and downloading', () => {
     } finally { dl.restore(); }
   });
 
+  it('Kaydet → PNG carries the PediTree file and Aç opens it to edit; a picture made for Paylaş never carries it (clinician request 2026-11-20)', async () => {
+    const { readProject } = await import('../utils/pngProject');
+    // jsdom draws no pictures: the canvas hands back a real 1×1 PNG
+    const tiny = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='), c => c.charCodeAt(0));
+    const ctx = { fillRect() {}, drawImage() {}, set fillStyle(v) {} };
+    const spies = [
+      vi.spyOn(window.HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => ctx),
+      vi.spyOn(window.HTMLCanvasElement.prototype, 'toBlob').mockImplementation((cb) => cb(new Blob([tiny], { type: 'image/png' }))),
+    ];
+    vi.stubGlobal('Image', class { set src(v) { setTimeout(() => this.onload && this.onload()); } });
+    const bytes = (blob) => new Promise((resolve) => { const r = new FileReader(); r.onload = () => resolve(new Uint8Array(r.result)); r.readAsArrayBuffer(blob); });
+    const dl = captureDownloads();
+    try {
+      await run(() => { S().setPatientName('Ayşe Yılmaz'); S().addFinding('mother', 'Miyop', null); });
+      await click(saveButton());
+      await click(buttons($('[data-popup="download"]')).find(b => b.textContent.includes('PNG')));
+      await new Promise(r => setTimeout(r, 50));
+      await run(() => {});
+      const saved = dl.files.at(-1);
+      expect(saved.name).toMatch(/\.png$/);
+      const inside = readProject(await bytes(saved.blob));
+      expect(JSON.parse(inside).patientName).toBe('Ayşe Yılmaz');
+      // Aç with that picture: the drawing comes back
+      await run(() => S().resetPedigree());
+      const input = $('input[type="file"]');
+      expect(input.getAttribute('accept')).toMatch(/\.png/);
+      const file = new File([await bytes(saved.blob)], saved.name, { type: 'image/png' });
+      Object.defineProperty(input, 'files', { value: [file], configurable: true });
+      await run(() => input.dispatchEvent(new Event('change', { bubbles: true })));
+      await new Promise(r => setTimeout(r, 50));
+      await run(() => {});
+      expect(S().doc.patientName).toBe('Ayşe Yılmaz');
+      expect(g().individuals.find(i => i.id === 'mother').conditions.map(c => c.label)).toEqual(['Miyop']);
+      // Paylaş (no share sheet here: the picture is downloaded instead) — without the name, and nothing inside
+      await click($('[data-popup="share"] > button'));
+      await new Promise(r => setTimeout(r, 50));
+      await run(() => {});
+      await click(buttons($('[data-popup="share"]')).find(b => /adı olmadan|adsız/i.test(b.textContent)) || buttons($('[data-popup="share"]')).at(-1));
+      await run(() => {});
+      const shared = dl.files.at(-1);
+      expect(shared).not.toBe(saved);
+      expect(readProject(await bytes(shared.blob))).toBeNull();
+    } finally {
+      dl.restore();
+      spies.forEach(s => s.mockRestore());
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('Enter confirms a box and leaves it', async () => {
     await select('mother');
     const age = $('.input-age');
