@@ -133,7 +133,9 @@ export function exportFileName(patientName, ext, date = new Date(), lang = curre
   const slug = String(patientName || '').trim().toLocaleLowerCase('tr')
     .replace(/[çğıiöşü]/g, (ch) => map[ch] || ch)
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  return `${lang === 'en' ? 'pedigree' : 'pedigri'}${slug ? `-${slug}` : ''}-${date.toISOString().slice(0, 10)}.${ext}`;
+  // the day on the device's clock (toISOString is UTC: in Türkiye 00:00–03:00 gave yesterday)
+  const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  return `${lang === 'en' ? 'pedigree' : 'pedigri'}${slug ? `-${slug}` : ''}-${day}.${ext}`;
 }
 
 /**

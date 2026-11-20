@@ -78,6 +78,15 @@ describe('patient name and keyboard (clinician request 2026-10-25)', () => {
   it('the patient name names the downloads (Turkish letters readable) and travels in the project file', () => {
     expect(exportFileName('Ayşe Çiğdem Yılmaz', 'png', new Date('2026-10-25T10:00:00Z'))).toBe('pedigri-ayse-cigdem-yilmaz-2026-10-25.png');
     expect(exportFileName('', 'svg', new Date('2026-10-25T10:00:00Z'))).toBe('pedigri-2026-10-25.svg');
+    // the day on the clinic's clock, not in UTC: at 01:30 in Türkiye (UTC+3) it was still yesterday in UTC (2026-11-20)
+    const tz = process.env.TZ;
+    process.env.TZ = 'Europe/Istanbul';
+    try {
+      expect(exportFileName('', 'png', new Date(2026, 10, 20, 1, 30))).toBe('pedigri-2026-11-20.png');
+      expect(exportFileName('', 'png', new Date(2026, 10, 20, 23, 50))).toBe('pedigri-2026-11-20.png');
+    } finally {
+      if (tz === undefined) delete process.env.TZ; else process.env.TZ = tz;
+    }
     S().resetPedigree();
     S().setPatientName('Ali Veli');
     const file = S().exportProjectFile();
