@@ -21,6 +21,7 @@ import { routeConnectors, estimateLevelNeeds, planBands } from './routing';
 import { displayParentage, isSmallSymbol, reproMarkOf } from '../../graph/model';
 import { withArt, artEdges, isArtUnion } from './art';
 import { withGhosts, isGhost, isPass } from './crossGeneration';
+import { allowedOverSibship } from './exchange';
 import { textBox, rowTextStarts, lineNoteWidth, TEXT, textScale } from '../../utils/symbolText';
 
 export const PCL = {
@@ -38,6 +39,7 @@ const TEXT_CLEAR = 8;
 const TEXT_LINE_CLEAR = 6;
 
 const W_CENTRE = 1;
+const W_CENTRE_EXCHANGE = 0.1;
 // opts.straightStart (a new pedigree): an only child stands right under a
 // founder couple — a jog in a single line of descent reads as a staircase
 // (clinician feedback 2026-10-24); the router draws an offset of up to
@@ -117,6 +119,45 @@ const FOOTPRINT_ROUNDS = 400;   // upper bound; only pathological graphs need mo
  *     orderOnly = keep the previous order, fresh coordinates (after a removal)
  */
 export function computePclLayout(inputGraph, opts = {}) {
+  const merged = computeOnce(inputGraph, opts);
+  if (opts.exchange === false || !merged.exchange) { delete merged.exchange; return merged; }
+  // exchange marriages (berdel, exchange.js): the families interleaved is not always the better
+  // drawing (the rest of the pedigree may pull them apart) — both are laid out and the more readable
+  // kept; while editing, the one the previous drawing showed stays (no switching back and forth)
+  const apart = computeOnce(inputGraph, { ...opts, exchange: false });
+  delete apart.exchange;
+  const prev = opts.stability && opts.stability.prevX;
+  const keepMerged = prev && prev.size
+    ? merged.exchange.some(([x, y]) => prev.has(x) && prev.has(y) && Math.abs(prev.get(x) - prev.get(y)) <= 1.5 * SLOT_PX)
+    : exchangeScore(merged) <= exchangeScore(apart);
+  delete merged.exchange;
+  return keepMerged ? merged : apart;
+}
+
+const SLOT_PX = 90;
+/** Lower is more readable: long partner lines, line jumps, couples off their children, width. */
+function exchangeScore({ nodes, edges }) {
+  const at = new Map(nodes.map((n) => [n.id, n]));
+  let long = 0, off = 0;
+  const unions = new Map();
+  for (const e of edges) {
+    if (!e.unionId) continue;
+    if (!unions.has(e.unionId)) unions.set(e.unionId, { kids: [] });
+    if (e.type === 'childStem' && at.has(e.childId)) unions.get(e.unionId).kids.push(at.get(e.childId).x);
+    if (e.type === 'parentChildDrop') unions.get(e.unionId).drop = e.x1;
+    if ((e.type === 'union' || e.type === 'consanguineousUnion' || e.type === 'consanguineousUnionUnresolved') && Math.abs(e.x2 - e.x1) > 3 * SLOT_PX) long++;
+  }
+  for (const u of unions.values()) {
+    if (u.drop === undefined || !u.kids.length) continue;
+    if (Math.abs(u.drop - (Math.min(...u.kids) + Math.max(...u.kids)) / 2) > SLOT_PX / 2) off++;
+  }
+  const jumps = edges.reduce((n, e) => n + (Array.isArray(e.bridges) ? e.bridges.length : 0), 0);
+  const xs = nodes.map((n) => n.x);
+  const width = xs.length ? Math.max(...xs) - Math.min(...xs) : 0;
+  return 3 * long + jumps + off + width / 500;
+}
+
+function computeOnce(inputGraph, opts = {}) {
   // social-only children (e.g. adopted-in) are drawn under their social parents
   const { graph: drawn, socialChildren } = displayParentage(inputGraph);
   // partners on different rows: an invisible stand-in beside the lower one;
@@ -127,7 +168,7 @@ export function computePclLayout(inputGraph, opts = {}) {
 
   const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const t0 = now();
-  const S = buildStructure(graph);
+  const S = buildStructure(graph, { exchange: opts.exchange !== false });
   S.art = art;
   // adopted people are drawn in brackets (model.js adoptionOf): lines meet the brackets
   S.bracketed = new Set([
@@ -272,10 +313,12 @@ export function computePclLayout(inputGraph, opts = {}) {
     // straightStart), 'only' (every only child under the couple), 'strong'
     // (every couple firmly over its children)
     const straight = opts.straight || (opts.straightStart ? 'founders' : null);
-    let w = W_CENTRE;
+    // the parents of interleaved families (exchange.js) cannot both stand over the middle of their
+    // children: pulled as hard as elsewhere they would prise every couple below apart
+    let w = S.exchangeMates.has(u.id) ? W_CENTRE * W_CENTRE_EXCHANGE : W_CENTRE;
     if (first === last && (straight === 'only' || straight === 'strong')) w = W_CENTRE_EXACT;
     else if (first === last && straight === 'founders' && founders) w = W_CENTRE_ONLY;
-    else if (straight === 'strong') w = W_CENTRE * 4;
+    else if (straight === 'strong') w *= 4;
     const term = { w, idx, c, d: 0, couple: true };
     terms.push(term);
     coupleTerm.set(u.id, term);
@@ -363,7 +406,9 @@ export function computePclLayout(inputGraph, opts = {}) {
     const kids = (S.childrenOf.get(u.id) || []).filter(c => index.has(c));
     if (kids.length < 2) continue;
     const ordered = kids.slice().sort((p, q) => rowPos.get(p) - rowPos.get(q));
-    unionKids.push({ u, first: ordered[0], last: ordered[ordered.length - 1], parentRow: rows.get(S.indById.get(a).generation) });
+    // an exchange marriage (berdel): the other family's parents may stand over this sibship line (exchange.js)
+    const allowed = allowedOverSibship(S.exchangeMates, S.unionById, u.id);
+    unionKids.push({ u, first: ordered[0], last: ordered[ordered.length - 1], parentRow: rows.get(S.indById.get(a).generation), allowed });
   }
   // A penalty's equilibrium stops short of the boundary. Rather than raising
   // the weight (which ill-conditions the solve), a pair that is still
@@ -380,11 +425,11 @@ export function computePclLayout(inputGraph, opts = {}) {
     for (let round = 0; round < FOOTPRINT_ROUNDS; round++) {
       const xs = solution.x;
       let changed = 0;
-      for (const { u, first, last, parentRow } of unionKids) {
+      for (const { u, first, last, parentRow, allowed } of unionKids) {
         const L = xs[index.get(first)], R = xs[index.get(last)];
         if (R - L <= 2 * FOOTPRINT_INSET) continue;
         for (const q of parentRow) {
-          if (u.partners.includes(q)) continue;
+          if (u.partners.includes(q) || allowed.has(q)) continue;
           const xq = xs[index.get(q)];
           // 1 px safety: coordinates are rounded to 0.5 px afterwards and the
           // invariant's test is strict
@@ -676,6 +721,7 @@ export function computePclLayout(inputGraph, opts = {}) {
   const shownRows = new Map([...rows].map(([g, list]) => [g, list.filter(id => !isGhost(S.indById.get(id)))]));
   return {
     nodes, edges,
+    ...(S.exchangeCouples.length ? { exchange: S.exchangeCouples } : {}),
     meta: {
       order: shownRows,
       timings: { orderMs: tOrdered - t0, solveMs: tSolved - tOrdered, routeMs: tRouted - tSolved, qpSolves, qpIterations, footprintTerms: footprintTerms.size },

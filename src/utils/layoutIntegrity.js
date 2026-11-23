@@ -13,6 +13,7 @@
  * @returns {Array<{ severity: 'error'|'warning', code: string, message: string, ids?: string[] }>}
  */
 import { isSmallSymbol } from '../graph/model';
+import { exchangePairs, allowedOverSibship } from '../layout/pcl/exchange';
 export function auditLayoutIntegrity(layout, graph) {
   const { nodes = [], edges = [] } = layout;
   const { individuals = [], unions = [], parentChildRelationships = [] } = graph;
@@ -214,6 +215,11 @@ export function auditLayoutIntegrity(layout, graph) {
     // Recompute each union's sibship rail from actual node positions,
     // mirroring pedigreeLayout.js's own dropY / min-max-X computation.
     const rails = [];
+    // exchange marriages (berdel, layout/pcl/exchange.js): the two sibship lines overlap by design on
+    // levels of their own — compared as drawn
+    const { mates } = exchangePairs({ individuals, unions, parentChildRelationships });
+    const drawnY = new Map();
+    for (const e of edges) if (e.type === 'sibship' && typeof e.y1 === 'number') drawnY.set(e.unionId, e.y1);
     for (const rel of parentChildRelationships) {
       const childNodes = rel.children.map(id => nodeById.get(id)).filter(Boolean);
       if (childNodes.length === 0) continue;
@@ -233,6 +239,7 @@ export function auditLayoutIntegrity(layout, graph) {
       rails.push({
         unionId: rel.unionId,
         railY,
+        drawnY: drawnY.get(rel.unionId),
         minX: Math.min(...childXs),
         maxX: Math.max(...childXs),
       });
@@ -242,7 +249,8 @@ export function auditLayoutIntegrity(layout, graph) {
       for (let b = a + 1; b < rails.length; b++) {
         const ra = rails[a];
         const rb = rails[b];
-        if (Math.abs(ra.railY - rb.railY) > RAIL_Y_TOLERANCE) continue;
+        const drawn = (mates.get(ra.unionId) || new Set()).has(rb.unionId) && typeof ra.drawnY === 'number' && typeof rb.drawnY === 'number';
+        if (Math.abs(drawn ? ra.drawnY - rb.drawnY : ra.railY - rb.railY) > RAIL_Y_TOLERANCE) continue;
         // X-interval overlap length.
         const overlap = Math.min(ra.maxX, rb.maxX) - Math.max(ra.minX, rb.minX);
         if (overlap > RAIL_X_MIN_OVERLAP) {
@@ -333,6 +341,9 @@ export function auditLayoutIntegrity(layout, graph) {
   // ──────────────────────────────────────
   {
     const NODE_HALF_X = 20;
+    // exchange marriages (berdel): the other family's parents may stand over the sibship (layout/pcl/exchange.js)
+    const { mates } = exchangePairs({ individuals, unions, parentChildRelationships });
+    const unionById = new Map(unions.map(u => [u.id, u]));
     for (const rel of parentChildRelationships) {
       const childNodes = rel.children.map(id => nodeById.get(id)).filter(Boolean);
       if (childNodes.length === 0) continue;
@@ -348,7 +359,7 @@ export function auditLayoutIntegrity(layout, graph) {
       const parentGen = childNodes[0].generation - 1;
       for (const node of nodes) {
         if (node.generation !== parentGen) continue;
-        if (union.partners.includes(node.id)) continue;
+        if (union.partners.includes(node.id) || allowedOverSibship(mates, unionById, union.id).has(node.id)) continue;
         if (typeof node.x !== 'number') continue;
         if (node.x > minX && node.x < maxX) {
           issues.push({

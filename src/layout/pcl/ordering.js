@@ -69,6 +69,16 @@ function atomCentre(S, aid, pos) {
   return (pos.get(ps[0]) + pos.get(ps[ps.length - 1])) / 2;
 }
 
+// the parent unions of a sibship atom (two for an exchange marriage, exchange.js)
+const sibUnions = (atom) => atom.unionIds || [atom.unionId];
+// where union uid's children stand: the atom's centre, or in an exchange atom the span of that union's own children
+function sibBottom(S, aid, uid, pos) {
+  const atom = S.atoms[aid];
+  if (!atom.unionIds) return atomCentre(S, aid, pos);
+  const xs = (S.childrenOf.get(uid) || []).filter(c => pos.has(c)).map(c => pos.get(c));
+  return xs.length ? (Math.min(...xs) + Math.max(...xs)) / 2 : atomCentre(S, aid, pos);
+}
+
 function unionMid(S, uid, pos) {
   const [a, b] = S.unionById.get(uid).partners;
   return (pos.get(a) + pos.get(b)) / 2;
@@ -119,9 +129,11 @@ export function orderingCost(S, order) {
     for (const aid of order.get(gen) || []) {
       const atom = S.atoms[aid];
       if (atom.kind !== 'sib') continue;
-      const [a, b] = S.unionById.get(atom.unionId).partners;
-      if (!pos.has(a) || !pos.has(b)) continue;
-      edges.push([unionMid(S, atom.unionId, pos), atomCentre(S, aid, pos)]);
+      for (const uid of sibUnions(atom)) {
+        const [a, b] = S.unionById.get(uid).partners;
+        if (!pos.has(a) || !pos.has(b)) continue;
+        edges.push([unionMid(S, uid, pos), sibBottom(S, aid, uid, pos)]);
+      }
     }
     for (const [top, bottom] of edges) cost += W_ALIGN * Math.abs(top - bottom);
     for (let i = 0; i < edges.length; i++) {
@@ -198,8 +210,10 @@ class CostModel {
       for (const aid of order.get(g) || []) {
         const atom = S.atoms[aid];
         if (atom.kind !== 'sib') continue;
-        const [a, b] = S.unionById.get(atom.unionId).partners;
-        if (inComp.has(a) && inComp.has(b)) this.edgesInto.get(g).push({ aid, uid: atom.unionId });
+        for (const uid of sibUnions(atom)) {
+          const [a, b] = S.unionById.get(uid).partners;
+          if (inComp.has(a) && inComp.has(b)) this.edgesInto.get(g).push({ aid, uid });
+        }
       }
     }
     this.unionsIn = new Map(gens.map(g => [g, []]));
@@ -255,8 +269,7 @@ class CostModel {
     for (let i = 0; i < list.length; i++) {
       const [a, b] = S.unionById.get(list[i].uid).partners;
       tops[i] = (pos.get(a) + pos.get(b)) / 2;
-      const ps = S.atoms[list[i].aid].persons;
-      bottoms[i] = (pos.get(ps[0]) + pos.get(ps[ps.length - 1])) / 2;
+      bottoms[i] = sibBottom(S, list[i].aid, list[i].uid, pos);
       cost += W_ALIGN * Math.abs(tops[i] - bottoms[i]);
     }
     for (let i = 0; i < list.length; i++) {
@@ -422,8 +435,8 @@ function searchFrom(S, gens, init, flexible = [], opts = {}) {
     sortLayer(order, gen, (aid) => {
       const atom = S.atoms[aid];
       if (atom.kind === 'sib') {
-        const [a, b] = S.unionById.get(atom.unionId).partners;
-        if (pos.has(a) && pos.has(b)) return unionMid(S, atom.unionId, pos);
+        const mids = sibUnions(atom).filter(uid => S.unionById.get(uid).partners.every(p => pos.has(p))).map(uid => unionMid(S, uid, pos));
+        if (mids.length) return mids.reduce((x, y) => x + y, 0) / mids.length;
       }
       return Number.POSITIVE_INFINITY;
     });
@@ -490,8 +503,8 @@ function searchFrom(S, gens, init, flexible = [], opts = {}) {
         let base = atomCentreNow(aid);
         let w = 1;
         if (atom.kind === 'sib') {
-          const [a, b] = S.unionById.get(atom.unionId).partners;
-          if (pos.has(a) && pos.has(b)) { base = unionMid(S, atom.unionId, pos); w = 2; }
+          const mids = sibUnions(atom).filter(uid => S.unionById.get(uid).partners.every(p => pos.has(p))).map(uid => unionMid(S, uid, pos));
+          if (mids.length) { base = mids.reduce((x, y) => x + y, 0) / mids.length; w = 2; }
         } else {
           const kids = childPull(aid);
           if (kids) { base = kids.mean; w = kids.n; }
@@ -622,7 +635,7 @@ export function orderLayersStable(S, { prevX, freePersons }) {
     if (atomKey.has(aid) && !isNew(aid)) return atomKey.get(aid);
     const xs = [];
     if (atom.kind === 'sib') {
-      for (const p of S.unionById.get(atom.unionId).partners) if (prevX.has(p)) xs.push(prevX.get(p));
+      for (const uid of sibUnions(atom)) for (const p of S.unionById.get(uid).partners) if (prevX.has(p)) xs.push(prevX.get(p));
     }
     if (!xs.length) {
       for (const p of atom.persons) {

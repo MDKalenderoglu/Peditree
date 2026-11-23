@@ -17,10 +17,11 @@
  */
 
 import { isGhost } from './crossGeneration';
+import { exchangePairs } from './exchange';
 import { ageInDays } from '../../utils/age';
 import { isPregnancy } from '../../graph/model';
 
-export function buildStructure(graph) {
+export function buildStructure(graph, { exchange: interleave = true } = {}) {
   const individuals = graph.individuals || [];
   const unions = graph.unions || [];
   const pcrs = graph.parentChildRelationships || [];
@@ -341,6 +342,55 @@ export function buildStructure(graph) {
     });
   }
 
+  // ── exchange marriages (berdel; exchange.js, clinician decision 2026-11-23) ──
+  // Two sibships whose members married each other two or more times become one
+  // atom: the families interleaved, every couple side by side —
+  // [rest of A, x1 y1, x2 y2, …, rest of B] (or B first) — in every couple
+  // order that keeps each family's birth order (explicit or by known ages) and
+  // twins together. Siblings with married-in spouses keep the families apart.
+  const exchange = interleave ? exchangePairs({ individuals, unions, parentChildRelationships: pcrs }) : { pairs: [], mates: new Map() };
+  const exchangeCouples = [];
+  const mergedMates = new Map(); // only the pairs drawn interleaved
+  const sibAtomOf = new Map(atoms.filter(a => a.kind === 'sib').map(a => [a.unionId, a]));
+  const merged = new Set();
+  const permutations = (list) => (list.length <= 1 ? [list] : list.flatMap((x, i) => permutations([...list.slice(0, i), ...list.slice(i + 1)]).map(r => [x, ...r])));
+  for (const pair of exchange.pairs) {
+    const A = sibAtomOf.get(pair.a), B = sibAtomOf.get(pair.b);
+    if (!A || !B || merged.has(A.id) || merged.has(B.id) || A.gen !== B.gen || pair.couples.length > 3) continue;
+    if (pair.couples.some(([x, y]) => (spousesOf.get(x) || []).length || (spousesOf.get(y) || []).length)) continue;
+    const xs = pair.couples.map(c => c[0]), ys = pair.couples.map(c => c[1]);
+    const restA = A.core.filter(p => !xs.includes(p)), restB = B.core.filter(p => !ys.includes(p));
+    const fixed = (atom) => explicitOrder.has(atom.unionId) || atom.core.every(p => ageOf(p) !== null || isPregnancy(indById.get(p)));
+    const fits = (atom, shown) => (!fixed(atom) || shown.join('|') === atom.core.join('|')) && agesConsistent(shown) && membersTogether(shown);
+    const cores = [];
+    for (const order of permutations(pair.couples)) {
+      const ox = order.map(c => c[0]), oy = order.map(c => c[1]);
+      if (fits(A, [...restA, ...ox]) && fits(B, [...oy, ...restB])) cores.push([...restA, ...order.flatMap(([x, y]) => [x, y]), ...restB]);
+      if (fits(B, [...restB, ...oy]) && fits(A, [...ox, ...restA])) cores.push([...restB, ...order.flatMap(([x, y]) => [y, x]), ...restA]);
+    }
+    if (!cores.length) continue;
+    A.unionIds = [A.unionId, B.unionId];
+    A.exchange = true;
+    A.core = cores[0];
+    A.arrangements = cores.map(core => core.flatMap(p => blockOf.get(p)));
+    A.arrangementCore = cores.map((_, k) => k);
+    A.persons = A.arrangements[0];
+    merged.add(A.id); merged.add(B.id);
+    exchangeCouples.push(...pair.couples.map(([x, y]) => [x, y]));
+    for (const [s1, t1] of [[pair.a, pair.b], [pair.b, pair.a]]) {
+      if (!mergedMates.has(s1)) mergedMates.set(s1, new Set());
+      mergedMates.get(s1).add(t1);
+    }
+    B.mergedInto = A.id;
+  }
+  if (merged.size) {
+    const kept = atoms.filter(a => a.mergedInto === undefined);
+    atoms.length = 0;
+    kept.forEach((a, k) => { a.id = k; atoms.push(a); });
+    personAtom.clear();
+    for (const a of atoms) for (const p of a.persons) personAtom.set(p, a.id);
+  }
+
   // ── connected components (unrelated families are laid out side by side) ──
   const comp = new Map();
   let compCount = 0;
@@ -375,7 +425,9 @@ export function buildStructure(graph) {
   const crossLinks = individuals.filter(isGhost).map(g => ({ ghost: g.id, upper: g.ghostFor, ...(g.crossGenerationPass ? { pass: true } : {}) }));
 
   return {
-    crossLinks, multipleOf,
+    crossLinks, multipleOf, exchangeCouples,
+    // the families stand interleaved only where they were merged above
+    exchangeMates: mergedMates,
     individuals, unions, indById, unionById, dataIndex,
     parentUnion, childrenOf, partnerUnions, partnerIn, isPartners,
     atoms, personAtom, gens, componentCount: compCount, componentOf: comp,

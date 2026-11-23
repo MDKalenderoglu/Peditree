@@ -20,6 +20,7 @@
 
 import { buildLayoutModel } from '../utils/layoutModel';
 import { computePedigreeIds } from '../utils/pedigreeNumbering';
+import { exchangePairs, allowedOverSibship } from '../layout/pcl/exchange';
 
 const NODE_HALF = 20;   // liveborn symbol half-extent (matches PedigreeCanvas HALF)
 const LOSS_HALF = 14;   // pregnancy-loss / stillbirth symbol half-extent
@@ -152,8 +153,11 @@ function checkEdgeThroughNode({ edges, nodes }) {
 }
 
 // ── 6. UNRELATED_NODE_IN_CHILD_FOOTPRINT ──────────────────────
-function checkUnrelatedNodeInFootprint({ nodes, unions, parentChildRelationships, nodeById }) {
+function checkUnrelatedNodeInFootprint({ nodes, unions, individuals, parentChildRelationships, nodeById }) {
   const out = [];
+  // exchange marriages (berdel): the other family's parents may stand over the sibship line (exchange.js)
+  const { mates } = exchangePairs({ individuals: individuals && individuals.length ? individuals : nodes, unions, parentChildRelationships });
+  const unionById = new Map(unions.map(u => [u.id, u]));
   for (const rel of parentChildRelationships) {
     const kids = rel.children.map(id => nodeById.get(id)).filter(Boolean);
     if (kids.length === 0) continue;
@@ -167,7 +171,7 @@ function checkUnrelatedNodeInFootprint({ nodes, unions, parentChildRelationships
     const parentGen = kids[0].generation - 1;
     for (const node of nodes) {
       if (node.generation !== parentGen || !finite(node.x)) continue;
-      if (union.partners.includes(node.id)) continue;
+      if (union.partners.includes(node.id) || allowedOverSibship(mates, unionById, union.id).has(node.id)) continue;
       if (node.x > minX && node.x < maxX) {
         out.push({ code: 'UNRELATED_NODE_IN_CHILD_FOOTPRINT', severity: 'error',
           message: `Individual '${node.id}' sits inside union '${rel.unionId}''s child fan without being a partner.`,
@@ -293,8 +297,13 @@ function marriageConnects(setA, setB, unions) {
 }
 
 // ── 8. SHARED_CHILD_BUS_BETWEEN_UNRELATED_UNIONS ──────────────
-function unionRails({ parentChildRelationships, unions, nodeById }) {
+function unionRails({ parentChildRelationships, unions, nodeById, edges, individuals, nodes }) {
   const rails = [];
+  // exchange marriages (berdel, exchange.js): their two sibship lines overlap by design and run on
+  // levels of their own; for such a pair the lines as drawn are compared (sameRail below)
+  const { mates } = exchangePairs({ individuals: individuals && individuals.length ? individuals : nodes, unions, parentChildRelationships });
+  const drawnY = new Map();
+  for (const e of edges || []) if (e.type === 'sibship' && finite(e.y1)) drawnY.set(e.unionId, e.y1);
   for (const rel of parentChildRelationships) {
     const kids = rel.children.map(id => nodeById.get(id)).filter(Boolean);
     if (kids.length === 0) continue;
@@ -307,10 +316,17 @@ function unionRails({ parentChildRelationships, unions, nodeById }) {
     const childYs = kids.map(k => k.y).filter(finite);
     const childXs = kids.map(k => k.x).filter(finite);
     if (childYs.length === 0 || childXs.length === 0) continue;
-    rails.push({ unionId: rel.unionId, railY: (unionY + Math.min(...childYs)) / 2,
+    rails.push({ unionId: rel.unionId, railY: (unionY + Math.min(...childYs)) / 2, drawnY: drawnY.get(rel.unionId),
+      mates: mates.get(rel.unionId) || new Set(),
       minX: Math.min(...childXs), maxX: Math.max(...childXs), childIds: rel.children });
   }
   return rails;
+}
+
+// two sibship lines at one height: as drawn for an exchange-marriage pair, else at the notional rail
+function sameRail(a, b, tol) {
+  if (a.mates.has(b.unionId) && finite(a.drawnY) && finite(b.drawnY)) return Math.abs(a.drawnY - b.drawnY) <= tol;
+  return Math.abs(a.railY - b.railY) <= tol;
 }
 
 function checkSharedChildBus(data) {
@@ -320,7 +336,7 @@ function checkSharedChildBus(data) {
   for (let a = 0; a < rails.length; a++) {
     for (let b = a + 1; b < rails.length; b++) {
       const ra = rails[a], rb = rails[b];
-      if (Math.abs(ra.railY - rb.railY) > TOL) continue;
+      if (!sameRail(ra, rb, TOL)) continue;
       const overlap = Math.min(ra.maxX, rb.maxX) - Math.max(ra.minX, rb.minX);
       if (overlap > MIN_OVERLAP) {
         out.push({ code: 'SHARED_CHILD_BUS_BETWEEN_UNRELATED_UNIONS', severity: 'error',
@@ -341,7 +357,7 @@ function checkWrongParentBusAttachment(data) {
   for (const rail of rails) {
     for (const other of rails) {
       if (other.unionId === rail.unionId) continue;
-      if (Math.abs(other.railY - rail.railY) > 6) continue;
+      if (!sameRail(rail, other, 6)) continue;
       for (const childId of rail.childIds) {
         const c = data.nodeById.get(childId);
         if (!c || !finite(c.x)) continue;
