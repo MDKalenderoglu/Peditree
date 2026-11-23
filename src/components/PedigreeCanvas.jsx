@@ -79,6 +79,8 @@ function sectorPath(a0, a1, r) {
   return `M0,0L${x0},${y0}A${r},${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1},${y1}Z`;
 }
 
+const LINE_NOTE_RAISED = 15; // px above an ended relationship's line (its "//" reaches 8 px up)
+
 const FILL_PAINT = {
   solid: NODE_STROKE, hatch: 'url(#fill-hatch)', dots: 'url(#fill-dots)', cross: 'url(#fill-cross)',
   horiz: 'url(#fill-horiz)', vert: 'url(#fill-vert)', back: 'url(#fill-back)', checker: 'url(#fill-checker)',
@@ -609,10 +611,12 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
     });
 
     // "Aynı köy" on a couple's line, or the clinician's own words (clinician request 2026-11-05):
-    // just above the line, between the partners; a click corrects it where it stands
+    // just above the line, between the partners; a click corrects it where it stands. Over the "//" of an
+    // ended relationship it stands higher, clear of the strokes' tops also with a handwriting font's
+    // descenders (2026-11-23: with every drawing font but the standard one the words touched the "//")
     edges.filter(e => e.type === 'lineNote').forEach(e => {
       const text = lineNoteText(e.note, lang);
-      editable(g.append('text').attr('class', 'line-note').attr('x', e.x).attr('y', e.y - (e.raised ? 12 : 6) * Math.max(1, TS)).attr('text-anchor', 'middle')
+      editable(g.append('text').attr('class', 'line-note').attr('x', e.x).attr('y', e.y - (e.raised ? LINE_NOTE_RAISED : 6) * Math.max(1, TS)).attr('text-anchor', 'middle')
         .attr('font-size', px(LINE_NOTE_SIZE)).attr('fill', '#475569').text(text), 'lineNote', e.unionId, text);
     });
 
@@ -970,10 +974,11 @@ const PedigreeCanvas = forwardRef(function PedigreeCanvas(
           .attr('stroke', NODE_STROKE)
           .attr('stroke-width', 2);
         // NSGC: the proband's arrow carries "P"; an arrow alone marks the
-        // consultand — clinician decisions K10, 2026-10-23 and 2026-11-01
+        // consultand — clinician decisions K10, 2026-10-23 and 2026-11-01. It stands clear of the
+        // arrow's tail also in a slanted handwriting font (2026-11-23: Caveat's "P" touched it)
         if (d.proband) el.append('text')
           .attr('class', 'proband-p')
-          .attr('x', -m * (arrOff + 17)).attr('y', arrOff + 26).attr('text-anchor', m < 0 ? 'start' : 'end')
+          .attr('x', -m * (arrOff + 19)).attr('y', arrOff + 27).attr('text-anchor', m < 0 ? 'start' : 'end')
           .attr('font-size', '12px').attr('font-weight', '700').attr('fill', NODE_STROKE)
           .text('P');
       }

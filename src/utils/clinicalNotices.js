@@ -5,12 +5,46 @@
  * (and the export gate that uses them) are untouched.
  */
 import { computePedigreeIds } from './pedigreeNumbering';
-import { t, shownLabel } from '../i18n';
+import { t, tk, shownLabel } from '../i18n';
 
-/** Rewrite rules for issue codes whose raw message is technical. */
+/** The issue codes rewritten for the clinician (BY_CODE below). */
+export const rewrittenCodes = () => Object.keys(BY_CODE);
+
+// what a clinician can do about a drawing that came out wrong, and about data that should never occur
+const ARRANGE = tk('Üst çubuktaki Konumlandır ile çizimi yeniden düzenlemeyi deneyin; düzelmezse dosyayı kaydedip Geri bildirim ile bildirin.');
+const REPORT = tk('Bu durum normalde oluşmamalıdır; dosyayı kaydedip Geri bildirim ile bildirin.');
+const drawing = (text) => (c) => `${t(text, c)} ${t(ARRANGE)}`;
+const data = (c) => `${t('Pedigri verisinde bir tutarsızlık bulundu ({who}).', c)} ${t(REPORT)}`;
+
+/**
+ * Rewrite rules for issue codes whose raw message is technical: every code the
+ * graph and layout audits write in English (graphIntegrity.js,
+ * layoutIntegrity.js) has one, so none reaches the clinician as a developer's
+ * note (2026-11-23: "…draw overlapping child-connector rails…" was shown).
+ * c = { pair, pair2, who } — the couples and people the issue names.
+ */
 const BY_CODE = {
-  CONSANGUINITY_UNRESOLVED: (pair) => t('{pair}: akraba evliliği işaretli, ancak ortak atalar çizimde yer almıyor. Çift çizgi gösterilmektedir; ortak ataları çizmek için eşler arasındaki çizgiye tıklayıp akrabalık derecesini ve yolunu seçin.', { pair }),
-  CONSANGUINITY_STATUS_MISSING: (pair) => t('{pair}: akraba evliliği bilgisi eksik.', { pair }),
+  // layout (layoutIntegrity.js)
+  SIBSHIP_BUS_OVERLAP: drawing('{pair} ile {pair2} çiftlerinin çocuklarını gösteren çizgiler aynı yükseklikte üst üste biniyor; hangi çocuğun hangi çifte ait olduğu karışabilir.'),
+  UNRELATED_NODE_IN_CHILD_FOOTPRINT: drawing('{who}, {pair} çiftinin çocuklarını gösteren çizginin tam üstünde duruyor; bu çocukların anne ya da babası sanılabilir.'),
+  EDGE_THROUGH_NODE: drawing('Bir çizgi {who} sembolünün içinden geçiyor; bu kişiyle ilgisi olmayan bir bağ gibi okunabilir.'),
+  PARTNER_Y_MISMATCH: drawing('{pair} çiftinin eşleri aynı satıra çizilemedi.'),
+  SIBLING_Y_MISMATCH: drawing('{pair} çiftinin çocukları aynı satıra çizilemedi.'),
+  DUPLICATE_NODE_POSITION: drawing('{who} aynı yere çizildi; semboller üst üste biniyor.'),
+  MISSING_LAYOUT_NODE: drawing('{who} çizimde gösterilemedi.'),
+  INVALID_NODE_POSITION: drawing('{who} çizimde bir yere yerleştirilemedi.'),
+  UNION_EDGE_DANGLING: drawing('{pair} çiftinin eş çizgisi bir uca bağlanamadı.'),
+  EDGE_INVALID_COORDINATE: drawing('Çizimdeki bir çizgi yerleştirilemedi.'),
+  NO_PARENT_CHILD_EDGES: drawing('Çizimde anne-babayı çocuklara bağlayan çizgiler çizilemedi.'),
+  // graph (graphIntegrity.js)
+  CHILD_MULTI_UNION: (c) => t('{who}, birden fazla anne-baba çiftinin çocuğu olarak kayıtlı; bir kişinin yalnızca bir biyolojik anne-babası olabilir. Fazla bağı kaldırın; evlat edinme ya da üvey ebeveynlik kişinin panelindeki Evlat edinme bölümüyle ayrıca gösterilir.', c),
+  SIBLING_GENERATION_INCONSISTENT: (c) => `${t('{pair} çiftinin çocukları farklı kuşaklarda görünüyor.', c)} ${t(REPORT)}`,
+  PARTNER_GENERATION_INCONSISTENT: (c) => t('{pair} çiftinin eşleri farklı kuşaklarda görünüyor. Farklı kuşaktan bir evlilikse (örneğin dayı–yeğen) bunun için eşler arasındaki çizgi kullanılır; değilse kişilerin anne-babalarını kontrol edin.', c),
+  DUPLICATE_INDIVIDUAL_ID: data, DUPLICATE_UNION_ID: data, UNION_PARTNER_MISSING: data, UNION_SELF_PARTNER: data,
+  PCR_MISSING_UNION: data, PCR_MISSING_CHILD: data, ORDERING_ORPHAN_UNION: data, ORDERING_STALE_TOKEN: data,
+  ORDERING_MISSING_CHILD: data, CONDITION_ID_UNLABELED: data,
+  CONSANGUINITY_UNRESOLVED: ({ pair }) => t('{pair}: akraba evliliği işaretli, ancak ortak atalar çizimde yer almıyor. Çift çizgi gösterilmektedir; ortak ataları çizmek için eşler arasındaki çizgiye tıklayıp akrabalık derecesini ve yolunu seçin.', { pair }),
+  CONSANGUINITY_STATUS_MISSING: ({ pair }) => t('{pair}: akraba evliliği bilgisi eksik.', { pair }),
   // a soft note (clinician decision 2026-11-01): no proband is normal in carrier screening or prenatal counselling
   PROBAND_MISSING: () => t('Proband işaretlenmemiş. Ailenin incelenmesine yol açan etkilenmiş bir kişi varsa Durum → Proband ile işaretleyin; böyle bir kişi yoksa (örneğin taşıyıcılık taramasında) bu not kapatılabilir.'),
 };
@@ -54,7 +88,7 @@ export function clinicalNamer(pedigreeData) {
 }
 
 export function clinicalNotices({ errorIssues = [], warningIssues = [], warnings = [] }, pedigreeData) {
-  const { unionName, plain } = clinicalNamer(pedigreeData);
+  const { nameOf, unionName, plain } = clinicalNamer(pedigreeData);
   const out = [];
   const seen = new Map();
   const push = (text, level, id) => {
@@ -63,10 +97,19 @@ export function clinicalNotices({ errorIssues = [], warningIssues = [], warnings
     seen.set(text, n);
     out.push(n);
   };
+  const unionIds = new Set((pedigreeData.unions || []).map((u) => u.id));
+  const personIds = new Set((pedigreeData.individuals || []).map((i) => i.id));
   const fromIssue = ({ item, _warningId }, level) => {
     const rule = BY_CODE[item.code];
-    const uid = (item.ids || []).find((x) => (pedigreeData.unions || []).some((u) => u.id === x));
-    push(rule ? rule(uid ? unionName(uid) : t('Bir çift')) : plain(item.message), level, _warningId);
+    const ids = item.ids || [];
+    const uids = ids.filter((x) => unionIds.has(x));
+    const people = [...new Set(ids.filter((x) => personIds.has(x)))].map(nameOf);
+    const c = {
+      pair: uids[0] ? unionName(uids[0]) : t('Bir çift'),
+      pair2: uids[1] ? unionName(uids[1]) : t('bir çift'),
+      who: people.length ? people.join(', ') : t('bir kişi'),
+    };
+    push(rule ? rule(c) : plain(item.message), level, _warningId);
   };
   errorIssues.forEach((x) => fromIssue(x, 'error'));
   warningIssues.forEach((x) => fromIssue(x, 'warning'));
