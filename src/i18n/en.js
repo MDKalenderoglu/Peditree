@@ -283,6 +283,7 @@ const EN = {
   'Ters tarama': 'Reverse hatching',
   'Kalın tarama': 'Thick hatching',
   'Zikzak': 'Zigzag',
+  'bir çocuk ebeveynlerinin bir kuşak altına yerleştirilemedi': 'a child could not be placed one generation below its parents',
   'PED dosyasında “{a}” ile “{b}” arasında doğrudan soy bağı var (örneğin dede ile torun); bu iki kişi bir çocuğun anne ve babası olarak çizilemez.': 'In the PED file “{a}” and “{b}” are directly descended from one another (for example grandfather and grandchild); they cannot be drawn as a child’s mother and father.',
   'Halkalı': 'Rings',
   'Artılı': 'Plus signs',

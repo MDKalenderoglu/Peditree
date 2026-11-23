@@ -4,6 +4,7 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { usePedigreeStore } from '../state/usePedigreeStore';
 import { toPed, fromPed } from '../graph/ped';
+import { readFileSync } from 'node:fs';
 
 beforeAll(() => { ['log', 'warn', 'table', 'info', 'error'].forEach(k => vi.spyOn(console, k).mockImplementation(() => {})); });
 const S = () => usePedigreeStore.getState();
@@ -110,6 +111,15 @@ describe('PED import', () => {
     expect(S().pedigreeData.nodes.filter(n => !n.virtual && !n.artVirtual).length).toBeGreaterThanOrEqual(20);
   });
 
+  it('an uncle and his brother\'s daughter, the file passing the checks as it was: the daughter still one row below her father (random families 2026-11-23)', () => {
+    const r = fromPed(readFileSync(new URL('./fixtures/ped-uncle-niece-random.ped', import.meta.url), 'utf8'));
+    expect(r.ok).toBe(true);
+    const gen = (l) => P(r.doc, l).generation;
+    expect(gen('i46')).toBe(gen('i11') + 1);
+    expect(gen('i59')).toBe(gen('i46') + 1);
+    expect(r.doc.graph.unions.find(x => x.partners.includes(P(r.doc, 'i8').id)).crossGeneration).toBe(true);
+  });
+
   it('a great-uncle and his great-niece (two generations apart) open too', () => {
     const r = fromPed('F GF 0 0 1 1\nF GM 0 0 2 1\nF U GF GM 1 1\nF S GF GM 2 1\nF H 0 0 1 1\nF N H S 2 1\nF H2 0 0 1 1\nF NN H2 N 2 1\nF K U NN 1 2\n');
     expect(r.reason).toBeUndefined();
@@ -117,6 +127,29 @@ describe('PED import', () => {
     expect(gen('NN')).toBe(gen('U') + 2);
     expect(gen('K')).toBe(gen('NN') + 1);
     expect(r.doc.graph.unions.find(x => x.partners.includes(P(r.doc, 'U').id)).crossGeneration).toBe(true);
+  });
+
+  // found with random families 2026-11-23: an affected person with no parents and no children in the file
+  // became the proband; the generations were counted from them, reached nobody else, and the whole family
+  // stood on one row — children beside their parents
+  it('a person on their own in the file (no parents, no children): the family keeps its generations; the proband is in the family', () => {
+    const r = fromPed('F X 0 0 1 2\nF GF 0 0 1 1\nF GM 0 0 2 1\nF A GF GM 1 1\nF W 0 0 2 1\nF C A W 2 2\n');
+    expect(r.ok).toBe(true);
+    const gen = (l) => P(r.doc, l).generation;
+    expect(gen('A')).toBe(gen('GF') + 1);
+    expect(gen('C')).toBe(gen('A') + 1);
+    expect(P(r.doc, 'C').proband).toBe(true);
+    // the only affected person on their own: still the proband, and the family still on its rows
+    const r2 = fromPed('F X 0 0 1 2\nF GF 0 0 1 1\nF GM 0 0 2 1\nF A GF GM 1 1\nF W 0 0 2 1\nF C A W 2 1\n');
+    const gen2 = (l) => P(r2.doc, l).generation;
+    expect(P(r2.doc, 'X').proband).toBe(true);
+    expect(gen2('A')).toBe(gen2('GF') + 1);
+    expect(gen2('C')).toBe(gen2('A') + 1);
+    // drawn: each generation on its own row
+    S().importPedFile('F X 0 0 1 2\nF GF 0 0 1 1\nF GM 0 0 2 1\nF A GF GM 1 1\nF W 0 0 2 1\nF C A W 2 1\n');
+    const y = (l) => S().pedigreeData.nodes.find(n => n.id === S().doc.graph.individuals.find(i => i.label === l).id).y;
+    expect(y('A')).toBeGreaterThan(y('GF'));
+    expect(y('C')).toBeGreaterThan(y('A'));
   });
 
   it('a father and his daughter as parents in a file: still refused, never drawn as a couple', () => {

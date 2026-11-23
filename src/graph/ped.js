@@ -114,6 +114,25 @@ export const PED_UNKNOWN_LABEL = tk('PED: hastalık durumu');
 export const MAX_PED_CHARS = 20 * 1024 * 1024;
 export const MAX_PED_PEOPLE = 3000;
 
+/** How many people each person is joined to in the file, by parents, children and partners (themself included). */
+function familySizes(recs) {
+  const next = new Map(recs.map((r) => [r.id, new Set()]));
+  const join = (a, b) => { next.get(a).add(b); next.get(b).add(a); };
+  for (const r of recs) {
+    for (const p of [r.father, r.mother]) if (p) join(r.id, p);
+    if (r.father && r.mother) join(r.father, r.mother);
+  }
+  const size = new Map();
+  for (const r of recs) {
+    if (size.has(r.id)) continue;
+    const seen = new Set([r.id]);
+    const stack = [r.id];
+    while (stack.length) for (const q of next.get(stack.pop())) if (!seen.has(q)) { seen.add(q); stack.push(q); }
+    for (const id of seen) size.set(id, seen.size);
+  }
+  return size;
+}
+
 /**
  * Each person's row by descent, for a file whose couples cannot all stand on
  * one row: someone with parents one below the lower parent, someone without
@@ -268,9 +287,25 @@ export function fromPed(text) {
   // without children, else the first affected; nobody when nobody is
   // affected (Codex audit 2026-11-01 — a pedigree may have no proband)
   const isParent = new Set(recs.flatMap((r) => [r.father, r.mother]).filter(Boolean));
-  const proband = recs.find((r) => r.affected && !isParent.has(r.id)) || recs.find((r) => r.affected) || null;
+  // …among the people joined to the most others (random families 2026-11-23: an affected person on
+  // their own in the file — no parents, no children — was taken first)
+  const joined = familySizes(recs);
+  const most = Math.max(0, ...recs.filter((r) => r.affected).map((r) => joined.get(r.id)));
+  const inFamily = (r) => r.affected && joined.get(r.id) === most;
+  const proband = recs.find((r) => inFamily(r) && !isParent.has(r.id)) || recs.find(inFamily) || null;
   if (proband) individuals.find((i) => i.id === pid.get(proband.id)).proband = true;
   const anchor = proband || recs.find((r) => !isParent.has(r.id)) || recs[0];
+  // every person starts on their row by descent, the anchor's row being 3: generations are counted from
+  // the anchor (finalize.js), and whoever that count does not reach (someone on their own in the file,
+  // a family apart) keeps this row instead of the first row for all (random families 2026-11-23: the
+  // whole family stood on one row, children beside their parents)
+  const level = descentLevels(recs, pid);
+  const shift = 3 - (level.get(pid.get(anchor.id)) ?? 0);
+  for (const p of individuals) if (level.has(p.id)) p.generation = level.get(p.id) + shift;
+  for (const u of unions) {
+    const known = u.partners.find((id) => level.has(id));
+    for (const id of u.partners) if (!level.has(id) && known) individuals.find((i) => i.id === id).generation = level.get(known) + shift;
+  }
 
   // a couple where one is the other's ancestor is never drawn (plans.js: as in the editor)
   const ancestorsOf = (id) => {
@@ -295,23 +330,30 @@ export function fromPed(text) {
     return { doc, errors: errorsOf(validateDocument(doc)) };
   };
   let { doc, errors } = build();
-  if (errors.length) {
+  // the checks may pass with a child counted on its parents' row (an uncle and his brother's daughter,
+  // reached from the proband by way of the uncle; random families 2026-11-23): that is no drawing either
+  const rowsWrong = (g) => {
+    const gen = new Map(g.individuals.map((i) => [i.id, i.generation]));
+    return g.parentChildRelationships.some((rel) => {
+      const u = g.unions.find((x) => x.id === rel.unionId);
+      const top = Math.max(...u.partners.map((id) => gen.get(id)));
+      return rel.children.some((c) => gen.get(c) !== top + 1);
+    });
+  };
+  if (errors.length || rowsWrong(doc.graph)) {
     // partners from different generations (an uncle and his niece …; clinician decisions 2026-10-24,
     // 2026-11-11): each stays on their own row (OPX comparison 2026-11-23: such a file was refused).
     // Only when the family cannot be drawn otherwise: a couple whose partners stand on different rows
     // by descent (a child one below the lower parent, someone married in on their partner's row).
-    const level = descentLevels(recs, pid);
     let marked = false;
     for (const u of unions) {
       const [a, b] = u.partners.map((id) => level.get(id));
       if (a !== undefined && b !== undefined && a !== b) { u.crossGeneration = true; marked = true; }
     }
-    // the rows by descent go in as the people's generations: computeGenerations reads from them which
-    // partner stands above and how many rows apart (two for a great-uncle and his great-niece)
-    if (marked) {
-      for (const p of individuals) if (level.has(p.id)) p.generation = level.get(p.id);
-      ({ doc, errors } = build());
-    }
+    // the rows by descent (set above) tell computeGenerations which partner stands above and how many
+    // rows apart (two for a great-uncle and his great-niece)
+    if (marked) ({ doc, errors } = build());
+    if (!errors.length && rowsWrong(doc.graph)) errors = [{ message: t('bir çocuk ebeveynlerinin bir kuşak altına yerleştirilemedi') }];
   }
   if (errors.length) return { ok: false, reason: t('PED dosyasındaki aile çizilemedi: {v0}', { v0: errors[0].message }) };
   const unknownN = recs.filter((r) => r.unknown).length;
