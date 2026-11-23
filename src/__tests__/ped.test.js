@@ -78,6 +78,53 @@ describe('PED import', () => {
     expect(P(r.doc, 'k').proband).toBe(true);
   });
 
+  // OPX comparison 2026-11-23: a file with an uncle–niece marriage was refused ("partners have different generations")
+  // though the editor draws one (clinician decisions 2026-10-24, 2026-11-11)
+  const HARD = [
+    'Z P1 0 0 1 1', 'Z P2 0 0 2 1', 'Z Q1 0 0 1 1', 'Z Q2 0 0 2 1',
+    'Z A1 P1 P2 1 1', 'Z A2 P1 P2 1 1', 'Z A3 P1 P2 2 1', 'Z B1 Q1 Q2 2 1', 'Z B2 Q1 Q2 2 1',
+    'Z Y 0 0 2 1', 'Z W 0 0 1 1',
+    'Z C1 A1 B1 1 1', 'Z C2 A1 B1 2 1', 'Z D1 A2 B2 2 1', 'Z D2 A2 B2 1 1', 'Z G1 A1 Y 1 1', 'Z F1 W A3 2 1',
+    'Z E1 C1 D1 1 2', 'Z E2 C1 D1 2 2',
+    'Z H1 A1 F1 2 2', // the uncle and his sister's daughter
+  ].join('\n');
+
+  it('an uncle and his niece married in the file: each on their own generation, their child one below the niece, consanguinity derived', () => {
+    const r = fromPed(HARD);
+    expect(r.reason).toBeUndefined();
+    expect(r.ok).toBe(true);
+    const g = r.doc.graph;
+    const gen = (l) => P(r.doc, l).generation;
+    const u = g.unions.find(x => x.partners.includes(P(r.doc, 'A1').id) && x.partners.includes(P(r.doc, 'F1').id));
+    expect(u.crossGeneration).toBe(true);
+    expect(gen('F1')).toBe(gen('A1') + 1);
+    expect(gen('H1')).toBe(gen('F1') + 1);
+    expect(u.consanguineous).toBe(true);
+    expect(u.consanguinityDegree).toBe('avuncular');
+    // every other couple stays on one row; the double first cousins as before
+    expect(g.unions.filter(x => x !== u).every(x => !x.crossGeneration && gen(g.individuals.find(i => i.id === x.partners[0]).label) === gen(g.individuals.find(i => i.id === x.partners[1]).label))).toBe(true);
+    const dfc = g.unions.find(x => x.partners.includes(P(r.doc, 'C1').id));
+    expect(dfc.consanguinityDegree).toBe('double_first_cousin');
+    // the store opens and draws it
+    expect(S().importPedFile(HARD).ok).toBe(true);
+    expect(S().pedigreeData.nodes.filter(n => !n.virtual && !n.artVirtual).length).toBeGreaterThanOrEqual(20);
+  });
+
+  it('a great-uncle and his great-niece (two generations apart) open too', () => {
+    const r = fromPed('F GF 0 0 1 1\nF GM 0 0 2 1\nF U GF GM 1 1\nF S GF GM 2 1\nF H 0 0 1 1\nF N H S 2 1\nF H2 0 0 1 1\nF NN H2 N 2 1\nF K U NN 1 2\n');
+    expect(r.reason).toBeUndefined();
+    const gen = (l) => P(r.doc, l).generation;
+    expect(gen('NN')).toBe(gen('U') + 2);
+    expect(gen('K')).toBe(gen('NN') + 1);
+    expect(r.doc.graph.unions.find(x => x.partners.includes(P(r.doc, 'U').id)).crossGeneration).toBe(true);
+  });
+
+  it('a father and his daughter as parents in a file: still refused, never drawn as a couple', () => {
+    const r = fromPed('F A 0 0 1 1\nF M 0 0 2 1\nF D A M 2 1\nF K A D 1 2\n');
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/soy bağı/);
+  });
+
   it('a parent named but not listed is added; one parent missing gets an unspecified parent', () => {
     const r = fromPed('F C P 0 1 2\n');
     expect(r.ok).toBe(true);

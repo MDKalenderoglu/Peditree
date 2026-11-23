@@ -114,6 +114,35 @@ export const PED_UNKNOWN_LABEL = tk('PED: hastalık durumu');
 export const MAX_PED_CHARS = 20 * 1024 * 1024;
 export const MAX_PED_PEOPLE = 3000;
 
+/**
+ * Each person's row by descent, for a file whose couples cannot all stand on
+ * one row: someone with parents one below the lower parent, someone without
+ * parents on the row of their partner (the lowest, if several) or one above
+ * their child; settled by raising until nothing changes. Keyed by drawing id.
+ */
+function descentLevels(recs, pid) {
+  const level = new Map(recs.map((r) => [r.id, 0]));
+  const partners = new Map(recs.map((r) => [r.id, new Set()]));
+  const children = new Map(recs.map((r) => [r.id, []]));
+  for (const r of recs) {
+    if (r.father && r.mother) { partners.get(r.father).add(r.mother); partners.get(r.mother).add(r.father); }
+    for (const p of [r.father, r.mother]) if (p) children.get(p).push(r.id);
+  }
+  for (let round = 0, changed = true; changed && round <= recs.length * 2; round++) {
+    changed = false;
+    const raise = (id, v) => { if (v > level.get(id)) { level.set(id, v); changed = true; } };
+    for (const r of recs) {
+      const parents = [r.father, r.mother].filter(Boolean);
+      if (parents.length) raise(r.id, Math.max(...parents.map((p) => level.get(p))) + 1);
+      else {
+        for (const q of partners.get(r.id)) raise(r.id, level.get(q));
+        for (const c of children.get(r.id)) raise(r.id, level.get(c) - 1);
+      }
+    }
+  }
+  return new Map([...level].map(([id, v]) => [pid.get(id), v]));
+}
+
 export function fromPed(text) {
   // limits (second audit 2026-10-25): a clinical family is far smaller
   if (String(text || '').length > MAX_PED_CHARS) return { ok: false, reason: t('PED dosyası çok büyük olduğundan (20 MB üzeri) açılmadı.') };
@@ -243,10 +272,47 @@ export function fromPed(text) {
   if (proband) individuals.find((i) => i.id === pid.get(proband.id)).proband = true;
   const anchor = proband || recs.find((r) => !isParent.has(r.id)) || recs[0];
 
-  const graph = { individuals, unions, parentChildRelationships: pcrs, socialParentLinks: [], conditionKey: [] };
-  finalizeGraph(graph, { anchorId: pid.get(anchor.id) });
-  const doc = createDocument(graph, { wizardAnchorId: pid.get(anchor.id), provenance: { importedFrom: 'ped' } });
-  const errors = errorsOf(validateDocument(doc));
+  // a couple where one is the other's ancestor is never drawn (plans.js: as in the editor)
+  const ancestorsOf = (id) => {
+    const out = new Set();
+    const stack = [id];
+    while (stack.length) {
+      const r = byId.get(stack.pop());
+      for (const p of [r.father, r.mother]) if (p && !out.has(p)) { out.add(p); stack.push(p); }
+    }
+    return out;
+  };
+  for (const r of recs) {
+    if (!r.father || !r.mother) continue;
+    if (ancestorsOf(r.father).has(r.mother) || ancestorsOf(r.mother).has(r.father)) {
+      return { ok: false, reason: t('PED dosyasında “{a}” ile “{b}” arasında doğrudan soy bağı var (örneğin dede ile torun); bu iki kişi bir çocuğun anne ve babası olarak çizilemez.', { a: r.father, b: r.mother }) };
+    }
+  }
+  const build = () => {
+    const graph = structuredClone({ individuals, unions, parentChildRelationships: pcrs, socialParentLinks: [], conditionKey: [] });
+    finalizeGraph(graph, { anchorId: pid.get(anchor.id) });
+    const doc = createDocument(graph, { wizardAnchorId: pid.get(anchor.id), provenance: { importedFrom: 'ped' } });
+    return { doc, errors: errorsOf(validateDocument(doc)) };
+  };
+  let { doc, errors } = build();
+  if (errors.length) {
+    // partners from different generations (an uncle and his niece …; clinician decisions 2026-10-24,
+    // 2026-11-11): each stays on their own row (OPX comparison 2026-11-23: such a file was refused).
+    // Only when the family cannot be drawn otherwise: a couple whose partners stand on different rows
+    // by descent (a child one below the lower parent, someone married in on their partner's row).
+    const level = descentLevels(recs, pid);
+    let marked = false;
+    for (const u of unions) {
+      const [a, b] = u.partners.map((id) => level.get(id));
+      if (a !== undefined && b !== undefined && a !== b) { u.crossGeneration = true; marked = true; }
+    }
+    // the rows by descent go in as the people's generations: computeGenerations reads from them which
+    // partner stands above and how many rows apart (two for a great-uncle and his great-niece)
+    if (marked) {
+      for (const p of individuals) if (level.has(p.id)) p.generation = level.get(p.id);
+      ({ doc, errors } = build());
+    }
+  }
   if (errors.length) return { ok: false, reason: t('PED dosyasındaki aile çizilemedi: {v0}', { v0: errors[0].message }) };
   const unknownN = recs.filter((r) => r.unknown).length;
   const notes = [proband
